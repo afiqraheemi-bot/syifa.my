@@ -48,18 +48,12 @@ final class ClinicOwnerTenantContextResolverArchitectureTest extends TestCase
         self::assertSame([], glob($root.'/database/migrations/**/*tenant_context*') ?: []);
     }
 
-    public function test_no_transport_session_cache_or_delivery_artifact_was_added(): void
+    public function test_resolver_contains_no_transport_session_cache_or_delivery_dependency(): void
     {
-        $module = $this->root().'/app/Modules/TenantManagement';
-
-        foreach ($this->phpFilesIn($module) as $file) {
-            self::assertDoesNotMatchRegularExpression(
-                '/(?:Controller|Middleware|Session|Cookie|Request|Listener)\.php$/',
-                $file,
-            );
-        }
-
         $resolver = $this->resolverContents();
+        self::assertStringNotContainsString('Presentation\\', $resolver);
+        self::assertStringNotContainsString('Session', $resolver);
+        self::assertStringNotContainsString('Cookie', $resolver);
         self::assertStringNotContainsString('Cache', $resolver);
         self::assertStringNotContainsString('Log', $resolver);
         self::assertStringNotContainsString('dispatch', $resolver);

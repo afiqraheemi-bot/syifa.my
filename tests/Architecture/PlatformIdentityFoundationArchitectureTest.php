@@ -50,10 +50,6 @@ final class PlatformIdentityFoundationArchitectureTest extends TestCase
         );
         self::assertSame([], glob($root.'/database/migrations/*.php') ?: []);
 
-        $routes = file_get_contents($root.'/routes/web.php');
-        self::assertIsString($routes);
-        self::assertStringNotContainsString('Route::', $routes);
-
         foreach ($this->phpFilesIn($root.'/app/Modules/PlatformAdministration/Domain') as $file) {
             self::assertDoesNotMatchRegularExpression(
                 '/(?:Controller|Middleware|Repository|Record|Model|QueueJob)\.php$/',

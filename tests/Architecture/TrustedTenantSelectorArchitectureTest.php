@@ -39,11 +39,11 @@ final class TrustedTenantSelectorArchitectureTest extends TestCase
         }
     }
 
-    public function test_no_transport_session_or_tenant_context_adapter_was_added(): void
+    public function test_routing_adapter_contains_no_transport_session_or_tenant_context_artifact(): void
     {
         $module = $this->root().'/app/Modules/TenantManagement';
 
-        foreach ($this->phpFilesIn($module) as $file) {
+        foreach ($this->phpFilesIn($module.'/Infrastructure/TenantRouting') as $file) {
             self::assertDoesNotMatchRegularExpression(
                 '/(?:Controller|Middleware|Session|Cookie|Request)\.php$/',
                 $file,

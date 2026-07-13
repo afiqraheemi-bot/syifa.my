@@ -321,6 +321,28 @@ Twenty-two candidates plus two justified additions evaluate to **nineteen top-le
 - Idempotency: Naturally idempotent (safe read).
 - Audit Requirements: None.
 
+#### Clinic Owner HTTP Session Core
+
+The Clinic Owner transport exposes exactly `POST /api/v1/sessions`, `GET /api/v1/sessions/current`, and `DELETE /api/v1/sessions/current`. `POST` returns `201`, `GET` returns `200`, and both use this exact public representation:
+
+```json
+{
+  "data": {
+    "authenticated": true,
+    "role": "clinic_owner",
+    "tenant": { "id": "<tenant UUID>" },
+    "session": {
+      "idle_expires_at": "<RFC3339 timestamp>",
+      "absolute_expires_at": "<RFC3339 timestamp>"
+    }
+  }
+}
+```
+
+`DELETE` is idempotent and returns `204`. Errors use `application/problem+json` with the required fields `type`, `title`, `status`, `detail`, and `correlation_id`; validation errors may add `errors`. Stable categories are `authentication_failed` (`401`), `session_invalid` (`401`), `validation_failed` (`422`), `authentication_temporarily_unavailable` (`429`), and `internal_error` (`500`).
+
+Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state with TTL management; they are neither an Aggregate Root nor a business source of truth. Idle expiry is 120 minutes and absolute lifetime is 720 minutes. Tenant Context is revalidated on every current-session request. Tenant selection uses only Laravel's normalized direct `Request::getHost()` value; request bodies, query strings, manually read forwarded-host headers, and unconfigured trusted proxies are not tenant-authority inputs.
+
 ---
 
 ### 4. Profile

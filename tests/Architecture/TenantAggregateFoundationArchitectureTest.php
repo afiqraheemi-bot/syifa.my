@@ -58,8 +58,9 @@ final class TenantAggregateFoundationArchitectureTest extends TestCase
     public function test_no_delivery_or_independent_authority_persistence_artifact_exists(): void
     {
         $module = dirname(__DIR__, 2).'/app/Modules/TenantManagement';
+        $aggregate = $module.'/Domain/Aggregates/Tenant';
 
-        foreach ($this->phpFilesIn($module) as $file) {
+        foreach ($this->phpFilesIn($aggregate) as $file) {
             self::assertDoesNotMatchRegularExpression(
                 '/(?:Controller|Middleware|QueueJob|Notification)\.php$/',
                 $file,
