@@ -1,0 +1,67 @@
+# Environment and local credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+/auth.json
+/.npmrc
+/.pgpass
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Dependencies
+/node_modules/
+/vendor/
+
+# Generated frontend and public runtime artifacts
+/public/build/
+/public/hot
+/public/storage
+/.vite/
+/.npm/
+
+# Laravel runtime state
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+/storage/*.key
+/storage/pail/
+*.log
+
+# Test, analysis, and coverage caches
+/.phpunit.cache/
+/.phpunit.result.cache
+/.phpstan.cache/
+/storage/framework/cache/phpstan/
+/coverage/
+
+# PostgreSQL local state and database dumps
+/.pgdata/
+/pgdata/
+*.sock
+postmaster.pid
+postmaster.opts
+*.dump
+*.dump.gz
+*.sql.gz
+*.backup
+
+# Temporary files
+/tmp/
+*.tmp
+*.swp
+*.swo
+*.orig
+
+# Editors and operating systems
+/.fleet/
+/.idea/
+/.nova/
+/.vscode/
+/.zed/
+.phpactor.json
+.DS_Store
+Thumbs.db
+Homestead.json
+Homestead.yaml

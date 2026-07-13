@@ -1,0 +1,69 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Contract\Modules\PlatformAdministration;
+
+use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityLookupInterface;
+use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\CredentialVerificationInterface;
+use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialLookupInterface;
+use App\Modules\PlatformAdministration\Infrastructure\Persistence\WorkforceCredentials\PostgresPlatformWorkforceCredentialAdapter;
+use App\Modules\PlatformAdministration\Infrastructure\PlatformAdministrationServiceProvider;
+use App\Modules\TenantManagement\Application\Authentication\ChangeClinicOwnerPasswordService;
+use App\Modules\TenantManagement\Contracts\Authentication\PasswordBlocklistInterface;
+use App\Modules\TenantManagement\Contracts\Authentication\TrustedTenantSelectorInterface;
+use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolverInterface;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Database\Migrations\Migrator;
+use Tests\TestCase;
+
+final class PlatformAdministrationServiceProviderTest extends TestCase
+{
+    public function test_provider_is_registered_and_loads_its_migration_path(): void
+    {
+        self::assertArrayHasKey(
+            PlatformAdministrationServiceProvider::class,
+            $this->app->getLoadedProviders(),
+        );
+        $migrator = $this->app->make('migrator');
+        self::assertInstanceOf(Migrator::class, $migrator);
+        self::assertContains(
+            database_path('migrations/platform_administration'),
+            $migrator->paths(),
+        );
+    }
+
+    public function test_approved_credential_contracts_resolve_to_the_same_postgres_adapter(): void
+    {
+        $lookup = $this->app->make(PlatformWorkforceCredentialLookupInterface::class);
+        $verification = $this->app->make(CredentialVerificationInterface::class);
+
+        self::assertInstanceOf(PostgresPlatformWorkforceCredentialAdapter::class, $lookup);
+        self::assertSame($lookup, $verification);
+    }
+
+    public function test_security_contracts_without_production_adapters_remain_unresolved(): void
+    {
+        foreach ([
+            PasswordBlocklistInterface::class,
+            TrustedTenantSelectorInterface::class,
+            TenantContextResolverInterface::class,
+            PlatformIdentityLookupInterface::class,
+        ] as $contract) {
+            self::assertFalse($this->app->bound($contract), $contract);
+
+            try {
+                $this->app->make($contract);
+                self::fail($contract.' must remain unresolved.');
+            } catch (BindingResolutionException) {
+                self::addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function test_password_change_remains_unresolvable_without_a_real_blocklist(): void
+    {
+        $this->expectException(BindingResolutionException::class);
+        $this->app->make(ChangeClinicOwnerPasswordService::class);
+    }
+}
