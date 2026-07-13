@@ -60,6 +60,8 @@ final readonly class AuthenticateClinicOwnerService implements ClinicOwnerAuthen
                     tenantId: $credential->tenantId,
                     role: TenantContextRole::ClinicOwner->value,
                     assignment: null,
+                    clinicOwnerAuthorityId: $credential->authorityId,
+                    clinicOwnerIdentityId: $credential->clinicOwnerIdentityId,
                 ),
             );
         } catch (

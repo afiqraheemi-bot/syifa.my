@@ -6,6 +6,7 @@ namespace Tests\Integration\Modules\TenantManagement\Persistence;
 
 use App\Modules\TenantManagement\Application\Authentication\ClinicOwnerPasswordMatcher;
 use App\Modules\TenantManagement\Application\Authentication\VerifyClinicOwnerCredentialService;
+use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolutionData;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Exceptions\StaleTenantWriteException;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Tenant;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\ValueObjects\ClinicOwnerAuthorityId;
@@ -20,6 +21,9 @@ use App\Modules\TenantManagement\Domain\Aggregates\Tenant\ValueObjects\TenantRea
 use App\Modules\TenantManagement\Infrastructure\Persistence\Lookups\PostgresTenantAdminRoutingLookup;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Mappers\TenantPersistenceMapper;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Repositories\PostgresTenantRepository;
+use App\Modules\TenantManagement\Infrastructure\TenantContext\ClinicOwnerTenantContextResolver;
+use App\Modules\TenantManagement\Infrastructure\TenantRouting\AdminHostParser;
+use App\Modules\TenantManagement\Infrastructure\TenantRouting\TenantAdminHostTrustedTenantSelector;
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Migrations\Migration;
@@ -212,6 +216,46 @@ final class PostgresTenantRepositoryTest extends TestCase
         );
         $this->repository()->save($tenant);
         self::assertSame('reactivated', $lookup->resolve('clinic-one')?->lifecycleStatus);
+    }
+
+    public function test_trusted_selector_resolves_an_eligible_tenant_through_the_real_lookup(): void
+    {
+        $tenant = $this->activeTenant(1, 'clinic-one');
+        $this->repository()->save($tenant);
+        $selector = new TenantAdminHostTrustedTenantSelector(
+            new AdminHostParser(['app.syifa.my']),
+            new PostgresTenantAdminRoutingLookup($this->connection()),
+        );
+
+        self::assertSame(
+            $tenant->id->value,
+            $selector->select('clinic-one.app.syifa.my')?->tenantId,
+        );
+        self::assertNull($selector->select('unknown-clinic.app.syifa.my'));
+        self::assertNull($selector->select('clinic-one.syifa.my'));
+    }
+
+    public function test_clinic_owner_context_revalidates_persisted_authority_on_every_resolution(): void
+    {
+        $tenant = $this->tenantWithAuthority();
+        $tenant->activate($this->time('10:02:00'));
+        $this->repository()->save($tenant);
+        $resolver = new ClinicOwnerTenantContextResolver($this->repository());
+        $resolution = new TenantContextResolutionData(
+            platformIdentityId: null,
+            tenantId: $tenant->id->value,
+            role: 'clinic_owner',
+            assignment: null,
+            clinicOwnerAuthorityId: $this->uuid(10),
+            clinicOwnerIdentityId: $this->uuid(20),
+        );
+
+        self::assertSame($tenant->id->value, $resolver->resolve($resolution)?->tenantId);
+
+        $tenant->revokeClinicOwnerAuthority($this->authorityId(10), $this->time('10:03:00'));
+        $this->repository()->save($tenant);
+
+        self::assertNull($resolver->resolve($resolution));
     }
 
     public function test_it_persists_and_reloads_an_activated_tenant(): void

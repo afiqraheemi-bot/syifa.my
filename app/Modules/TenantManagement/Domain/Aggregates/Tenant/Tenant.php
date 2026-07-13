@@ -284,7 +284,7 @@ final class Tenant
     ): ClinicOwnerCredentialVerification {
         $authority = $this->findActiveClinicOwnerAuthorityByEmail($email);
 
-        if ($authority === null || ! $this->lifecyclePermitsClinicOwnerCredentialChecking()) {
+        if ($authority === null || ! $this->permitsClinicOwnerAuthenticatedAccess()) {
             return new ClinicOwnerCredentialVerification(false, false);
         }
 
@@ -359,6 +359,14 @@ final class Tenant
     public function clinicOwnerAuthorityHistory(): array
     {
         return array_values($this->clinicOwnerAuthorities);
+    }
+
+    public function permitsClinicOwnerAuthenticatedAccess(): bool
+    {
+        return in_array($this->status, [
+            TenantLifecycleStatus::Active,
+            TenantLifecycleStatus::Reactivated,
+        ], true);
     }
 
     public function activate(DateTimeImmutable $occurredAt): void
@@ -482,7 +490,7 @@ final class Tenant
     ): ClinicOwnerAuthority {
         $authority = $this->requireActiveAuthority($authorityId);
 
-        if (! $this->lifecyclePermitsClinicOwnerCredentialChecking()
+        if (! $this->permitsClinicOwnerAuthenticatedAccess()
             || ! $authority->credentialState()->isUsable()
             || $authority->credentialState()->isLockedAt($occurredAt)) {
             throw new InvalidClinicOwnerAuthorityTransitionException(
@@ -491,14 +499,6 @@ final class Tenant
         }
 
         return $authority;
-    }
-
-    private function lifecyclePermitsClinicOwnerCredentialChecking(): bool
-    {
-        return in_array($this->status, [
-            TenantLifecycleStatus::Active,
-            TenantLifecycleStatus::Reactivated,
-        ], true);
     }
 
     private function assertAuthorityIdentifierIsUnused(ClinicOwnerAuthorityId $authorityId): void

@@ -13,6 +13,8 @@ use App\Modules\TenantManagement\Application\Authentication\ChangeClinicOwnerPas
 use App\Modules\TenantManagement\Contracts\Authentication\PasswordBlocklistInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\TrustedTenantSelectorInterface;
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolverInterface;
+use App\Modules\TenantManagement\Infrastructure\TenantContext\ClinicOwnerTenantContextResolver;
+use App\Modules\TenantManagement\Infrastructure\TenantRouting\TenantAdminHostTrustedTenantSelector;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Database\Migrations\Migrator;
 use Tests\TestCase;
@@ -46,8 +48,6 @@ final class PlatformAdministrationServiceProviderTest extends TestCase
     {
         foreach ([
             PasswordBlocklistInterface::class,
-            TrustedTenantSelectorInterface::class,
-            TenantContextResolverInterface::class,
             PlatformIdentityLookupInterface::class,
         ] as $contract) {
             self::assertFalse($this->app->bound($contract), $contract);
@@ -59,6 +59,15 @@ final class PlatformAdministrationServiceProviderTest extends TestCase
                 self::addToAssertionCount(1);
             }
         }
+
+        self::assertInstanceOf(
+            TenantAdminHostTrustedTenantSelector::class,
+            $this->app->make(TrustedTenantSelectorInterface::class),
+        );
+        self::assertInstanceOf(
+            ClinicOwnerTenantContextResolver::class,
+            $this->app->make(TenantContextResolverInterface::class),
+        );
     }
 
     public function test_password_change_remains_unresolvable_without_a_real_blocklist(): void

@@ -58,8 +58,8 @@ final class TenantContextFoundationArchitectureTest extends TestCase
     {
         $root = dirname(__DIR__, 2);
 
-        self::assertDirectoryDoesNotExist(
-            $root.'/app/Modules/TenantManagement/Infrastructure/TenantContext',
+        self::assertFileExists(
+            $root.'/app/Modules/TenantManagement/Infrastructure/TenantContext/ClinicOwnerTenantContextResolver.php',
         );
         self::assertDirectoryDoesNotExist(
             $root.'/app/Modules/TenantManagement/Presentation/TenantContext',
@@ -71,6 +71,10 @@ final class TenantContextFoundationArchitectureTest extends TestCase
                 $file,
             );
         }
+
+        self::assertDirectoryDoesNotExist(
+            $root.'/app/Modules/TenantManagement/Infrastructure/TenantContext/Persistence',
+        );
     }
 
     /** @return list<string> */

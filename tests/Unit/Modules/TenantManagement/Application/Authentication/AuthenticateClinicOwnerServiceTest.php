@@ -26,6 +26,7 @@ use App\Modules\TenantManagement\Domain\Aggregates\Tenant\ValueObjects\ClinicOwn
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\ValueObjects\ClinicOwnerIdentityId;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\ValueObjects\ClinicOwnerName;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\ValueObjects\TenantId;
+use App\Modules\TenantManagement\Infrastructure\TenantContext\ClinicOwnerTenantContextResolver;
 use DateTimeImmutable;
 use Illuminate\Hashing\BcryptHasher;
 use PHPUnit\Framework\TestCase;
@@ -209,7 +210,7 @@ final class AuthenticateClinicOwnerServiceTest extends TestCase
         return new AuthenticateClinicOwnerService(
             $this->selector($selections),
             new VerifyClinicOwnerCredentialService($this->repository, $this->hasher),
-            new ResolveTenantContextService($this->contextResolver()),
+            new ResolveTenantContextService(new ClinicOwnerTenantContextResolver($this->repository)),
         );
     }
 

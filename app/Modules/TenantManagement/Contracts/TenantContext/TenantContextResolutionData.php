@@ -11,5 +11,7 @@ final readonly class TenantContextResolutionData
         public string $tenantId,
         public string $role,
         public ?TenantContextAssignmentData $assignment,
+        public ?string $clinicOwnerAuthorityId = null,
+        public ?string $clinicOwnerIdentityId = null,
     ) {}
 }

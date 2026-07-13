@@ -10,8 +10,9 @@ use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextData;
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolutionData;
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolverInterface;
 use App\Modules\TenantManagement\Domain\TenantContext\ValueObjects\TenantContextRole;
-use PHPUnit\Framework\TestCase;
+use App\Modules\TenantManagement\Infrastructure\TenantContext\ClinicOwnerTenantContextResolver;
 use ReflectionClass;
+use Tests\TestCase;
 
 final class TenantContextContractsTest extends TestCase
 {
@@ -45,6 +46,14 @@ final class TenantContextContractsTest extends TestCase
         self::assertTrue((new ReflectionClass(TenantContextData::class))->isReadOnly());
         self::assertTrue((new ReflectionClass(TenantContextResolutionData::class))->isReadOnly());
         self::assertTrue((new ReflectionClass(TenantContextAssignmentData::class))->isReadOnly());
+    }
+
+    public function test_resolver_contract_resolves_to_the_clinic_owner_production_adapter(): void
+    {
+        self::assertInstanceOf(
+            ClinicOwnerTenantContextResolver::class,
+            $this->app->make(TenantContextResolverInterface::class),
+        );
     }
 
     private function resolver(): TenantContextResolverInterface
