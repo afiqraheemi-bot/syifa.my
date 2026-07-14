@@ -18,15 +18,19 @@ use Illuminate\Redis\RedisManager;
 use Illuminate\Session\Store;
 use Illuminate\Testing\TestResponse;
 use Predis\Client;
+use RuntimeException;
 use Tests\TestCase;
+use Throwable;
 
 final class RedisClinicOwnerSessionTest extends TestCase
 {
     public const TENANT_ID = '00000000-0000-4000-8000-000000000001';
 
-    private int $redisPort;
+    private ?int $redisPort = null;
 
-    private RedisManager $redis;
+    private ?RedisManager $redis = null;
+
+    private bool $redisReady = false;
 
     private MutableRedisContextResolver $tenantContexts;
 
@@ -38,7 +42,14 @@ final class RedisClinicOwnerSessionTest extends TestCase
         if (! is_string($port) || $port === '') {
             self::markTestSkipped('Requires SESSION_REDIS_TEST_PORT for a disposable Redis-protocol server.');
         }
-        $this->redisPort = (int) $port;
+
+        $validatedPort = filter_var($port, FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 1, 'max_range' => 65535],
+        ]);
+        if (! is_int($validatedPort)) {
+            self::fail('SESSION_REDIS_TEST_PORT must be a valid TCP port between 1 and 65535.');
+        }
+        $this->redisPort = $validatedPort;
 
         config()->set('session.driver', 'redis');
         config()->set('session.connection', 'session');
@@ -54,11 +65,22 @@ final class RedisClinicOwnerSessionTest extends TestCase
             ]);
         }
 
-        $this->redis = $this->app->make('redis');
-        foreach (['default', 'cache', 'session'] as $connection) {
-            $this->redis->purge($connection);
-            $this->redis->connection($connection)->flushdb();
+        $redis = $this->app->make('redis');
+        self::assertInstanceOf(RedisManager::class, $redis);
+        $this->redis = $redis;
+
+        try {
+            foreach (['default', 'cache', 'session'] as $connection) {
+                $redis->purge($connection);
+                $redis->connection($connection)->flushdb();
+            }
+        } catch (Throwable $exception) {
+            throw new RuntimeException(sprintf(
+                'Configured disposable Redis/Valkey on 127.0.0.1:%d could not be initialized.',
+                $this->redisPort,
+            ), 0, $exception);
         }
+        $this->redisReady = true;
         $this->resetSessionDriver();
 
         $this->tenantContexts = new MutableRedisContextResolver;
@@ -69,15 +91,20 @@ final class RedisClinicOwnerSessionTest extends TestCase
 
     protected function tearDown(): void
     {
-        config()->set('database.redis.session.port', $this->redisPort);
-        $this->replaceRedisManager();
-        foreach (['default', 'cache', 'session'] as $connection) {
-            $this->redis->purge($connection);
-            $this->redis->connection($connection)->flushdb();
-            $this->redis->purge($connection);
+        try {
+            if ($this->redisReady && $this->redisPort !== null) {
+                config()->set('database.redis.session.port', $this->redisPort);
+                $this->replaceRedisManager();
+                $redis = $this->redis();
+                foreach (['default', 'cache', 'session'] as $connection) {
+                    $redis->purge($connection);
+                    $redis->connection($connection)->flushdb();
+                    $redis->purge($connection);
+                }
+            }
+        } finally {
+            parent::tearDown();
         }
-
-        parent::tearDown();
     }
 
     public function test_real_backend_persists_minimum_state_rotates_identifier_and_uses_bounded_ttl(): void
@@ -97,7 +124,7 @@ final class RedisClinicOwnerSessionTest extends TestCase
         $ttl = (int) $client->ttl($keys[0]);
         self::assertGreaterThan(0, $ttl);
         self::assertLessThanOrEqual(7200, $ttl);
-        self::assertSame(0, (int) $this->redis->connection('cache')->dbsize());
+        self::assertSame(0, (int) $this->redis()->connection('cache')->dbsize());
 
         $raw = (string) $client->get($keys[0]);
         foreach (['a private passphrase', 'password_hash', 'permissions', 'Tenant.php'] as $forbidden) {
@@ -215,7 +242,7 @@ final class RedisClinicOwnerSessionTest extends TestCase
     {
         return new Client([
             'host' => '127.0.0.1',
-            'port' => $this->redisPort,
+            'port' => $this->redisPort(),
             'database' => 2,
         ]);
     }
@@ -234,6 +261,24 @@ final class RedisClinicOwnerSessionTest extends TestCase
         $this->app->instance('redis', $this->redis);
         $this->app->forgetInstance('cache');
         $this->app->forgetInstance('cache.store');
+    }
+
+    private function redis(): RedisManager
+    {
+        if ($this->redis === null) {
+            throw new RuntimeException('The disposable Redis/Valkey test connection is not initialized.');
+        }
+
+        return $this->redis;
+    }
+
+    private function redisPort(): int
+    {
+        if ($this->redisPort === null) {
+            throw new RuntimeException('The disposable Redis/Valkey test port is not initialized.');
+        }
+
+        return $this->redisPort;
     }
 }
 
