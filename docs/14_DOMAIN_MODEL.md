@@ -708,7 +708,7 @@ Activity Log, Audit Log, Platform Setting, and any retained System Setting are c
 
 **Lifecycle.** Proposed, approved, available, withdrawn, grandfathered if permitted, and retired.
 
-**Business Rules.** Add-Ons are provisional; the locked MVP does not approve an Add-On catalogue. No Add-On may create a new module, role, bespoke behavior, or tenant fork through this model.
+**Business Rules.** Add-Ons are provisional; the locked MVP does not approve an Add-On catalogue. No Add-On may create a new module, role, bespoke behavior, or tenant fork through this model. This document's own open question about Add-On's Phase 1 status (see Open Questions and Recommendations for CTO below) is resolved by 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md: Add-On remains deferred until a real recurring entitlement-supplement use case is approved, and is kept conceptually distinct from the newly defined Professional Services boundary (one-off, non-entitlement-affecting), which that specification also defines.
 
 **Who can modify it.** Authorized Syifa.my Product and Commercial governance participants.
 
@@ -1289,7 +1289,7 @@ Booking Contact, Invoice, Payment, Audit, domain, and onboarding evidence may ha
 - What happens to future Bookings when a Service, Location, Subscription, Website, or Tenant is suspended?
 - Which Booking Contact information is strictly necessary, and how may it be corrected?
 - What Invoice behavior is required by the approved launch payment model?
-- Are Add-Ons actually part of Phase 1, or should the concept remain entirely future-facing?
+- Are Add-Ons actually part of Phase 1, or should the concept remain entirely future-facing? — **Resolved by 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md:** deferred until a real recurring entitlement-supplement use case is approved.
 - Is Custom Domain included in the Plan or governed through another entitlement policy?
 - Which post-launch Website changes may a Clinic Owner make without Website Designer involvement?
 - What evidence makes an Onboarding Task complete and a Website launch-ready?
@@ -1306,7 +1306,7 @@ Booking Contact, Invoice, Payment, Audit, domain, and onboarding evidence may ha
 1. **Approve the domain vocabulary before technical modeling.** Require teams to use Tenant, Clinic, Customer, Public Visitor, Template, Theme, Service, Service Setup, Subscription, Entitlement, Activity, and Audit consistently.
 2. **Resolve booking semantics next.** Service resource, location, practitioner, capacity, confirmation, conflict, cancellation, and rescheduling rules affect the highest-risk relationships.
 3. **Confirm cardinality decisions.** Approve Phase 1 rules for Website per Tenant, active Clinic Owners, Customer-to-Tenant, active Subscription, Custom Domains, and Website Designer collaboration.
-4. **Decide the commercial minimum.** Confirm whether Invoice and Add-On are active Phase 1 concepts or only future-compatible vocabulary; remove unused concepts from delivery scope.
+4. **Decide the commercial minimum.** Confirm whether Invoice is an active Phase 1 concept or only future-compatible vocabulary. Add-On is resolved by 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md (deferred pending an approved recurring entitlement-supplement use case); Plan, Billing Option, Plan Offering, and Capability Catalogue are formalized as governed reference data by that same specification.
 5. **Validate Template and Theme boundaries.** Use all five premium designs to prove which differences are shared structure, Template behavior, and permitted Theme configuration.
 6. **Keep Service meaning authoritative.** Approve one owner for Clinic Service and define how Website presentation consumes it without duplicating booking rules.
 7. **Formalize managed onboarding evidence.** Define the standardized Onboarding Job, Task outcomes, correction cycle, Website Approval, and Launch Readiness policy so human work remains scalable and observable.

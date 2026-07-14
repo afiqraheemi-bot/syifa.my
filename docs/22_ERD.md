@@ -171,7 +171,7 @@ Thirty entities appear in the diagram: fifteen aggregate roots, ten internal ent
 - **Ownership:** Tenant-associated commercial entity.
 - **Cardinality:** Many Subscriptions to one Tenant over commercial history, with one current; one Subscription to one Plan at a time; one Subscription to many Invoices.
 - **Composition:** Invoice is composed within Subscription.
-- **Reference:** References Tenant, Plan, and Add-On by identifier; Entitlement is a computed value object folded into Subscription, not a separate box.
+- **Reference:** References Tenant, Plan, Billing Option, and Add-On (deferred) by identifier; Entitlement is a computed value object folded into Subscription, not a separate box. Plan, Billing Option, Plan Offering, and Capability Catalogue are governed reference data per 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md and are not drawn as entity boxes in this ERD, consistent with how Plan and Add-On were already treated — no structural change to this diagram results from that specification.
 - **Lifecycle Dependency:** Depends on an approved Clinic Registration and Tenant.
 - **Deletion Behaviour:** Never deleted; commercial history is retained per financial/contractual obligation — cancellation and expiry are lifecycle states, not deletions.
 - **Archive Behaviour:** Long-expired or cancelled history is archived non-destructively.

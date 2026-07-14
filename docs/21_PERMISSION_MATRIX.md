@@ -22,7 +22,7 @@
 
 ## Document Authority
 
-This document is the authoritative Phase 1 authorization matrix for Syifa.my. It applies the role model in [02_MVP_SCOPE.md](./02_MVP_SCOPE.md) and [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md), the tenant-isolation invariants in [ADR-002](./decisions/ADR-002-Multi-Tenant-Strategy.md), the identity and access control objectives in [06_SECURITY_STANDARD.md](./06_SECURITY_STANDARD.md), the authorization approach selected in [ADR-003](./decisions/ADR-003-Technology-Stack.md) (Decision 7, framework-native policy classes co-located with each aggregate), and the resource catalogue in [20_API_DESIGN.md](./20_API_DESIGN.md), against every named action for every resource. It does not replace any of these documents — it is the exhaustive, action-by-action extension of 20_API_DESIGN.md's own Authorization Matrix, which stated the general shape of these rules but not every action for every resource.
+This document is the authoritative Phase 1 authorization matrix for Syifa.my. It applies the role model in [02_MVP_SCOPE.md](./02_MVP_SCOPE.md) and [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md), the tenant-isolation invariants in [ADR-002](./decisions/ADR-002-Multi-Tenant-Strategy.md), the identity and access control objectives in [06_SECURITY_STANDARD.md](./06_SECURITY_STANDARD.md), the authorization approach selected in [ADR-003](./decisions/ADR-003-Technology-Stack.md) (Decision 7, framework-native policy classes co-located with each aggregate), and the resource catalogue in [20_API_DESIGN.md](./20_API_DESIGN.md), against every named action for every resource. It does not replace any of these documents — it is the exhaustive, action-by-action extension of 20_API_DESIGN.md's own Authorization Matrix, which stated the general shape of these rules but not every action for every resource. [28_COMMERCIAL_CATALOGUE_SPECIFICATION.md](./28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) resolved a prior conflict in this document's treatment of Plan and Add-On (Section 4, Ownership Rules below) — that resolution is reflected directly in this document rather than left as an unreconciled cross-reference.
 
 Where this document states a permission that conflicts with 20_API_DESIGN.md's narrower Endpoint Matrix, this document controls for authorization purposes, and 20_API_DESIGN.md should be read as the currently implemented subset of the fuller authorization surface defined here. This document does not authorize implementation: no Laravel Policy, Gate, middleware, route, or database access-control mechanism is created here.
 
@@ -530,6 +530,30 @@ Nineteen resources, matching 20_API_DESIGN.md's Resource Catalogue exactly. Colu
 | Manage | N/A [R12] | N/A [R12] | N/A [R12] | N/A [R12] |
 | Support | N/A [R12] — no per-tenant support concept; platform-owned | same | same | same |
 
+### 1.20 Commercial Catalogue (Plan, Billing Option, Plan Offering, Capability Catalogue)
+
+Per 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md, resolving this document's prior "not independently exposed" statement for Plan and Add-On: Plan, Billing Option, Plan Offering, and Capability Catalogue are governed, platform-owned commercial configuration, authored only through this resource family, following exactly the Platform Settings access pattern below. Plan Offering — the specific record connecting Plan, Billing Option, Price, effective period, capability-package/configuration version, and availability — has its own explicit endpoint family in 20_API_DESIGN.md (`/api/v1/platform/commercial-catalogue/plan-offerings`) but the identical permission rows below, since it is authorized exactly like every other Commercial Catalogue entry: Super Admin only, category-scoped, audited, never Clinic Owner, Website Designer, or Public Visitor. A lifetime (non-recurring) Plan Offering additionally may never be activated in Phase 1 regardless of caller authority (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md, Lifetime Offering Rules) — no role, including Super Admin, may bypass that restriction through this resource. Add-On remains deferred (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md, Add-On Decision) and is not exposed here or anywhere else in Phase 1.
+
+| Action | PV | CO | WD | SA |
+|---|---|---|---|---|
+| View | N/A [R12] — Clinic Owner and Website Designer have no standing on any platform-owned resource, see Ownership Rules | N/A [R12] | N/A [R12] | 🔒 Category |
+| List | N/A [R12] | N/A [R12] | N/A [R12] | 🔒 Category |
+| Create | ❌ | ❌ | ❌ | 🔒 Category |
+| Update | N/A [R13] — lifecycle transition (Approve/Publish/Restore/Archive) replaces a generic Update | same | same | same |
+| Delete | N/A [R1] — a catalogue entry is retired or deprecated, never deleted, to preserve historical Subscription snapshot integrity | N/A [R1] | N/A [R1] | N/A [R1] |
+| Approve | ❌ | ❌ | ❌ | 🔒 Category |
+| Publish | ❌ | ❌ | ❌ | 🔒 Category (activation) |
+| Assign | N/A [R3] | N/A [R3] | N/A [R3] | N/A [R3] |
+| Cancel | N/A [R10] | N/A [R10] | N/A [R10] | N/A [R10] |
+| Confirm | N/A [R4] | N/A [R4] | N/A [R4] | N/A [R4] |
+| Complete | N/A [R5] | N/A [R5] | N/A [R5] | N/A [R5] |
+| Archive | ❌ | ❌ | ❌ | 🔒 Category (retire) |
+| Restore | N/A [R9] — a retired Plan, Billing Option, or Capability is never restored; a new one is proposed | same | same | same |
+| Configure | N/A [R13] — value is set via Create/Update within its lifecycle | same | same | same |
+| Export | N/A [R11] | N/A [R11] | N/A [R11] | N/A [R11] |
+| Manage | N/A [R12] | N/A [R12] | N/A [R12] | N/A [R12] |
+| Support | N/A [R12] — no per-tenant support concept; platform-owned | same | same | same |
+
 ---
 
 ## 2. Role Permission Matrix
@@ -637,6 +661,7 @@ The same data as Section 1, pivoted by role rather than by resource — useful f
 | Notifications | Read-only, any + remediation | Portfolio visibility and delivery remediation only |
 | Reports | Portfolio scope | Explicit privileged, minimized cross-tenant aggregation path, never the ordinary Clinic Owner pathway with scoping disabled |
 | Platform Settings | Category-scoped | Not every Super Admin holds every category's authority |
+| Commercial Catalogue | Category-scoped | Not every Super Admin holds Commercial Catalogue authority; mandatory Audit Entry on every mutation (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) |
 
 **Summary:** Super Admin's authority is broad in *reach* but narrow in *routine use* — nearly every mutating cross-tenant or platform-wide action is marked 🔒 Privileged or 🔒 Category in Section 1, meaning it requires an explicit, purpose-limited, audited pathway rather than being a standing, unconditional grant. See Cross-Tenant Rules, Audit Requirements, and Privilege Escalation Prevention below for exactly how this is enforced.
 
@@ -668,7 +693,8 @@ Every resource in Section 1 belongs to exactly one of the five ownership classes
 |---|---|---|
 | **Tenant-owned** | Clinic Registration (pre-approval), Tenant, Clinic, Website, Website Pages, Custom Domains, Clinic Services, Booking, Subscription, Invoices, Payments, Onboarding Jobs, Notifications, Media (Tenant assets) | Accessible only to that Tenant's own Clinic Owner, an actively assigned Website Designer (where marked in Section 1), and Super Admin through a privileged pathway. Never accessible to another Tenant's Clinic Owner or Website Designer under any circumstance. |
 | **Platform-owned** | Template, Platform Settings, Media (platform assets) | Accessible only to Super Admin, and only within an explicitly authorized category where one applies (Template design governance, Platform Setting category). **Clinic Owner and Website Designer have zero standing on any platform-owned resource** — this is the direct implementation of the brief's explicit rule: Clinic Owner cannot access platform resources, and by the same logic, neither can Website Designer. |
-| **Reference or governed shared data** | Not independently exposed as a Phase 1 resource (Plan, Add-On, Notification Template, Metric Definition — referenced by, but not directly addressable through, Subscription, Notifications, and Reports respectively) | Consumed by reference only; no role directly authors this data through this API in Phase 1. |
+| **Reference or governed shared data** | Not independently exposed as a Phase 1 resource (Add-On, Notification Template, Metric Definition — referenced by, but not directly addressable through, Subscription, Notifications, and Reports respectively) | Consumed by reference only; no role directly authors this data through this API in Phase 1. |
+| **Commercial Catalogue (governed reference data with authoring)** | Plan, Billing Option, Plan Offering, Capability Catalogue (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) | Category-scoped Super Admin only, following exactly the Platform Settings pattern (Section 1.20 below) — never Clinic Owner, Website Designer, or Public Visitor, and never unscoped Super Admin authority. Every mutation requires a mandatory Audit Entry (Audit Requirements below). Consumed by Subscription and its future Entitlement Computation boundary by reference only. |
 | **Projection or derived data** | Reports, Clinic Services' available-slots read, Onboarding Jobs' launch-readiness read | Read-only for every role that may see it at all; never a source of truth and never a write target, per 18_AGGREGATE_DESIGN.md's explicit interaction rule. |
 | **Audit or accountability data** | Not exposed as a Phase 1 resource (Audit Entry, deliberately excluded per 20_API_DESIGN.md) | No role accesses Audit Entry through this general API; it requires its own privileged-tooling design. |
 

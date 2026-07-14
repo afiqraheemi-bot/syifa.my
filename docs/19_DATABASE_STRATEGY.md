@@ -76,7 +76,7 @@ What *is* fixed, independent of the exact final count, is the structural vocabul
 | **Aggregate Root** | The single entry point of one consistency and transaction boundary, per 18_AGGREGATE_DESIGN.md. | Tenant, Booking, Subscription, Clinic Service. |
 | **Internal Entity** | Has identity and mutable state but has no meaning or lifecycle outside its owning aggregate root; never independently addressable from outside. | Onboarding Task, Availability Schedule, Clinic Location, Practitioner Profile. |
 | **Value Object** | Has no identity of its own beyond its content; addressed only through its owning aggregate. | Booking Contact, a Theme snapshot, a Domain Verification attempt, a Money amount. |
-| **Reference Data** | Small, centrally governed catalogue data that aggregates point to by identifier and never copy in as owned state. | Plan, Add-On, Notification Template, Metric Definition. |
+| **Reference Data** | Small, centrally governed catalogue data that aggregates point to by identifier and never copy in as owned state. | Plan, Billing Option, Plan Offering, Capability Catalogue (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md), Add-On (deferred), Notification Template, Metric Definition. |
 | **Projection** | Derived, rebuildable data assembled from one or more aggregates for display, search, or reporting; never a source of truth. | Activity Log, Report, Booking Opportunity (computed from Clinic Service), Launch Readiness (computed from Onboarding Job's evidence), any read model or search index. |
 | **Audit Object** | Append-only, tamper-evident accountability evidence, structurally separate from ordinary business data. | Audit Entry. |
 | **System Object** | Platform-owned operational/governance configuration with no tenant scope of its own. | Platform Setting. |
@@ -309,7 +309,7 @@ Transitions between enum values are validated by the owning aggregate's own busi
 
 ## Lookup Table Policy
 
-This maps directly onto the Reference or Governed Shared Data category defined in Persistence Ownership Classification: Plan, Add-On, Notification Template, and Metric Definition, together with Template and Platform Setting, which are full aggregates in their own right but function as centrally governed reference data from every consumer's point of view.
+This maps directly onto the Reference or Governed Shared Data category defined in Persistence Ownership Classification: Plan, Billing Option, Plan Offering, Capability Catalogue, Add-On (deferred), Notification Template, and Metric Definition, together with Template and Platform Setting, which are full aggregates in their own right but function as centrally governed reference data from every consumer's point of view.
 
 Lookup data is centrally governed, versioned, and low write volume. Consuming aggregates reference it by stable identifier and never copy its full content in as owned state — this is the same discipline that prevents the "Clinic Service duplication" risk 14_DOMAIN_MODEL.md names, applied generally. Where a lookup value's meaning could change in a way that would retroactively reinterpret history — a Plan's price changing, a Notification Template's wording changing — any consuming aggregate that needs historical fidelity captures a snapshot value at the moment it mattered (the same "snapshot, don't subscribe" pattern 18_AGGREGATE_DESIGN.md applies to Booking's captured service meaning), rather than holding a live reference whose meaning could silently drift underneath it.
 

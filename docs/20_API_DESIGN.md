@@ -26,6 +26,8 @@ This document defines the official Phase 1 business API contract for Syifa.my. I
 
 This document does not authorize implementation. Every resource, endpoint, and rule below still requires the separately governed engineering work ADR-001 reserves for later — route definitions, controllers, request validation, response serialization, and the OpenAPI/Swagger contract that would normally be generated from an accepted version of this design.
 
+[28_COMMERCIAL_CATALOGUE_SPECIFICATION.md](./28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) formally exposes Plan, Billing Option, and Capability Catalogue as a governed Commercial Catalogue resource (Resource 20 below), superseding this document's prior "not independently exposed" treatment of Plan. Add-On remains not exposed, per that specification's Add-On Decision.
+
 ## Purpose and Method
 
 An API resource is not a database table wearing an HTTP costume. Each resource below is evaluated against one question: **does this correspond to something 18_AGGREGATE_DESIGN.md already decided is a consistency boundary, a governed sub-resource of one, or a legitimate cross-cutting capability (session, profile) that does not need its own aggregate to be a valid resource?** If a candidate resource is really a value object, a configuration cluster already living inside another aggregate, or a duplicate of another candidate, it is merged or removed here — exactly as 15_DOMAIN_CLASSIFICATION.md and 18_AGGREGATE_DESIGN.md already did for the domain model and the aggregate design, and exactly as 19_DATABASE_STRATEGY.md already did for SEO metadata and marketing tracking configuration ("not a separate aggregate").
@@ -152,6 +154,7 @@ Twenty-two candidates plus two justified additions evaluate to **nineteen top-le
 | 17 | Notifications | Notification | Notification | Top-level, read-only |
 | 18 | Reports | Report (projection) | Reporting & Analytics | Top-level, read-only |
 | 19 | Platform Settings | Platform Setting | Platform Administration | Top-level |
+| 20 | Commercial Catalogue | Governed reference data (Plan, Billing Option, Plan Offering, Capability Catalogue — not an Aggregate; 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) | Subscription & Billing | Top-level, under `/platform/` |
 
 ### Detailed Resource Definitions
 
@@ -1153,6 +1156,80 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 
 ---
 
+### 20. Commercial Catalogue
+
+**Purpose:** Governed, platform-owned commercial configuration — Plan, Billing Option, Plan Offering, and Capability Catalogue — as defined by 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md. Not an Aggregate Root; not Tenant-owned. Add-On is deferred and not exposed through this or any resource in Phase 1. Every path below sits under a `/platform/` administrative segment, deliberately kept separate from, and never sharing a route or controller with, any future customer-facing catalogue-browsing surface (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md, API Resource Recommendations).
+
+**Aggregate Owner:** None — governed reference data, consumed by the Subscription aggregate (18_AGGREGATE_DESIGN.md) by identifier only, never composed into it.
+
+**Bounded Context:** Subscription & Billing Context.
+
+**Supported Operations:** `GET` ✓ · `POST` (propose) ✓ · `PATCH` (approve, activate, make unavailable, grandfather, retire) ✓ · `PUT`/`DELETE` ✗ (a catalogue entry is retired or deprecated, never deleted or wholesale-replaced, to preserve the integrity of every Subscription that has already snapshotted a reference to it).
+
+**`GET /api/v1/platform/commercial-catalogue/{plans|billing-options|capabilities}`, `GET .../{id}`**
+- Purpose: View active and historical Plan, Billing Option, and Capability Catalogue configuration.
+- Business Rules: Not every Super Admin receives universal authority over every catalogue category (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) — read access may itself be category-scoped, exactly as for Platform Settings.
+- Authorization: Super Admin only (category-scoped per the caller's specific, explicitly authorized permissions — not implicit from the Super Admin role alone).
+- Request Summary: Path/query identifiers; filter by category and active/historical state.
+- Response Summary: Catalogue entry value, lifecycle state, effective period, approval record.
+- Possible Errors: `403` if the caller lacks authorization for the catalogue's specific category.
+- Idempotency: Naturally idempotent.
+- Audit Requirements: None for ordinary reads within an authorized category.
+
+**`POST /api/v1/platform/commercial-catalogue/{plans|billing-options|capabilities}`**
+- Purpose: Propose a new Plan, Billing Option, or Capability Catalogue entry.
+- Business Rules: A catalogue entry can never be used to bypass tenant isolation, authorization, Product Vision, or locked MVP scope; a Billing Option carrying the non-recurring (lifetime) classification must never be created as `active` and must never populate a recurring interval — lifetime is disabled for Phase 1 (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md, Lifetime Offering Rules).
+- Authorization: Explicitly authorized Super Admin participants per Commercial Catalogue category.
+- Request Summary: Catalogue category, value, proposed effective period.
+- Response Summary: Created entry in `draft`/`proposed` state.
+- Possible Errors: `422` for a value that would violate a locked platform invariant (e.g., a non-recurring option carrying a recurring interval, or an attempt to activate a lifetime option in Phase 1).
+- Idempotency: Required.
+- Audit Requirements: **Mandatory Audit Entry** — commercial catalogue changes affect pricing and entitlement resolution platform-wide.
+
+**`PATCH /api/v1/platform/commercial-catalogue/{plans|billing-options|capabilities}/{id}`**
+- Purpose: Move a Plan, Billing Option, or Capability Catalogue entry through its governance lifecycle (approve, activate, make unavailable, grandfather, retire/deprecate).
+- Business Rules: Retiring a Plan or Billing Option never affects a Subscription that already captured its commercial snapshot (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md, Plan Retirement Rules) — this endpoint can only ever affect future transactions. A price or packaging change creates a new effective-dated version rather than overwriting the previous one (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md, Catalogue History and Effective Dating).
+- Authorization: Explicitly authorized Super Admin participants per Commercial Catalogue category.
+- Request Summary: Lifecycle transition.
+- Response Summary: Updated catalogue entry.
+- Possible Errors: `409` for a transition not valid from the current state.
+- Idempotency: Required.
+- Audit Requirements: **Mandatory Audit Entry**.
+
+**`GET /api/v1/platform/commercial-catalogue/plan-offerings`, `GET .../plan-offerings/{planOfferingId}`**
+- Purpose: View the governed purchasable configuration connecting Plan, Billing Option, Price, effective period, capability-package/configuration version, and availability.
+- Business Rules: A lifetime (non-recurring) Plan Offering is never returned as `active` or available in Phase 1, regardless of its stored configuration (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md, Lifetime Offering Rules).
+- Authorization: Super Admin only (category-scoped).
+- Request Summary: Path/query identifiers; filter by Plan, Billing Option, or effective/historical state.
+- Response Summary: Plan reference, Billing Option reference, Price, effective period, capability-package/configuration version, availability.
+- Possible Errors: `403` if the caller lacks authorization for the Commercial Catalogue category.
+- Idempotency: Naturally idempotent.
+- Audit Requirements: None for ordinary reads within an authorized category.
+
+**`POST /api/v1/platform/commercial-catalogue/plan-offerings`**
+- Purpose: Propose a new Plan Offering (a Plan × Billing Option combination with its own Price and effective period).
+- Business Rules: Both the referenced Plan and Billing Option must exist; a Plan Offering built on a non-recurring (lifetime) Billing Option cannot be created `active` in Phase 1 (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md, Lifetime Offering Rules).
+- Authorization: Explicitly authorized Super Admin participants per Commercial Catalogue category.
+- Request Summary: Plan reference, Billing Option reference, Price, proposed effective period, capability-package/configuration version.
+- Response Summary: Created Plan Offering in `draft`/`proposed` state.
+- Possible Errors: `422` for a reference to an unavailable Plan or Billing Option, or an attempt to activate a lifetime-based offering in Phase 1.
+- Idempotency: Required.
+- Audit Requirements: **Mandatory Audit Entry**.
+
+**`PATCH /api/v1/platform/commercial-catalogue/plan-offerings/{planOfferingId}`**
+- Purpose: Move a Plan Offering through its lifecycle (approve, activate, make unavailable, grandfather, retire), or supersede it with a new effective-dated version following a price or packaging change.
+- Business Rules: A price or packaging change never rewrites the existing Plan Offering version in place — it creates a new effective-dated version, and the superseded version receives an end-effective date, `unavailable`, or `retired` status as appropriate; an existing Subscription's already-captured snapshot is never altered by this endpoint (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md, Catalogue History and Effective Dating).
+- Authorization: Explicitly authorized Super Admin participants per Commercial Catalogue category.
+- Request Summary: Lifecycle transition, or a new effective-dated Price/packaging version.
+- Response Summary: Updated Plan Offering (or newly created superseding version, with the prior version's own updated effective-dating).
+- Possible Errors: `409` for a transition not valid from the current state.
+- Idempotency: Required.
+- Audit Requirements: **Mandatory Audit Entry**.
+
+No `DELETE` exists for any Commercial Catalogue resource, including Plan Offering — historical rows remain queryable for audit and explanation, never removed.
+
+---
+
 ## 2. Endpoint Matrix
 
 Role codes: **PV** = Public Visitor · **CO** = Clinic Owner · **WD** = Website Designer · **SA** = Super Admin · **SYS** = system-triggered, no direct human caller.
@@ -1237,6 +1314,12 @@ Role codes: **PV** = Public Visitor · **CO** = Clinic Owner · **WD** = Website
 | Platform Settings | `GET /platform-settings`, `GET /platform-settings/{id}` | List/view | SA (category-scoped) |
 | Platform Settings | `POST /platform-settings` | Propose | SA (category-scoped) |
 | Platform Settings | `PATCH /platform-settings/{id}` | Lifecycle transition | SA (category-scoped) |
+| Commercial Catalogue | `GET /api/v1/platform/commercial-catalogue/...`, `GET .../{id}` | List/view | SA (category-scoped) |
+| Commercial Catalogue | `POST /api/v1/platform/commercial-catalogue/...` | Propose | SA (category-scoped) |
+| Commercial Catalogue | `PATCH /api/v1/platform/commercial-catalogue/.../{id}` | Lifecycle transition | SA (category-scoped) |
+| Plan Offering | `GET /api/v1/platform/commercial-catalogue/plan-offerings`, `GET .../{planOfferingId}` | List/view | SA (category-scoped) |
+| Plan Offering | `POST /api/v1/platform/commercial-catalogue/plan-offerings` | Propose | SA (category-scoped) |
+| Plan Offering | `PATCH /api/v1/platform/commercial-catalogue/plan-offerings/{planOfferingId}` | Lifecycle transition / new effective-dated version | SA (category-scoped) |
 
 ## 3. Authorization Matrix
 
@@ -1261,6 +1344,8 @@ Role codes: **PV** = Public Visitor · **CO** = Clinic Owner · **WD** = Website
 | Notifications | — | Read-only, own Tenant | — | Read-only, any |
 | Reports | — | Own Tenant scope | Own workload scope | Portfolio scope |
 | Platform Settings | — | — | — | Category-scoped only |
+| Commercial Catalogue | — | — | — | Category-scoped only |
+| Plan Offering | — | — | — | Category-scoped only |
 
 **Why these boundaries hold:** Public Visitor access is limited to the narrow, genuinely interactive surface identified in API Conventions (Booking, live availability, Clinic Registration) — everything else is either private administrative data or server-rendered public content outside this API entirely. Clinic Owner access is always scoped to their own Tenant, per ADR-002's tenant-ownership rule, and never implies authority over another Tenant even for the same individual. Website Designer access is strictly assignment-bound (05_MULTI_TENANCY.md) and ends the moment the assignment ends. Super Admin access is never implicit Tenant membership — every cross-tenant or privileged action listed above routes through an explicit, purpose-limited, audited pathway (ADR-002, Security Invariant 19), and several Platform Setting and Template actions are further scoped by category even within the Super Admin role, so that no single operator implicitly holds universal authority.
 

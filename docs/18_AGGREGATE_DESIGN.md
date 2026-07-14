@@ -430,9 +430,9 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Allowed State Changes.** Create; Select/Change Plan; Select/Remove Add-On; Renew; Cancel; Suspend (system, on payment failure policy); Reactivate — Clinic Owner-initiated for ordinary commercial actions, Super Admin for controlled administrative actions.
 
-**Business Rules.** Entitlement never grants a participant authority — it only gates capability availability; authorization is always evaluated separately (ADR-002, Security Invariant 15). Phase 1 assumes one Plan family and no usage-based pricing; Invoice and Add-On are treated as provisional Phase 1 concepts pending confirmation of the approved payment model, per 14_DOMAIN_MODEL.md's own open question.
+**Business Rules.** Entitlement never grants a participant authority — it only gates capability availability; authorization is always evaluated separately (ADR-002, Security Invariant 15). Phase 1 assumes one Plan family and no usage-based pricing; Invoice is treated as a provisional Phase 1 concept pending confirmation of the approved payment model. Add-On's Phase 1 open question (14_DOMAIN_MODEL.md) is resolved by 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md: deferred until a real recurring entitlement-supplement use case is approved.
 
-**External References.** References Tenant (owner and customer identity, by identifier), Plan (reference data, by identifier), Add-On (reference data, by identifier, deferred).
+**External References.** References Tenant (owner and customer identity, by identifier), Plan (reference data, by identifier), Billing Option (reference data, by identifier), Add-On (reference data, by identifier, deferred). 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md is the authoritative Phase 1 specification for Plan, Billing Option, Plan Offering, and Capability Catalogue as governed reference data, and for the Entitlement Computation boundary that resolves them into this aggregate's commercial snapshot; it does not modify this aggregate's evaluation.
 
 **Events Produced.** Subscription Created; Subscription Activated; Subscription Renewal Due; Subscription Cancelled; Subscription Expired; Subscription Suspended; Subscription Reactivated; Entitlement Changed.
 

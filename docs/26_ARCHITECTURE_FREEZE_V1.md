@@ -40,6 +40,7 @@ The decisions listed below are the stable foundation that implementation work ma
 | Domain | [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md), [15_DOMAIN_CLASSIFICATION.md](./15_DOMAIN_CLASSIFICATION.md), [16_BOUNDED_CONTEXTS.md](./16_BOUNDED_CONTEXTS.md), [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md), [23_AGGREGATE_ROOT_VALIDATION.md](./23_AGGREGATE_ROOT_VALIDATION.md), [22_ERD.md](./22_ERD.md) |
 | Architecture | [03_SYSTEM_ARCHITECTURE.md](./03_SYSTEM_ARCHITECTURE.md), [13_FOLDER_STRUCTURE.md](./13_FOLDER_STRUCTURE.md), [24_FOLDER_STRUCTURE.md](./24_FOLDER_STRUCTURE.md) |
 | Data | [19_DATABASE_STRATEGY.md](./19_DATABASE_STRATEGY.md) (Draft — see [Documents Still Requiring CTO Approval](#documents-still-requiring-cto-approval)) |
+| Commercial Catalogue | [28_COMMERCIAL_CATALOGUE_SPECIFICATION.md](./28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) (Accepted — CTO Approved, 2026-07-14; one precondition remains open for lifetime activation specifically — see [Documents Still Requiring CTO Approval](#documents-still-requiring-cto-approval)) — governs Plan, Billing Option, Plan Offering, and Capability Catalogue as reference data feeding the Subscription Aggregate; introduces no new Aggregate Root and no new bounded context |
 | API and Access | [20_API_DESIGN.md](./20_API_DESIGN.md), [21_PERMISSION_MATRIX.md](./21_PERMISSION_MATRIX.md) (both Draft — see below) |
 | Engineering Standard | [25_CODING_STANDARD.md](./25_CODING_STANDARD.md) (Draft — see below) |
 | Decisions | [docs/decisions/](./decisions/) — ADR-001 through ADR-004, all Accepted |
@@ -151,6 +152,8 @@ The following documents are functionally complete but remain **Draft — Under C
 - [22_ERD.md](./22_ERD.md)
 - [23_AGGREGATE_ROOT_VALIDATION.md](./23_AGGREGATE_ROOT_VALIDATION.md)
 - [25_CODING_STANDARD.md](./25_CODING_STANDARD.md)
+
+[28_COMMERCIAL_CATALOGUE_SPECIFICATION.md](./28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) is **Accepted — CTO Approved** (2026-07-14) and is no longer listed above. One precondition from its own Section 36 remains explicitly open — the lifetime commercial/legal terms (published terms, service limitations, sunset right) — but this blocks only future lifetime Billing Option activation, not the document's own acceptance or any other Phase 1 Commercial Catalogue capability.
 
 Separately, [01_PRODUCT_VISION.md](./01_PRODUCT_VISION.md), [02_MVP_SCOPE.md](./02_MVP_SCOPE.md), [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md), [15_DOMAIN_CLASSIFICATION.md](./15_DOMAIN_CLASSIFICATION.md), [16_BOUNDED_CONTEXTS.md](./16_BOUNDED_CONTEXTS.md), and [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md) carry no Status field at all and have been treated as ground truth by every document written after them, but none records a dated CTO approval event either. They are not marked Locked here because that approval cannot be evidenced from repository history — only inferred from consistent downstream reliance. This is noted for the CTO to formally close, not resolved unilaterally by this document.
 
