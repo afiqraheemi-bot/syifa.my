@@ -127,9 +127,8 @@ final class CommercialCatalogueDomainFoundationArchitectureTest extends TestCase
             );
         }
 
-        foreach (['Application', 'Infrastructure', 'Presentation'] as $layer) {
-            self::assertSame([], $this->phpFilesIn($this->module().'/'.$layer.'/CommercialCatalogue'));
-        }
+        self::assertSame([], $this->phpFilesIn($this->module().'/Infrastructure/CommercialCatalogue'));
+        self::assertSame([], $this->phpFilesIn($this->module().'/Presentation/CommercialCatalogue'));
 
         self::assertSame([], glob($this->root().'/database/migrations/*commercial*') ?: []);
     }

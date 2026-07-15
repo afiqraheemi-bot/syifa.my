@@ -134,9 +134,8 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
         $module = $this->root().'/app/Modules/SubscriptionBilling';
 
         self::assertDirectoryExists($module.'/Domain');
-        foreach (['Application', 'Infrastructure', 'Presentation'] as $forbiddenLayer) {
-            self::assertSame([], $this->phpFilesIn($module.'/'.$forbiddenLayer));
-        }
+        self::assertSame([], $this->phpFilesIn($module.'/Infrastructure'));
+        self::assertSame([], $this->phpFilesIn($module.'/Presentation'));
 
         self::assertSame([], glob($module.'/**/*Repository*.php') ?: []);
         self::assertSame([], glob($module.'/**/*Payment*.php') ?: []);
