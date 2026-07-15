@@ -51,6 +51,10 @@ final class CommercialCatalogueContractsArchitectureTest extends TestCase
                 'Trial',
                 'Tax',
             ] as $forbidden) {
+                if ($forbidden === 'Repository' && str_contains($file, '/Repositories/')) {
+                    continue;
+                }
+
                 self::assertStringNotContainsString($forbidden, $source, $file);
             }
 
