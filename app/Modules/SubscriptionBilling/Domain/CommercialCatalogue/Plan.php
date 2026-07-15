@@ -11,17 +11,18 @@ use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\Plan
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\PlanName;
 use DateTimeImmutable;
 
-final readonly class Plan
+final class Plan
 {
     public function __construct(
-        public PlanId $id,
-        public PlanName $name,
-        public PlanCode $code,
-        public string $description,
-        public PlanLifecycle $lifecycle,
-        public int $displayOrder,
-        public DateTimeImmutable $createdAt,
-        public DateTimeImmutable $lastChangedAt,
+        public readonly PlanId $id,
+        public readonly PlanName $name,
+        public readonly PlanCode $code,
+        public readonly string $description,
+        public readonly PlanLifecycle $lifecycle,
+        public readonly int $displayOrder,
+        public readonly DateTimeImmutable $createdAt,
+        public readonly DateTimeImmutable $lastChangedAt,
+        private int $version = 0,
     ) {
         if ($description === '' || trim($description) !== $description || mb_strlen($description) > 1000) {
             throw new InvalidCommercialCatalogueValueException(
@@ -37,6 +38,10 @@ final readonly class Plan
             throw new InvalidCommercialCatalogueValueException(
                 'Plan cannot have changed before it was created.',
             );
+        }
+
+        if ($version < 0) {
+            throw new InvalidCommercialCatalogueValueException('Plan version cannot be negative.');
         }
     }
 
@@ -70,6 +75,20 @@ final readonly class Plan
         return $this->withLifecycle($this->lifecycle->retire(), $occurredAt);
     }
 
+    public function version(): int
+    {
+        return $this->version;
+    }
+
+    public function synchronizeVersion(int $version): void
+    {
+        if ($version !== $this->version + 1) {
+            throw new InvalidCommercialCatalogueValueException('Plan version must advance exactly one step.');
+        }
+
+        $this->version = $version;
+    }
+
     private function withLifecycle(PlanLifecycle $lifecycle, DateTimeImmutable $occurredAt): self
     {
         if ($occurredAt < $this->lastChangedAt) {
@@ -85,6 +104,7 @@ final readonly class Plan
             $this->displayOrder,
             $this->createdAt,
             $occurredAt,
+            $this->version,
         );
     }
 }

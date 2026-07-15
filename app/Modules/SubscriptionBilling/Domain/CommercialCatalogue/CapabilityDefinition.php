@@ -9,15 +9,16 @@ use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\Exceptions\Invali
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\CapabilityId;
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\CapabilityStatus;
 
-final readonly class CapabilityDefinition
+final class CapabilityDefinition
 {
     public function __construct(
-        public CapabilityId $id,
-        public CapabilityKey $key,
-        public string $name,
-        public string $description,
-        public string $commercialMeaning,
-        public CapabilityStatus $status,
+        public readonly CapabilityId $id,
+        public readonly CapabilityKey $key,
+        public readonly string $name,
+        public readonly string $description,
+        public readonly string $commercialMeaning,
+        public readonly CapabilityStatus $status,
+        private int $version = 0,
     ) {
         if ($name === '' || trim($name) !== $name || mb_strlen($name) > 100) {
             throw new InvalidCommercialCatalogueValueException(
@@ -36,6 +37,10 @@ final readonly class CapabilityDefinition
             throw new InvalidCommercialCatalogueValueException(
                 'Capability commercial meaning must be a normalized value of at most 1000 characters.',
             );
+        }
+
+        if ($version < 0) {
+            throw new InvalidCommercialCatalogueValueException('Capability version cannot be negative.');
         }
     }
 
@@ -68,6 +73,22 @@ final readonly class CapabilityDefinition
         ]);
     }
 
+    public function version(): int
+    {
+        return $this->version;
+    }
+
+    public function synchronizeVersion(int $version): void
+    {
+        if ($version !== $this->version + 1) {
+            throw new InvalidCommercialCatalogueValueException(
+                'Capability version must advance exactly one step.',
+            );
+        }
+
+        $this->version = $version;
+    }
+
     /** @param list<CapabilityStatus> $allowedFrom */
     private function transitionTo(CapabilityStatus $status, array $allowedFrom): self
     {
@@ -86,6 +107,7 @@ final readonly class CapabilityDefinition
             $this->description,
             $this->commercialMeaning,
             $status,
+            $this->version,
         );
     }
 }

@@ -13,18 +13,19 @@ use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\Effe
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\PlanOfferingId;
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\PlanOfferingStatus;
 
-final readonly class PlanOffering
+final class PlanOffering
 {
     public function __construct(
-        public PlanOfferingId $id,
-        public PlanId $planId,
-        public BillingOptionId $billingOptionId,
-        public Money $currentPrice,
-        public EffectivePeriod $effectivePeriod,
-        public PlanOfferingStatus $status,
-        public string $configurationVersion,
-        public string $capabilityConfigurationReference,
-        public int $displayOrder,
+        public readonly PlanOfferingId $id,
+        public readonly PlanId $planId,
+        public readonly BillingOptionId $billingOptionId,
+        public readonly Money $currentPrice,
+        public readonly EffectivePeriod $effectivePeriod,
+        public readonly PlanOfferingStatus $status,
+        public readonly string $configurationVersion,
+        public readonly string $capabilityConfigurationReference,
+        public readonly int $displayOrder,
+        private int $version = 0,
     ) {
         if ($currentPrice->currencyCode !== 'MYR') {
             throw new InvalidPlanOfferingException('Phase 1 Plan Offering price must use MYR.');
@@ -47,6 +48,10 @@ final readonly class PlanOffering
 
         if ($displayOrder < 0) {
             throw new InvalidCommercialCatalogueValueException('Plan Offering display order cannot be negative.');
+        }
+
+        if ($version < 0) {
+            throw new InvalidCommercialCatalogueValueException('Plan Offering version cannot be negative.');
         }
 
     }
@@ -106,6 +111,22 @@ final readonly class PlanOffering
         ]);
     }
 
+    public function version(): int
+    {
+        return $this->version;
+    }
+
+    public function synchronizeVersion(int $version): void
+    {
+        if ($version !== $this->version + 1) {
+            throw new InvalidCommercialCatalogueValueException(
+                'Plan Offering version must advance exactly one step.',
+            );
+        }
+
+        $this->version = $version;
+    }
+
     private function assertReferences(Plan $plan, BillingOption $billingOption): void
     {
         if ($plan->id->value !== $this->planId->value || $billingOption->id->value !== $this->billingOptionId->value) {
@@ -136,6 +157,7 @@ final readonly class PlanOffering
             $this->configurationVersion,
             $this->capabilityConfigurationReference,
             $this->displayOrder,
+            $this->version,
         );
     }
 }

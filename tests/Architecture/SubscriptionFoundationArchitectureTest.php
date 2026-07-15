@@ -61,13 +61,19 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
         $module = $this->root().'/app/Modules/SubscriptionBilling';
 
         foreach ($this->phpFilesIn($module) as $file) {
+            if (str_contains($file, '/Infrastructure/Persistence/')) {
+                continue;
+            }
+
             self::assertDoesNotMatchRegularExpression(
                 '/(?:Controller|Request|Resource|Middleware|Repository|Record|Model|Payment|Invoice)\.php$/',
                 $file,
             );
         }
 
-        self::assertSame([], glob($this->root().'/database/migrations/subscription_billing/*.php') ?: []);
+        self::assertSame([
+            $this->root().'/database/migrations/subscription_billing/2026_07_15_000001_create_commercial_catalogue_persistence_tables.php',
+        ], glob($this->root().'/database/migrations/subscription_billing/*.php') ?: []);
         $routes = file_get_contents($this->root().'/routes/web.php');
         self::assertIsString($routes);
         self::assertStringNotContainsString('SubscriptionBilling', $routes);
@@ -134,10 +140,12 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
         $module = $this->root().'/app/Modules/SubscriptionBilling';
 
         self::assertDirectoryExists($module.'/Domain');
-        self::assertSame([], $this->phpFilesIn($module.'/Infrastructure'));
+        self::assertSame([], array_values(array_filter(
+            $this->phpFilesIn($module.'/Infrastructure'),
+            static fn (string $file): bool => ! str_contains($file, '/Infrastructure/Persistence/'),
+        )));
         self::assertSame([], $this->phpFilesIn($module.'/Presentation'));
 
-        self::assertSame([], glob($module.'/**/*Repository*.php') ?: []);
         self::assertSame([], glob($module.'/**/*Payment*.php') ?: []);
     }
 

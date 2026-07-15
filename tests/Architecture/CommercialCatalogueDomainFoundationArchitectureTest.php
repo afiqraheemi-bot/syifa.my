@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Architecture;
 
+use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\BillingOption;
+use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\CapabilityDefinition;
+use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\Plan;
+use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\PlanOffering;
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\CapabilityStatus;
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\PlanOfferingStatus;
 use PHPUnit\Framework\TestCase;
@@ -45,6 +49,14 @@ final class CommercialCatalogueDomainFoundationArchitectureTest extends TestCase
         self::assertIsString($billingOption);
         self::assertStringNotContainsString('visibility', strtolower($plan));
         self::assertStringNotContainsString('BillingOptionType', $billingOption);
+    }
+
+    public function test_catalogue_domain_exposes_version_metadata_without_leaking_business_state(): void
+    {
+        foreach ([Plan::class, BillingOption::class, PlanOffering::class, CapabilityDefinition::class] as $class) {
+            self::assertTrue(method_exists($class, 'version'));
+            self::assertTrue(method_exists($class, 'synchronizeVersion'));
+        }
     }
 
     public function test_catalogue_concepts_are_reference_data_not_aggregate_roots(): void
@@ -138,7 +150,7 @@ final class CommercialCatalogueDomainFoundationArchitectureTest extends TestCase
         $source = file_get_contents($this->catalogue().'/Plan.php');
         self::assertIsString($source);
 
-        foreach (['Money', 'CapabilityKey', 'capabilities', 'setStatus', 'setLifecycle', '$version'] as $forbidden) {
+        foreach (['Money', 'CapabilityKey', 'capabilities', 'setStatus', 'setLifecycle'] as $forbidden) {
             self::assertStringNotContainsString($forbidden, $source);
         }
     }

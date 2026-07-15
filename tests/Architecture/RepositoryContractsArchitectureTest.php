@@ -37,6 +37,10 @@ final class RepositoryContractsArchitectureTest extends TestCase
                 continue;
             }
 
+            if (str_contains($file, '/Infrastructure/Persistence/Repositories/Postgres')) {
+                continue;
+            }
+
             self::assertDoesNotMatchRegularExpression('/Repository.*\.php$/', $name, $file);
             self::assertDoesNotMatchRegularExpression('/(?:BaseRepository|CrudRepository|GenericRepository|RepositoryBase)\.php$/', $name, $file);
         }

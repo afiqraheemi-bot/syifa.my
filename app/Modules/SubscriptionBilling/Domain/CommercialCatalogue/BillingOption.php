@@ -13,20 +13,25 @@ use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\Cata
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\EffectivePeriod;
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\RecurrenceClassification;
 
-final readonly class BillingOption
+final class BillingOption
 {
     public function __construct(
-        public BillingOptionId $id,
-        public BillingOptionCode $code,
-        public BillingOptionName $name,
-        public CatalogueAvailability $availability,
-        public RecurrenceClassification $recurrence,
-        public ?BillingDuration $duration,
-        public EffectivePeriod $effectivePeriod,
-        public int $displayOrder,
+        public readonly BillingOptionId $id,
+        public readonly BillingOptionCode $code,
+        public readonly BillingOptionName $name,
+        public readonly CatalogueAvailability $availability,
+        public readonly RecurrenceClassification $recurrence,
+        public readonly ?BillingDuration $duration,
+        public readonly EffectivePeriod $effectivePeriod,
+        public readonly int $displayOrder,
+        private int $version = 0,
     ) {
         if ($displayOrder < 0) {
             throw new InvalidCommercialCatalogueValueException('Billing Option display order cannot be negative.');
+        }
+
+        if ($version < 0) {
+            throw new InvalidCommercialCatalogueValueException('Billing Option version cannot be negative.');
         }
 
         $this->assertClassificationAndDuration();
@@ -42,6 +47,22 @@ final readonly class BillingOption
         return ! $this->isNonRecurring()
             && $this->availability === CatalogueAvailability::Available
             && $this->effectivePeriod->includes($calendarDate);
+    }
+
+    public function version(): int
+    {
+        return $this->version;
+    }
+
+    public function synchronizeVersion(int $version): void
+    {
+        if ($version !== $this->version + 1) {
+            throw new InvalidCommercialCatalogueValueException(
+                'Billing Option version must advance exactly one step.',
+            );
+        }
+
+        $this->version = $version;
     }
 
     private function assertClassificationAndDuration(): void
