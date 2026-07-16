@@ -65,6 +65,10 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
                 continue;
             }
 
+            if (str_contains($file, '/Presentation/')) {
+                continue;
+            }
+
             self::assertDoesNotMatchRegularExpression(
                 '/(?:Controller|Request|Resource|Middleware|Repository|Record|Model|Payment|Invoice)\.php$/',
                 $file,
@@ -144,7 +148,23 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
             $this->phpFilesIn($module.'/Infrastructure'),
             static fn (string $file): bool => ! str_contains($file, '/Infrastructure/Persistence/'),
         )));
-        self::assertSame([], $this->phpFilesIn($module.'/Presentation'));
+        $presentation = $this->phpFilesIn($module.'/Presentation');
+        sort($presentation);
+        $expectedPresentation = [
+            $module.'/Presentation/ApiVersion.php',
+            $module.'/Presentation/Collections/BaseCollection.php',
+            $module.'/Presentation/Contracts/ErrorResponseMapperInterface.php',
+            $module.'/Presentation/Resources/BaseResource.php',
+            $module.'/Presentation/Responses/BaseApiResponse.php',
+            $module.'/Presentation/Responses/CollectionResponse.php',
+            $module.'/Presentation/Responses/ProblemDetails.php',
+            $module.'/Presentation/Responses/ResourceResponse.php',
+        ];
+        sort($expectedPresentation);
+        self::assertSame(
+            $expectedPresentation,
+            $presentation,
+        );
 
         self::assertSame([], glob($module.'/**/*Payment*.php') ?: []);
     }
