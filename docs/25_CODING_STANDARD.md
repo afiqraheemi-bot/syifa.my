@@ -202,7 +202,7 @@ This document does not redefine folder structure — [24_FOLDER_STRUCTURE.md](./
 - A Resource shapes exactly one API response defined in 20_API_DESIGN.md's Resource Catalogue — its fields match that document's Response Summary for the corresponding operation.
 - A Resource never includes a field 21_PERMISSION_MATRIX.md's Resource Permission Matrix says the current caller is not authorized to see; field-level masking (for example, Booking Contact detail shown differently to a Public Visitor than to a Clinic Owner) is applied in the Resource, using the currently authenticated context, not left to the frontend to hide.
 - A Resource never exposes an internal identifier format, a persistence detail, or a field not already named in 20_API_DESIGN.md's contract — adding a field to a Resource that is not in the locked API design is an API change requiring the same review 20_API_DESIGN.md's own Versioning Strategy requires, not a casual addition.
-- A collection Resource always respects the cursor-pagination convention 20_API_DESIGN.md's API Conventions section locks — no Resource returns an unbounded list.
+- A collection Resource always respects the cursor-pagination convention 20_API_DESIGN.md's API Conventions section locks — no Resource returns an unbounded list — except the Commercial Catalogue platform-administration collections under `/api/v1/platform/commercial-catalogue/...`, which use the bounded offset-pagination exception 20_API_DESIGN.md's API Conventions section and 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md Section 27 document; that exception is still bounded (`per_page` capped at 100) and still deterministically ordered — it is not an unbounded list, and it does not extend to any other collection.
 
 ---
 
@@ -289,7 +289,7 @@ The most consequential section in this standard — every rule here restates an 
 ## 26. Performance Rules
 
 - Eloquent relationships accessed in a loop are always eager-loaded first; an N+1 query pattern is a defect, caught by static analysis or query-count assertions in tests where practical.
-- Every collection endpoint is paginated per 20_API_DESIGN.md's cursor-pagination convention (Section 18) — no code path returns an unbounded result set.
+- Every collection endpoint is paginated per 20_API_DESIGN.md's cursor-pagination convention (Section 18) — no code path returns an unbounded result set — except the Commercial Catalogue platform-administration collections' documented bounded offset-pagination exception (20_API_DESIGN.md's API Conventions section, 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md Section 27), which remains bounded and deterministically ordered.
 - An index is added only against a verified access pattern, reviewed for cardinality, tenant-skew, and write-amplification cost, per 19_DATABASE_STRATEGY.md's Index Strategy — never added defensively "in case it helps."
 - Work that does not need to complete within the request/response cycle is dispatched to the queue (Section 21), not executed inline — Notification dispatch, Media processing, and any analytics emission are the concrete, always-async examples.
 - A database connection is never held open across an external HTTP call (an ESP call, an object-storage call) — the transaction completes first, and any external side effect is triggered outside it or via the queue.

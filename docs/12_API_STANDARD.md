@@ -82,6 +82,8 @@ Retryable operations define who may retry, under what timing, and with what dedu
 
 All potentially growing collections use bounded pagination with a server-controlled maximum. Cursor-based pagination is preferred for large or changing collections; ordering is deterministic and documented. Counts are optional when expensive or privacy-sensitive.
 
+Cursor pagination remains the platform default. A narrowly-scoped Phase 1 exception applies to the Commercial Catalogue platform-administration collections under `/api/v1/platform/commercial-catalogue/...` (20_API_DESIGN.md's API Conventions, 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md Section 27): bounded offset pagination (`page`, `per_page`, maximum `per_page` of 100, deterministic and documented ordering) because that catalogue is small, centrally governed, and administratively curated rather than large or changing. This exception does not apply to transactional, tenant-owned, booking, customer-facing, audit, or high-churn collections, and any future removal or expansion of it requires a documentation revision before implementation.
+
 Filtering, sorting, search, and included relationships use allowlists and complexity limits. Clients cannot select arbitrary columns, operators, or internal expressions. Query parameters must not create unbounded database or provider work.
 
 Updates that risk lost changes use an explicit concurrency strategy such as a version or conditional request. Conflicts return enough safe information for the client to refresh or reconcile. Bulk and asynchronous work exposes progress and per-item results without leaking other tenants.

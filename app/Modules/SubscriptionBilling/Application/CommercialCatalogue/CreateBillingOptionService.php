@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\SubscriptionBilling\Application\CommercialCatalogue;
 
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CreateBillingOptionCommand;
+use App\Modules\SubscriptionBilling\Contracts\Repositories\BillingOptionRepositoryInterface;
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\BillingOption;
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\Exceptions\InvalidCommercialCatalogueValueException;
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\BillingDuration;
@@ -18,7 +19,10 @@ use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\Recu
 
 final readonly class CreateBillingOptionService
 {
-    public function __construct(private CommercialCatalogueIdentifierGeneratorInterface $identifiers) {}
+    public function __construct(
+        private CommercialCatalogueIdentifierGeneratorInterface $identifiers,
+        private BillingOptionRepositoryInterface $billingOptions,
+    ) {}
 
     public function execute(CreateBillingOptionCommand $command): BillingOption
     {
@@ -35,7 +39,7 @@ final readonly class CreateBillingOptionService
             ? CatalogueAvailability::Unavailable
             : CatalogueAvailability::Available;
 
-        return new BillingOption(
+        $billingOption = new BillingOption(
             new BillingOptionId($this->identifiers->generate()),
             new BillingOptionCode($command->code),
             new BillingOptionName($command->name),
@@ -45,6 +49,10 @@ final readonly class CreateBillingOptionService
             new EffectivePeriod($command->effectiveStart, $command->effectiveEnd),
             $command->displayOrder,
         );
+
+        $this->billingOptions->save($billingOption);
+
+        return $billingOption;
     }
 
     private function duration(

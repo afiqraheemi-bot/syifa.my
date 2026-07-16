@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue;
 
-final readonly class UpdatePlanDetailsCommand
+/**
+ * RFC 3339 UTC instant in the canonical `YYYY-MM-DDTHH:MM:SSZ` format.
+ */
+final readonly class UpdatePlanOfferingCommand
 {
-    /**
-     * RFC 3339 UTC instant in the canonical `YYYY-MM-DDTHH:MM:SSZ` format.
-     */
     public function __construct(
-        public string $planId,
-        public string $name,
-        public string $description,
+        public string $planOfferingId,
+        public int $amountMinor,
+        public string $currencyCode,
+        public string $effectiveStart,
+        public ?string $effectiveEnd,
+        public string $capabilityConfigurationReference,
         public int $displayOrder,
         public int $expectedVersion,
         public string $occurredAt,

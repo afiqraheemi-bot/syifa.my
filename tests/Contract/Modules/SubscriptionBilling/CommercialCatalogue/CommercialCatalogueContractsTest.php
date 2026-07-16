@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Contract\Modules\SubscriptionBilling\CommercialCatalogue;
 
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\ActivateCapabilityDefinitionCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\ActivatePlanCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\ActivatePlanOfferingCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\BillingOptionCatalogueQueryInterface;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\CapabilityDefinitionCatalogueQueryInterface;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanCatalogueQueryInterface;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanOfferingCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AvailablePlanOfferingQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\BillingOptionData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CapabilityDefinitionData;
@@ -12,15 +19,34 @@ use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CreateBillingO
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CreateCapabilityDefinitionCommand;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CreatePlanCommand;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CreatePlanOfferingCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\DeprecateCapabilityDefinitionCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\GrandfatherPlanCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\GrandfatherPlanOfferingCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\MakePlanOfferingUnavailableCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\MakePlanUnavailableCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\Exceptions\InvalidPaginatedResultException;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\OffsetPaginationInput;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\OffsetPaginationMeta;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\PaginatedBillingOptionData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\PaginatedCapabilityDefinitionData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\PaginatedPlanData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\PaginatedPlanOfferingData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanOfferingData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\ResolvedSubscriptionOfferingData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\RetireCapabilityDefinitionCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\RetirePlanCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\RetirePlanOfferingCommand;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\SubscriptionOfferingResolverInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\SubscriptionOfferingSelectionData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\UpdateBillingOptionCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\UpdateCapabilityDefinitionCommand;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\UpdatePlanDetailsCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\UpdatePlanOfferingCommand;
 use App\Modules\SubscriptionBilling\Contracts\Entitlements\ComputedSubscriptionEntitlementData;
 use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementComputationInterface;
 use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementLookupInterface;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
@@ -264,7 +290,7 @@ final class CommercialCatalogueContractsTest extends TestCase
             $this->propertyNames(CreatePlanCommand::class),
         );
         self::assertSame(
-            ['planId', 'name', 'description', 'displayOrder', 'occurredAt', 'actorPlatformIdentityId', 'correlationId'],
+            ['planId', 'name', 'description', 'displayOrder', 'expectedVersion', 'occurredAt', 'actorPlatformIdentityId', 'correlationId'],
             $this->propertyNames(UpdatePlanDetailsCommand::class),
         );
         self::assertSame(
@@ -336,6 +362,85 @@ final class CommercialCatalogueContractsTest extends TestCase
         }
     }
 
+    public function test_offset_pagination_and_admin_query_contracts_are_precise(): void
+    {
+        self::assertSame(['page', 'perPage'], $this->propertyNames(OffsetPaginationInput::class));
+        self::assertSame(['currentPage', 'perPage', 'total', 'lastPage', 'from', 'to'], $this->propertyNames(OffsetPaginationMeta::class));
+        self::assertSame(['items', 'meta'], $this->propertyNames(PaginatedPlanData::class));
+        self::assertSame(['items', 'meta'], $this->propertyNames(PaginatedBillingOptionData::class));
+        self::assertSame(['items', 'meta'], $this->propertyNames(PaginatedCapabilityDefinitionData::class));
+        self::assertSame(['items', 'meta'], $this->propertyNames(PaginatedPlanOfferingData::class));
+
+        $pagination = new OffsetPaginationInput(2, 25);
+        $meta = new OffsetPaginationMeta(2, 25, 50, 2, 26, 50);
+        $planPage = new PaginatedPlanData([], $meta);
+        $billingPage = new PaginatedBillingOptionData([], $meta);
+        $capabilityPage = new PaginatedCapabilityDefinitionData([], $meta);
+        $planOfferingPage = new PaginatedPlanOfferingData([], $meta);
+
+        $planQuery = new class($planPage) implements PlanCatalogueQueryInterface
+        {
+            public ?OffsetPaginationInput $pagination = null;
+
+            public function __construct(private PaginatedPlanData $result) {}
+
+            public function listPlans(OffsetPaginationInput $pagination): PaginatedPlanData
+            {
+                $this->pagination = $pagination;
+
+                return $this->result;
+            }
+        };
+        $billingQuery = new class($billingPage) implements BillingOptionCatalogueQueryInterface
+        {
+            public ?OffsetPaginationInput $pagination = null;
+
+            public function __construct(private PaginatedBillingOptionData $result) {}
+
+            public function listBillingOptions(OffsetPaginationInput $pagination): PaginatedBillingOptionData
+            {
+                $this->pagination = $pagination;
+
+                return $this->result;
+            }
+        };
+        $capabilityQuery = new class($capabilityPage) implements CapabilityDefinitionCatalogueQueryInterface
+        {
+            public ?OffsetPaginationInput $pagination = null;
+
+            public function __construct(private PaginatedCapabilityDefinitionData $result) {}
+
+            public function listCapabilityDefinitions(OffsetPaginationInput $pagination): PaginatedCapabilityDefinitionData
+            {
+                $this->pagination = $pagination;
+
+                return $this->result;
+            }
+        };
+        $planOfferingQuery = new class($planOfferingPage) implements PlanOfferingCatalogueQueryInterface
+        {
+            public ?OffsetPaginationInput $pagination = null;
+
+            public function __construct(private PaginatedPlanOfferingData $result) {}
+
+            public function listPlanOfferings(OffsetPaginationInput $pagination): PaginatedPlanOfferingData
+            {
+                $this->pagination = $pagination;
+
+                return $this->result;
+            }
+        };
+
+        self::assertSame($planPage, $planQuery->listPlans($pagination));
+        self::assertSame($billingPage, $billingQuery->listBillingOptions($pagination));
+        self::assertSame($capabilityPage, $capabilityQuery->listCapabilityDefinitions($pagination));
+        self::assertSame($planOfferingPage, $planOfferingQuery->listPlanOfferings($pagination));
+        self::assertSame($pagination, $planQuery->pagination);
+        self::assertSame($pagination, $billingQuery->pagination);
+        self::assertSame($pagination, $capabilityQuery->pagination);
+        self::assertSame($pagination, $planOfferingQuery->pagination);
+    }
+
     public function test_resolved_offering_does_not_expose_authoritative_capability_keys(): void
     {
         self::assertNotContains('capabilityKeys', $this->propertyNames(ResolvedSubscriptionOfferingData::class));
@@ -346,6 +451,239 @@ final class CommercialCatalogueContractsTest extends TestCase
     {
         self::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', '2026-07-14');
         self::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', '2026-07-14T05:30:00Z');
+    }
+
+    public function test_pagination_input_rejects_out_of_bounds_page_and_per_page(): void
+    {
+        try {
+            new OffsetPaginationInput(0, 25);
+            self::fail('Expected page below 1 to be rejected.');
+        } catch (InvalidArgumentException $exception) {
+            self::assertNotEmpty($exception->getMessage());
+        }
+
+        try {
+            new OffsetPaginationInput(1, 0);
+            self::fail('Expected perPage below 1 to be rejected.');
+        } catch (InvalidArgumentException $exception) {
+            self::assertNotEmpty($exception->getMessage());
+        }
+
+        try {
+            new OffsetPaginationInput(1, 101);
+            self::fail('Expected perPage above 100 to be rejected.');
+        } catch (InvalidArgumentException $exception) {
+            self::assertNotEmpty($exception->getMessage());
+        }
+
+        $valid = new OffsetPaginationInput(1, 100);
+        self::assertSame(1, $valid->page);
+        self::assertSame(100, $valid->perPage);
+    }
+
+    public function test_pagination_meta_rejects_invalid_combinations(): void
+    {
+        $invalidCombinations = [
+            'currentPage below 1' => [0, 25, 0, 1, null, null],
+            'perPage below 1' => [1, 0, 0, 1, null, null],
+            'perPage above 100' => [1, 101, 0, 1, null, null],
+            'negative total' => [1, 25, -1, 1, null, null],
+            'lastPage below 1' => [1, 25, 0, 0, null, null],
+            'empty total with non-null from' => [1, 25, 0, 1, 1, null],
+            'empty total with non-null to' => [1, 25, 0, 1, null, 1],
+            'non-empty total with null from' => [1, 25, 10, 1, null, 5],
+            'non-empty total with null to' => [1, 25, 10, 1, 1, null],
+            'from below 1' => [1, 25, 10, 1, 0, 5],
+            'to below from' => [1, 25, 10, 1, 5, 4],
+            'to above total' => [1, 25, 10, 1, 1, 11],
+        ];
+
+        foreach ($invalidCombinations as $label => [$currentPage, $perPage, $total, $lastPage, $from, $to]) {
+            try {
+                new OffsetPaginationMeta($currentPage, $perPage, $total, $lastPage, $from, $to);
+                self::fail('Expected rejection for: '.$label);
+            } catch (InvalidArgumentException $exception) {
+                self::assertNotEmpty($exception->getMessage(), $label);
+            }
+        }
+    }
+
+    public function test_pagination_meta_requires_null_from_and_to_only_when_total_is_zero(): void
+    {
+        $empty = new OffsetPaginationMeta(1, 25, 0, 1, null, null);
+        self::assertNull($empty->from);
+        self::assertNull($empty->to);
+
+        $nonEmpty = new OffsetPaginationMeta(1, 25, 10, 1, 1, 10);
+        self::assertSame(1, $nonEmpty->from);
+        self::assertSame(10, $nonEmpty->to);
+    }
+
+    public function test_each_paginated_dto_accepts_its_exact_item_type_and_preserves_list_order(): void
+    {
+        $meta = new OffsetPaginationMeta(1, 25, 2, 1, 1, 2);
+
+        $plans = [$this->planData('plan-a'), $this->planData('plan-b')];
+        $planPage = new PaginatedPlanData($plans, $meta);
+        self::assertSame($plans, $planPage->items);
+
+        $billingOptions = [$this->billingOptionData('option-a'), $this->billingOptionData('option-b')];
+        $billingPage = new PaginatedBillingOptionData($billingOptions, $meta);
+        self::assertSame($billingOptions, $billingPage->items);
+
+        $capabilities = [$this->capabilityData('capability-a'), $this->capabilityData('capability-b')];
+        $capabilityPage = new PaginatedCapabilityDefinitionData($capabilities, $meta);
+        self::assertSame($capabilities, $capabilityPage->items);
+
+        $planOfferings = [$this->planOfferingData('offering-a'), $this->planOfferingData('offering-b')];
+        $planOfferingPage = new PaginatedPlanOfferingData($planOfferings, $meta);
+        self::assertSame($planOfferings, $planOfferingPage->items);
+    }
+
+    public function test_each_paginated_dto_rejects_a_wrong_item_type(): void
+    {
+        $meta = new OffsetPaginationMeta(1, 25, 1, 1, 1, 1);
+        $wrongItem = $this->billingOptionData('wrong-type');
+
+        foreach ([
+            fn () => new PaginatedPlanData([$wrongItem], $meta),
+            fn () => new PaginatedBillingOptionData([$this->planData('wrong-type')], $meta),
+            fn () => new PaginatedCapabilityDefinitionData([$wrongItem], $meta),
+            fn () => new PaginatedPlanOfferingData([$wrongItem], $meta),
+        ] as $index => $constructor) {
+            try {
+                $constructor();
+                self::fail('Expected a wrong item type to be rejected for case '.$index);
+            } catch (InvalidPaginatedResultException $exception) {
+                self::assertNotEmpty($exception->getMessage());
+            }
+        }
+    }
+
+    public function test_each_paginated_dto_rejects_a_non_list_array(): void
+    {
+        $meta = new OffsetPaginationMeta(1, 25, 1, 1, 1, 1);
+        $nonList = [5 => $this->planData('non-list')];
+
+        try {
+            new PaginatedPlanData($nonList, $meta);
+            self::fail('Expected a non-list item array to be rejected.');
+        } catch (InvalidPaginatedResultException $exception) {
+            self::assertNotEmpty($exception->getMessage());
+        }
+    }
+
+    public function test_exact_admin_query_interface_inventory_by_reflection(): void
+    {
+        foreach ([
+            PlanCatalogueQueryInterface::class,
+            BillingOptionCatalogueQueryInterface::class,
+            CapabilityDefinitionCatalogueQueryInterface::class,
+            PlanOfferingCatalogueQueryInterface::class,
+        ] as $interface) {
+            self::assertTrue(interface_exists($interface), $interface);
+        }
+    }
+
+    public function test_deterministic_ordering_documentation_exists_on_every_admin_query_interface(): void
+    {
+        foreach ([
+            PlanCatalogueQueryInterface::class,
+            BillingOptionCatalogueQueryInterface::class,
+            CapabilityDefinitionCatalogueQueryInterface::class,
+            PlanOfferingCatalogueQueryInterface::class,
+        ] as $interface) {
+            $docComment = (new ReflectionClass($interface))->getDocComment();
+            self::assertIsString($docComment, $interface);
+            self::assertStringContainsStringIgnoringCase('deterministic', $docComment, $interface);
+        }
+    }
+
+    public function test_exact_mutation_command_inventory_by_reflection(): void
+    {
+        foreach ([
+            CreatePlanCommand::class,
+            CreateBillingOptionCommand::class,
+            CreateCapabilityDefinitionCommand::class,
+            CreatePlanOfferingCommand::class,
+            UpdatePlanDetailsCommand::class,
+            UpdateBillingOptionCommand::class,
+            UpdateCapabilityDefinitionCommand::class,
+            UpdatePlanOfferingCommand::class,
+            ActivatePlanCommand::class,
+            ActivatePlanOfferingCommand::class,
+            ActivateCapabilityDefinitionCommand::class,
+            MakePlanUnavailableCommand::class,
+            MakePlanOfferingUnavailableCommand::class,
+            GrandfatherPlanCommand::class,
+            GrandfatherPlanOfferingCommand::class,
+            DeprecateCapabilityDefinitionCommand::class,
+            RetirePlanCommand::class,
+            RetirePlanOfferingCommand::class,
+            RetireCapabilityDefinitionCommand::class,
+        ] as $command) {
+            self::assertTrue(class_exists($command), $command);
+            self::assertTrue((new ReflectionClass($command))->isReadOnly(), $command);
+        }
+    }
+
+    private function planData(?string $planId = null): PlanData
+    {
+        return new PlanData(
+            planId: $planId ?? 'plan-id',
+            code: 'configured_plan',
+            name: 'Configured Plan',
+            description: 'Managed commercial catalogue plan.',
+            status: 'draft',
+            displayOrder: 1,
+            createdAt: '2026-07-14T05:30:00Z',
+            lastChangedAt: '2026-07-14T05:30:00Z',
+        );
+    }
+
+    private function billingOptionData(?string $billingOptionId = null): BillingOptionData
+    {
+        return new BillingOptionData(
+            billingOptionId: $billingOptionId ?? 'billing-option-id',
+            code: 'configured_option',
+            name: 'Configured billing option',
+            availability: 'available',
+            recurrenceClassification: 'recurring',
+            intervalUnit: 'month',
+            intervalCount: 1,
+            effectiveStart: '2026-07-01',
+            effectiveEnd: null,
+            displayOrder: 1,
+        );
+    }
+
+    private function capabilityData(?string $capabilityId = null): CapabilityDefinitionData
+    {
+        return new CapabilityDefinitionData(
+            capabilityId: $capabilityId ?? 'capability-id',
+            capabilityKey: 'feature.alpha',
+            name: 'Feature Alpha',
+            description: 'A governed commercial capability.',
+            commercialMeaning: 'Unlocks the commercial capability.',
+            status: 'draft',
+        );
+    }
+
+    private function planOfferingData(?string $planOfferingId = null): PlanOfferingData
+    {
+        return new PlanOfferingData(
+            planOfferingId: $planOfferingId ?? 'plan-offering-id',
+            planId: 'plan-id',
+            billingOptionId: 'billing-option-id',
+            amountMinor: 12500,
+            currencyCode: 'MYR',
+            status: 'active',
+            effectiveStart: '2026-07-01',
+            effectiveEnd: null,
+            configurationVersion: '1',
+            capabilityConfigurationReference: 'capability-package-v1',
+            displayOrder: 1,
+        );
     }
 
     private function propertyNames(string $class): array

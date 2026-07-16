@@ -6,35 +6,27 @@ namespace App\Modules\SubscriptionBilling\Application\CommercialCatalogue;
 
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\Exceptions\CommercialCatalogueResourceNotFoundException;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\Exceptions\CommercialCatalogueVersionMismatchException;
-use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\UpdatePlanDetailsCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\GrandfatherPlanCommand;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\PlanRepositoryInterface;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\PlanId;
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\Plan;
-use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\PlanName;
 use DateTimeImmutable;
 use DateTimeZone;
 
-final readonly class UpdatePlanDetailsService
+/**
+ * `occurredAt` is command/audit metadata carried on every privileged mutation.
+ * Plan additionally consumes it as Domain lifecycle time (see Plan::grandfather()).
+ */
+final readonly class GrandfatherPlanService
 {
     public function __construct(private PlanRepositoryInterface $plans) {}
 
-    public function execute(UpdatePlanDetailsCommand $command): Plan
+    public function execute(GrandfatherPlanCommand $command): Plan
     {
         $plan = $this->requirePlan($command->planId);
         $this->assertExpectedVersion($plan, $command->expectedVersion);
 
-        $updated = new Plan(
-            $plan->id,
-            new PlanName($command->name),
-            $plan->code,
-            $command->description,
-            $plan->lifecycle,
-            $command->displayOrder,
-            $plan->createdAt,
-            self::instant($command->occurredAt),
-            $plan->version(),
-        );
-
+        $updated = $plan->grandfather(self::instant($command->occurredAt));
         $this->plans->save($updated);
 
         return $updated;
