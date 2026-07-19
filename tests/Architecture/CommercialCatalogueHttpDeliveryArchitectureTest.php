@@ -6,6 +6,7 @@ namespace Tests\Architecture;
 
 use App\Modules\SubscriptionBilling\Contracts\Authorization\CommercialCatalogueAuthorizationDecision;
 use App\Modules\SubscriptionBilling\Contracts\Authorization\CommercialCatalogueAuthorizationInterface;
+use App\Modules\SubscriptionBilling\Infrastructure\Authorization\CommercialCataloguePlatformAuthorizationAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\DenyAllCommercialCatalogueAuthorization;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
@@ -112,11 +113,30 @@ final class CommercialCatalogueHttpDeliveryArchitectureTest extends TestCase
         }
     }
 
-    public function test_production_authorization_binding_remains_deny_all(): void
+    public function test_http_delivery_controllers_do_not_contain_platform_authorization_logic(): void
+    {
+        foreach ($this->phpFilesIn(dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling/Presentation/Http/Controllers') as $file) {
+            $contents = file_get_contents($file);
+            self::assertIsString($contents, $file);
+
+            foreach ([
+                'PlatformAdministration\\Contracts\\Authorization\\PlatformAuthorizationInterface',
+                'PlatformAdministration\\Contracts\\Authentication\\PlatformPrincipalResolverInterface',
+                'PlatformAdministration\\Application\\Authorization\\AuthorizePlatformActionService',
+                'PlatformPrincipal',
+                'CommercialCataloguePlatformAuthorizationAdapter',
+            ] as $forbidden) {
+                self::assertStringNotContainsString($forbidden, $contents, $file);
+            }
+        }
+    }
+
+    public function test_production_authorization_binding_uses_the_platform_runtime_adapter(): void
     {
         $provider = file_get_contents(dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling/Infrastructure/SubscriptionBillingServiceProvider.php');
         self::assertIsString($provider);
-        self::assertStringContainsString(DenyAllCommercialCatalogueAuthorization::class, $provider);
+        self::assertStringContainsString(CommercialCataloguePlatformAuthorizationAdapter::class, $provider);
+        self::assertStringNotContainsString(DenyAllCommercialCatalogueAuthorization::class, $provider);
     }
 
     public function test_authorization_contracts_reside_only_in_the_contracts_layer(): void
@@ -129,14 +149,17 @@ final class CommercialCatalogueHttpDeliveryArchitectureTest extends TestCase
         ], $this->phpFilesIn($root.'/Contracts/Authorization'));
 
         self::assertSame([
+            $root.'/Infrastructure/Authorization/CommercialCataloguePlatformAuthorizationAdapter.php',
             $root.'/Infrastructure/Authorization/DenyAllCommercialCatalogueAuthorization.php',
         ], $this->phpFilesIn($root.'/Infrastructure/Authorization'));
 
         self::assertFileExists($root.'/Contracts/Authorization/CommercialCatalogueAuthorizationInterface.php');
         self::assertFileExists($root.'/Contracts/Authorization/CommercialCatalogueAuthorizationDecision.php');
+        self::assertFileExists($root.'/Infrastructure/Authorization/CommercialCataloguePlatformAuthorizationAdapter.php');
         self::assertFileExists($root.'/Infrastructure/Authorization/DenyAllCommercialCatalogueAuthorization.php');
         self::assertFileDoesNotExist($root.'/Presentation/Http/Authorization/CommercialCatalogueAuthorizationInterface.php');
         self::assertFileDoesNotExist($root.'/Presentation/Http/Authorization/CommercialCatalogueAuthorizationDecision.php');
+        self::assertFileDoesNotExist($root.'/Presentation/Http/Authorization/CommercialCataloguePlatformAuthorizationAdapter.php');
         self::assertFileDoesNotExist($root.'/Presentation/Http/Authorization/DenyAllCommercialCatalogueAuthorization.php');
     }
 
@@ -144,6 +167,7 @@ final class CommercialCatalogueHttpDeliveryArchitectureTest extends TestCase
     {
         $interface = file_get_contents(dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling/Contracts/Authorization/CommercialCatalogueAuthorizationInterface.php');
         $decision = file_get_contents(dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling/Contracts/Authorization/CommercialCatalogueAuthorizationDecision.php');
+        $adapter = file_get_contents(dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling/Infrastructure/Authorization/CommercialCataloguePlatformAuthorizationAdapter.php');
         $denyAll = file_get_contents(dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling/Infrastructure/Authorization/DenyAllCommercialCatalogueAuthorization.php');
 
         foreach ([$interface, $decision] as $source) {
@@ -153,6 +177,22 @@ final class CommercialCatalogueHttpDeliveryArchitectureTest extends TestCase
             self::assertStringNotContainsString('Illuminate\\', $source);
             self::assertStringNotContainsString('Eloquent', $source);
             self::assertStringNotContainsString('PlatformAdministration', $source);
+        }
+
+        self::assertIsString($adapter);
+        self::assertStringContainsString(CommercialCatalogueAuthorizationInterface::class, $adapter);
+        self::assertStringContainsString('PlatformPrincipalResolverInterface', $adapter);
+        self::assertStringContainsString('PlatformAuthorizationInterface', $adapter);
+        foreach ([
+            'Presentation\\Http\\Authorization',
+            'Illuminate\\',
+            'Eloquent',
+            'Repository',
+            'Controller',
+            'Route',
+            'Request',
+        ] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $adapter);
         }
 
         self::assertIsString($denyAll);

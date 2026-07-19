@@ -69,6 +69,10 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
                 continue;
             }
 
+            if ($file === $module.'/Infrastructure/Authorization/CommercialCataloguePlatformAuthorizationAdapter.php') {
+                continue;
+            }
+
             if (str_contains($file, '/Presentation/')) {
                 continue;
             }
@@ -151,6 +155,7 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
             $this->phpFilesIn($module.'/Infrastructure'),
             static fn (string $file): bool => ! str_contains($file, '/Infrastructure/Persistence/')
                 && ! str_contains($file, '/Infrastructure/Authorization/DenyAllCommercialCatalogueAuthorization.php')
+                && ! str_contains($file, '/Infrastructure/Authorization/CommercialCataloguePlatformAuthorizationAdapter.php')
                 && ! str_contains($file, '/Infrastructure/SubscriptionBillingServiceProvider.php'),
         )));
         $presentation = array_values(array_filter(

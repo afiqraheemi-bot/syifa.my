@@ -10,7 +10,7 @@ use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\C
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanOfferingCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CommercialCatalogueQueryInterface;
-use App\Modules\SubscriptionBilling\Infrastructure\Authorization\DenyAllCommercialCatalogueAuthorization;
+use App\Modules\SubscriptionBilling\Infrastructure\Authorization\CommercialCataloguePlatformAuthorizationAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresCommercialCatalogueQueryAdapter;
 use App\Modules\SubscriptionBilling\Presentation\Contracts\ErrorResponseMapperInterface;
 use App\Modules\SubscriptionBilling\Presentation\Http\Responses\CommercialCatalogueErrorResponseMapper;
@@ -23,7 +23,7 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
     {
         $this->app->singleton(
             CommercialCatalogueAuthorizationInterface::class,
-            DenyAllCommercialCatalogueAuthorization::class,
+            CommercialCataloguePlatformAuthorizationAdapter::class,
         );
 
         $this->app->singleton(
