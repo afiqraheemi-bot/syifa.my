@@ -118,7 +118,10 @@ final class ClinicOwnerSessionEndpointsTest extends TestCase
     public function test_only_the_three_session_routes_exist(): void
     {
         $routes = collect(Route::getRoutes()->getRoutes())
-            ->filter(static fn ($route): bool => str_contains($route->uri(), 'sessions'))
+            ->filter(static fn ($route): bool => in_array($route->uri(), [
+                'api/v1/sessions',
+                'api/v1/sessions/current',
+            ], true))
             ->map(static fn ($route): array => [$route->methods(), $route->uri()])
             ->values()
             ->all();

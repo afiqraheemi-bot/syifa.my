@@ -55,9 +55,9 @@ final class ClinicOwnerHttpSessionArchitectureTest extends TestCase
         self::assertIsString($routes);
         self::assertSame(
             3,
-            substr_count($routes, 'Route::post')
-                + substr_count($routes, 'Route::get')
-                + substr_count($routes, 'Route::delete'),
+            substr_count($routes, "Route::post('/sessions'")
+                + substr_count($routes, "Route::get('/sessions/current'")
+                + substr_count($routes, "Route::delete('/sessions/current'"),
         );
         self::assertSame(1, substr_count($routes, "Route::post('/sessions'"));
         self::assertSame(1, substr_count($routes, "Route::get('/sessions/current'"));

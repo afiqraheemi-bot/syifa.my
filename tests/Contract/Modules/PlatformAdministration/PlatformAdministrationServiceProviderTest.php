@@ -4,11 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Contract\Modules\PlatformAdministration;
 
+use App\Modules\PlatformAdministration\Application\Authentication\AuthenticatePlatformSessionService;
+use App\Modules\PlatformAdministration\Application\Authentication\PlatformPrincipalResolver;
+use App\Modules\PlatformAdministration\Application\PlatformIdentity\GetPlatformIdentityService;
+use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipalResolverInterface;
+use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionAuthenticationInterface;
+use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionStoreInterface;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityLookupInterface;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\CredentialVerificationInterface;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialLookupInterface;
+use App\Modules\PlatformAdministration\Infrastructure\Persistence\PlatformIdentity\PostgresPlatformIdentityLookup;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\WorkforceCredentials\PostgresPlatformWorkforceCredentialAdapter;
 use App\Modules\PlatformAdministration\Infrastructure\PlatformAdministrationServiceProvider;
+use App\Modules\PlatformAdministration\Infrastructure\Session\LaravelPlatformSessionStore;
 use App\Modules\TenantManagement\Application\Authentication\ChangeClinicOwnerPasswordService;
 use App\Modules\TenantManagement\Contracts\Authentication\PasswordBlocklistInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\TrustedTenantSelectorInterface;
@@ -44,12 +52,33 @@ final class PlatformAdministrationServiceProviderTest extends TestCase
         self::assertSame($lookup, $verification);
     }
 
+    public function test_platform_identity_lookup_and_platform_session_bindings_resolve(): void
+    {
+        self::assertInstanceOf(
+            PostgresPlatformIdentityLookup::class,
+            $this->app->make(PlatformIdentityLookupInterface::class),
+        );
+        self::assertInstanceOf(
+            GetPlatformIdentityService::class,
+            $this->app->make(GetPlatformIdentityService::class),
+        );
+        self::assertInstanceOf(
+            LaravelPlatformSessionStore::class,
+            $this->app->make(PlatformSessionStoreInterface::class),
+        );
+        self::assertInstanceOf(
+            PlatformPrincipalResolver::class,
+            $this->app->make(PlatformPrincipalResolverInterface::class),
+        );
+        self::assertInstanceOf(
+            AuthenticatePlatformSessionService::class,
+            $this->app->make(PlatformSessionAuthenticationInterface::class),
+        );
+    }
+
     public function test_security_contracts_without_production_adapters_remain_unresolved(): void
     {
-        foreach ([
-            PasswordBlocklistInterface::class,
-            PlatformIdentityLookupInterface::class,
-        ] as $contract) {
+        foreach ([PasswordBlocklistInterface::class] as $contract) {
             self::assertFalse($this->app->bound($contract), $contract);
 
             try {

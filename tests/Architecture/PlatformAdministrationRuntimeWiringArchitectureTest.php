@@ -22,6 +22,10 @@ final class PlatformAdministrationRuntimeWiringArchitectureTest extends TestCase
         $contents = file_get_contents($provider);
 
         self::assertIsString($contents);
+        self::assertStringContainsString('PlatformIdentityLookupInterface::class', $contents);
+        self::assertStringContainsString('PlatformSessionStoreInterface::class', $contents);
+        self::assertStringContainsString('PlatformPrincipalResolverInterface::class', $contents);
+        self::assertStringContainsString('PlatformSessionAuthenticationInterface::class', $contents);
         self::assertStringContainsString('PostgresPlatformWorkforceCredentialAdapter::class', $contents);
         self::assertStringContainsString('PlatformWorkforceCredentialLookupInterface::class', $contents);
         self::assertStringContainsString('CredentialVerificationInterface::class', $contents);
@@ -29,7 +33,6 @@ final class PlatformAdministrationRuntimeWiringArchitectureTest extends TestCase
         self::assertStringNotContainsString('PasswordBlocklistInterface', $contents);
         self::assertStringNotContainsString('TrustedTenantSelectorInterface', $contents);
         self::assertStringNotContainsString('TenantContextResolverInterface', $contents);
-        self::assertStringNotContainsString('PlatformIdentityLookupInterface', $contents);
         self::assertStringNotContainsString('Fake', $contents);
         self::assertStringNotContainsString('Permissive', $contents);
     }
@@ -47,6 +50,7 @@ final class PlatformAdministrationRuntimeWiringArchitectureTest extends TestCase
             [
                 $root.'/database/migrations/platform_administration/2026_07_13_000001_create_platform_workforce_credentials_table.php',
                 $root.'/database/migrations/platform_administration/2026_07_16_000001_create_platform_authorization_tables.php',
+                $root.'/database/migrations/platform_administration/2026_07_19_000001_add_name_and_role_to_platform_workforce_credentials_table.php',
             ],
             glob($root.'/database/migrations/platform_administration/*.php') ?: [],
         );

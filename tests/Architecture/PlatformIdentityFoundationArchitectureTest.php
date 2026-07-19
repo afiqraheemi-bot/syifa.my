@@ -58,12 +58,14 @@ final class PlatformIdentityFoundationArchitectureTest extends TestCase
         }
     }
 
-    public function test_no_standalone_authentication_domain_or_module_exists(): void
+    public function test_no_standalone_authentication_module_exists_outside_platform_administration(): void
     {
         $root = dirname(__DIR__, 2).'/app/Modules';
 
+        self::assertDirectoryDoesNotExist($root.'/Authentication');
         self::assertDirectoryDoesNotExist($root.'/PlatformAdministration/Domain/Authentication');
-        self::assertDirectoryDoesNotExist($root.'/PlatformAdministration/Application/Authentication');
+        self::assertDirectoryExists($root.'/PlatformAdministration/Application/Authentication');
+        self::assertDirectoryExists($root.'/PlatformAdministration/Contracts/Authentication');
     }
 
     /** @return list<string> */
