@@ -14,7 +14,7 @@ namespace App\Modules\PlatformAdministration\Contracts\Authorization;
 final readonly class AuthorizationDecisionData
 {
     public function __construct(
-        public string $administratorId,
+        public string $platformIdentityId,
         public string $categoryKey,
         public string $permissionKey,
         public bool $allowed,

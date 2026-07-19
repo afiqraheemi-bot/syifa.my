@@ -8,6 +8,7 @@ use App\Modules\PlatformAdministration\Domain\Authorization\Exceptions\InvalidPl
 use App\Modules\PlatformAdministration\Domain\Authorization\PlatformAdministrator;
 use App\Modules\PlatformAdministration\Domain\Authorization\ValueObjects\PlatformAdministratorId;
 use App\Modules\PlatformAdministration\Domain\Authorization\ValueObjects\PlatformAdministratorStatus;
+use App\Modules\PlatformAdministration\Domain\PlatformIdentity\ValueObjects\PlatformIdentityId;
 use PHPUnit\Framework\TestCase;
 
 final class PlatformAdministratorTest extends TestCase
@@ -22,6 +23,7 @@ final class PlatformAdministratorTest extends TestCase
         self::assertFalse($suspended->isActive());
         self::assertSame(PlatformAdministratorStatus::Suspended, $suspended->status);
         self::assertSame(PlatformAdministratorStatus::Active, $administrator->status);
+        self::assertSame($administrator->platformIdentityId->value, $suspended->platformIdentityId->value);
 
         $reactivated = $suspended->reactivate();
         self::assertTrue($reactivated->isActive());
@@ -51,6 +53,7 @@ final class PlatformAdministratorTest extends TestCase
     {
         return new PlatformAdministrator(
             new PlatformAdministratorId('00000000-0000-4000-8000-000000000001'),
+            new PlatformIdentityId('00000000-0000-4000-8000-000000000010'),
             PlatformAdministratorStatus::Active,
         );
     }

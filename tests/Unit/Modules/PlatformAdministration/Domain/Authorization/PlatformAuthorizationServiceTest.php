@@ -18,6 +18,7 @@ use App\Modules\PlatformAdministration\Domain\Authorization\ValueObjects\Platfor
 use App\Modules\PlatformAdministration\Domain\Authorization\ValueObjects\PlatformCategoryStatus;
 use App\Modules\PlatformAdministration\Domain\Authorization\ValueObjects\PlatformPermissionKey;
 use App\Modules\PlatformAdministration\Domain\Authorization\ValueObjects\PlatformPermissionStatus;
+use App\Modules\PlatformAdministration\Domain\PlatformIdentity\ValueObjects\PlatformIdentityId;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -117,6 +118,7 @@ final class PlatformAuthorizationServiceTest extends TestCase
     {
         $otherAdministrator = new PlatformAdministrator(
             new PlatformAdministratorId('00000000-0000-4000-8000-000000000099'),
+            new PlatformIdentityId('00000000-0000-4000-8000-000000000099'),
             PlatformAdministratorStatus::Active,
         );
 
@@ -143,7 +145,11 @@ final class PlatformAuthorizationServiceTest extends TestCase
     private function administrator(
         PlatformAdministratorStatus $status = PlatformAdministratorStatus::Active,
     ): PlatformAdministrator {
-        return new PlatformAdministrator($this->administratorId(), $status);
+        return new PlatformAdministrator(
+            $this->administratorId(),
+            new PlatformIdentityId('00000000-0000-4000-8000-000000000010'),
+            $status,
+        );
     }
 
     private function category(): PlatformCategory

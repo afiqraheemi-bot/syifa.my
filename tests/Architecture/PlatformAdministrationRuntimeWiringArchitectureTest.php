@@ -44,7 +44,10 @@ final class PlatformAdministrationRuntimeWiringArchitectureTest extends TestCase
         self::assertStringNotContainsString('Route::', $provider);
         self::assertStringNotContainsString('PlatformIdentityRepository', $provider);
         self::assertSame(
-            [$root.'/database/migrations/platform_administration/2026_07_13_000001_create_platform_workforce_credentials_table.php'],
+            [
+                $root.'/database/migrations/platform_administration/2026_07_13_000001_create_platform_workforce_credentials_table.php',
+                $root.'/database/migrations/platform_administration/2026_07_16_000001_create_platform_authorization_tables.php',
+            ],
             glob($root.'/database/migrations/platform_administration/*.php') ?: [],
         );
     }

@@ -28,7 +28,10 @@ final class PlatformAuthorizationContractsTest extends TestCase
         self::assertTrue((new ReflectionClass(CategoryGrantData::class))->isReadOnly());
         self::assertTrue((new ReflectionClass(AuthorizationDecisionData::class))->isReadOnly());
 
-        self::assertSame(['administratorId', 'status'], $this->propertyNames(PlatformAdministratorData::class));
+        self::assertSame(
+            ['administratorId', 'platformIdentityId', 'status'],
+            $this->propertyNames(PlatformAdministratorData::class),
+        );
         self::assertSame(
             ['categoryKey', 'name', 'description', 'status'],
             $this->propertyNames(PlatformCategoryData::class),
@@ -42,7 +45,7 @@ final class PlatformAuthorizationContractsTest extends TestCase
             $this->propertyNames(CategoryGrantData::class),
         );
         self::assertSame(
-            ['administratorId', 'categoryKey', 'permissionKey', 'allowed', 'reason', 'evaluatedAt'],
+            ['platformIdentityId', 'categoryKey', 'permissionKey', 'allowed', 'reason', 'evaluatedAt'],
             $this->propertyNames(AuthorizationDecisionData::class),
         );
     }
@@ -51,10 +54,10 @@ final class PlatformAuthorizationContractsTest extends TestCase
     {
         $administrators = new class implements PlatformAdministratorLookupInterface
         {
-            public function findAdministrator(string $administratorId): ?PlatformAdministratorData
+            public function findByPlatformIdentityId(string $platformIdentityId): ?PlatformAdministratorData
             {
-                return $administratorId === 'admin-id'
-                    ? new PlatformAdministratorData($administratorId, 'active')
+                return $platformIdentityId === 'identity-id'
+                    ? new PlatformAdministratorData('admin-id', $platformIdentityId, 'active')
                     : null;
             }
         };
@@ -86,7 +89,7 @@ final class PlatformAuthorizationContractsTest extends TestCase
             }
         };
 
-        $administrator = $administrators->findAdministrator('admin-id');
+        $administrator = $administrators->findByPlatformIdentityId('identity-id');
         $category = $categories->findCategory('commercial_catalogue');
         $permission = $permissions->findPermission('manage');
         $grant = $grants->findGrant('admin-id', 'commercial_catalogue');
@@ -97,11 +100,12 @@ final class PlatformAuthorizationContractsTest extends TestCase
         self::assertNotNull($grant);
 
         self::assertSame('active', $administrator->status);
+        self::assertSame('identity-id', $administrator->platformIdentityId);
         self::assertSame('commercial_catalogue', $category->categoryKey);
         self::assertSame('commercial_catalogue', $permission->categoryKey);
         self::assertSame(['manage'], $grant->permissionKeys);
 
-        self::assertNull($administrators->findAdministrator('unknown-id'));
+        self::assertNull($administrators->findByPlatformIdentityId('unknown-identity-id'));
         self::assertNull($categories->findCategory('unknown_category'));
         self::assertNull($permissions->findPermission('unknown_permission'));
         self::assertNull($grants->findGrant('admin-id', 'unknown_category'));
@@ -112,23 +116,23 @@ final class PlatformAuthorizationContractsTest extends TestCase
         $authorization = new class implements PlatformAuthorizationInterface
         {
             public function authorize(
-                string $administratorId,
+                string $platformIdentityId,
                 string $categoryKey,
                 string $permissionKey,
                 string $effectiveDateTime,
             ): AuthorizationDecisionData {
                 return new AuthorizationDecisionData(
-                    $administratorId,
+                    $platformIdentityId,
                     $categoryKey,
                     $permissionKey,
-                    $administratorId !== '' && $categoryKey !== '' && $permissionKey !== '',
-                    $administratorId !== '' && $categoryKey !== '' && $permissionKey !== '' ? 'allowed' : 'permission_not_granted',
+                    $platformIdentityId !== '' && $categoryKey !== '' && $permissionKey !== '',
+                    $platformIdentityId !== '' && $categoryKey !== '' && $permissionKey !== '' ? 'allowed' : 'permission_not_granted',
                     $effectiveDateTime,
                 );
             }
         };
 
-        $decision = $authorization->authorize('admin-id', 'commercial_catalogue', 'manage', '2026-07-15T05:30:00Z');
+        $decision = $authorization->authorize('identity-id', 'commercial_catalogue', 'manage', '2026-07-15T05:30:00Z');
 
         self::assertTrue($decision->allowed);
         self::assertSame('allowed', $decision->reason);
