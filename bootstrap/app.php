@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Modules\PlatformAdministration\Presentation\Http\Responses\ProblemDetailsResponse as PlatformProblemDetailsResponse;
+use App\Modules\SubscriptionBilling\Presentation\Contracts\ErrorResponseMapperInterface;
+use App\Modules\SubscriptionBilling\Presentation\Http\Support\CommercialCatalogueProblemDetailsResponseFactory;
 use App\Modules\TenantManagement\Presentation\Http\Middleware\AttachRequestIdentifiers;
 use App\Modules\TenantManagement\Presentation\Http\Responses\ProblemDetailsResponse;
 use Illuminate\Foundation\Application;
@@ -10,6 +12,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Middleware as InertiaMiddleware;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -21,7 +25,30 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(static function (Throwable $exception, Request $request) {
+        $correlationId = static function (Request $request): string {
+            $correlationId = $request->attributes->get('correlation_id');
+
+            if (is_string($correlationId) && $correlationId !== '') {
+                return $correlationId;
+            }
+
+            return (string) Str::uuid();
+        };
+
+        $exceptions->render(static function (Throwable $exception, Request $request) use ($correlationId) {
+            if (str_starts_with($request->path(), 'api/v1/platform/commercial-catalogue')) {
+                if ($exception instanceof HttpResponseException) {
+                    return $exception->getResponse();
+                }
+
+                $mapper = app(ErrorResponseMapperInterface::class);
+                $validationErrors = $exception instanceof ValidationException ? $exception->errors() : null;
+
+                return CommercialCatalogueProblemDetailsResponseFactory::make(
+                    $mapper->map($exception, $correlationId($request), $request->path(), $validationErrors),
+                );
+            }
+
             if (str_starts_with($request->path(), 'api/v1/platform/sessions')) {
                 if ($exception instanceof HttpResponseException) {
                     return $exception->getResponse();
@@ -46,10 +73,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
             if ($exception instanceof HttpResponseException) {
                 return $exception->getResponse();
-            }
-
-            if ($exception instanceof HttpExceptionInterface) {
-                return null;
             }
 
             return ProblemDetailsResponse::make(

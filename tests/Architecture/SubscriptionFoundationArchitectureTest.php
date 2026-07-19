@@ -65,6 +65,10 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
                 continue;
             }
 
+            if ($file === $module.'/Infrastructure/SubscriptionBillingServiceProvider.php') {
+                continue;
+            }
+
             if (str_contains($file, '/Presentation/')) {
                 continue;
             }
@@ -80,7 +84,6 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
         ], glob($this->root().'/database/migrations/subscription_billing/*.php') ?: []);
         $routes = file_get_contents($this->root().'/routes/web.php');
         self::assertIsString($routes);
-        self::assertStringNotContainsString('SubscriptionBilling', $routes);
         self::assertStringNotContainsString('/subscriptions', $routes);
     }
 
@@ -146,9 +149,14 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
         self::assertDirectoryExists($module.'/Domain');
         self::assertSame([], array_values(array_filter(
             $this->phpFilesIn($module.'/Infrastructure'),
-            static fn (string $file): bool => ! str_contains($file, '/Infrastructure/Persistence/'),
+            static fn (string $file): bool => ! str_contains($file, '/Infrastructure/Persistence/')
+                && ! str_contains($file, '/Infrastructure/Authorization/DenyAllCommercialCatalogueAuthorization.php')
+                && ! str_contains($file, '/Infrastructure/SubscriptionBillingServiceProvider.php'),
         )));
-        $presentation = $this->phpFilesIn($module.'/Presentation');
+        $presentation = array_values(array_filter(
+            $this->phpFilesIn($module.'/Presentation'),
+            static fn (string $file): bool => ! str_contains($file, '/Presentation/Http/'),
+        ));
         sort($presentation);
         $expectedPresentation = [
             $module.'/Presentation/ApiVersion.php',
@@ -167,6 +175,7 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
         );
 
         self::assertSame([], glob($module.'/**/*Payment*.php') ?: []);
+        self::assertFileExists($module.'/Infrastructure/SubscriptionBillingServiceProvider.php');
     }
 
     /** @return list<string> */

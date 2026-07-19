@@ -11,7 +11,7 @@ abstract class BaseCollection
     /**
      * @param  list<BaseResource>  $items
      * @param  array<string, mixed>  $meta
-     * @param  array<string, string>  $links
+     * @param  array<string, string|null>  $links
      */
     public function __construct(
         private readonly array $items,
@@ -36,7 +36,7 @@ abstract class BaseCollection
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, string|null>
      */
     final public function links(): array
     {
