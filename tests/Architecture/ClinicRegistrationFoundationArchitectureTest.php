@@ -15,7 +15,7 @@ final class ClinicRegistrationFoundationArchitectureTest extends TestCase
         self::assertSame(2, substr_count($providers, 'ClinicRegistrationServiceProvider'));
     }
 
-    public function test_module_configuration_and_route_registration_are_centralized(): void
+    public function test_module_configuration_routes_and_migrations_are_registered_centrally(): void
     {
         $provider = $this->source(
             dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Infrastructure/ClinicRegistrationServiceProvider.php',
@@ -25,78 +25,124 @@ final class ClinicRegistrationFoundationArchitectureTest extends TestCase
         self::assertStringContainsString('clinic_registration', $provider);
         self::assertStringContainsString('loadRoutesFrom', $provider);
         self::assertStringContainsString('routes/clinic_registration.php', $provider);
+        self::assertStringContainsString("database_path('migrations/clinic_registration')", $provider);
     }
 
-    public function test_module_namespace_structure_exists_without_business_implementation(): void
+    public function test_no_manual_admission_review_workflow_is_introduced(): void
     {
-        $moduleRoot = dirname(__DIR__, 2).'/app/Modules/ClinicRegistration';
-
-        foreach ([
-            'Application',
-            'Contracts',
-            'Domain',
-            'Infrastructure',
-            'Presentation',
-        ] as $directory) {
-            self::assertDirectoryExists($moduleRoot.'/'.$directory);
-        }
-
-        self::assertSame([
-            'app/Modules/ClinicRegistration/Contracts/Language/ClinicRegistrationLanguageRegistryInterface.php',
-            'app/Modules/ClinicRegistration/Infrastructure/ClinicRegistrationServiceProvider.php',
-            'app/Modules/ClinicRegistration/Infrastructure/Language/ConfigClinicRegistrationLanguageRegistry.php',
-            'app/Modules/ClinicRegistration/Infrastructure/routes/clinic_registration.php',
-        ], $this->relativePhpFilesIn($moduleRoot));
-    }
-
-    public function test_module_has_no_business_layer_dependency_or_persistence(): void
-    {
-        foreach ($this->phpFilesIn(dirname(__DIR__, 2).'/app/Modules/ClinicRegistration') as $file) {
+        foreach ($this->phpFilesIn(
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Domain',
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Infrastructure/Persistence',
+        ) as $file) {
             $source = $this->source($file);
 
             foreach ([
-                'Domain\\',
-                'Application\\',
-                'Repository',
-                'Migration',
-                'Eloquent',
-                'Model',
-                'Controller',
-                'Request',
-                'Resource',
-                'DB::',
-                'Schema::',
-                'Route::',
-                'create(',
-                'table(',
+                'UnderReview',
+                'ChangesRequested',
+                'Approved',
+                'Rejected',
+                'RegistrationDecision',
+                'StartReview',
+                'RequestCorrection',
+                'ApproveRegistration',
+                'RejectRegistration',
+                'clinic_registration_decisions',
+                'review',
+                'approval',
+                'rejection',
             ] as $forbidden) {
                 self::assertStringNotContainsString($forbidden, $source);
             }
         }
     }
 
-    public function test_no_clinic_registration_migrations_or_database_artifacts_exist(): void
+    public function test_locked_cto_decisions_are_reflected_in_source(): void
     {
-        foreach ([
-            dirname(__DIR__, 2).'/database/migrations/clinic_registration',
+        foreach ($this->phpFilesIn(
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Domain',
             dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Infrastructure/Persistence',
-            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Infrastructure/Repositories',
-        ] as $forbiddenPath) {
-            self::assertDirectoryDoesNotExist($forbiddenPath);
+        ) as $file) {
+            $source = $this->source($file);
+
+            self::assertStringNotContainsString('ClinicOwnerIdentityReference', $source);
+            self::assertStringNotContainsString('selected_add_on_references', $source);
+            self::assertStringNotContainsString('case Completed', $source);
+            self::assertStringNotContainsString("'completed'", $source);
+        }
+
+        $status = $this->source(
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Domain/ValueObjects/RegistrationStatus.php',
+        );
+
+        self::assertStringContainsString("case Provisioned = 'provisioned';", $status);
+    }
+
+    public function test_domain_and_application_layers_do_not_depend_on_laravel_or_persistence(): void
+    {
+        foreach ($this->phpFilesIn(
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Domain',
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Application',
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Contracts',
+        ) as $file) {
+            $source = $this->source($file);
+
+            foreach ([
+                'Illuminate\\',
+                'DB::',
+                'Schema::',
+                'Eloquent',
+                'ConnectionInterface',
+                'Model',
+                'Request',
+                'JsonResponse',
+                'Route::',
+            ] as $forbidden) {
+                self::assertStringNotContainsString($forbidden, $source, $file);
+            }
         }
     }
 
-    /**
-     * @return list<string>
-     */
-    private function relativePhpFilesIn(string $directory): array
+    public function test_routes_expose_only_identity_bound_current_registration_endpoints(): void
     {
-        $root = dirname(__DIR__, 2).'/';
-
-        return array_map(
-            static fn (string $file): string => str_replace($root, '', $file),
-            $this->phpFilesIn($directory),
+        $routes = $this->source(
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Infrastructure/routes/clinic_registration.php',
         );
+
+        foreach ([
+            "Route::post('/',",
+            "Route::get('/current'",
+            "Route::patch('/current'",
+            "Route::post('/current/submit'",
+            "Route::post('/current/cancel'",
+            'AuthenticatePlatformSessionMiddleware::class',
+            "'throttle:platform.session'",
+        ] as $expected) {
+            self::assertStringContainsString($expected, $routes);
+        }
+
+        foreach (['approve', 'reject', 'review', '{registrationId}', 'selected_add_on_references'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $routes);
+        }
+    }
+
+    public function test_persistence_contains_only_approved_clinic_registration_tables(): void
+    {
+        $migration = $this->source(
+            dirname(__DIR__, 2).'/database/migrations/clinic_registration/2026_07_20_000001_create_clinic_registration_tables.php',
+        );
+
+        self::assertStringContainsString("Schema::create('clinic_registrations'", $migration);
+        self::assertStringContainsString("Schema::create('clinic_registration_declaration_acceptances'", $migration);
+        self::assertStringContainsString('clinic_registrations_one_active_per_platform_identity', $migration);
+
+        foreach ([
+            'clinic_registration_decisions',
+            'selected_add_on_references',
+            'approved_tenant_id',
+            'completed_at',
+        ] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $migration);
+        }
     }
 
     /**

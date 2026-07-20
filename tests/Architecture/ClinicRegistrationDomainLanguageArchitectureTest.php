@@ -36,18 +36,12 @@ final class ClinicRegistrationDomainLanguageArchitectureTest extends TestCase
         ], $this->relativePhpFilesIn(dirname(__DIR__, 2).'/app/Modules/ClinicRegistration', 'Language'));
     }
 
-    public function test_language_foundation_does_not_introduce_domain_model_or_business_behavior(): void
+    public function test_domain_language_source_remains_configuration_driven(): void
     {
-        foreach ($this->phpFilesIn(dirname(__DIR__, 2).'/app/Modules/ClinicRegistration') as $file) {
+        foreach ($this->phpFilesIn(dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Infrastructure/Language') as $file) {
             $source = $this->source($file);
 
             foreach ([
-                'Aggregate',
-                'Entity',
-                'ValueObject',
-                'DomainService',
-                'DomainEvent',
-                'Workflow',
                 'Repository',
                 'Migration',
                 'Eloquent',
@@ -59,9 +53,12 @@ final class ClinicRegistrationDomainLanguageArchitectureTest extends TestCase
         }
     }
 
-    public function test_language_foundation_has_no_cross_module_dependency(): void
+    public function test_language_registry_has_no_cross_module_dependency(): void
     {
-        foreach ($this->phpFilesIn(dirname(__DIR__, 2).'/app/Modules/ClinicRegistration') as $file) {
+        foreach ($this->phpFilesIn(
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Contracts/Language',
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Infrastructure/Language',
+        ) as $file) {
             $source = $this->source($file);
 
             foreach ([

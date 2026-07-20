@@ -20,6 +20,10 @@ return [
         'enabled' => env('CLINIC_REGISTRATION_ROUTES_ENABLED', true),
     ],
 
+    'trusted_completion_sources' => [
+        'tenant_management',
+    ],
+
     'language' => [
         'terms' => [
             'clinic' => [

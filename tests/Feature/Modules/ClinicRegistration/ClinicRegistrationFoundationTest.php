@@ -32,13 +32,13 @@ final class ClinicRegistrationFoundationTest extends TestCase
         self::assertSame('Clinic Registration', $registry->label('clinic_registration'));
     }
 
-    public function test_module_does_not_expose_business_routes_yet(): void
+    public function test_module_exposes_only_current_registration_routes(): void
     {
         $clinicRegistrationRoutes = array_filter(
             Route::getRoutes()->getRoutes(),
             static fn ($route): bool => str_starts_with((string) $route->getName(), 'clinic-registration.'),
         );
 
-        self::assertSame([], array_values($clinicRegistrationRoutes));
+        self::assertCount(5, $clinicRegistrationRoutes);
     }
 }
