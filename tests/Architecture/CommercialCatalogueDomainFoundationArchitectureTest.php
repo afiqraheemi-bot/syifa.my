@@ -139,7 +139,9 @@ final class CommercialCatalogueDomainFoundationArchitectureTest extends TestCase
             );
         }
 
-        self::assertSame([], $this->phpFilesIn($this->module().'/Infrastructure/CommercialCatalogue'));
+        self::assertSame([
+            $this->module().'/Infrastructure/CommercialCatalogue/CommercialCatalogueTransactionalService.php',
+        ], $this->phpFilesIn($this->module().'/Infrastructure/CommercialCatalogue'));
         self::assertSame([], $this->phpFilesIn($this->module().'/Presentation/CommercialCatalogue'));
 
         self::assertSame([], glob($this->root().'/database/migrations/*commercial*') ?: []);

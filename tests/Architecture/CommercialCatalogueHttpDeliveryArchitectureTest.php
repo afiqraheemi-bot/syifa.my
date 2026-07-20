@@ -131,6 +131,23 @@ final class CommercialCatalogueHttpDeliveryArchitectureTest extends TestCase
         }
     }
 
+    public function test_http_delivery_controllers_do_not_persist_audit_entries_directly(): void
+    {
+        foreach ($this->phpFilesIn(dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling/Presentation/Http/Controllers') as $file) {
+            $contents = file_get_contents($file);
+            self::assertIsString($contents, $file);
+
+            foreach ([
+                'AuditEntryRecorderInterface',
+                'AuditEntryRepositoryInterface',
+                'AuditEntryData',
+                'RecordAuditEntryService',
+            ] as $forbidden) {
+                self::assertStringNotContainsString($forbidden, $contents, $file);
+            }
+        }
+    }
+
     public function test_production_authorization_binding_uses_the_platform_runtime_adapter(): void
     {
         $provider = file_get_contents(dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling/Infrastructure/SubscriptionBillingServiceProvider.php');

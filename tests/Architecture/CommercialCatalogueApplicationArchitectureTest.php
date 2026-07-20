@@ -271,7 +271,6 @@ final class CommercialCatalogueApplicationArchitectureTest extends TestCase
             'Notification',
             'Route::',
             'Http\\',
-            'Audit',
             'Payment',
             'AddOn',
             'Professional Service',

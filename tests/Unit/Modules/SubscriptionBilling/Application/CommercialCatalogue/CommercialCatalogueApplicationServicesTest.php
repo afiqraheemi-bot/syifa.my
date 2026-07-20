@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\SubscriptionBilling\Application\CommercialCatalogue;
 
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\AuditEntry;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActorType;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditEntryId;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ActivateCapabilityDefinitionService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ActivatePlanOfferingService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ActivatePlanService;
@@ -131,7 +137,8 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $capabilityRepository = new RecordingCapabilityDefinitionRepository;
         $planOfferingRepository = new RecordingPlanOfferingRepository;
 
-        $plan = (new CreatePlanService($identifierGenerator, $planRepository))->execute($this->createPlanCommand());
+        $createAudit = $this->auditRecorder();
+        $plan = (new CreatePlanService($identifierGenerator, $planRepository, $createAudit))->execute($this->createPlanCommand());
         $billingOption = (new CreateBillingOptionService($identifierGenerator, $billingOptionRepository))->execute($this->createBillingOptionCommand());
         $capability = (new CreateCapabilityDefinitionService($identifierGenerator, $capabilityRepository))->execute($this->createCapabilityCommand());
         $planOffering = (new CreatePlanOfferingService($identifierGenerator, $planOfferingRepository))->execute(
@@ -142,6 +149,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         self::assertSame(1, $billingOptionRepository->saveCalls);
         self::assertSame(1, $capabilityRepository->saveCalls);
         self::assertSame(1, $planOfferingRepository->saveCalls);
+        self::assertCount(1, $createAudit->entries);
 
         self::assertSame(1, $plan->version());
         self::assertSame(1, $billingOption->version());
@@ -232,7 +240,8 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $capabilityRepository = new RecordingCapabilityDefinitionRepository($capability);
         $planOfferingRepository = new RecordingPlanOfferingRepository($planOffering);
 
-        $updatedPlan = (new UpdatePlanDetailsService($planRepository))->execute(
+        $updateAudit = $this->auditRecorder();
+        $updatedPlan = (new UpdatePlanDetailsService($planRepository, $updateAudit))->execute(
             new UpdatePlanDetailsCommand(
                 planId: $plan->id->value,
                 name: 'Updated Plan',
@@ -293,6 +302,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         self::assertSame(1, $billingOptionRepository->saveCalls);
         self::assertSame(1, $capabilityRepository->saveCalls);
         self::assertSame(1, $planOfferingRepository->saveCalls);
+        self::assertCount(1, $updateAudit->entries);
 
         self::assertSame(2, $updatedPlan->version());
         self::assertSame('Updated Plan', $updatedPlan->name->value);
@@ -340,7 +350,8 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $capabilityRepository = new RecordingCapabilityDefinitionRepository($this->capability(version: 1));
         $planOfferingRepository = new RecordingPlanOfferingRepository($this->planOffering(version: 1));
 
-        $activatedPlan = (new ActivatePlanService($planRepository))->execute(
+        $activateAudit = $this->auditRecorder();
+        $activatedPlan = (new ActivatePlanService($planRepository, $activateAudit))->execute(
             new ActivatePlanCommand(
                 planId: $planRepository->planId(),
                 expectedVersion: 1,
@@ -349,7 +360,8 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 correlationId: $this->uuid(601),
             ),
         );
-        $unavailablePlan = (new MakePlanUnavailableService($planRepository))->execute(
+        $unpublishAudit = $this->auditRecorder();
+        $unavailablePlan = (new MakePlanUnavailableService($planRepository, $unpublishAudit))->execute(
             new MakePlanUnavailableCommand(
                 planId: $activatedPlan->id->value,
                 expectedVersion: 2,
@@ -358,7 +370,8 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 correlationId: $this->uuid(603),
             ),
         );
-        $grandfatheredPlan = (new GrandfatherPlanService($planRepository))->execute(
+        $restoreAudit = $this->auditRecorder();
+        $grandfatheredPlan = (new GrandfatherPlanService($planRepository, $restoreAudit))->execute(
             new GrandfatherPlanCommand(
                 planId: $unavailablePlan->id->value,
                 expectedVersion: 3,
@@ -367,7 +380,8 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 correlationId: $this->uuid(605),
             ),
         );
-        $retiredPlan = (new RetirePlanService($planRepository))->execute(
+        $archiveAudit = $this->auditRecorder();
+        $retiredPlan = (new RetirePlanService($planRepository, $archiveAudit))->execute(
             new RetirePlanCommand(
                 planId: $grandfatheredPlan->id->value,
                 expectedVersion: 4,
@@ -460,6 +474,10 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         self::assertSame(PlanOfferingStatus::Retired, $retiredPlanOffering->status);
         self::assertSame(4, $planOfferingRepository->saveCalls);
         self::assertSame(5, $retiredPlanOffering->version());
+        self::assertCount(1, $activateAudit->entries);
+        self::assertCount(1, $unpublishAudit->entries);
+        self::assertCount(1, $restoreAudit->entries);
+        self::assertCount(1, $archiveAudit->entries);
     }
 
     public function test_version_mismatch_and_missing_resources_fail_closed(): void
@@ -467,7 +485,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $versionedPlanRepository = new RecordingPlanRepository($this->plan(version: 7));
 
         try {
-            (new UpdatePlanDetailsService($versionedPlanRepository))->execute(
+            (new UpdatePlanDetailsService($versionedPlanRepository, $this->auditRecorder()))->execute(
                 new UpdatePlanDetailsCommand(
                     planId: $versionedPlanRepository->planId(),
                     name: 'Plan',
@@ -488,7 +506,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $missingPlanRepository = new RecordingPlanRepository(null);
 
         try {
-            (new ActivatePlanService($missingPlanRepository))->execute(
+            (new ActivatePlanService($missingPlanRepository, $this->auditRecorder()))->execute(
                 new ActivatePlanCommand(
                     planId: $this->uuid(999),
                     expectedVersion: 1,
@@ -517,7 +535,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
     public function test_update_services_fail_closed_for_every_resource_type_on_not_found_and_version_mismatch(): void
     {
         $cases = [
-            'Plan' => fn () => (new UpdatePlanDetailsService(new RecordingPlanRepository($this->plan(version: 3))))->execute(
+            'Plan' => fn () => (new UpdatePlanDetailsService(new RecordingPlanRepository($this->plan(version: 3)), $this->auditRecorder()))->execute(
                 new UpdatePlanDetailsCommand(
                     planId: $this->uuid(810),
                     name: 'Plan',
@@ -588,7 +606,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
             'Plan' => function (): array {
                 $repository = new RecordingPlanRepository($this->plan(version: 3));
 
-                return [$repository, fn () => (new UpdatePlanDetailsService($repository))->execute(
+                return [$repository, fn () => (new UpdatePlanDetailsService($repository, $this->auditRecorder()))->execute(
                     new UpdatePlanDetailsCommand(
                         planId: $repository->planId(),
                         name: 'Plan',
@@ -678,7 +696,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
     public function test_lifecycle_services_fail_closed_for_every_family_on_not_found_and_version_mismatch(): void
     {
         $notFoundCases = [
-            'Plan' => fn () => (new ActivatePlanService(new RecordingPlanRepository(null)))->execute(
+            'Plan' => fn () => (new ActivatePlanService(new RecordingPlanRepository(null), $this->auditRecorder()))->execute(
                 new ActivatePlanCommand(
                     planId: $this->uuid(830),
                     expectedVersion: 1,
@@ -721,7 +739,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 $plan = $this->plan(version: 3);
                 $repository = new RecordingPlanRepository($plan);
 
-                return [$repository, fn () => (new ActivatePlanService($repository))->execute(
+                return [$repository, fn () => (new ActivatePlanService($repository, $this->auditRecorder()))->execute(
                     new ActivatePlanCommand(
                         planId: $plan->id->value,
                         expectedVersion: 2,
@@ -779,7 +797,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $planRepository = new RecordingPlanRepository($this->plan(version: 1));
 
         try {
-            (new MakePlanUnavailableService($planRepository))->execute(
+            (new MakePlanUnavailableService($planRepository, $this->auditRecorder()))->execute(
                 new MakePlanUnavailableCommand(
                     planId: $planRepository->planId(),
                     expectedVersion: 1,
@@ -837,7 +855,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $repository = new StaleWritePlanRepository($plan);
 
         try {
-            (new UpdatePlanDetailsService($repository))->execute(
+            (new UpdatePlanDetailsService($repository, $this->auditRecorder()))->execute(
                 new UpdatePlanDetailsCommand(
                     planId: $plan->id->value,
                     name: 'Updated Plan',
@@ -1164,6 +1182,11 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         return sprintf('00000000-0000-4000-8000-%012d', $suffix);
     }
 
+    private function auditRecorder(): RecordingAuditEntryRecorder
+    {
+        return new RecordingAuditEntryRecorder;
+    }
+
     /**
      * @return list<string>
      */
@@ -1463,6 +1486,34 @@ final readonly class RecordingSubscriptionEntitlementComputation implements Subs
     public function compute(ResolvedSubscriptionOfferingData $resolvedOffering): ComputedSubscriptionEntitlementData
     {
         return $this->computed;
+    }
+}
+
+final class RecordingAuditEntryRecorder implements AuditEntryRecorderInterface
+{
+    /** @var list<AuditEntry> */
+    public array $entries = [];
+
+    public function record(AuditEntryData $auditEntry): AuditEntry
+    {
+        $entry = AuditEntry::record(
+            new AuditEntryId($auditEntry->auditEntryId),
+            $auditEntry->occurredAt,
+            AuditActorType::from($auditEntry->actor->type),
+            $auditEntry->actor->identityId,
+            $auditEntry->tenantId,
+            $auditEntry->action,
+            $auditEntry->target->type,
+            $auditEntry->target->id,
+            AuditOutcomeType::from($auditEntry->outcome->outcome),
+            $auditEntry->outcome->reasonCode,
+            $auditEntry->correlationId,
+            $auditEntry->safeMetadata,
+        );
+
+        $this->entries[] = $entry;
+
+        return $entry;
     }
 }
 
