@@ -42,7 +42,9 @@ final class ClinicRegistrationFoundationArchitectureTest extends TestCase
         }
 
         self::assertSame([
+            'app/Modules/ClinicRegistration/Contracts/Language/ClinicRegistrationLanguageRegistryInterface.php',
             'app/Modules/ClinicRegistration/Infrastructure/ClinicRegistrationServiceProvider.php',
+            'app/Modules/ClinicRegistration/Infrastructure/Language/ConfigClinicRegistrationLanguageRegistry.php',
             'app/Modules/ClinicRegistration/Infrastructure/routes/clinic_registration.php',
         ], $this->relativePhpFilesIn($moduleRoot));
     }
