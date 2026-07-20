@@ -30,7 +30,38 @@ final class ProductionOperationsFoundationTest extends TestCase
                 'status' => 'ready',
                 'type' => 'readiness',
                 'detail' => 'Application is ready to receive traffic.',
-                'checks' => [],
+                'checks' => [
+                    'infrastructure' => [
+                        'status' => 'ready',
+                        'capabilities' => [
+                            [
+                                'capability' => 'cache',
+                                'status' => 'ready',
+                                'required' => true,
+                            ],
+                            [
+                                'capability' => 'queue',
+                                'status' => 'ready',
+                                'required' => true,
+                            ],
+                            [
+                                'capability' => 'session',
+                                'status' => 'ready',
+                                'required' => true,
+                            ],
+                            [
+                                'capability' => 'logging',
+                                'status' => 'ready',
+                                'required' => true,
+                            ],
+                            [
+                                'capability' => 'filesystem',
+                                'status' => 'ready',
+                                'required' => true,
+                            ],
+                        ],
+                    ],
+                ],
             ]);
     }
 

@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Operations;
 
+use App\Support\Infrastructure\InfrastructureReadinessValidator;
 use Illuminate\Http\JsonResponse;
 
 final readonly class OperationsResponseFactory
 {
+    public function __construct(
+        private InfrastructureReadinessValidator $infrastructureReadiness,
+    ) {}
+
     public function health(): JsonResponse
     {
         return $this->statusResponse('health', 'ok', 'Application health endpoint is available.');
@@ -15,7 +20,18 @@ final readonly class OperationsResponseFactory
 
     public function ready(): JsonResponse
     {
-        return $this->statusResponse('readiness', 'ready', 'Application is ready to receive traffic.');
+        $infrastructureReadiness = $this->infrastructureReadiness->validate();
+
+        return response()->json([
+            'status' => $infrastructureReadiness->isReady() ? 'ready' : 'not_ready',
+            'type' => 'readiness',
+            'detail' => $infrastructureReadiness->isReady()
+                ? 'Application is ready to receive traffic.'
+                : 'Application is not ready to receive traffic.',
+            'checks' => [
+                'infrastructure' => $infrastructureReadiness->toArray(),
+            ],
+        ], $infrastructureReadiness->isReady() ? 200 : 503);
     }
 
     public function live(): JsonResponse
