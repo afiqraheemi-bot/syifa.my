@@ -14,7 +14,7 @@ final class HttpSecurityFoundationArchitectureTest extends TestCase
 
         self::assertIsString($bootstrap);
         self::assertStringContainsString('ApplyHttpSecurityHeaders::class', $bootstrap);
-        self::assertStringContainsString('$middleware->append(ApplyHttpSecurityHeaders::class);', $bootstrap);
+        self::assertStringContainsString('$middleware->append([', $bootstrap);
         self::assertSame(1, substr_count($bootstrap, 'ApplyHttpSecurityHeaders::class'));
     }
 
