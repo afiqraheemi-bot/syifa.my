@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\OperationsController;
 use App\Modules\PlatformAdministration\Presentation\Http\Controllers\PlatformSessionController;
 use App\Modules\PlatformAdministration\Presentation\Http\Middleware\AuthenticatePlatformSessionMiddleware;
 use App\Modules\SubscriptionBilling\Presentation\ApiVersion;
@@ -11,6 +12,21 @@ use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCata
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanOfferingController;
 use App\Modules\TenantManagement\Presentation\Http\Controllers\ClinicOwnerSessionController;
 use Illuminate\Support\Facades\Route;
+
+if ((bool) config('operations.enabled', true)) {
+    Route::prefix((string) config('operations.prefix', 'operations'))
+        ->name('operations.')
+        ->group(function (): void {
+            Route::get((string) config('operations.endpoints.health', 'health'), [OperationsController::class, 'health'])
+                ->name('health');
+            Route::get((string) config('operations.endpoints.ready', 'ready'), [OperationsController::class, 'ready'])
+                ->name('ready');
+            Route::get((string) config('operations.endpoints.live', 'live'), [OperationsController::class, 'live'])
+                ->name('live');
+            Route::get((string) config('operations.endpoints.info', 'info'), [OperationsController::class, 'info'])
+                ->name('info');
+        });
+}
 
 Route::prefix('api/v1')
     ->group(function (): void {
