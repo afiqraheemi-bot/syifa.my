@@ -64,6 +64,18 @@ final class PlatformAdministrationServiceProviderTest extends TestCase
     public function test_platform_identity_lookup_and_platform_session_bindings_resolve(): void
     {
         self::assertInstanceOf(
+            PostgresAuditEntryRepository::class,
+            $this->app->make(AuditEntryRepositoryInterface::class),
+        );
+        self::assertInstanceOf(
+            RecordAuditEntryService::class,
+            $this->app->make(AuditEntryRecorderInterface::class),
+        );
+        self::assertInstanceOf(
+            RequestAuditCorrelationIdResolver::class,
+            $this->app->make(AuditCorrelationIdResolverInterface::class),
+        );
+        self::assertInstanceOf(
             PostgresPlatformIdentityLookup::class,
             $this->app->make(PlatformIdentityLookupInterface::class),
         );
@@ -82,6 +94,14 @@ final class PlatformAdministrationServiceProviderTest extends TestCase
         self::assertInstanceOf(
             AuthenticatePlatformSessionService::class,
             $this->app->make(PlatformSessionAuthenticationInterface::class),
+        );
+        self::assertInstanceOf(
+            LogoutPlatformSessionService::class,
+            $this->app->make(LogoutPlatformSessionService::class),
+        );
+        self::assertInstanceOf(
+            AuthorizePlatformActionService::class,
+            $this->app->make(PlatformAuthorizationInterface::class),
         );
     }
 

@@ -6,6 +6,9 @@ namespace Tests\Unit\Modules\PlatformAdministration\Application\Authorization;
 
 use App\Modules\PlatformAdministration\Application\Authorization\AuthorizePlatformActionService;
 use App\Modules\PlatformAdministration\Application\PlatformIdentity\GetPlatformIdentityService;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditCorrelationIdResolverInterface;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\PlatformAdministration\Contracts\Authorization\AuthorizationDecisionData;
 use App\Modules\PlatformAdministration\Contracts\Authorization\CategoryGrantData;
 use App\Modules\PlatformAdministration\Contracts\Authorization\CategoryGrantLookupInterface;
@@ -18,8 +21,14 @@ use App\Modules\PlatformAdministration\Contracts\Authorization\PlatformPermissio
 use App\Modules\PlatformAdministration\Contracts\Authorization\PlatformPermissionLookupInterface;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityData;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityLookupInterface;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\AuditEntry;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActorType;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditEntryId;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 use App\Modules\PlatformAdministration\Domain\Authorization\PlatformAuthorizationService;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\AbstractLogger;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 
 final class AuthorizePlatformActionServiceTest extends TestCase
@@ -282,6 +291,66 @@ final class AuthorizePlatformActionServiceTest extends TestCase
         self::assertFalse(property_exists($decision, 'permissions'));
     }
 
+    public function test_denied_decisions_record_audit_entries_with_the_trusted_correlation_id(): void
+    {
+        $auditRecorder = new AuthorizationTrackingAuditEntryRecorder;
+        $correlationId = '00000000-0000-4000-8000-000000000777';
+
+        $decision = $this->service(
+            identityStatus: 'suspended',
+            auditRecorder: $auditRecorder,
+            correlationIdResolver: new AuthorizationFixedAuditCorrelationIdResolver($correlationId),
+        )->authorize(
+            self::PLATFORM_IDENTITY_ID,
+            self::CATEGORY_KEY,
+            self::PERMISSION_KEY,
+            self::EFFECTIVE_AT,
+        );
+
+        self::assertFalse($decision->allowed);
+        self::assertSame('platform_identity_not_active', $decision->reason);
+        self::assertCount(1, $auditRecorder->entries);
+
+        $entry = $auditRecorder->entries[0];
+        self::assertSame('platform.authorization.evaluate', $entry->action);
+        self::assertSame(AuditActorType::PlatformIdentity->value, $entry->actor->type);
+        self::assertSame(self::PLATFORM_IDENTITY_ID, $entry->actor->identityId);
+        self::assertSame(AuditOutcomeType::Denied->value, $entry->outcome->outcome);
+        self::assertSame('platform_identity_not_active', $entry->outcome->reasonCode);
+        self::assertSame($correlationId, $entry->correlationId);
+        self::assertSame([
+            'actor_role' => 'super_admin',
+            'category_key' => self::CATEGORY_KEY,
+            'permission_key' => self::PERMISSION_KEY,
+        ], $entry->safeMetadata);
+    }
+
+    public function test_audit_failure_on_denial_falls_back_to_emergency_logging_and_keeps_the_deny_decision(): void
+    {
+        $auditRecorder = new AuthorizationTrackingAuditEntryRecorder(true);
+        $logger = new AuthorizationTrackingLogger;
+
+        $decision = $this->service(
+            identityStatus: 'suspended',
+            auditRecorder: $auditRecorder,
+            correlationIdResolver: new AuthorizationFixedAuditCorrelationIdResolver('00000000-0000-4000-8000-000000000778'),
+            logger: $logger,
+        )->authorize(
+            self::PLATFORM_IDENTITY_ID,
+            self::CATEGORY_KEY,
+            self::PERMISSION_KEY,
+            self::EFFECTIVE_AT,
+        );
+
+        self::assertFalse($decision->allowed);
+        self::assertSame('platform_identity_not_active', $decision->reason);
+        self::assertCount(1, $logger->criticalRecords);
+        self::assertSame('platform.security.audit.emergency', $logger->criticalRecords[0]['message']);
+        self::assertSame('platform.authorization.evaluate', $logger->criticalRecords[0]['context']['action']);
+        self::assertSame('denied', $logger->criticalRecords[0]['context']['outcome']);
+        self::assertSame('platform_identity_not_active', $logger->criticalRecords[0]['context']['reason_code']);
+    }
+
     private function assertDenied(AuthorizationDecisionData $decision, string $reason): void
     {
         self::assertFalse($decision->allowed);
@@ -304,6 +373,9 @@ final class AuthorizePlatformActionServiceTest extends TestCase
         ?string $grantCategoryKey = null,
         string $grantStatus = 'active',
         ?array $grantPermissionKeys = null,
+        ?AuditEntryRecorderInterface $auditRecorder = null,
+        ?AuditCorrelationIdResolverInterface $correlationIdResolver = null,
+        ?LoggerInterface $logger = null,
     ): AuthorizePlatformActionService {
         $identities = new class($identityId ?? self::PLATFORM_IDENTITY_ID, $identityStatus, $identityRole) implements PlatformIdentityLookupInterface
         {
@@ -375,6 +447,10 @@ final class AuthorizePlatformActionServiceTest extends TestCase
             }
         };
 
+        $auditRecorder ??= new AuthorizationTrackingAuditEntryRecorder;
+        $correlationIdResolver ??= new AuthorizationFixedAuditCorrelationIdResolver(self::CORRELATION_ID);
+        $logger ??= new AuthorizationTrackingLogger;
+
         return new AuthorizePlatformActionService(
             new GetPlatformIdentityService($identities),
             $administrators,
@@ -382,6 +458,72 @@ final class AuthorizePlatformActionServiceTest extends TestCase
             $permissions,
             $grants,
             new PlatformAuthorizationService,
+            $auditRecorder,
+            $correlationIdResolver,
+            $logger,
         );
+    }
+
+    private const CORRELATION_ID = '00000000-0000-4000-8000-000000000666';
+}
+
+final class AuthorizationFixedAuditCorrelationIdResolver implements AuditCorrelationIdResolverInterface
+{
+    public function __construct(private string $correlationId) {}
+
+    public function resolve(): string
+    {
+        return $this->correlationId;
+    }
+}
+
+final class AuthorizationTrackingAuditEntryRecorder implements AuditEntryRecorderInterface
+{
+    /** @var list<AuditEntryData> */
+    public array $entries = [];
+
+    public function __construct(private bool $throwOnRecord = false) {}
+
+    public function record(AuditEntryData $auditEntry): AuditEntry
+    {
+        if ($this->throwOnRecord) {
+            throw new RuntimeException('audit storage failed');
+        }
+
+        $this->entries[] = $auditEntry;
+
+        return AuditEntry::record(
+            new AuditEntryId($auditEntry->auditEntryId),
+            $auditEntry->occurredAt,
+            AuditActorType::from($auditEntry->actor->type),
+            $auditEntry->actor->identityId,
+            $auditEntry->tenantId,
+            $auditEntry->action,
+            $auditEntry->target->type,
+            $auditEntry->target->id,
+            AuditOutcomeType::from($auditEntry->outcome->outcome),
+            $auditEntry->outcome->reasonCode,
+            $auditEntry->correlationId,
+            $auditEntry->safeMetadata,
+        );
+    }
+}
+
+final class AuthorizationTrackingLogger extends AbstractLogger
+{
+    /** @var list<array{level: string, message: string, context: array<string, mixed>}> */
+    public array $criticalRecords = [];
+
+    public function log($level, string|\Stringable $message, array $context = []): void
+    {
+        if ($level !== 'critical') {
+            return;
+        }
+
+        $this->criticalRecords[] = [
+            'level' => (string) $level,
+            'message' => (string) $message,
+            'context' => $context,
+        ];
     }
 }

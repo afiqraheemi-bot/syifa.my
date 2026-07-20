@@ -4,10 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\PlatformAdministration;
 
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityData;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityLookupInterface;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\CredentialVerificationInterface;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\CredentialVerificationResult;
+use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialData;
+use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialLookupInterface;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\AuditEntry;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActorType;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditEntryId;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -19,6 +27,10 @@ final class PlatformSessionEndpointsTest extends TestCase
     private MutableCredentialVerification $verification;
 
     private MutablePlatformIdentityLookup $identities;
+
+    private MutablePlatformWorkforceCredentialLookup $credentials;
+
+    private MutablePlatformAuditEntryRecorder $auditRecorder;
 
     protected function setUp(): void
     {
@@ -32,9 +44,24 @@ final class PlatformSessionEndpointsTest extends TestCase
             'website_designer',
             'active',
         ));
+        $this->credentials = new MutablePlatformWorkforceCredentialLookup(new PlatformWorkforceCredentialData(
+            self::IDENTITY_ID,
+            'designer@example.test',
+            true,
+            new DateTimeImmutable('2026-07-19T09:00:00Z'),
+            'active',
+            0,
+            null,
+            1,
+            new DateTimeImmutable('2026-07-19T09:00:00Z'),
+            new DateTimeImmutable('2026-07-19T09:15:00Z'),
+        ));
+        $this->auditRecorder = new MutablePlatformAuditEntryRecorder;
 
         $this->app->instance(CredentialVerificationInterface::class, $this->verification);
         $this->app->instance(PlatformIdentityLookupInterface::class, $this->identities);
+        $this->app->instance(PlatformWorkforceCredentialLookupInterface::class, $this->credentials);
+        $this->app->instance(AuditEntryRecorderInterface::class, $this->auditRecorder);
     }
 
     public function test_successful_login_session_regeneration_principal_resolution_and_logout_work_end_to_end(): void
@@ -53,6 +80,7 @@ final class PlatformSessionEndpointsTest extends TestCase
             ->assertJsonPath('data.principal.name', 'Website Designer');
 
         self::assertNotSame($startingSessionId, session()->getId());
+        self::assertCount(1, $this->auditRecorder->entries);
 
         $this->getJson('https://clinic.app.syifa.my/api/v1/platform/sessions/current')
             ->assertOk()
@@ -175,5 +203,41 @@ final class MutablePlatformIdentityLookup implements PlatformIdentityLookupInter
     public function findById(string $platformIdentityId): ?PlatformIdentityData
     {
         return $this->identity->id === $platformIdentityId ? $this->identity : null;
+    }
+}
+
+final class MutablePlatformWorkforceCredentialLookup implements PlatformWorkforceCredentialLookupInterface
+{
+    public function __construct(public PlatformWorkforceCredentialData $credential) {}
+
+    public function findByNormalizedEmail(string $email): ?PlatformWorkforceCredentialData
+    {
+        return strtolower($email) === $this->credential->normalizedEmail ? $this->credential : null;
+    }
+}
+
+final class MutablePlatformAuditEntryRecorder implements AuditEntryRecorderInterface
+{
+    /** @var list<AuditEntryData> */
+    public array $entries = [];
+
+    public function record(AuditEntryData $auditEntry): AuditEntry
+    {
+        $this->entries[] = $auditEntry;
+
+        return AuditEntry::record(
+            new AuditEntryId($auditEntry->auditEntryId),
+            $auditEntry->occurredAt,
+            AuditActorType::from($auditEntry->actor->type),
+            $auditEntry->actor->identityId,
+            $auditEntry->tenantId,
+            $auditEntry->action,
+            $auditEntry->target->type,
+            $auditEntry->target->id,
+            AuditOutcomeType::from($auditEntry->outcome->outcome),
+            $auditEntry->outcome->reasonCode,
+            $auditEntry->correlationId,
+            $auditEntry->safeMetadata,
+        );
     }
 }

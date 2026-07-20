@@ -37,14 +37,43 @@ use App\Modules\PlatformAdministration\Infrastructure\Persistence\PlatformIdenti
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\WorkforceCredentials\Mappers\PlatformWorkforceCredentialPersistenceMapper;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\WorkforceCredentials\PostgresPlatformWorkforceCredentialAdapter;
 use App\Modules\PlatformAdministration\Infrastructure\Session\LaravelPlatformSessionStore;
+use App\Modules\PlatformAdministration\Infrastructure\Support\RequestAuditCorrelationIdResolver;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
+use Psr\Log\LoggerInterface;
 
 final class PlatformAdministrationServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(AuditEntryPersistenceMapper::class);
+
+        $this->app->singleton(
+            PostgresAuditEntryRepository::class,
+            static function (Application $application): PostgresAuditEntryRepository {
+                return new PostgresAuditEntryRepository(
+                    $application->make('db')->connection(),
+                    $application->make(AuditEntryPersistenceMapper::class),
+                );
+            },
+        );
+        $this->app->alias(PostgresAuditEntryRepository::class, AuditEntryRepositoryInterface::class);
+
+        $this->app->singleton(
+            RecordAuditEntryService::class,
+            static fn (Application $application): RecordAuditEntryService => new RecordAuditEntryService(
+                $application->make(AuditEntryRepositoryInterface::class),
+            ),
+        );
+        $this->app->alias(RecordAuditEntryService::class, AuditEntryRecorderInterface::class);
+
+        $this->app->singleton(RequestAuditCorrelationIdResolver::class);
+        $this->app->alias(
+            RequestAuditCorrelationIdResolver::class,
+            AuditCorrelationIdResolverInterface::class,
+        );
+
         $this->app->singleton(
             PostgresPlatformWorkforceCredentialAdapter::class,
             static function (Application $application): PostgresPlatformWorkforceCredentialAdapter {
@@ -126,6 +155,9 @@ final class PlatformAdministrationServiceProvider extends ServiceProvider
                 $application->make(PlatformPermissionLookupInterface::class),
                 $application->make(CategoryGrantLookupInterface::class),
                 $application->make(PlatformAuthorizationService::class),
+                $application->make(AuditEntryRecorderInterface::class),
+                $application->make(AuditCorrelationIdResolverInterface::class),
+                $application->make(LoggerInterface::class),
             ),
         );
         $this->app->alias(AuthorizePlatformActionService::class, PlatformAuthorizationInterface::class);
@@ -155,8 +187,12 @@ final class PlatformAdministrationServiceProvider extends ServiceProvider
             AuthenticatePlatformSessionService::class,
             static fn (Application $application): AuthenticatePlatformSessionService => new AuthenticatePlatformSessionService(
                 $application->make(CredentialVerificationInterface::class),
+                $application->make(PlatformWorkforceCredentialLookupInterface::class),
                 $application->make(PlatformIdentityLookupInterface::class),
                 $application->make(PlatformSessionStoreInterface::class),
+                $application->make(AuditEntryRecorderInterface::class),
+                $application->make(AuditCorrelationIdResolverInterface::class),
+                $application->make(LoggerInterface::class),
             ),
         );
         $this->app->alias(
@@ -167,7 +203,11 @@ final class PlatformAdministrationServiceProvider extends ServiceProvider
         $this->app->singleton(
             LogoutPlatformSessionService::class,
             static fn (Application $application): LogoutPlatformSessionService => new LogoutPlatformSessionService(
+                $application->make(PlatformPrincipalResolverInterface::class),
                 $application->make(PlatformSessionStoreInterface::class),
+                $application->make(AuditEntryRecorderInterface::class),
+                $application->make(AuditCorrelationIdResolverInterface::class),
+                $application->make(LoggerInterface::class),
             ),
         );
     }
