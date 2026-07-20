@@ -25,7 +25,7 @@ final class ClinicOwnerSessionEndpointsTest extends TestCase
     {
         parent::setUp();
         config()->set('session.driver', 'array');
-        config()->set('tenant_management.session.login_attempts_per_minute', 2);
+        config()->set('request_protection.profiles.clinic_owner_session.max_attempts', 2);
         $this->app->bind(TenantContextResolverInterface::class, static fn (): TenantContextResolverInterface => new AcceptingContextResolver);
     }
 
@@ -93,7 +93,7 @@ final class ClinicOwnerSessionEndpointsTest extends TestCase
 
     public function test_transport_throttle_uses_the_approved_problem_category(): void
     {
-        config()->set('tenant_management.session.login_attempts_per_minute', 1);
+        config()->set('request_protection.profiles.clinic_owner_session.max_attempts', 1);
         $this->rejectAuthentication();
 
         $payload = ['email' => 'rate@example.test', 'password' => 'wrong'];

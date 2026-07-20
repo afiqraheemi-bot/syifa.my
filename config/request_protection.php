@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    /*
+    |--------------------------------------------------------------------------
+    | Request Protection Profiles
+    |--------------------------------------------------------------------------
+    |
+    | Named limiter profiles centralize transport-level abuse protection for
+    | authentication, administration, session, and public surfaces. Routes
+    | should reference only these names and never carry numeric limits.
+    |
+    */
+
+    'profiles' => [
+        'platform_login' => [
+            'limiter' => 'platform.login',
+            'max_attempts' => (int) env('REQUEST_PROTECTION_PLATFORM_LOGIN_MAX_ATTEMPTS', 5),
+            'decay_seconds' => (int) env('REQUEST_PROTECTION_PLATFORM_LOGIN_DECAY_SECONDS', 60),
+            'type' => 'authentication_temporarily_unavailable',
+            'title' => 'Authentication Temporarily Unavailable',
+            'detail' => 'Authentication is temporarily unavailable. Please try again later.',
+            'key_parts' => ['host', 'email', 'network'],
+        ],
+
+        'platform_session' => [
+            'limiter' => 'platform.session',
+            'max_attempts' => (int) env('REQUEST_PROTECTION_PLATFORM_SESSION_MAX_ATTEMPTS', 120),
+            'decay_seconds' => (int) env('REQUEST_PROTECTION_PLATFORM_SESSION_DECAY_SECONDS', 60),
+            'type' => 'session_temporarily_unavailable',
+            'title' => 'Session Temporarily Unavailable',
+            'detail' => 'Session access is temporarily unavailable. Please try again later.',
+            'key_parts' => ['host', 'actor', 'session', 'network'],
+        ],
+
+        'platform_administration' => [
+            'limiter' => 'platform.admin',
+            'max_attempts' => (int) env('REQUEST_PROTECTION_PLATFORM_ADMINISTRATION_MAX_ATTEMPTS', 240),
+            'decay_seconds' => (int) env('REQUEST_PROTECTION_PLATFORM_ADMINISTRATION_DECAY_SECONDS', 60),
+            'type' => 'administration_temporarily_unavailable',
+            'title' => 'Administration Temporarily Unavailable',
+            'detail' => 'Administrative access is temporarily unavailable. Please try again later.',
+            'key_parts' => ['host', 'tenant', 'actor', 'session', 'network'],
+        ],
+
+        'public' => [
+            'limiter' => 'public.default',
+            'max_attempts' => (int) env('REQUEST_PROTECTION_PUBLIC_MAX_ATTEMPTS', 120),
+            'decay_seconds' => (int) env('REQUEST_PROTECTION_PUBLIC_DECAY_SECONDS', 60),
+            'type' => 'public_access_temporarily_unavailable',
+            'title' => 'Public Access Temporarily Unavailable',
+            'detail' => 'Public access is temporarily unavailable. Please try again later.',
+            'key_parts' => ['host', 'tenant', 'network'],
+        ],
+
+        'clinic_owner_session' => [
+            'limiter' => 'clinic-owner-session',
+            'max_attempts' => (int) env('AUTH_LOGIN_ATTEMPTS_PER_MINUTE', 10),
+            'decay_seconds' => 60,
+            'type' => 'authentication_temporarily_unavailable',
+            'title' => 'Authentication Temporarily Unavailable',
+            'detail' => 'Authentication is temporarily unavailable. Please try again later.',
+            'key_parts' => ['host', 'email', 'network'],
+        ],
+    ],
+];

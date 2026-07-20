@@ -22,13 +22,19 @@ Route::prefix('api/v1')
 
 Route::prefix('api/v1/platform/sessions')
     ->group(function (): void {
-        Route::post('/', [PlatformSessionController::class, 'store']);
+        Route::post('/', [PlatformSessionController::class, 'store'])
+            ->middleware('throttle:platform.login');
         Route::get('/current', [PlatformSessionController::class, 'show'])
-            ->middleware(AuthenticatePlatformSessionMiddleware::class);
-        Route::delete('/current', [PlatformSessionController::class, 'destroy']);
+            ->middleware([
+                'throttle:platform.session',
+                AuthenticatePlatformSessionMiddleware::class,
+            ]);
+        Route::delete('/current', [PlatformSessionController::class, 'destroy'])
+            ->middleware('throttle:platform.session');
     });
 
 Route::prefix(ApiVersion::COMMERCIAL_CATALOGUE_PREFIX)
+    ->middleware('throttle:platform.admin')
     ->name('commercial-catalogue.')
     ->group(function (): void {
         Route::prefix('plans')
