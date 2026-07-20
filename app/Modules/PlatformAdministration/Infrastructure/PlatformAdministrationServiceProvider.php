@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\PlatformAdministration\Infrastructure;
 
+use App\Modules\PlatformAdministration\Application\AuditEntry\RecordAuditEntryService;
 use App\Modules\PlatformAdministration\Application\Authentication\AuthenticatePlatformSessionService;
 use App\Modules\PlatformAdministration\Application\Authentication\LogoutPlatformSessionService;
 use App\Modules\PlatformAdministration\Application\Authentication\PlatformPrincipalResolver;
 use App\Modules\PlatformAdministration\Application\Authorization\AuthorizePlatformActionService;
 use App\Modules\PlatformAdministration\Application\PlatformIdentity\GetPlatformIdentityService;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditCorrelationIdResolverInterface;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRepositoryInterface;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipalResolverInterface;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionAuthenticationInterface;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionStoreInterface;
@@ -21,6 +25,8 @@ use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdenti
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\CredentialVerificationInterface;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialLookupInterface;
 use App\Modules\PlatformAdministration\Domain\Authorization\PlatformAuthorizationService;
+use App\Modules\PlatformAdministration\Infrastructure\Persistence\AuditEntry\Mappers\AuditEntryPersistenceMapper;
+use App\Modules\PlatformAdministration\Infrastructure\Persistence\AuditEntry\PostgresAuditEntryRepository;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\Authorization\Mappers\PlatformAuthorizationPersistenceMapper;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\Authorization\PostgresCategoryGrantLookup;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\Authorization\PostgresPlatformAdministratorLookup;
