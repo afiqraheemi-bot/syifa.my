@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Commercial\Application;
+
+use App\Modules\Commercial\Application\Audit\CommercialOfferAuditTrail;
+use App\Modules\Commercial\Application\Exceptions\CommercialOfferNotFoundException;
+use App\Modules\Commercial\Application\Exceptions\CommercialOfferVersionMismatchException;
+use App\Modules\Commercial\Application\Exceptions\UntrustedCommercialOfferConsumerException;
+use App\Modules\Commercial\Contracts\Checkout\CommercialOfferCheckoutInterface;
+use App\Modules\Commercial\Contracts\Commands\MarkCommercialOfferConsumedCommand;
+use App\Modules\Commercial\Contracts\Data\CommercialOfferData;
+use App\Modules\Commercial\Contracts\Events\CommercialOfferEventPublisherInterface;
+use App\Modules\Commercial\Contracts\Repositories\CommercialOfferRepositoryInterface;
+use App\Modules\Commercial\Contracts\Transactions\CommercialTransactionInterface;
+use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferId;
+use DateTimeImmutable;
+
+final readonly class MarkCommercialOfferConsumedService implements CommercialOfferCheckoutInterface
+{
+    public function __construct(
+        private CommercialOfferRepositoryInterface $offers,
+        private CommercialOfferDataAssembler $data,
+        private CommercialOfferAuditTrail $audit,
+        private CommercialOfferEventPublisherInterface $events,
+        private TrustedCommercialOfferConsumers $trustedConsumers,
+        private CommercialTransactionInterface $transactions,
+    ) {}
+
+    public function offerForCheckout(string $commercialOfferId, string $trustedConsumer, DateTimeImmutable $occurredAt): ?CommercialOfferData
+    {
+        if (! $this->trustedConsumers->trusts($trustedConsumer)) {
+            throw new UntrustedCommercialOfferConsumerException('Commercial Offer consumer is not trusted.');
+        }
+
+        $offer = $this->offers->find(new CommercialOfferId($commercialOfferId));
+
+        if ($offer === null || $offer->isExpiredAt($occurredAt)) {
+            return null;
+        }
+
+        return $this->data->fromDomain($offer);
+    }
+
+    public function markConsumed(MarkCommercialOfferConsumedCommand $command): CommercialOfferData
+    {
+        if (! $this->trustedConsumers->trusts($command->trustedConsumer)) {
+            throw new UntrustedCommercialOfferConsumerException('Commercial Offer consumer is not trusted.');
+        }
+
+        return $this->transactions->run(function () use ($command): CommercialOfferData {
+            $offer = $this->offers->find(new CommercialOfferId($command->commercialOfferId));
+
+            if ($offer === null) {
+                throw new CommercialOfferNotFoundException('Commercial Offer was not found.');
+            }
+
+            if ($offer->version() !== $command->expectedVersion) {
+                throw new CommercialOfferVersionMismatchException('Commercial Offer version does not match.');
+            }
+
+            $offer->consume($command->occurredAt);
+            $this->offers->save($offer);
+            $this->audit->recordForSystem('commercial.offer.consume', $offer, $command->occurredAt, $command->correlationId);
+            $this->events->publish($offer->releaseEvents());
+
+            return $this->data->fromDomain($offer);
+        });
+    }
+}

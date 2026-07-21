@@ -144,7 +144,7 @@ final class CommercialCatalogueDomainFoundationArchitectureTest extends TestCase
         ], $this->phpFilesIn($this->module().'/Infrastructure/CommercialCatalogue'));
         self::assertSame([], $this->phpFilesIn($this->module().'/Presentation/CommercialCatalogue'));
 
-        self::assertSame([], glob($this->root().'/database/migrations/*commercial*') ?: []);
+        self::assertSame([], glob($this->root().'/database/migrations/*commercial_catalogue*') ?: []);
     }
 
     public function test_plan_has_no_embedded_price_capabilities_or_generic_status_setter(): void
