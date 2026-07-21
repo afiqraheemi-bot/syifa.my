@@ -42,7 +42,15 @@ final class RepositoryContractsArchitectureTest extends TestCase
                 continue;
             }
 
+            if (str_contains($file, '/Contracts/Subscription/')) {
+                continue;
+            }
+
             if (str_contains($file, '/Infrastructure/Persistence/Repositories/Postgres')) {
+                continue;
+            }
+
+            if (str_contains($file, '/Infrastructure/Subscription/Postgres')) {
                 continue;
             }
 

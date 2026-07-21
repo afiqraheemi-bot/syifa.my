@@ -17,6 +17,8 @@ use App\Modules\SubscriptionBilling\Application\Payment\PaymentDataAssembler;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGenerator;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGeneratorInterface;
 use App\Modules\SubscriptionBilling\Application\Payment\ProviderVerificationRetryPolicy;
+use App\Modules\SubscriptionBilling\Application\Subscription\AnnualTermCalculator;
+use App\Modules\SubscriptionBilling\Application\Subscription\SubscriptionActivationRetryPolicy;
 use App\Modules\SubscriptionBilling\Contracts\Authorization\CommercialCatalogueAuthorizationInterface;
 use App\Modules\SubscriptionBilling\Contracts\Authorization\PaymentProviderAdministrationAuthorizationInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\BillingOptionCatalogueQueryInterface;
@@ -43,7 +45,13 @@ use App\Modules\SubscriptionBilling\Contracts\Repositories\CapabilityDefinitionR
 use App\Modules\SubscriptionBilling\Contracts\Repositories\PlanOfferingRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\PlanRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\SubscriptionRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationApplicationRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationAuditInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationEvidenceRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationReconciliationCaseRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationTransactionInterface;
 use App\Modules\SubscriptionBilling\Infrastructure\Audit\PaymentAuditAdapter;
+use App\Modules\SubscriptionBilling\Infrastructure\Audit\SubscriptionActivationAuditAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\CommercialCataloguePlatformAuthorizationAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\PaymentProviderAdministrationAuthorization;
 use App\Modules\SubscriptionBilling\Infrastructure\CommercialCatalogue\CommercialCatalogueTransactionalService;
@@ -60,6 +68,7 @@ use App\Modules\SubscriptionBilling\Infrastructure\Payment\SystemProviderVerific
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\ToyyibPay\ToyyibPayPaymentProvider;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\CommercialCataloguePersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\PaymentPersistenceMapper;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionActivationApplicationPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresCommercialCatalogueQueryAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresBillingOptionRepository;
@@ -70,7 +79,11 @@ use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\Post
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentVerificationApplicationRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPlanOfferingRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPlanRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionActivationApplicationRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionActivationReconciliationCaseRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresSubscriptionActivationEvidenceRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresSubscriptionActivationTransaction;
 use App\Modules\SubscriptionBilling\Presentation\Contracts\ErrorResponseMapperInterface;
 use App\Modules\SubscriptionBilling\Presentation\Http\Responses\CommercialCatalogueErrorResponseMapper;
 use Illuminate\Contracts\Foundation\Application;
@@ -123,6 +136,14 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(PaymentIdentifierGeneratorInterface::class, PaymentIdentifierGenerator::class);
         $this->app->singleton(PaymentPersistenceMapper::class);
         $this->app->singleton(SubscriptionPersistenceMapper::class);
+        $this->app->singleton(SubscriptionActivationApplicationPersistenceMapper::class);
+        $this->app->singleton(AnnualTermCalculator::class);
+        $this->app->singleton(SubscriptionActivationRetryPolicy::class);
+        $this->app->singleton(SubscriptionActivationAuditInterface::class, SubscriptionActivationAuditAdapter::class);
+        $this->app->singleton(SubscriptionActivationTransactionInterface::class, PostgresSubscriptionActivationTransaction::class);
+        $this->app->singleton(SubscriptionActivationEvidenceRepositoryInterface::class, PostgresSubscriptionActivationEvidenceRepository::class);
+        $this->app->singleton(SubscriptionActivationApplicationRepositoryInterface::class, PostgresSubscriptionActivationApplicationRepository::class);
+        $this->app->singleton(SubscriptionActivationReconciliationCaseRepositoryInterface::class, PostgresSubscriptionActivationReconciliationCaseRepository::class);
         $this->app->singleton(PaymentAuditInterface::class, PaymentAuditAdapter::class);
         $this->app->singleton(PaymentApplicationRetryPolicy::class, static fn (): PaymentApplicationRetryPolicy => new PaymentApplicationRetryPolicy(
             (int) config('payment_providers.application.lease_seconds', 120),

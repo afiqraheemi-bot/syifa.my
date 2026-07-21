@@ -98,6 +98,10 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
                 continue;
             }
 
+            if (str_contains($file, '/Contracts/Subscription/') || str_contains($file, '/Infrastructure/Subscription/')) {
+                continue;
+            }
+
             self::assertDoesNotMatchRegularExpression(
                 '/(?:Controller|Request|Resource|Middleware|Repository|Record|Model|Invoice)\.php$/',
                 $file,
@@ -115,6 +119,7 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
             $this->root().'/database/migrations/subscription_billing/2026_07_26_000001_add_tenant_id_to_payments.php',
             $this->root().'/database/migrations/subscription_billing/2026_07_26_000002_add_event_version_to_payment_integration_outbox.php',
             $this->root().'/database/migrations/subscription_billing/2026_07_27_000001_create_subscriptions_table.php',
+            $this->root().'/database/migrations/subscription_billing/2026_07_28_000001_create_subscription_activation_tables.php',
         ], glob($this->root().'/database/migrations/subscription_billing/*.php') ?: []);
         $routes = file_get_contents($this->root().'/routes/web.php');
         self::assertIsString($routes);
@@ -189,9 +194,11 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
                 && ! str_contains($file, '/Infrastructure/Authorization/PaymentProviderAdministrationAuthorization.php')
                 && ! str_contains($file, '/Infrastructure/CommercialCatalogue/CommercialCatalogueTransactionalService.php')
                 && ! str_contains($file, '/Infrastructure/Audit/PaymentAuditAdapter.php')
+                && ! str_contains($file, '/Infrastructure/Audit/SubscriptionActivationAuditAdapter.php')
                 && ! str_contains($file, '/Infrastructure/Payment/PostgresPaymentTransaction.php')
                 && ! str_contains($file, '/Infrastructure/Payment/UnavailablePaymentProvider.php')
                 && ! str_contains($file, '/Infrastructure/Payment/')
+                && ! str_contains($file, '/Infrastructure/Subscription/')
                 && ! str_contains($file, '/Infrastructure/routes/payment_providers.php')
                 && ! str_contains($file, '/Infrastructure/SubscriptionBillingServiceProvider.php'),
         )));

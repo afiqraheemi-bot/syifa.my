@@ -91,17 +91,15 @@ final class TenantIdentityPropagationArchitectureTest extends TestCase
         self::assertStringContainsString('public ?string $reservedTenantId', $registrationData);
     }
 
-    public function test_no_subscription_activation_classes_tables_or_jobs_were_introduced(): void
+    public function test_subscription_activation_persistence_remains_dormant_without_jobs_or_outbox(): void
     {
         self::assertDirectoryDoesNotExist($this->root().'/app/Modules/SubscriptionBilling/Domain/Aggregates/Subscription/Persistence');
-        self::assertFileDoesNotExist($this->root().'/app/Modules/SubscriptionBilling/Contracts/Subscription/SubscriptionActivationApplication.php');
+        self::assertFileExists($this->root().'/app/Modules/SubscriptionBilling/Contracts/Subscription/SubscriptionActivationApplication.php');
         self::assertFileDoesNotExist($this->root().'/app/Modules/SubscriptionBilling/Infrastructure/Subscription/ActivateSubscriptionJob.php');
         self::assertFileDoesNotExist($this->root().'/app/Modules/SubscriptionBilling/Infrastructure/Subscription/PublishSubscriptionOutboxJob.php');
 
         foreach (glob($this->root().'/database/migrations/*/*.php') ?: [] as $migration) {
             $source = $this->source($migration);
-            self::assertStringNotContainsString("Schema::create('subscription_activation_applications'", $source, $migration);
-            self::assertStringNotContainsString("Schema::create('subscription_activation_reconciliation_cases'", $source, $migration);
             self::assertStringNotContainsString("Schema::create('subscription_integration_outbox'", $source, $migration);
         }
     }
