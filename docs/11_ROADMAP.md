@@ -64,6 +64,7 @@ Only the current phase should contain detailed delivery commitments. Numeric dat
 ### Outcomes
 
 - Deliver the capabilities defined in [02_MVP_SCOPE.md](./02_MVP_SCOPE.md) as one coherent, operable service.
+- Deliver the ADR-008 Stripe Malaysia adapter only after sandbox proof of hosted MYR FPX/cards, signed duplicate/out-of-order webhooks, authoritative verification, idempotent creation, expiry and late-success reconciliation; recurring billing remains deferred.
 - Establish automated delivery, tenant-isolation enforcement, secure identity, audit, monitoring, backup, restore, and support tooling.
 - Validate critical public, clinic, and operator journeys for accessibility and usability.
 - Complete customer terms, privacy information, onboarding, offboarding, support, and incident procedures.
@@ -74,6 +75,7 @@ Only the current phase should contain detailed delivery commitments. Numeric dat
 - MVP release acceptance and all relevant quality gates pass.
 - No unresolved critical or unaccepted high-risk security, isolation, privacy, data-integrity, or accessibility issue remains.
 - Pilot support, escalation, telemetry, rollback, recovery, and customer communication are ready.
+- Stripe merchant/category approval, written fees and payout terms, reconciliation exports, refund/dispute runbooks and support escalation are approved before live payment traffic.
 - Pilot tenants, consent, success measures, feedback process, and stop conditions are approved.
 
 ## Phase 2: Controlled Pilot

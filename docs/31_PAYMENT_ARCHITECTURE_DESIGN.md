@@ -2,7 +2,7 @@
 
 ## Status
 
-Architecture design for SYIFA-090A. This document is implementation-ready after CTO approval, but it does not itself authorize implementation.
+Current provider-neutral architecture design. ADR-008 selects Stripe Malaysia for the Phase 1 Infrastructure adapter without changing the Domain model.
 
 ## Document Authority
 
@@ -463,7 +463,7 @@ They must not expose:
 
 ### Provider selection
 
-Provider selection is deferred from Payment Core. SYIFA-090B implements provider-neutral Payment Core only. SYIFA-090C implements the selected Payment Provider Integration after provider approval.
+ADR-008 selects Stripe Malaysia for Phase 1, using hosted Checkout with one-off MYR FPX and Malaysian cards. SYIFA-090C implements that adapter only after the ADR's sandbox capability gate. The selection does not change this provider-neutral contract.
 
 The Domain knows only `PaymentProviderCode`.
 
@@ -1137,14 +1137,14 @@ A local cancellation must not falsely claim that the provider transaction was ca
 - Storing raw provider payloads would increase privacy and secret-management risk.
 - Claiming CommercialOffer too early could block legitimate retries; claiming it too late could permit duplicate payment starts. The implementation must define the exact idempotent handoff with Commercial.
 - Webhook endpoints can become a hidden authorization bypass if signature verification and replay protection are not centralized.
-- Payment provider selection remains open; the abstraction must be stable enough for future providers but not become a generic payment engine.
+- Stripe-specific concepts leaking beyond Infrastructure would undermine ADR-008's exit strategy; the abstraction must remain stable without becoming a generic payment engine.
 
 ## 25. Open Questions
 
-1. Which Payment provider is approved for Phase 1?
-2. Which provider-compatible HTTP status mapping is required for each fixed webhook response policy outcome?
-3. What retention period applies to Payment history, webhook receipts, and safe provider metadata? This remains deferred pending legal, accounting, and payment-provider contractual requirements and is a production-readiness decision, not a blocker for Payment Core Domain implementation.
-4. What is the approved operational policy for cancelling pending/action-required payments?
+1. Which Stripe-compatible HTTP status mapping applies to each fixed webhook response-policy outcome?
+2. What retention period applies to Payment history, webhook receipts, and safe provider metadata? This remains deferred pending legal, accounting, and Stripe contractual requirements and is a production-readiness decision.
+3. What is the approved operational policy for cancelling pending/action-required payments?
+4. What approved reconciliation representation records late verified success without weakening terminal Domain states?
 5. Should a future ADR allow Clinic Owner self-service payment initiation, or does Phase 1 remain platform-assisted only?
 
 ## 26. Quality Gate Assertions

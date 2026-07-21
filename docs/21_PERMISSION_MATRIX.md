@@ -444,6 +444,8 @@ Nineteen resources, matching 20_API_DESIGN.md's Resource Catalogue exactly. Colu
 
 Phase 1 Payment initiation is platform-assisted only. It may be performed only by an authenticated Platform Identity that owns the relevant Clinic Registration and owns the CommercialOffer being claimed. Ownership is derived from the trusted PlatformPrincipal, never from client-supplied identity fields. Clinic Owner self-service Payment initiation requires a future ADR or approved implementation decision.
 
+ADR-008 does not grant Stripe or its webhook caller a platform role. The provider endpoint is authenticated by raw-body signature/timestamp validation and may only request provider verification/reconciliation. It cannot initiate Payment, bypass CommercialOffer ownership, or authorize downstream provisioning. Browser return grants no permission and is not payment proof.
+
 ### 1.16 Onboarding Jobs
 
 | Action | PV | CO | WD | SA |

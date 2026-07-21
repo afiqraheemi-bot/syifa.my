@@ -2,7 +2,7 @@
 
 ## Status
 
-Current as of SYIFA-085A.
+Current as of SYIFA-090C.0.
 
 ## Purpose
 
@@ -18,6 +18,7 @@ This document is the governance index for architecture decisions and architectur
 | [ADR-005](./decisions/ADR-005-Platform-Identity.md) | Platform Identity | Active | Defines platform workforce identity, PlatformPrincipal, browser-session authentication, and separation from Tenant-owned identities. |
 | [ADR-006](./decisions/ADR-006-Commercial.md) | Commercial | Active | Defines Commercial module, CommercialOffer Aggregate Root, immutable checkout snapshot, reference-data consumption, TTL, and non-goals. Supersedes ADR-004 for current aggregate registry. |
 | [ADR-007](./decisions/ADR-007-Provisioning-Orchestrator.md) | Provisioning Orchestrator | Active | Defines architecture-only orchestration sequence and transaction/idempotency rules. |
+| [ADR-008](./decisions/ADR-008-Phase-1-Payment-Provider.md) | Phase 1 Payment Provider | Active | Selects Stripe Malaysia hosted Checkout for one-off MYR FPX and cards, with webhook notification plus provider verification and a provider-neutral exit strategy. |
 
 ## Superseded ADRs
 
@@ -60,6 +61,8 @@ No ADR is deprecated as of SYIFA-085A.
 | [26_ARCHITECTURE_FREEZE_V1.md](./26_ARCHITECTURE_FREEZE_V1.md) | Current | Consolidated active architecture index. |
 | [27_AUTHENTICATION_FOUNDATION.md](./27_AUTHENTICATION_FOUNDATION.md) | Superseded in part | Platform workforce identity placement is superseded by ADR-005. Remaining authentication-foundation rationale is retained as historical implementation context. |
 | [28_COMMERCIAL_CATALOGUE_SPECIFICATION.md](./28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) | Current with scope clarification | Remains authoritative for Commercial Catalogue reference data inside Subscription Billing. It does not govern CommercialOffer checkout snapshots, which are governed by ADR-006. |
+| [31_PAYMENT_ARCHITECTURE_DESIGN.md](./31_PAYMENT_ARCHITECTURE_DESIGN.md) | Current | Provider-neutral Payment design, refined by ADR-008 for the Phase 1 adapter. |
+| [32_PAYMENT_PROVIDER_EVALUATION.md](./32_PAYMENT_PROVIDER_EVALUATION.md) | Current, time-sensitive | Official-source provider comparison and 2026-07-21 pricing snapshot supporting ADR-008. |
 
 ## Governance Notes
 

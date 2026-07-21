@@ -56,6 +56,18 @@ The bounded context that owns Clinic Service and Booking behavior. It governs bo
 
 The Subscription Billing Aggregate Root responsible for payment execution and reconciliation. Payment may claim a CommercialOffer snapshot but does not own checkout preparation, pricing, Subscription activation, Tenant provisioning, or Onboarding.
 
+## Payment Provider
+
+An external collection and verification service isolated behind `PaymentProviderInterface`. Stripe Malaysia is the approved Phase 1 provider under ADR-008; this selection does not add Stripe terminology to Payment Domain.
+
+## ProviderWebhookReceipt
+
+An append-only Infrastructure/Application idempotency record, not an Aggregate entity. Its uniqueness boundary is `(provider_key, provider_event_id)`. It records safe delivery and processing evidence without permanently retaining raw payment payloads.
+
+## Late Success
+
+A provider payment verified as successful after SYIFA's local checkout window or Payment expiry. Money received is never discarded, but downstream provisioning is blocked for controlled reconciliation because local expiry, provider expiry, financial success and provisioning eligibility are distinct facts.
+
 ## Provisioning Orchestrator
 
 An architecture coordination pattern, not an Aggregate Root or bounded context. It coordinates the sequence Platform Identity → Clinic Registration → Commercial → Payment → Subscription → Tenant Provisioning → Internal Onboarding using contracts, events, idempotency, and module-owned transactions.
