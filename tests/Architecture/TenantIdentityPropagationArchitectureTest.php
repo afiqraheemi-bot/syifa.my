@@ -100,7 +100,6 @@ final class TenantIdentityPropagationArchitectureTest extends TestCase
 
         foreach (glob($this->root().'/database/migrations/*/*.php') ?: [] as $migration) {
             $source = $this->source($migration);
-            self::assertStringNotContainsString("Schema::create('subscriptions'", $source, $migration);
             self::assertStringNotContainsString("Schema::create('subscription_activation_applications'", $source, $migration);
             self::assertStringNotContainsString("Schema::create('subscription_activation_reconciliation_cases'", $source, $migration);
             self::assertStringNotContainsString("Schema::create('subscription_integration_outbox'", $source, $migration);

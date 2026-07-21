@@ -11,7 +11,7 @@ use SplFileInfo;
 
 final class RepositoryContractsArchitectureTest extends TestCase
 {
-    public function test_exactly_four_repository_interfaces_exist(): void
+    public function test_exactly_five_repository_interfaces_exist(): void
     {
         $root = dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling/Contracts/Repositories';
 
@@ -21,6 +21,7 @@ final class RepositoryContractsArchitectureTest extends TestCase
                 'CapabilityDefinitionRepositoryInterface.php',
                 'PlanOfferingRepositoryInterface.php',
                 'PlanRepositoryInterface.php',
+                'SubscriptionRepositoryInterface.php',
             ],
             $this->phpBasenamesIn($root),
         );

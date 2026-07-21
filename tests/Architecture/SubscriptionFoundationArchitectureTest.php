@@ -94,6 +94,10 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
                 continue;
             }
 
+            if ($file === $module.'/Contracts/Repositories/SubscriptionRepositoryInterface.php') {
+                continue;
+            }
+
             self::assertDoesNotMatchRegularExpression(
                 '/(?:Controller|Request|Resource|Middleware|Repository|Record|Model|Invoice)\.php$/',
                 $file,
@@ -110,6 +114,7 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
             $this->root().'/database/migrations/subscription_billing/2026_07_25_000001_create_payment_verification_application_tables.php',
             $this->root().'/database/migrations/subscription_billing/2026_07_26_000001_add_tenant_id_to_payments.php',
             $this->root().'/database/migrations/subscription_billing/2026_07_26_000002_add_event_version_to_payment_integration_outbox.php',
+            $this->root().'/database/migrations/subscription_billing/2026_07_27_000001_create_subscriptions_table.php',
         ], glob($this->root().'/database/migrations/subscription_billing/*.php') ?: []);
         $routes = file_get_contents($this->root().'/routes/web.php');
         self::assertIsString($routes);

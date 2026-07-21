@@ -19,9 +19,12 @@ use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\Subscription;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\BillingCycleId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\BillingPeriod;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\CapabilityKey;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\ClinicRegistrationId;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\CommercialOfferId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\Entitlement;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\EntitlementStatus;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\Money;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\PaymentId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\PlanId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\SubscriptionId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\SubscriptionStatus;
@@ -43,6 +46,9 @@ final class SubscriptionTest extends TestCase
         self::assertSame(12500, $subscription->price()->amountMinor);
         self::assertSame('MYR', $subscription->price()->currencyCode);
         self::assertSame($this->uuid(2), $subscription->tenantId->value);
+        self::assertSame($this->uuid(5), $subscription->clinicRegistrationId->value);
+        self::assertSame($this->uuid(6), $subscription->paymentId->value);
+        self::assertSame($this->uuid(7), $subscription->commercialOfferId->value);
         self::assertSame(0, $subscription->version());
         self::assertFalse($subscription->hasCapability(new CapabilityKey('configured.capability')));
         $events = $subscription->releaseDomainEvents();
@@ -114,6 +120,9 @@ final class SubscriptionTest extends TestCase
         Subscription::create(
             new SubscriptionId($this->uuid(1)),
             new TenantId($this->uuid(2)),
+            new ClinicRegistrationId($this->uuid(5)),
+            new PaymentId($this->uuid(6)),
+            new CommercialOfferId($this->uuid(7)),
             new PlanId($this->uuid(3)),
             new BillingCycleId($this->uuid(4)),
             new Money(12500, 'MYR'),
@@ -384,6 +393,9 @@ final class SubscriptionTest extends TestCase
         Subscription::reconstitute(
             new SubscriptionId($this->uuid(1)),
             new TenantId($this->uuid(2)),
+            new ClinicRegistrationId($this->uuid(5)),
+            new PaymentId($this->uuid(6)),
+            new CommercialOfferId($this->uuid(7)),
             $plan,
             $cycle,
             new Money(12500, 'MYR'),
@@ -460,6 +472,9 @@ final class SubscriptionTest extends TestCase
         yield 'reversed period' => [static fn () => new BillingPeriod('2026-07-02', '2026-07-01')];
         yield 'invalid capability key' => [static fn () => new CapabilityKey('Not Configured')];
         yield 'invalid identifier' => [static fn () => new SubscriptionId('not-a-uuid')];
+        yield 'invalid clinic registration identifier' => [static fn () => new ClinicRegistrationId('not-a-uuid')];
+        yield 'invalid payment identifier' => [static fn () => new PaymentId('not-a-uuid')];
+        yield 'invalid commercial offer identifier' => [static fn () => new CommercialOfferId('not-a-uuid')];
     }
 
     private function activeSubscription(): Subscription
@@ -478,6 +493,9 @@ final class SubscriptionTest extends TestCase
         return Subscription::create(
             new SubscriptionId($this->uuid(1)),
             new TenantId($this->uuid(2)),
+            new ClinicRegistrationId($this->uuid(5)),
+            new PaymentId($this->uuid(6)),
+            new CommercialOfferId($this->uuid(7)),
             $plan,
             $cycle,
             new Money(12500, 'MYR'),
@@ -498,6 +516,9 @@ final class SubscriptionTest extends TestCase
         return Subscription::reconstitute(
             new SubscriptionId($this->uuid(1)),
             new TenantId($this->uuid(2)),
+            new ClinicRegistrationId($this->uuid(5)),
+            new PaymentId($this->uuid(6)),
+            new CommercialOfferId($this->uuid(7)),
             $plan,
             $cycle,
             new Money(12500, 'MYR'),

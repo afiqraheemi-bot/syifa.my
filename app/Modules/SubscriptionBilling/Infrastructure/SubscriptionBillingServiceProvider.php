@@ -42,6 +42,7 @@ use App\Modules\SubscriptionBilling\Contracts\Repositories\BillingOptionReposito
 use App\Modules\SubscriptionBilling\Contracts\Repositories\CapabilityDefinitionRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\PlanOfferingRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\PlanRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Repositories\SubscriptionRepositoryInterface;
 use App\Modules\SubscriptionBilling\Infrastructure\Audit\PaymentAuditAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\CommercialCataloguePlatformAuthorizationAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\PaymentProviderAdministrationAuthorization;
@@ -59,6 +60,7 @@ use App\Modules\SubscriptionBilling\Infrastructure\Payment\SystemProviderVerific
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\ToyyibPay\ToyyibPayPaymentProvider;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\CommercialCataloguePersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\PaymentPersistenceMapper;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresCommercialCatalogueQueryAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresBillingOptionRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresCapabilityDefinitionRepository;
@@ -68,6 +70,7 @@ use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\Post
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentVerificationApplicationRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPlanOfferingRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPlanRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionRepository;
 use App\Modules\SubscriptionBilling\Presentation\Contracts\ErrorResponseMapperInterface;
 use App\Modules\SubscriptionBilling\Presentation\Http\Responses\CommercialCatalogueErrorResponseMapper;
 use Illuminate\Contracts\Foundation\Application;
@@ -119,6 +122,7 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(PaymentDataAssembler::class);
         $this->app->singleton(PaymentIdentifierGeneratorInterface::class, PaymentIdentifierGenerator::class);
         $this->app->singleton(PaymentPersistenceMapper::class);
+        $this->app->singleton(SubscriptionPersistenceMapper::class);
         $this->app->singleton(PaymentAuditInterface::class, PaymentAuditAdapter::class);
         $this->app->singleton(PaymentApplicationRetryPolicy::class, static fn (): PaymentApplicationRetryPolicy => new PaymentApplicationRetryPolicy(
             (int) config('payment_providers.application.lease_seconds', 120),
@@ -184,6 +188,13 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
                     $application->make(PaymentPersistenceMapper::class),
                 );
             },
+        );
+        $this->app->singleton(
+            SubscriptionRepositoryInterface::class,
+            static fn (Application $application): PostgresSubscriptionRepository => new PostgresSubscriptionRepository(
+                $application->make('db')->connection(),
+                $application->make(SubscriptionPersistenceMapper::class),
+            ),
         );
         $this->app->singleton(
             ProviderWebhookReceiptRepositoryInterface::class,

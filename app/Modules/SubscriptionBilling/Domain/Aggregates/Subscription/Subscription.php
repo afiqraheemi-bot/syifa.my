@@ -17,9 +17,12 @@ use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\Exceptions\In
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\BillingCycleId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\BillingPeriod;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\CapabilityKey;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\ClinicRegistrationId;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\CommercialOfferId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\Entitlement;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\EntitlementStatus;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\Money;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\PaymentId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\PlanId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\SubscriptionId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\SubscriptionStatus;
@@ -34,6 +37,9 @@ final class Subscription
     private function __construct(
         public readonly SubscriptionId $id,
         public readonly TenantId $tenantId,
+        public readonly ClinicRegistrationId $clinicRegistrationId,
+        public readonly PaymentId $paymentId,
+        public readonly CommercialOfferId $commercialOfferId,
         private PlanId $planId,
         private BillingCycleId $billingCycleId,
         private Money $price,
@@ -48,6 +54,9 @@ final class Subscription
     public static function create(
         SubscriptionId $id,
         TenantId $tenantId,
+        ClinicRegistrationId $clinicRegistrationId,
+        PaymentId $paymentId,
+        CommercialOfferId $commercialOfferId,
         PlanId $planId,
         BillingCycleId $billingCycleId,
         Money $price,
@@ -63,6 +72,9 @@ final class Subscription
         $subscription = new self(
             $id,
             $tenantId,
+            $clinicRegistrationId,
+            $paymentId,
+            $commercialOfferId,
             $planId,
             $billingCycleId,
             $price,
@@ -87,6 +99,9 @@ final class Subscription
     public static function reconstitute(
         SubscriptionId $id,
         TenantId $tenantId,
+        ClinicRegistrationId $clinicRegistrationId,
+        PaymentId $paymentId,
+        CommercialOfferId $commercialOfferId,
         PlanId $planId,
         BillingCycleId $billingCycleId,
         Money $price,
@@ -115,6 +130,9 @@ final class Subscription
         return new self(
             $id,
             $tenantId,
+            $clinicRegistrationId,
+            $paymentId,
+            $commercialOfferId,
             $planId,
             $billingCycleId,
             $price,
