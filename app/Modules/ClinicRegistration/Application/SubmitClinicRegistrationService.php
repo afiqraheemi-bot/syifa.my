@@ -12,11 +12,13 @@ use App\Modules\ClinicRegistration\Contracts\Data\ClinicRegistrationData;
 use App\Modules\ClinicRegistration\Contracts\Events\ClinicRegistrationEventPublisherInterface;
 use App\Modules\ClinicRegistration\Contracts\Repositories\ClinicRegistrationRepositoryInterface;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\TenantId;
 
 final readonly class SubmitClinicRegistrationService
 {
     public function __construct(
         private ClinicRegistrationRepositoryInterface $registrations,
+        private ClinicRegistrationTenantIdGeneratorInterface $tenantIds,
         private ClinicRegistrationDataAssembler $data,
         private ClinicRegistrationAuditTrail $audit,
         private ClinicRegistrationEventPublisherInterface $events,
@@ -34,7 +36,8 @@ final readonly class SubmitClinicRegistrationService
             throw new ClinicRegistrationVersionMismatchException('Clinic registration version does not match.');
         }
 
-        $registration->submit($command->occurredAt);
+        $tenantId = $registration->reservedTenantId ?? new TenantId($this->tenantIds->generate());
+        $registration->submit($tenantId, $command->occurredAt);
         $this->registrations->save($registration);
         $this->audit->record('clinic_registration.submit', $registration, $command->occurredAt, $command->correlationId);
         $this->events->publish($registration->releaseEvents());

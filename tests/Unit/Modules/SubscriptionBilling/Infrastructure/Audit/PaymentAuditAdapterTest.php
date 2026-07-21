@@ -15,6 +15,7 @@ use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\Payme
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentReference;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentStatus;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\TenantId;
 use App\Modules\SubscriptionBilling\Infrastructure\Audit\PaymentAuditAdapter;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -167,6 +168,7 @@ final class PaymentAuditAdapterTest extends TestCase
             commercialOfferId: new PaymentReference('offer-1'),
             clinicRegistrationId: new PaymentReference('clinic-1'),
             platformIdentityId: new PaymentReference($platformIdentityId),
+            tenantId: new TenantId('00000000-0000-4000-8000-000000000014'),
             amount: new PaymentAmount(2550),
             currency: new PaymentCurrency('MYR'),
             idempotencyKey: new IdempotencyKey('idem-1'),

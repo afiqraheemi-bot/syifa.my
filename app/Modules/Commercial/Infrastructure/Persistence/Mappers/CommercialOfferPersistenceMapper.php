@@ -13,6 +13,7 @@ use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferStatus;
 use App\Modules\Commercial\Domain\ValueObjects\OfferExpiry;
 use App\Modules\Commercial\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\Commercial\Domain\ValueObjects\PriceSnapshot;
+use App\Modules\Commercial\Domain\ValueObjects\TenantId;
 use App\Modules\Commercial\Infrastructure\Persistence\Records\CommercialOfferLineItemStorageRecord;
 use App\Modules\Commercial\Infrastructure\Persistence\Records\CommercialOfferStorageRecord;
 
@@ -26,6 +27,7 @@ final class CommercialOfferPersistenceMapper
             $offer->id->value,
             $offer->platformIdentity->value,
             $offer->clinicRegistration->value,
+            $offer->tenantId?->value,
             $offer->status->value,
             $snapshot->planOfferingId,
             $snapshot->planId,
@@ -79,6 +81,7 @@ final class CommercialOfferPersistenceMapper
             id: new CommercialOfferId($record->id),
             platformIdentity: new PlatformIdentityReference($record->platformIdentityId),
             clinicRegistration: new ClinicRegistrationReference($record->clinicRegistrationId),
+            tenantId: $record->tenantId === null ? null : new TenantId($record->tenantId),
             status: CommercialOfferStatus::from($record->status),
             checkoutSnapshot: new CheckoutSnapshot(
                 $record->planOfferingId,

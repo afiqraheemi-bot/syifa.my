@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\Commercial;
 
+use App\Modules\ClinicRegistration\Contracts\Data\ClinicRegistrationData;
+use App\Modules\ClinicRegistration\Contracts\Queries\ClinicRegistrationQueryInterface;
 use App\Modules\Commercial\Application\CommercialOfferIdentifierGeneratorInterface;
 use App\Modules\Commercial\Contracts\Events\CommercialOfferEventPublisherInterface;
 use App\Modules\Commercial\Contracts\ReferenceData\PlanOfferingQueryInterface;
@@ -53,6 +55,7 @@ final class CommercialOfferApiTest extends TestCase
         $this->app->instance(CommercialTransactionInterface::class, new FeatureCommercialTransaction);
         $this->app->instance(CommercialOfferIdentifierGeneratorInterface::class, new FeatureCommercialOfferIdentifierGenerator([$this->uuid(10)]));
         $this->app->instance(PlatformPrincipalResolverInterface::class, $this->principals);
+        $this->app->instance(ClinicRegistrationQueryInterface::class, new FeatureClinicRegistrationQuery($this->uuid(3), $this->uuid(6)));
     }
 
     public function test_authenticated_platform_identity_can_prepare_view_and_cancel_offer(): void
@@ -179,6 +182,36 @@ final class FeaturePlanOfferingQuery implements PlanOfferingQueryInterface
         }
 
         return null;
+    }
+}
+
+final class FeatureClinicRegistrationQuery implements ClinicRegistrationQueryInterface
+{
+    public function __construct(private string $registrationId, private ?string $reservedTenantId) {}
+
+    public function currentForPlatformIdentity(string $platformIdentityId): ?ClinicRegistrationData
+    {
+        return new ClinicRegistrationData(
+            $this->registrationId,
+            $platformIdentityId,
+            'submitted',
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            $this->registrationId,
+            $this->reservedTenantId,
+            null,
+            '2026-07-21T00:00:00+00:00',
+            null,
+            null,
+            null,
+            1,
+            [],
+        );
     }
 }
 

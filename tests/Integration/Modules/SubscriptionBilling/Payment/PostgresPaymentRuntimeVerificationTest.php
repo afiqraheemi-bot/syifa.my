@@ -17,6 +17,7 @@ use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferLineItem;
 use App\Modules\Commercial\Domain\ValueObjects\OfferExpiry;
 use App\Modules\Commercial\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\Commercial\Domain\ValueObjects\PriceSnapshot;
+use App\Modules\Commercial\Domain\ValueObjects\TenantId as CommercialTenantId;
 use App\Modules\Commercial\Infrastructure\Persistence\Mappers\CommercialOfferPersistenceMapper;
 use App\Modules\Commercial\Infrastructure\Persistence\Repositories\PostgresCommercialOfferRepository;
 use App\Modules\Commercial\Infrastructure\Transactions\PostgresCommercialTransaction;
@@ -333,6 +334,8 @@ final class PostgresPaymentRuntimeVerificationTest extends TestCase
         foreach ([
             'database/migrations/commercial/2026_07_21_000001_create_commercial_offer_tables.php',
             'database/migrations/subscription_billing/2026_07_21_000002_create_payment_core_tables.php',
+            'database/migrations/commercial/2026_07_26_000001_add_tenant_id_to_commercial_offers.php',
+            'database/migrations/subscription_billing/2026_07_26_000001_add_tenant_id_to_payments.php',
         ] as $path) {
             $migration = require base_path($path);
             self::assertInstanceOf(Migration::class, $migration);
@@ -347,6 +350,7 @@ final class PostgresPaymentRuntimeVerificationTest extends TestCase
             new CommercialOfferId($this->uuid(11)),
             new PlatformIdentityReference($this->uuid(2)),
             new ClinicRegistrationReference($this->uuid(3)),
+            new CommercialTenantId($this->uuid(6)),
             new CheckoutSnapshot(
                 'offering-basic-monthly',
                 'plan-basic',

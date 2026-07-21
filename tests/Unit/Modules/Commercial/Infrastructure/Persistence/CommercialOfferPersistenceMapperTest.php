@@ -13,6 +13,7 @@ use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferStatus;
 use App\Modules\Commercial\Domain\ValueObjects\OfferExpiry;
 use App\Modules\Commercial\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\Commercial\Domain\ValueObjects\PriceSnapshot;
+use App\Modules\Commercial\Domain\ValueObjects\TenantId;
 use App\Modules\Commercial\Infrastructure\Persistence\Mappers\CommercialOfferPersistenceMapper;
 use App\Modules\Commercial\Infrastructure\Persistence\Records\CommercialOfferLineItemStorageRecord;
 use App\Modules\Commercial\Infrastructure\Persistence\Records\CommercialOfferStorageRecord;
@@ -33,6 +34,7 @@ final class CommercialOfferPersistenceMapperTest extends TestCase
         self::assertSame('prepared', $record->status);
         self::assertSame(3000, $record->totalAmountMinor);
         self::assertSame('MYR', $record->currency);
+        self::assertSame($this->uuid(6), $record->tenantId);
         self::assertCount(1, $lineItems);
         self::assertSame('plan_offering', $lineItems[0]->itemType);
     }
@@ -44,6 +46,7 @@ final class CommercialOfferPersistenceMapperTest extends TestCase
             $this->uuid(1),
             $this->uuid(2),
             $this->uuid(3),
+            $this->uuid(6),
             'prepared',
             'offering-basic-monthly',
             'plan-basic',
@@ -81,6 +84,7 @@ final class CommercialOfferPersistenceMapperTest extends TestCase
 
         self::assertSame(CommercialOfferStatus::Prepared, $offer->status);
         self::assertSame(5, $offer->version());
+        self::assertSame($this->uuid(6), $offer->tenantId?->value);
         self::assertSame([], $offer->releaseEvents());
     }
 
@@ -90,6 +94,7 @@ final class CommercialOfferPersistenceMapperTest extends TestCase
             new CommercialOfferId($this->uuid(1)),
             new PlatformIdentityReference($this->uuid(2)),
             new ClinicRegistrationReference($this->uuid(3)),
+            new TenantId($this->uuid(6)),
             new CheckoutSnapshot(
                 'offering-basic-monthly',
                 'plan-basic',

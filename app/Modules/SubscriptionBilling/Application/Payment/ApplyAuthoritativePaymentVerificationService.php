@@ -119,7 +119,7 @@ final readonly class ApplyAuthoritativePaymentVerificationService
         $this->payments->save($payment);
         $this->audit->record('payment.verification.applied', $payment->id->value, $id, $now, $this->metadata($receipt, PaymentVerificationApplicationResultCode::Applied));
         if (is_string($event)) {
-            $this->outbox->add($this->eventId($id, $event), $event, $payment->id->value, ['payment_id' => $payment->id->value, 'receipt_id' => $receipt->id], $now);
+            $this->outbox->add($this->eventId($id, $event), $event, $payment->id->value, ['payment_id' => $payment->id->value, 'receipt_id' => $receipt->id], $now, eventVersion: 1);
         }
         $this->finish($id, $token, PaymentVerificationApplicationStatus::Applied, PaymentVerificationApplicationResultCode::Applied, $now);
     }

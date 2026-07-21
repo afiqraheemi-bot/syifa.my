@@ -8,6 +8,7 @@ use App\Modules\ClinicRegistration\Application\Audit\ClinicRegistrationAuditTrai
 use App\Modules\ClinicRegistration\Application\CancelClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationDataAssembler;
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationIdentifierGeneratorInterface;
+use App\Modules\ClinicRegistration\Application\ClinicRegistrationTenantIdGeneratorInterface;
 use App\Modules\ClinicRegistration\Application\CompleteClinicRegistrationFromTrustedHandoffService;
 use App\Modules\ClinicRegistration\Application\Exceptions\ClinicRegistrationNotFoundException;
 use App\Modules\ClinicRegistration\Application\Exceptions\ClinicRegistrationVersionMismatchException;
@@ -87,7 +88,7 @@ final class ClinicRegistrationApplicationServicesTest extends TestCase
         $updated = (new UpdateClinicRegistrationDraftService($repository, $assembler, $auditTrail, $events))->execute(
             $this->updateCommand(expectedVersion: 1),
         );
-        $submitted = (new SubmitClinicRegistrationService($repository, $assembler, $auditTrail, $events))->execute(
+        $submitted = (new SubmitClinicRegistrationService($repository, new SequentialTenantIdGenerator([$this->uuid(30)]), $assembler, $auditTrail, $events))->execute(
             new SubmitClinicRegistrationCommand($this->uuid(21), 2, $this->occurredAt(), $this->uuid(94)),
         );
         $viewed = (new ViewCurrentClinicRegistrationService($repository, $assembler))->execute($this->uuid(21));
@@ -97,6 +98,7 @@ final class ClinicRegistrationApplicationServicesTest extends TestCase
 
         self::assertSame('Klinik Syifa', $updated->clinicName);
         self::assertSame('submitted', $submitted->status);
+        self::assertSame($this->uuid(30), $submitted->reservedTenantId);
         self::assertSame($submitted->id, $viewed?->id);
         self::assertSame('cancelled', $cancelled->status);
         self::assertSame([
@@ -149,7 +151,7 @@ final class ClinicRegistrationApplicationServicesTest extends TestCase
             new StartClinicRegistrationCommand($this->uuid(21), $this->occurredAt(), $this->uuid(97)),
         );
         (new UpdateClinicRegistrationDraftService($repository, $assembler, $auditTrail, $events))->execute($this->updateCommand(expectedVersion: 1));
-        (new SubmitClinicRegistrationService($repository, $assembler, $auditTrail, $events))->execute(
+        (new SubmitClinicRegistrationService($repository, new SequentialTenantIdGenerator([$this->uuid(31)]), $assembler, $auditTrail, $events))->execute(
             new SubmitClinicRegistrationCommand($this->uuid(21), 2, $this->occurredAt(), $this->uuid(98)),
         );
 
@@ -181,6 +183,35 @@ final class ClinicRegistrationApplicationServicesTest extends TestCase
             $this->occurredAt(),
             $this->uuid(100),
         ));
+    }
+
+    public function test_submit_retry_after_success_does_not_generate_a_different_tenant_id(): void
+    {
+        $repository = new InMemoryClinicRegistrationRepository;
+        $audit = new RecordingAuditEntryRecorder;
+        $events = new RecordingClinicRegistrationEventPublisher;
+        $assembler = new ClinicRegistrationDataAssembler;
+        $auditTrail = new ClinicRegistrationAuditTrail($audit);
+
+        $this->startService($repository, $audit, $events)->execute(
+            new StartClinicRegistrationCommand($this->uuid(21), $this->occurredAt(), $this->uuid(103)),
+        );
+        (new UpdateClinicRegistrationDraftService($repository, $assembler, $auditTrail, $events))->execute($this->updateCommand(expectedVersion: 1));
+
+        $tenantIds = new SequentialTenantIdGenerator([$this->uuid(40), $this->uuid(41)]);
+        $service = new SubmitClinicRegistrationService($repository, $tenantIds, $assembler, $auditTrail, $events);
+        $submitted = $service->execute(new SubmitClinicRegistrationCommand($this->uuid(21), 2, $this->occurredAt(), $this->uuid(104)));
+
+        self::assertSame($this->uuid(40), $submitted->reservedTenantId);
+
+        $this->expectException(ClinicRegistrationVersionMismatchException::class);
+
+        try {
+            $service->execute(new SubmitClinicRegistrationCommand($this->uuid(21), 2, $this->occurredAt(), $this->uuid(105)));
+        } finally {
+            $stored = $repository->find(new RegistrationId($submitted->id));
+            self::assertSame($this->uuid(40), $stored?->reservedTenantId?->value);
+        }
     }
 
     public function test_expire_stale_registration_by_identifier(): void
@@ -254,6 +285,17 @@ final class SequentialIdentifierGenerator implements ClinicRegistrationIdentifie
     public function generate(): string
     {
         return array_shift($this->ids) ?? '00000000-0000-4000-8000-000000999999';
+    }
+}
+
+final class SequentialTenantIdGenerator implements ClinicRegistrationTenantIdGeneratorInterface
+{
+    /** @param list<string> $ids */
+    public function __construct(private array $ids) {}
+
+    public function generate(): string
+    {
+        return array_shift($this->ids) ?? '00000000-0000-4000-8000-000000899999';
     }
 }
 

@@ -38,6 +38,7 @@ use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\Payme
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentReference;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentStatus;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\ProviderReference;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\TenantId;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -194,7 +195,8 @@ final class VerifyProviderWebhookReceiptServiceTest extends TestCase
 
         return new Payment(
             new PaymentId('11111111-1111-4111-8111-111111111111'), new PaymentReference('offer'),
-            new PaymentReference('registration'), new PaymentReference('identity'), new PaymentAmount(2550),
+            new PaymentReference('registration'), new PaymentReference('identity'),
+            new TenantId('11111111-1111-4111-8111-111111111112'), new PaymentAmount(2550),
             new PaymentCurrency('MYR'), new IdempotencyKey('idem'), PaymentStatus::Pending,
             new ProviderReference('provider-b', 'new-ref'), null, $time, $time,
             [

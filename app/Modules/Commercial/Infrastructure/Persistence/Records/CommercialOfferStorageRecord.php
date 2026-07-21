@@ -12,6 +12,7 @@ final readonly class CommercialOfferStorageRecord
         public string $id,
         public string $platformIdentityId,
         public string $clinicRegistrationId,
+        public ?string $tenantId,
         public string $status,
         public string $planOfferingId,
         public string $planId,

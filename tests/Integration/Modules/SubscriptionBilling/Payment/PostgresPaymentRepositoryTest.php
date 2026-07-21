@@ -11,6 +11,7 @@ use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\Payme
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentReference;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\ProviderReference;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\TenantId;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Exceptions\StalePaymentWriteException;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\PaymentPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentRepository;
@@ -31,6 +32,8 @@ final class PostgresPaymentRepositoryTest extends TestCase
     private ?PostgresPaymentRepository $repository = null;
 
     private ?Migration $migration = null;
+
+    private ?Migration $tenantIdMigration = null;
 
     protected function setUp(): void
     {
@@ -62,11 +65,20 @@ final class PostgresPaymentRepositoryTest extends TestCase
         $this->migration = $migration;
         $migration->up();
 
+        $tenantIdMigration = require base_path('database/migrations/subscription_billing/2026_07_26_000001_add_tenant_id_to_payments.php');
+        self::assertInstanceOf(Migration::class, $tenantIdMigration);
+        $this->tenantIdMigration = $tenantIdMigration;
+        $tenantIdMigration->up();
+
         $this->repository = new PostgresPaymentRepository($this->connection, new PaymentPersistenceMapper);
     }
 
     protected function tearDown(): void
     {
+        if ($this->tenantIdMigration !== null) {
+            $this->tenantIdMigration->down();
+        }
+
         if ($this->migration !== null) {
             $this->migration->down();
         }
@@ -120,11 +132,57 @@ final class PostgresPaymentRepositoryTest extends TestCase
             new PaymentReference($this->uuid(2)),
             new PaymentReference($this->uuid(3)),
             new PaymentReference($this->uuid(4)),
+            new TenantId($this->uuid(6)),
             new PaymentAmount(3000),
             new PaymentCurrency('MYR'),
             new IdempotencyKey('idem-90'),
             $this->time(),
         ));
+    }
+
+    public function test_newly_created_payment_persists_the_same_tenant_id_and_reload_preserves_it(): void
+    {
+        $payment = $this->payment();
+        $this->repository()->save($payment);
+
+        $row = $this->connection()->table('payments')->where('id', $payment->id->value)->first();
+        self::assertNotNull($row);
+        self::assertSame($this->uuid(6), $row->tenant_id);
+
+        $reloaded = $this->repository()->find($payment->id);
+        self::assertNotNull($reloaded);
+        self::assertSame($this->uuid(6), $reloaded->tenantId?->value);
+    }
+
+    public function test_tenant_id_column_is_nullable_and_legacy_rows_are_not_backfilled(): void
+    {
+        $legacyId = $this->uuid(40);
+        $this->connection()->table('payments')->insert([
+            'id' => $legacyId,
+            'commercial_offer_id' => $this->uuid(41),
+            'clinic_registration_id' => $this->uuid(42),
+            'platform_identity_id' => $this->uuid(43),
+            'tenant_id' => null,
+            'amount_minor' => 3000,
+            'currency' => 'MYR',
+            'idempotency_key' => 'idem-legacy',
+            'status' => 'draft',
+            'domain_created_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+            'domain_last_changed_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+            'version' => 1,
+            'created_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+            'updated_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+        ]);
+
+        $this->repository()->save($this->payment());
+
+        $legacyRow = $this->connection()->table('payments')->where('id', $legacyId)->first();
+        self::assertNotNull($legacyRow);
+        self::assertNull($legacyRow->tenant_id);
+
+        $legacy = $this->repository()->find(new PaymentId($legacyId));
+        self::assertNotNull($legacy);
+        self::assertNull($legacy->tenantId);
     }
 
     private function payment(): Payment
@@ -134,6 +192,7 @@ final class PostgresPaymentRepositoryTest extends TestCase
             new PaymentReference($this->uuid(2)),
             new PaymentReference($this->uuid(3)),
             new PaymentReference($this->uuid(4)),
+            new TenantId($this->uuid(6)),
             new PaymentAmount(3000),
             new PaymentCurrency('MYR'),
             new IdempotencyKey('idem-1'),

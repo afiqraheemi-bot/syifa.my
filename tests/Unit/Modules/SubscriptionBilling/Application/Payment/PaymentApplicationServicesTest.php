@@ -10,6 +10,7 @@ use App\Modules\Commercial\Contracts\Data\CommercialOfferData;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipal;
 use App\Modules\SubscriptionBilling\Application\Payment\ClaimCommercialOfferService;
 use App\Modules\SubscriptionBilling\Application\Payment\CreatePaymentService;
+use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\CommercialOfferMissingTenantIdException;
 use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\UnauthorizedPaymentInitiationException;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentDataAssembler;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGeneratorInterface;
@@ -60,6 +61,21 @@ final class PaymentApplicationServicesTest extends TestCase
 
         self::assertSame($created->paymentId, $duplicate->paymentId);
         self::assertSame(1, $checkout->claimCalls);
+
+        $stored = $repository->find(new PaymentId($created->paymentId));
+        self::assertSame($this->uuid(6), $stored?->tenantId?->value);
+    }
+
+    public function test_create_payment_fails_closed_when_commercial_offer_has_no_tenant_id(): void
+    {
+        $checkout = new InMemoryCommercialOfferCheckout($this->offer(withTenantId: false));
+
+        $this->expectException(CommercialOfferMissingTenantIdException::class);
+
+        $this->createService($checkout, new InMemoryPaymentRepository, new RecordingPaymentAudit)->execute(
+            new PlatformPrincipal($this->uuid(2), 'super_admin', 'Afiq'),
+            new CreatePaymentCommand($this->uuid(11), 'idem-1', $this->time(), $this->uuid(90)),
+        );
     }
 
     public function test_create_payment_rejects_untrusted_platform_principal(): void
@@ -110,12 +126,13 @@ final class PaymentApplicationServicesTest extends TestCase
         );
     }
 
-    private function offer(string $status = 'prepared'): CommercialOfferData
+    private function offer(string $status = 'prepared', bool $withTenantId = true): CommercialOfferData
     {
         return new CommercialOfferData(
             id: $this->uuid(11),
             platformIdentityId: $this->uuid(2),
             clinicRegistrationId: $this->uuid(3),
+            tenantId: $withTenantId ? $this->uuid(6) : null,
             status: $status,
             planOfferingId: 'offering-basic-monthly',
             planId: 'plan-basic',
@@ -188,6 +205,7 @@ final class InMemoryCommercialOfferCheckout implements CommercialOfferCheckoutIn
             id: $this->offer->id,
             platformIdentityId: $this->offer->platformIdentityId,
             clinicRegistrationId: $this->offer->clinicRegistrationId,
+            tenantId: $this->offer->tenantId,
             status: 'claimed',
             planOfferingId: $this->offer->planOfferingId,
             planId: $this->offer->planId,

@@ -21,6 +21,7 @@ final readonly class ClinicRegistrationData
         public ?string $selectedBillingOptionReference,
         public ?string $commercialSnapshotVersion,
         public string $registrationCorrelationReference,
+        public ?string $reservedTenantId,
         public ?string $provisionedTenantReference,
         public ?string $submittedAt,
         public ?string $provisionedAt,

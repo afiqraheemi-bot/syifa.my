@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Commercial\Application;
 
+use App\Modules\ClinicRegistration\Contracts\Queries\ClinicRegistrationQueryInterface;
 use App\Modules\Commercial\Application\Audit\CommercialOfferAuditTrail;
+use App\Modules\Commercial\Application\Exceptions\ClinicRegistrationOwnershipMismatchException;
+use App\Modules\Commercial\Application\Exceptions\ClinicRegistrationTenantIdNotReservedException;
 use App\Modules\Commercial\Contracts\Commands\PrepareCommercialOfferCommand;
 use App\Modules\Commercial\Contracts\Data\CommercialOfferData;
 use App\Modules\Commercial\Contracts\Events\CommercialOfferEventPublisherInterface;
@@ -18,6 +21,7 @@ use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferLineItem;
 use App\Modules\Commercial\Domain\ValueObjects\OfferExpiry;
 use App\Modules\Commercial\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\Commercial\Domain\ValueObjects\PriceSnapshot;
+use App\Modules\Commercial\Domain\ValueObjects\TenantId;
 
 final readonly class PrepareCommercialOfferService
 {
@@ -25,6 +29,7 @@ final readonly class PrepareCommercialOfferService
         private CommercialOfferIdentifierGeneratorInterface $identifiers,
         private CommercialOfferRepositoryInterface $offers,
         private ResolveCommercialSelectionService $selections,
+        private ClinicRegistrationQueryInterface $clinicRegistrations,
         private CommercialOfferDataAssembler $data,
         private CommercialOfferAuditTrail $audit,
         private CommercialOfferEventPublisherInterface $events,
@@ -49,6 +54,7 @@ final readonly class PrepareCommercialOfferService
                 $this->events->publish($existing->releaseEvents());
             }
 
+            $tenantId = $this->resolveReservedTenantId($command->platformIdentityId, $command->clinicRegistrationId);
             $snapshotData = $this->selections->execute($command->planOfferingId, $command->occurredAt);
             $snapshot = new CheckoutSnapshot(
                 $snapshotData->planOfferingId,
@@ -77,6 +83,7 @@ final readonly class PrepareCommercialOfferService
                 new CommercialOfferId($this->identifiers->generate()),
                 $platformIdentity,
                 new ClinicRegistrationReference($command->clinicRegistrationId),
+                $tenantId,
                 $snapshot,
                 OfferExpiry::fromPreparedAt($command->occurredAt, $this->ttlMinutes),
                 $command->occurredAt,
@@ -89,5 +96,20 @@ final readonly class PrepareCommercialOfferService
 
             return $this->data->fromDomain($offer);
         });
+    }
+
+    private function resolveReservedTenantId(string $platformIdentityId, string $clinicRegistrationId): TenantId
+    {
+        $registration = $this->clinicRegistrations->currentForPlatformIdentity($platformIdentityId);
+
+        if ($registration === null || $registration->id !== $clinicRegistrationId) {
+            throw new ClinicRegistrationOwnershipMismatchException('Clinic Registration does not match the requested commercial selection.');
+        }
+
+        if ($registration->reservedTenantId === null) {
+            throw new ClinicRegistrationTenantIdNotReservedException('Clinic Registration has not reserved a tenant id.');
+        }
+
+        return new TenantId($registration->reservedTenantId);
     }
 }

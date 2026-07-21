@@ -13,6 +13,7 @@ use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferLineItem;
 use App\Modules\Commercial\Domain\ValueObjects\OfferExpiry;
 use App\Modules\Commercial\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\Commercial\Domain\ValueObjects\PriceSnapshot;
+use App\Modules\Commercial\Domain\ValueObjects\TenantId;
 use App\Modules\Commercial\Infrastructure\Persistence\Mappers\CommercialOfferPersistenceMapper;
 use App\Modules\Commercial\Infrastructure\Persistence\Repositories\PostgresCommercialOfferRepository;
 use DateTimeImmutable;
@@ -33,6 +34,8 @@ final class PostgresCommercialOfferRepositoryTest extends TestCase
     private ?PostgresCommercialOfferRepository $repository = null;
 
     private ?Migration $migration = null;
+
+    private ?Migration $tenantIdMigration = null;
 
     protected function setUp(): void
     {
@@ -64,6 +67,11 @@ final class PostgresCommercialOfferRepositoryTest extends TestCase
         $this->migration = $migration;
         $migration->up();
 
+        $tenantIdMigration = require base_path('database/migrations/commercial/2026_07_26_000001_add_tenant_id_to_commercial_offers.php');
+        self::assertInstanceOf(Migration::class, $tenantIdMigration);
+        $this->tenantIdMigration = $tenantIdMigration;
+        $tenantIdMigration->up();
+
         $this->repository = new PostgresCommercialOfferRepository(
             $this->connection,
             new CommercialOfferPersistenceMapper,
@@ -72,6 +80,10 @@ final class PostgresCommercialOfferRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->tenantIdMigration !== null) {
+            $this->tenantIdMigration->down();
+        }
+
         if ($this->migration !== null) {
             $this->migration->down();
         }
@@ -97,6 +109,73 @@ final class PostgresCommercialOfferRepositoryTest extends TestCase
         self::assertNotNull($cancelled);
         self::assertSame('cancelled', $cancelled->status->value);
         self::assertSame(2, $cancelled->version());
+    }
+
+    public function test_newly_created_offer_persists_the_same_tenant_id_and_reload_preserves_it(): void
+    {
+        $offer = $this->offer();
+        $this->repository()->save($offer);
+
+        $row = $this->connection()->table('commercial_offers')->where('id', $offer->id->value)->first();
+        self::assertNotNull($row);
+        self::assertSame($this->uuid(6), $row->tenant_id);
+
+        $reloaded = $this->repository()->find($offer->id);
+        self::assertNotNull($reloaded);
+        self::assertSame($this->uuid(6), $reloaded->tenantId?->value);
+    }
+
+    public function test_tenant_id_column_is_nullable_and_legacy_rows_are_not_backfilled(): void
+    {
+        $legacyId = $this->uuid(30);
+        $this->connection()->table('commercial_offers')->insert([
+            'id' => $legacyId,
+            'platform_identity_id' => $this->uuid(31),
+            'clinic_registration_id' => $this->uuid(32),
+            'tenant_id' => null,
+            'status' => 'prepared',
+            'plan_offering_id' => 'offering-basic-monthly',
+            'plan_id' => 'plan-basic',
+            'billing_cycle_id' => 'monthly',
+            'billing_period_start' => '2026-07-21',
+            'billing_period_end' => '2026-08-20',
+            'offering_configuration_version' => 'catalogue-v1',
+            'capability_configuration_reference' => 'capability-v1',
+            'subtotal_amount_minor' => 3000,
+            'total_amount_minor' => 3000,
+            'currency' => 'MYR',
+            'expires_at' => $this->time('+30 minutes')->format('Y-m-d H:i:s.uP'),
+            'correlation_id' => $this->uuid(33),
+            'version' => 1,
+            'created_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+            'updated_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+        ]);
+        $this->connection()->table('commercial_offer_line_items')->insert([
+            'id' => $this->uuid(34),
+            'commercial_offer_id' => $legacyId,
+            'item_type' => 'plan_offering',
+            'item_reference' => 'offering-basic-monthly',
+            'description' => 'Basic — Monthly',
+            'quantity' => 1,
+            'unit_amount_minor' => 3000,
+            'total_amount_minor' => 3000,
+            'currency' => 'MYR',
+            'catalogue_snapshot_reference' => 'catalogue-v1',
+            'position' => 0,
+            'created_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+            'updated_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+        ]);
+
+        $other = $this->offer();
+        $this->repository()->save($other);
+
+        $legacyRow = $this->connection()->table('commercial_offers')->where('id', $legacyId)->first();
+        self::assertNotNull($legacyRow);
+        self::assertNull($legacyRow->tenant_id);
+
+        $legacy = $this->repository()->find(new CommercialOfferId($legacyId));
+        self::assertNotNull($legacy);
+        self::assertNull($legacy->tenantId);
     }
 
     public function test_database_rejects_duplicate_prepared_offer_for_platform_identity(): void
@@ -170,6 +249,7 @@ final class PostgresCommercialOfferRepositoryTest extends TestCase
             new CommercialOfferId($this->uuid($id)),
             new PlatformIdentityReference($this->uuid(2)),
             new ClinicRegistrationReference($this->uuid(3)),
+            new TenantId($this->uuid(6)),
             new CheckoutSnapshot(
                 'offering-basic-monthly',
                 'plan-basic',
@@ -210,9 +290,11 @@ final class PostgresCommercialOfferRepositoryTest extends TestCase
         return $this->connection;
     }
 
-    private function time(): DateTimeImmutable
+    private function time(string $modifier = ''): DateTimeImmutable
     {
-        return new DateTimeImmutable('2026-07-21T00:00:00Z');
+        $time = new DateTimeImmutable('2026-07-21T00:00:00Z');
+
+        return $modifier === '' ? $time : $time->modify($modifier);
     }
 
     private function uuid(int $suffix): string

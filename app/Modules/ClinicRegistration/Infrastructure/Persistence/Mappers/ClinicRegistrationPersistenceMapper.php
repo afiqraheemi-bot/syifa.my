@@ -12,6 +12,7 @@ use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference
 use App\Modules\ClinicRegistration\Domain\ValueObjects\ProvisionedTenantReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\TenantId;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Records\ClinicRegistrationStorageRecord;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Records\DeclarationAcceptanceStorageRecord;
 
@@ -31,6 +32,7 @@ final class ClinicRegistrationPersistenceMapper
             $registration->commercialSelection->billingOptionReference,
             $registration->commercialSelection->commercialSnapshotVersion,
             $registration->correlationReference,
+            $registration->reservedTenantId?->value,
             $registration->provisionedTenant?->value,
             $registration->submittedAt,
             $registration->provisionedAt,
@@ -76,6 +78,7 @@ final class ClinicRegistrationPersistenceMapper
                 $record->commercialSnapshotVersion,
             ),
             correlationReference: $record->registrationCorrelationReference,
+            reservedTenantId: $record->reservedTenantId === null ? null : new TenantId($record->reservedTenantId),
             provisionedTenant: $record->provisionedTenantReference === null ? null : new ProvisionedTenantReference($record->provisionedTenantReference),
             submittedAt: $record->submittedAt,
             provisionedAt: $record->provisionedAt,

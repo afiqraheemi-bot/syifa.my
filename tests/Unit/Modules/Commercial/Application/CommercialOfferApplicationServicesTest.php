@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Commercial\Application;
 
+use App\Modules\ClinicRegistration\Contracts\Data\ClinicRegistrationData;
+use App\Modules\ClinicRegistration\Contracts\Queries\ClinicRegistrationQueryInterface;
 use App\Modules\Commercial\Application\Audit\CommercialOfferAuditTrail;
 use App\Modules\Commercial\Application\CancelCommercialOfferService;
 use App\Modules\Commercial\Application\ClaimCommercialOfferService;
 use App\Modules\Commercial\Application\CommercialOfferDataAssembler;
 use App\Modules\Commercial\Application\CommercialOfferIdentifierGeneratorInterface;
+use App\Modules\Commercial\Application\Exceptions\ClinicRegistrationOwnershipMismatchException;
+use App\Modules\Commercial\Application\Exceptions\ClinicRegistrationTenantIdNotReservedException;
 use App\Modules\Commercial\Application\Exceptions\CommercialOfferVersionMismatchException;
 use App\Modules\Commercial\Application\Exceptions\CommercialSelectionUnavailableException;
 use App\Modules\Commercial\Application\Exceptions\UntrustedCommercialOfferConsumerException;
@@ -56,6 +60,7 @@ final class CommercialOfferApplicationServicesTest extends TestCase
             new SequentialCommercialOfferIdentifierGenerator([$this->uuid(11)]),
             $repository,
             new ResolveCommercialSelectionService($referenceData),
+            new FixedClinicRegistrationQuery($this->uuid(3), $this->uuid(50)),
             new CommercialOfferDataAssembler,
             new CommercialOfferAuditTrail($audit),
             $events,
@@ -93,6 +98,7 @@ final class CommercialOfferApplicationServicesTest extends TestCase
             new SequentialCommercialOfferIdentifierGenerator([$this->uuid(12)]),
             $repository,
             new ResolveCommercialSelectionService($referenceData),
+            new FixedClinicRegistrationQuery($this->uuid(3), $this->uuid(50)),
             new CommercialOfferDataAssembler,
             new CommercialOfferAuditTrail($audit),
             $events,
@@ -116,6 +122,44 @@ final class CommercialOfferApplicationServicesTest extends TestCase
             'commercial.offer.prepare',
             'commercial.offer.claim',
         ], array_map(static fn (AuditEntryData $entry): string => $entry->action, $audit->entries));
+    }
+
+    public function test_prepare_fails_closed_when_clinic_registration_has_no_reserved_tenant_id(): void
+    {
+        $referenceData = new RecordingPlanOfferingQuery([$this->offering()]);
+
+        $this->expectException(ClinicRegistrationTenantIdNotReservedException::class);
+
+        (new PrepareCommercialOfferService(
+            new SequentialCommercialOfferIdentifierGenerator([$this->uuid(20)]),
+            new InMemoryCommercialOfferRepository,
+            new ResolveCommercialSelectionService($referenceData),
+            new FixedClinicRegistrationQuery($this->uuid(3), null),
+            new CommercialOfferDataAssembler,
+            new CommercialOfferAuditTrail(new RecordingCommercialAuditEntryRecorder),
+            new RecordingCommercialEventPublisher,
+            new RecordingCommercialTransaction,
+            30,
+        ))->execute(new PrepareCommercialOfferCommand($this->uuid(2), $this->uuid(3), 'offering-basic-monthly', $this->time(), $this->uuid(97)));
+    }
+
+    public function test_prepare_fails_closed_when_clinic_registration_does_not_match(): void
+    {
+        $referenceData = new RecordingPlanOfferingQuery([$this->offering()]);
+
+        $this->expectException(ClinicRegistrationOwnershipMismatchException::class);
+
+        (new PrepareCommercialOfferService(
+            new SequentialCommercialOfferIdentifierGenerator([$this->uuid(21)]),
+            new InMemoryCommercialOfferRepository,
+            new ResolveCommercialSelectionService($referenceData),
+            new FixedClinicRegistrationQuery($this->uuid(3), $this->uuid(50)),
+            new CommercialOfferDataAssembler,
+            new CommercialOfferAuditTrail(new RecordingCommercialAuditEntryRecorder),
+            new RecordingCommercialEventPublisher,
+            new RecordingCommercialTransaction,
+            30,
+        ))->execute(new PrepareCommercialOfferCommand($this->uuid(2), $this->uuid(999), 'offering-basic-monthly', $this->time(), $this->uuid(98)));
     }
 
     public function test_unavailable_selection_and_untrusted_consumer_fail_closed(): void
@@ -146,6 +190,7 @@ final class CommercialOfferApplicationServicesTest extends TestCase
             new SequentialCommercialOfferIdentifierGenerator([$this->uuid(13)]),
             $repository,
             new ResolveCommercialSelectionService($referenceData),
+            new FixedClinicRegistrationQuery($this->uuid(3), $this->uuid(50)),
             new CommercialOfferDataAssembler,
             new CommercialOfferAuditTrail(new RecordingCommercialAuditEntryRecorder),
             new RecordingCommercialEventPublisher,
@@ -174,6 +219,7 @@ final class CommercialOfferApplicationServicesTest extends TestCase
             new SequentialCommercialOfferIdentifierGenerator([$this->uuid(14)]),
             new InMemoryCommercialOfferRepository,
             new ResolveCommercialSelectionService(new RecordingPlanOfferingQuery([$this->offering()])),
+            new FixedClinicRegistrationQuery($this->uuid(3), $this->uuid(50)),
             new CommercialOfferDataAssembler,
             new CommercialOfferAuditTrail(new FailingCommercialAuditEntryRecorder),
             new RecordingCommercialEventPublisher,
@@ -247,6 +293,36 @@ final class SequentialCommercialOfferIdentifierGenerator implements CommercialOf
     public function generate(): string
     {
         return array_shift($this->ids) ?? '00000000-0000-4000-8000-000000999999';
+    }
+}
+
+final class FixedClinicRegistrationQuery implements ClinicRegistrationQueryInterface
+{
+    public function __construct(private string $registrationId, private ?string $reservedTenantId) {}
+
+    public function currentForPlatformIdentity(string $platformIdentityId): ?ClinicRegistrationData
+    {
+        return new ClinicRegistrationData(
+            $this->registrationId,
+            $platformIdentityId,
+            'submitted',
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            $this->registrationId,
+            $this->reservedTenantId,
+            null,
+            '2026-07-21T00:00:00+00:00',
+            null,
+            null,
+            null,
+            1,
+            [],
+        );
     }
 }
 

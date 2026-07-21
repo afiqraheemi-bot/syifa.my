@@ -7,6 +7,8 @@ namespace App\Modules\ClinicRegistration\Infrastructure;
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationDataAssembler;
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationIdentifierGenerator;
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationIdentifierGeneratorInterface;
+use App\Modules\ClinicRegistration\Application\ClinicRegistrationTenantIdGenerator;
+use App\Modules\ClinicRegistration\Application\ClinicRegistrationTenantIdGeneratorInterface;
 use App\Modules\ClinicRegistration\Application\CompleteClinicRegistrationFromTrustedHandoffService;
 use App\Modules\ClinicRegistration\Application\TrustedCompletionSources;
 use App\Modules\ClinicRegistration\Contracts\Completion\TrustedClinicRegistrationCompletionInterface;
@@ -46,6 +48,7 @@ final class ClinicRegistrationServiceProvider extends ServiceProvider
             ),
         );
         $this->app->singleton(ClinicRegistrationIdentifierGeneratorInterface::class, ClinicRegistrationIdentifierGenerator::class);
+        $this->app->singleton(ClinicRegistrationTenantIdGeneratorInterface::class, ClinicRegistrationTenantIdGenerator::class);
         $this->app->singleton(ClinicRegistrationEventPublisherInterface::class, LaravelClinicRegistrationEventPublisher::class);
         $this->app->singleton(ClinicRegistrationPersistenceMapper::class);
         $this->app->singleton(

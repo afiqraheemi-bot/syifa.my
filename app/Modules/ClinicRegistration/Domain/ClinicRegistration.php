@@ -17,6 +17,7 @@ use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference
 use App\Modules\ClinicRegistration\Domain\ValueObjects\ProvisionedTenantReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 final class ClinicRegistration
@@ -33,6 +34,7 @@ final class ClinicRegistration
         public array $declarations,
         public CommercialSelectionReference $commercialSelection,
         public string $correlationReference,
+        public ?TenantId $reservedTenantId,
         public ?ProvisionedTenantReference $provisionedTenant,
         public ?DateTimeImmutable $submittedAt,
         public ?DateTimeImmutable $provisionedAt,
@@ -55,6 +57,7 @@ final class ClinicRegistration
             declarations: [],
             commercialSelection: new CommercialSelectionReference(null, null, null),
             correlationReference: $id->value,
+            reservedTenantId: null,
             provisionedTenant: null,
             submittedAt: null,
             provisionedAt: null,
@@ -79,7 +82,7 @@ final class ClinicRegistration
         $this->commercialSelection = $commercialSelection;
     }
 
-    public function submit(DateTimeImmutable $occurredAt): void
+    public function submit(TenantId $tenantId, DateTimeImmutable $occurredAt): void
     {
         if ($this->status !== RegistrationStatus::Draft) {
             throw new InvalidClinicRegistrationTransitionException('Only draft registrations may be submitted.');
@@ -89,7 +92,12 @@ final class ClinicRegistration
             throw new InvalidClinicRegistrationTransitionException('Registration is missing required submission information.');
         }
 
+        if ($this->reservedTenantId !== null && $this->reservedTenantId->value !== $tenantId->value) {
+            throw new InvalidClinicRegistrationTransitionException('Tenant id has already been reserved and cannot be replaced.');
+        }
+
         $this->status = RegistrationStatus::Submitted;
+        $this->reservedTenantId = $tenantId;
         $this->submittedAt = $occurredAt;
         $this->record(new ClinicRegistrationSubmitted(
             $this->id->value,

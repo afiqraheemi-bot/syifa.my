@@ -11,6 +11,7 @@ use App\Modules\ClinicRegistration\Domain\ValueObjects\DeclarationAcceptance;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\TenantId;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Mappers\ClinicRegistrationPersistenceMapper;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Records\ClinicRegistrationStorageRecord;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Records\DeclarationAcceptanceStorageRecord;
@@ -33,6 +34,7 @@ final class ClinicRegistrationPersistenceMapperTest extends TestCase
         self::assertSame('offering-basic-monthly', $record->selectedPlanOfferingReference);
         self::assertSame('monthly', $record->selectedBillingOptionReference);
         self::assertCount(1, $declarations);
+        self::assertSame($this->uuid(4), $record->reservedTenantId);
         self::assertObjectNotHasProperty('selectedAddOnReferences', $record);
     }
 
@@ -51,6 +53,7 @@ final class ClinicRegistrationPersistenceMapperTest extends TestCase
             'monthly',
             'catalogue-v1',
             $this->uuid(1),
+            $this->uuid(4),
             null,
             $this->occurredAt(),
             null,
@@ -65,6 +68,7 @@ final class ClinicRegistrationPersistenceMapperTest extends TestCase
 
         self::assertSame(RegistrationStatus::Submitted, $registration->status);
         self::assertSame(7, $registration->version());
+        self::assertSame($this->uuid(4), $registration->reservedTenantId?->value);
         self::assertSame([], $registration->releaseEvents());
     }
 
@@ -80,7 +84,7 @@ final class ClinicRegistrationPersistenceMapperTest extends TestCase
             [new DeclarationAcceptance('terms.acceptance', '2026-07-20', $this->occurredAt())],
             new CommercialSelectionReference('offering-basic-monthly', 'monthly', 'catalogue-v1'),
         );
-        $registration->submit($this->occurredAt());
+        $registration->submit(new TenantId($this->uuid(4)), $this->occurredAt());
         $registration->synchronizeVersion(2);
 
         return $registration;

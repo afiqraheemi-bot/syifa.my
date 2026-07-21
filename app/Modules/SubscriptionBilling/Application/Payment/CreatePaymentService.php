@@ -6,6 +6,7 @@ namespace App\Modules\SubscriptionBilling\Application\Payment;
 
 use App\Modules\Commercial\Contracts\Checkout\CommercialOfferCheckoutInterface;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipal;
+use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\CommercialOfferMissingTenantIdException;
 use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\CommercialOfferUnavailableForPaymentException;
 use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\UnauthorizedPaymentInitiationException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\CreatePaymentCommand;
@@ -19,6 +20,7 @@ use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\Payme
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentCurrency;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentReference;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\TenantId;
 
 final readonly class CreatePaymentService
 {
@@ -52,11 +54,16 @@ final readonly class CreatePaymentService
                 throw new UnauthorizedPaymentInitiationException('Platform Principal does not own this Commercial Offer.');
             }
 
+            if ($offer->tenantId === null) {
+                throw new CommercialOfferMissingTenantIdException('Commercial Offer has not reserved a tenant id.');
+            }
+
             $payment = Payment::create(
                 id: new PaymentId($this->identifiers->generate()),
                 commercialOfferId: new PaymentReference($offer->id),
                 clinicRegistrationId: new PaymentReference($offer->clinicRegistrationId),
                 platformIdentityId: new PaymentReference($principal->platformIdentityId),
+                tenantId: new TenantId($offer->tenantId),
                 amount: new PaymentAmount($offer->totalAmountMinor),
                 currency: new PaymentCurrency($offer->currency),
                 idempotencyKey: $idempotencyKey,

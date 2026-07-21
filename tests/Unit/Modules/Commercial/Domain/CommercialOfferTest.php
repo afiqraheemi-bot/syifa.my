@@ -19,6 +19,7 @@ use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferStatus;
 use App\Modules\Commercial\Domain\ValueObjects\OfferExpiry;
 use App\Modules\Commercial\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\Commercial\Domain\ValueObjects\PriceSnapshot;
+use App\Modules\Commercial\Domain\ValueObjects\TenantId;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -31,6 +32,7 @@ final class CommercialOfferTest extends TestCase
         self::assertSame(CommercialOfferStatus::Prepared, $offer->status);
         self::assertSame('MYR', $offer->checkoutSnapshot->total->currency);
         self::assertSame(3000, $offer->checkoutSnapshot->total->amountMinor);
+        self::assertSame($this->uuid(6), $offer->tenantId?->value);
         self::assertContainsOnlyInstancesOf(CommercialOfferPrepared::class, $offer->releaseEvents());
     }
 
@@ -90,12 +92,30 @@ final class CommercialOfferTest extends TestCase
         new PriceSnapshot(1000, 'USD');
     }
 
+    public function test_tenant_id_rejects_a_non_uuid_value(): void
+    {
+        $this->expectException(InvalidCommercialOfferValueException::class);
+
+        new TenantId('not-a-uuid');
+    }
+
+    public function test_tenant_id_is_immutable_and_survives_transitions(): void
+    {
+        $offer = $this->offer();
+        $offer->releaseEvents();
+
+        $offer->claim($this->uuid(5), $this->time('+10 minutes'));
+
+        self::assertSame($this->uuid(6), $offer->tenantId?->value);
+    }
+
     private function offer(): CommercialOffer
     {
         return CommercialOffer::prepare(
             new CommercialOfferId($this->uuid(1)),
             new PlatformIdentityReference($this->uuid(2)),
             new ClinicRegistrationReference($this->uuid(3)),
+            new TenantId($this->uuid(6)),
             $this->snapshot(),
             OfferExpiry::fromPreparedAt($this->time(), 30),
             $this->time(),

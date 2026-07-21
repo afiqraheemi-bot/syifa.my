@@ -11,6 +11,7 @@ final readonly class PaymentData
         public string $commercialOfferId,
         public string $clinicRegistrationId,
         public string $platformIdentityId,
+        public ?string $tenantId,
         public int $amountMinor,
         public string $currency,
         public string $idempotencyKey,

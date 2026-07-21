@@ -18,6 +18,7 @@ use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\Payme
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentReference;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentStatus;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\ProviderReference;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 final class Payment
@@ -31,6 +32,7 @@ final class Payment
         public PaymentReference $commercialOfferId,
         public PaymentReference $clinicRegistrationId,
         public PaymentReference $platformIdentityId,
+        public ?TenantId $tenantId,
         public PaymentAmount $amount,
         public PaymentCurrency $currency,
         public IdempotencyKey $idempotencyKey,
@@ -49,6 +51,7 @@ final class Payment
         PaymentReference $commercialOfferId,
         PaymentReference $clinicRegistrationId,
         PaymentReference $platformIdentityId,
+        TenantId $tenantId,
         PaymentAmount $amount,
         PaymentCurrency $currency,
         IdempotencyKey $idempotencyKey,
@@ -59,6 +62,7 @@ final class Payment
             commercialOfferId: $commercialOfferId,
             clinicRegistrationId: $clinicRegistrationId,
             platformIdentityId: $platformIdentityId,
+            tenantId: $tenantId,
             amount: $amount,
             currency: $currency,
             idempotencyKey: $idempotencyKey,

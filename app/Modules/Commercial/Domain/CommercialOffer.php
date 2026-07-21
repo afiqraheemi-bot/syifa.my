@@ -15,6 +15,7 @@ use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferId;
 use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferStatus;
 use App\Modules\Commercial\Domain\ValueObjects\OfferExpiry;
 use App\Modules\Commercial\Domain\ValueObjects\PlatformIdentityReference;
+use App\Modules\Commercial\Domain\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 final class CommercialOffer
@@ -26,6 +27,7 @@ final class CommercialOffer
         public CommercialOfferId $id,
         public PlatformIdentityReference $platformIdentity,
         public ClinicRegistrationReference $clinicRegistration,
+        public ?TenantId $tenantId,
         public CommercialOfferStatus $status,
         public CheckoutSnapshot $checkoutSnapshot,
         public OfferExpiry $expiry,
@@ -42,6 +44,7 @@ final class CommercialOffer
         CommercialOfferId $id,
         PlatformIdentityReference $platformIdentity,
         ClinicRegistrationReference $clinicRegistration,
+        TenantId $tenantId,
         CheckoutSnapshot $checkoutSnapshot,
         OfferExpiry $expiry,
         DateTimeImmutable $occurredAt,
@@ -51,6 +54,7 @@ final class CommercialOffer
             id: $id,
             platformIdentity: $platformIdentity,
             clinicRegistration: $clinicRegistration,
+            tenantId: $tenantId,
             status: CommercialOfferStatus::Prepared,
             checkoutSnapshot: $checkoutSnapshot,
             expiry: $expiry,

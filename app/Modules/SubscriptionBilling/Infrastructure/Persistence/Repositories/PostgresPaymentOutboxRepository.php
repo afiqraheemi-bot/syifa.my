@@ -12,11 +12,11 @@ final readonly class PostgresPaymentOutboxRepository implements PaymentOutboxRep
 {
     public function __construct(private ConnectionInterface $connection) {}
 
-    public function add(string $eventId, string $eventType, string $paymentId, array $payload, DateTimeImmutable $occurredAt): void
+    public function add(string $eventId, string $eventType, string $paymentId, array $payload, DateTimeImmutable $occurredAt, int $eventVersion = 1): void
     {
         $timestamp = $occurredAt->format('Y-m-d H:i:s.uP');
         $this->connection->table('payment_integration_outbox')->insertOrIgnore([
-            'id' => $eventId, 'event_type' => $eventType, 'payment_id' => $paymentId,
+            'id' => $eventId, 'event_type' => $eventType, 'event_version' => $eventVersion, 'payment_id' => $paymentId,
             'payload' => json_encode($payload, JSON_THROW_ON_ERROR), 'occurred_at' => $timestamp,
             'created_at' => $timestamp, 'updated_at' => $timestamp,
         ]);

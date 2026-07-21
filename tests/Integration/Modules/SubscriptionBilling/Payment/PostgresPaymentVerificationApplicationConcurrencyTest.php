@@ -60,6 +60,8 @@ final class PostgresPaymentVerificationApplicationConcurrencyTest extends TestCa
             'database/migrations/subscription_billing/2026_07_24_000001_add_authoritative_verification_to_webhook_receipts.php',
             'database/migrations/subscription_billing/2026_07_24_000002_index_payment_attempt_provider_reference.php',
             'database/migrations/subscription_billing/2026_07_25_000001_create_payment_verification_application_tables.php',
+            'database/migrations/subscription_billing/2026_07_26_000001_add_tenant_id_to_payments.php',
+            'database/migrations/subscription_billing/2026_07_26_000002_add_event_version_to_payment_integration_outbox.php',
         ] as $path) {
             $migration = require base_path($path);
             $migration->up();

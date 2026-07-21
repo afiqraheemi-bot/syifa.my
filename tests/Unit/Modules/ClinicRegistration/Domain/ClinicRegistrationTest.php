@@ -16,6 +16,7 @@ use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference
 use App\Modules\ClinicRegistration\Domain\ValueObjects\ProvisionedTenantReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\TenantId;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -38,7 +39,7 @@ final class ClinicRegistrationTest extends TestCase
 
         $this->expectException(InvalidClinicRegistrationTransitionException::class);
 
-        $registration->submit($this->occurredAt());
+        $registration->submit($this->tenantId(), $this->occurredAt());
     }
 
     public function test_valid_draft_can_be_submitted(): void
@@ -46,17 +47,47 @@ final class ClinicRegistrationTest extends TestCase
         $registration = $this->submittableRegistration();
         $registration->releaseEvents();
 
-        $registration->submit($this->occurredAt());
+        $registration->submit($this->tenantId(), $this->occurredAt());
 
         self::assertSame(RegistrationStatus::Submitted, $registration->status);
         self::assertSame('2026-07-20T00:00:00+00:00', $registration->submittedAt?->format(DATE_ATOM));
         self::assertContainsOnlyInstancesOf(ClinicRegistrationSubmitted::class, $registration->releaseEvents());
     }
 
+    public function test_submit_reserves_the_supplied_tenant_id_exactly_once(): void
+    {
+        $registration = $this->submittableRegistration();
+
+        self::assertNull($registration->reservedTenantId);
+
+        $registration->submit($this->tenantId(), $this->occurredAt());
+
+        self::assertSame($this->tenantId()->value, $registration->reservedTenantId?->value);
+    }
+
+    public function test_submit_does_not_generate_a_tenant_id_itself(): void
+    {
+        $registration = $this->submittableRegistration();
+
+        $registration->submit($this->tenantId(), $this->occurredAt());
+
+        self::assertSame($this->tenantId()->value, $registration->reservedTenantId?->value);
+    }
+
+    public function test_reserved_tenant_id_cannot_be_replaced_by_a_later_submission(): void
+    {
+        $registration = $this->submittableRegistration();
+        $registration->submit($this->tenantId(), $this->occurredAt());
+
+        $this->expectException(InvalidClinicRegistrationTransitionException::class);
+
+        $registration->submit(new TenantId($this->uuid(3)), $this->occurredAt());
+    }
+
     public function test_provisioned_is_the_terminal_completion_state(): void
     {
         $registration = $this->submittableRegistration();
-        $registration->submit($this->occurredAt());
+        $registration->submit($this->tenantId(), $this->occurredAt());
         $registration->releaseEvents();
 
         $registration->markProvisioned(new ProvisionedTenantReference('tenant-reference-1'), $this->occurredAt());
@@ -64,13 +95,14 @@ final class ClinicRegistrationTest extends TestCase
         self::assertSame(RegistrationStatus::Provisioned, $registration->status);
         self::assertTrue($registration->status->isTerminal());
         self::assertSame('tenant-reference-1', $registration->provisionedTenant?->value);
+        self::assertSame($this->tenantId()->value, $registration->reservedTenantId?->value);
         self::assertContainsOnlyInstancesOf(ClinicRegistrationProvisioned::class, $registration->releaseEvents());
     }
 
     public function test_cancel_and_expire_are_rejected_after_provisioning(): void
     {
         $registration = $this->submittableRegistration();
-        $registration->submit($this->occurredAt());
+        $registration->submit($this->tenantId(), $this->occurredAt());
         $registration->markProvisioned(new ProvisionedTenantReference('tenant-reference-1'), $this->occurredAt());
 
         $this->expectException(InvalidClinicRegistrationTransitionException::class);
@@ -120,6 +152,11 @@ final class ClinicRegistrationTest extends TestCase
     private function occurredAt(): DateTimeImmutable
     {
         return new DateTimeImmutable('2026-07-20T00:00:00Z');
+    }
+
+    private function tenantId(): TenantId
+    {
+        return new TenantId($this->uuid(4));
     }
 
     private function uuid(int $suffix): string

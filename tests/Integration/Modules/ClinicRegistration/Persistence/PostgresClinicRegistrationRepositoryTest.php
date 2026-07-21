@@ -11,6 +11,7 @@ use App\Modules\ClinicRegistration\Domain\ValueObjects\CommercialSelectionRefere
 use App\Modules\ClinicRegistration\Domain\ValueObjects\DeclarationAcceptance;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\TenantId;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Mappers\ClinicRegistrationPersistenceMapper;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Queries\PostgresClinicRegistrationQueryAdapter;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Repositories\PostgresClinicRegistrationRepository;
@@ -33,6 +34,8 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
     private ?PostgresClinicRegistrationQueryAdapter $query = null;
 
     private ?Migration $migration = null;
+
+    private ?Migration $tenantIdMigration = null;
 
     protected function setUp(): void
     {
@@ -66,6 +69,13 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
         $this->migration = $migration;
         $this->migration->up();
 
+        $tenantIdMigration = require base_path(
+            'database/migrations/clinic_registration/2026_07_26_000001_add_reserved_tenant_id_to_clinic_registrations.php',
+        );
+        self::assertInstanceOf(Migration::class, $tenantIdMigration);
+        $this->tenantIdMigration = $tenantIdMigration;
+        $this->tenantIdMigration->up();
+
         $mapper = new ClinicRegistrationPersistenceMapper;
         $this->repository = new PostgresClinicRegistrationRepository($this->connection, $mapper);
         $this->query = new PostgresClinicRegistrationQueryAdapter($this->connection);
@@ -73,6 +83,10 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->tenantIdMigration !== null) {
+            $this->tenantIdMigration->down();
+        }
+
         if ($this->migration !== null) {
             $this->migration->down();
         }
@@ -99,11 +113,12 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
     public function test_submission_and_provisioning_survive_reload(): void
     {
         $registration = $this->submittableRegistration();
-        $registration->submit($this->time());
+        $registration->submit($this->tenantId(), $this->time());
         $this->repository()->save($registration);
 
         $reloaded = $this->repository()->findByCorrelationReference($registration->correlationReference);
         self::assertNotNull($reloaded);
+        self::assertSame($this->tenantId()->value, $reloaded->reservedTenantId?->value);
         $reloaded->markProvisioned(null, $this->time());
         $this->repository()->save($reloaded);
 
@@ -111,6 +126,62 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
         self::assertNotNull($provisioned);
         self::assertSame('provisioned', $provisioned->status->value);
         self::assertSame(2, $provisioned->version());
+        self::assertSame($this->tenantId()->value, $provisioned->reservedTenantId?->value);
+    }
+
+    public function test_newly_submitted_registration_persists_a_non_null_tenant_id(): void
+    {
+        $registration = $this->submittableRegistration();
+        $registration->submit($this->tenantId(), $this->time());
+        $this->repository()->save($registration);
+
+        $row = $this->connection()->table('clinic_registrations')->where('id', $registration->id->value)->first();
+
+        self::assertNotNull($row);
+        self::assertSame($this->tenantId()->value, $row->reserved_tenant_id);
+    }
+
+    public function test_reserved_tenant_id_column_is_nullable_for_draft_rows(): void
+    {
+        $registration = $this->submittableRegistration();
+        $this->repository()->save($registration);
+
+        $row = $this->connection()->table('clinic_registrations')->where('id', $registration->id->value)->first();
+
+        self::assertNotNull($row);
+        self::assertNull($row->reserved_tenant_id);
+
+        $reloaded = $this->repository()->find($registration->id);
+        self::assertNotNull($reloaded);
+        self::assertNull($reloaded->reservedTenantId);
+    }
+
+    public function test_legacy_null_tenant_id_rows_are_not_automatically_backfilled(): void
+    {
+        $legacyId = $this->uuid(50);
+        $this->connection()->table('clinic_registrations')->insert([
+            'id' => $legacyId,
+            'platform_identity_id' => $this->uuid(51),
+            'status' => 'submitted',
+            'registration_correlation_reference' => $legacyId,
+            'reserved_tenant_id' => null,
+            'submitted_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+            'version' => 1,
+            'created_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+            'updated_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+        ]);
+
+        $other = $this->submittableRegistration();
+        $other->submit($this->tenantId(), $this->time());
+        $this->repository()->save($other);
+
+        $legacyRow = $this->connection()->table('clinic_registrations')->where('id', $legacyId)->first();
+        self::assertNotNull($legacyRow);
+        self::assertNull($legacyRow->reserved_tenant_id);
+
+        $legacy = $this->repository()->find(new RegistrationId($legacyId));
+        self::assertNotNull($legacy);
+        self::assertNull($legacy->reservedTenantId);
     }
 
     public function test_duplicate_active_registration_is_rejected_by_database(): void
@@ -140,9 +211,9 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
         self::assertNotNull($firstCopy);
         self::assertNotNull($staleCopy);
 
-        $firstCopy->submit($this->time());
+        $firstCopy->submit($this->tenantId(), $this->time());
         $this->repository()->save($firstCopy);
-        $staleCopy->submit($this->time());
+        $staleCopy->submit($this->tenantId(), $this->time());
 
         $this->expectException(StaleClinicRegistrationWriteException::class);
 
@@ -189,6 +260,11 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
     private function time(): DateTimeImmutable
     {
         return new DateTimeImmutable('2026-07-20T00:00:00Z');
+    }
+
+    private function tenantId(): TenantId
+    {
+        return new TenantId($this->uuid(4));
     }
 
     private function uuid(int $suffix): string

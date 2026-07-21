@@ -25,6 +25,7 @@ final class ClinicRegistrationDataAssembler
             selectedBillingOptionReference: $registration->commercialSelection->billingOptionReference,
             commercialSnapshotVersion: $registration->commercialSelection->commercialSnapshotVersion,
             registrationCorrelationReference: $registration->correlationReference,
+            reservedTenantId: $registration->reservedTenantId?->value,
             provisionedTenantReference: $registration->provisionedTenant?->value,
             submittedAt: $this->instant($registration->submittedAt),
             provisionedAt: $this->instant($registration->provisionedAt),

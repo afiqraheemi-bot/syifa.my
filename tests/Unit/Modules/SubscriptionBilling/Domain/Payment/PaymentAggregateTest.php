@@ -18,6 +18,7 @@ use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\Payme
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentReference;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentStatus;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\ProviderReference;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\TenantId;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -88,6 +89,26 @@ final class PaymentAggregateTest extends TestCase
         new PaymentCurrency('USD');
     }
 
+    public function test_tenant_id_rejects_a_non_uuid_value(): void
+    {
+        $this->expectException(InvalidPaymentValueException::class);
+
+        new TenantId('not-a-uuid');
+    }
+
+    public function test_tenant_id_snapshot_is_preserved_across_state_transitions(): void
+    {
+        $payment = $this->payment();
+
+        self::assertSame($this->uuid(5), $payment->tenantId?->value);
+
+        $payment->start($this->uuid(8), 'provider-neutral', $this->time());
+        $payment->markPending(new ProviderReference('provider-neutral', 'provider-payment-1'), $this->time());
+        $payment->markSucceeded($this->time());
+
+        self::assertSame($this->uuid(5), $payment->tenantId?->value);
+    }
+
     private function payment(): Payment
     {
         return Payment::create(
@@ -95,6 +116,7 @@ final class PaymentAggregateTest extends TestCase
             new PaymentReference($this->uuid(2)),
             new PaymentReference($this->uuid(3)),
             new PaymentReference($this->uuid(4)),
+            new TenantId($this->uuid(5)),
             new PaymentAmount(3000),
             new PaymentCurrency('MYR'),
             new IdempotencyKey('idem-payment-1'),

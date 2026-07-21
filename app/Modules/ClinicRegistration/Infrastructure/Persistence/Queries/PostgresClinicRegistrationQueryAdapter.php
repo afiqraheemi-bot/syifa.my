@@ -58,6 +58,7 @@ final readonly class PostgresClinicRegistrationQueryAdapter implements ClinicReg
             $this->nullableStringValue($row, 'selected_billing_option_reference'),
             $this->nullableStringValue($row, 'commercial_snapshot_version'),
             $this->stringValue($row, 'registration_correlation_reference'),
+            $this->nullableStringValue($row, 'reserved_tenant_id'),
             $this->nullableStringValue($row, 'provisioned_tenant_reference'),
             $this->instant($this->nullableDateTimeValue($row->submitted_at ?? null)),
             $this->instant($this->nullableDateTimeValue($row->provisioned_at ?? null)),

@@ -43,7 +43,7 @@ final readonly class PublishPaymentOutboxService
             if (! is_array($payload)) {
                 throw new RuntimeException('Payment outbox payload is malformed.');
             }
-            $this->events->dispatch(new PaymentIntegrationOutboxEvent((string) $row->id, (string) $row->event_type, (string) $row->payment_id, $payload, new DateTimeImmutable((string) $row->occurred_at)));
+            $this->events->dispatch(new PaymentIntegrationOutboxEvent((string) $row->id, (string) $row->event_type, (int) $row->event_version, (string) $row->payment_id, $payload, new DateTimeImmutable((string) $row->occurred_at)));
         } catch (Throwable) {
             // Delivery failed; release the lease on a safe retry schedule
             // instead of leaving the row claimed until the lease naturally

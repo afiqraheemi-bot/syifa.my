@@ -49,6 +49,8 @@ final class PostgresPaymentOutboxDeliveryTest extends TestCase
             'database/migrations/subscription_billing/2026_07_24_000001_add_authoritative_verification_to_webhook_receipts.php',
             'database/migrations/subscription_billing/2026_07_24_000002_index_payment_attempt_provider_reference.php',
             'database/migrations/subscription_billing/2026_07_25_000001_create_payment_verification_application_tables.php',
+            'database/migrations/subscription_billing/2026_07_26_000001_add_tenant_id_to_payments.php',
+            'database/migrations/subscription_billing/2026_07_26_000002_add_event_version_to_payment_integration_outbox.php',
         ] as $path) {
             $migration = require base_path($path);
             $migration->up();
@@ -76,6 +78,7 @@ final class PostgresPaymentOutboxDeliveryTest extends TestCase
 
         $row = $this->row($id);
         self::assertSame($id, (string) $row->id);
+        self::assertSame(1, $row->event_version);
         self::assertNotNull($row->published_at);
         self::assertNull($row->publish_claim_token);
         self::assertNull($row->publish_lease_expires_at);
@@ -239,6 +242,18 @@ final class PostgresPaymentOutboxDeliveryTest extends TestCase
         self::assertCount(1, $dispatched);
         self::assertSame($id, $dispatched[0]->id);
         self::assertNotNull($this->row($id)->published_at);
+    }
+
+    public function test_dispatched_event_carries_event_version_one(): void
+    {
+        $id = $this->insertOutboxRow('evt-1');
+        $dispatched = [];
+        $publisher = new PublishPaymentOutboxService($this->db(), $this->recordingDispatcher($dispatched));
+
+        self::assertTrue($publisher->publishNext());
+        self::assertCount(1, $dispatched);
+        self::assertSame($id, $dispatched[0]->id);
+        self::assertSame(1, $dispatched[0]->eventVersion);
     }
 
     public function test_duplicate_add_calls_with_the_same_event_id_create_only_one_row(): void

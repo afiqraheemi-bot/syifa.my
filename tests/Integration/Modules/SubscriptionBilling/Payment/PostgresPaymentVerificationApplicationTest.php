@@ -59,6 +59,8 @@ final class PostgresPaymentVerificationApplicationTest extends TestCase
             'database/migrations/subscription_billing/2026_07_24_000001_add_authoritative_verification_to_webhook_receipts.php',
             'database/migrations/subscription_billing/2026_07_24_000002_index_payment_attempt_provider_reference.php',
             'database/migrations/subscription_billing/2026_07_25_000001_create_payment_verification_application_tables.php',
+            'database/migrations/subscription_billing/2026_07_26_000001_add_tenant_id_to_payments.php',
+            'database/migrations/subscription_billing/2026_07_26_000002_add_event_version_to_payment_integration_outbox.php',
         ] as $path) {
             $migration = require base_path($path);
             $migration->up();
@@ -83,6 +85,7 @@ final class PostgresPaymentVerificationApplicationTest extends TestCase
         self::assertSame('applied', $this->db()->table('payment_verification_applications')->where('id', $applicationId)->value('status'));
         self::assertSame('system', $this->db()->table('audit_entries')->value('actor_type'));
         self::assertSame('VerifiedPaymentSucceeded', $this->db()->table('payment_integration_outbox')->value('event_type'));
+        self::assertSame(1, $this->db()->table('payment_integration_outbox')->value('event_version'));
         self::assertNull($this->db()->table('payment_integration_outbox')->value('published_at'));
     }
 

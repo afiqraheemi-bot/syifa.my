@@ -13,6 +13,7 @@ use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\Payme
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentReference;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentStatus;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\ProviderReference;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\TenantId;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Records\PaymentAttemptStorageRecord;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Records\PaymentStorageRecord;
 
@@ -25,6 +26,7 @@ final class PaymentPersistenceMapper
             commercialOfferId: $payment->commercialOfferId->value,
             clinicRegistrationId: $payment->clinicRegistrationId->value,
             platformIdentityId: $payment->platformIdentityId->value,
+            tenantId: $payment->tenantId?->value,
             amountMinor: $payment->amount->minorUnits,
             currency: $payment->currency->value,
             idempotencyKey: $payment->idempotencyKey->value,
@@ -70,6 +72,7 @@ final class PaymentPersistenceMapper
             commercialOfferId: new PaymentReference($record->commercialOfferId),
             clinicRegistrationId: new PaymentReference($record->clinicRegistrationId),
             platformIdentityId: new PaymentReference($record->platformIdentityId),
+            tenantId: $record->tenantId === null ? null : new TenantId($record->tenantId),
             amount: new PaymentAmount($record->amountMinor),
             currency: new PaymentCurrency($record->currency),
             idempotencyKey: new IdempotencyKey($record->idempotencyKey),

@@ -20,6 +20,7 @@ final readonly class ClinicRegistrationStorageRecord
         public ?string $selectedBillingOptionReference,
         public ?string $commercialSnapshotVersion,
         public string $registrationCorrelationReference,
+        public ?string $reservedTenantId,
         public ?string $provisionedTenantReference,
         public ?DateTimeImmutable $submittedAt,
         public ?DateTimeImmutable $provisionedAt,
