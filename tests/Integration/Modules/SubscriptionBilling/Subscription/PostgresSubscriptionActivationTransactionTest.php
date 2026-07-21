@@ -13,9 +13,11 @@ use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitleme
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationApplicationResultCode;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationAuditInterface;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionActivationApplicationPersistenceMapper;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionIntegrationOutboxPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionActivationApplicationRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionActivationReconciliationCaseRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionIntegrationOutboxRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresSubscriptionActivationEvidenceRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresSubscriptionActivationTransaction;
@@ -50,7 +52,7 @@ final class PostgresSubscriptionActivationTransactionTest extends TestCase
         $this->connection = DB::connection(self::CONNECTION);
         $this->dropTables();
         $this->createEvidenceTables();
-        foreach (['2026_07_27_000001_create_subscriptions_table.php', '2026_07_28_000001_create_subscription_activation_tables.php'] as $file) {
+        foreach (['2026_07_27_000001_create_subscriptions_table.php', '2026_07_28_000001_create_subscription_activation_tables.php', '2026_07_29_000001_create_subscription_integration_outbox.php'] as $file) {
             $migration = require base_path('database/migrations/subscription_billing/'.$file);
             self::assertInstanceOf(Migration::class, $migration);
             $migration->up();
@@ -75,6 +77,7 @@ final class PostgresSubscriptionActivationTransactionTest extends TestCase
         self::assertSame('active', $this->connection()->table('subscriptions')->value('status'));
         self::assertSame('applied', $this->connection()->table('subscription_activation_applications')->value('status'));
         self::assertSame('subscription.activation.applied', $this->connection()->table('subscription_activation_test_audits')->value('action'));
+        self::assertSame('SubscriptionActivated', $this->connection()->table('subscription_integration_outbox')->value('event_type'));
     }
 
     public function test_audit_failure_rolls_back_subscription_and_application_completion(): void
@@ -89,6 +92,7 @@ final class PostgresSubscriptionActivationTransactionTest extends TestCase
         self::assertSame(0, $this->connection()->table('subscriptions')->count());
         self::assertSame('processing', $this->connection()->table('subscription_activation_applications')->value('status'));
         self::assertSame(0, $this->connection()->table('subscription_activation_test_audits')->count());
+        self::assertSame(0, $this->connection()->table('subscription_integration_outbox')->count());
     }
 
     /** @return array{ActivateSubscriptionFromVerifiedPaymentService,string} */
@@ -103,7 +107,9 @@ final class PostgresSubscriptionActivationTransactionTest extends TestCase
             $applications, new PostgresSubscriptionActivationEvidenceRepository($connection),
             new PostgresSubscriptionRepository($connection, new SubscriptionPersistenceMapper), new TestEntitlementComputation,
             new PostgresSubscriptionActivationReconciliationCaseRepository($connection), new TestSubscriptionActivationAudit($connection, $failAudit),
-            new PostgresSubscriptionActivationTransaction($connection), new AnnualTermCalculator, new SubscriptionActivationRetryPolicy,
+            new PostgresSubscriptionActivationTransaction($connection),
+            new PostgresSubscriptionIntegrationOutboxRepository($connection, new SubscriptionIntegrationOutboxPersistenceMapper),
+            new AnnualTermCalculator, new SubscriptionActivationRetryPolicy,
         ), $application->id];
     }
 
@@ -127,7 +133,7 @@ final class PostgresSubscriptionActivationTransactionTest extends TestCase
 
     private function dropTables(): void
     {
-        foreach (['subscription_activation_reconciliation_cases', 'subscription_activation_applications', 'subscriptions', 'subscription_activation_test_audits', 'payment_integration_outbox', 'commercial_offers', 'clinic_registrations', 'payments'] as $table) {
+        foreach (['subscription_integration_outbox', 'subscription_activation_reconciliation_cases', 'subscription_activation_applications', 'subscriptions', 'subscription_activation_test_audits', 'payment_integration_outbox', 'commercial_offers', 'clinic_registrations', 'payments'] as $table) {
             Schema::connection(self::CONNECTION)->dropIfExists($table);
         }
     }

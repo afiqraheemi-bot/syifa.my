@@ -91,17 +91,14 @@ final class TenantIdentityPropagationArchitectureTest extends TestCase
         self::assertStringContainsString('public ?string $reservedTenantId', $registrationData);
     }
 
-    public function test_subscription_activation_persistence_remains_dormant_without_jobs_or_outbox(): void
+    public function test_subscription_activation_and_outbox_persistence_remain_dormant_without_jobs(): void
     {
         self::assertDirectoryDoesNotExist($this->root().'/app/Modules/SubscriptionBilling/Domain/Aggregates/Subscription/Persistence');
         self::assertFileExists($this->root().'/app/Modules/SubscriptionBilling/Contracts/Subscription/SubscriptionActivationApplication.php');
         self::assertFileDoesNotExist($this->root().'/app/Modules/SubscriptionBilling/Infrastructure/Subscription/ActivateSubscriptionJob.php');
         self::assertFileDoesNotExist($this->root().'/app/Modules/SubscriptionBilling/Infrastructure/Subscription/PublishSubscriptionOutboxJob.php');
 
-        foreach (glob($this->root().'/database/migrations/*/*.php') ?: [] as $migration) {
-            $source = $this->source($migration);
-            self::assertStringNotContainsString("Schema::create('subscription_integration_outbox'", $source, $migration);
-        }
+        self::assertFileExists($this->root().'/database/migrations/subscription_billing/2026_07_29_000001_create_subscription_integration_outbox.php');
     }
 
     public function test_new_migrations_are_additive_only_and_never_tighten_not_null_or_add_uniqueness(): void

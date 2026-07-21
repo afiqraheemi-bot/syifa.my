@@ -50,6 +50,7 @@ use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivatio
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationEvidenceRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationReconciliationCaseRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationTransactionInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxRepositoryInterface;
 use App\Modules\SubscriptionBilling\Infrastructure\Audit\PaymentAuditAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Audit\SubscriptionActivationAuditAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\CommercialCataloguePlatformAuthorizationAdapter;
@@ -69,6 +70,7 @@ use App\Modules\SubscriptionBilling\Infrastructure\Payment\ToyyibPay\ToyyibPayPa
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\CommercialCataloguePersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\PaymentPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionActivationApplicationPersistenceMapper;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionIntegrationOutboxPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresCommercialCatalogueQueryAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresBillingOptionRepository;
@@ -81,6 +83,7 @@ use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\Post
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPlanRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionActivationApplicationRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionActivationReconciliationCaseRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionIntegrationOutboxRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresSubscriptionActivationEvidenceRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresSubscriptionActivationTransaction;
@@ -136,6 +139,7 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(PaymentIdentifierGeneratorInterface::class, PaymentIdentifierGenerator::class);
         $this->app->singleton(PaymentPersistenceMapper::class);
         $this->app->singleton(SubscriptionPersistenceMapper::class);
+        $this->app->singleton(SubscriptionIntegrationOutboxPersistenceMapper::class);
         $this->app->singleton(SubscriptionActivationApplicationPersistenceMapper::class);
         $this->app->singleton(AnnualTermCalculator::class);
         $this->app->singleton(SubscriptionActivationRetryPolicy::class);
@@ -144,6 +148,7 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(SubscriptionActivationEvidenceRepositoryInterface::class, PostgresSubscriptionActivationEvidenceRepository::class);
         $this->app->singleton(SubscriptionActivationApplicationRepositoryInterface::class, PostgresSubscriptionActivationApplicationRepository::class);
         $this->app->singleton(SubscriptionActivationReconciliationCaseRepositoryInterface::class, PostgresSubscriptionActivationReconciliationCaseRepository::class);
+        $this->app->singleton(SubscriptionIntegrationOutboxRepositoryInterface::class, PostgresSubscriptionIntegrationOutboxRepository::class);
         $this->app->singleton(PaymentAuditInterface::class, PaymentAuditAdapter::class);
         $this->app->singleton(PaymentApplicationRetryPolicy::class, static fn (): PaymentApplicationRetryPolicy => new PaymentApplicationRetryPolicy(
             (int) config('payment_providers.application.lease_seconds', 120),

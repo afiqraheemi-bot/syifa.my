@@ -8,6 +8,7 @@ use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\ResolvedSubscr
 use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementComputationInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\SubscriptionRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\Exceptions\TransientSubscriptionActivationException;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivatedIntegrationEvent;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationApplication;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationApplicationRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationApplicationResultCode;
@@ -16,6 +17,7 @@ use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivatio
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationEvidenceRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationReconciliationCaseRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationTransactionInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxRepositoryInterface;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\Subscription;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\BillingCycleId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\BillingPeriod;
@@ -42,6 +44,7 @@ final readonly class ActivateSubscriptionFromVerifiedPaymentService
         private SubscriptionActivationReconciliationCaseRepositoryInterface $reconciliations,
         private SubscriptionActivationAuditInterface $audit,
         private SubscriptionActivationTransactionInterface $transactions,
+        private SubscriptionIntegrationOutboxRepositoryInterface $outbox,
         private AnnualTermCalculator $terms,
         private SubscriptionActivationRetryPolicy $retry,
     ) {}
@@ -139,6 +142,12 @@ final readonly class ActivateSubscriptionFromVerifiedPaymentService
             );
             $subscription->activate($now);
             $this->subscriptions->save($subscription);
+            $this->outbox->add(new SubscriptionActivatedIntegrationEvent(
+                eventId: $this->eventId($claim->id), subscriptionId: $claim->subscriptionId, tenantId: $claim->tenantId,
+                clinicRegistrationId: $evidence->clinicRegistrationId, paymentId: $claim->paymentId,
+                commercialOfferId: $evidence->offerId, planId: $evidence->planId, billingCycleId: $evidence->billingCycleId,
+                startsOn: $term['starts_on'], endsOn: $term['ends_on'], occurredAt: $now,
+            ));
             $this->finish($claim, SubscriptionActivationApplicationStatus::Applied, SubscriptionActivationApplicationResultCode::Applied, $now);
             $this->audit->record('subscription.activation.applied', $claim->id, $claim->subscriptionId, $claim->paymentId, $claim->tenantId, SubscriptionActivationApplicationResultCode::Applied, $now);
         });
@@ -155,5 +164,14 @@ final readonly class ActivateSubscriptionFromVerifiedPaymentService
         if ($claim->claimToken === null || ! $this->applications->complete($claim->id, $claim->claimToken, $status, $code, $now)) {
             throw new TransientSubscriptionActivationException('Subscription activation claim became stale.');
         }
+    }
+
+    private function eventId(string $applicationId): string
+    {
+        $hex = substr(hash('sha256', $applicationId.'|'.SubscriptionActivatedIntegrationEvent::TYPE), 0, 32);
+        $hex[12] = '5';
+        $hex[16] = dechex((hexdec($hex[16]) & 3) | 8);
+
+        return sprintf('%s-%s-%s-%s-%s', substr($hex, 0, 8), substr($hex, 8, 4), substr($hex, 12, 4), substr($hex, 16, 4), substr($hex, 20));
     }
 }

@@ -19,6 +19,7 @@ use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivatio
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationEvidenceRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationReconciliationCaseRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationTransactionInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxRepositoryInterface;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\Subscription;
 use DateTimeImmutable;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -34,12 +35,15 @@ final class ActivateSubscriptionFromVerifiedPaymentServiceTest extends TestCase
 
     private SubscriptionActivationAuditInterface&MockObject $audit;
 
+    private SubscriptionIntegrationOutboxRepositoryInterface&MockObject $outbox;
+
     protected function setUp(): void
     {
         $this->applications = $this->createMock(SubscriptionActivationApplicationRepositoryInterface::class);
         $this->evidence = $this->createMock(SubscriptionActivationEvidenceRepositoryInterface::class);
         $this->subscriptions = $this->createMock(SubscriptionRepositoryInterface::class);
         $this->audit = $this->createMock(SubscriptionActivationAuditInterface::class);
+        $this->outbox = $this->createMock(SubscriptionIntegrationOutboxRepositoryInterface::class);
     }
 
     public function test_success_creates_and_activates_subscription_then_completes_and_audits(): void
@@ -58,6 +62,7 @@ final class ActivateSubscriptionFromVerifiedPaymentServiceTest extends TestCase
             SubscriptionActivationApplicationResultCode::Applied,
         )->willReturn(true);
         $this->audit->expects(self::once())->method('record')->with('subscription.activation.applied');
+        $this->outbox->expects(self::once())->method('add');
 
         $this->service()->execute($this->uuid(1), $this->time());
     }
@@ -72,6 +77,7 @@ final class ActivateSubscriptionFromVerifiedPaymentServiceTest extends TestCase
             SubscriptionActivationApplicationResultCode::InvalidEvidence,
         )->willReturn(true);
         $this->audit->expects(self::once())->method('record')->with('subscription.activation.quarantined');
+        $this->outbox->expects(self::never())->method('add');
 
         $this->service()->execute($this->uuid(1), $this->time());
     }
@@ -82,6 +88,7 @@ final class ActivateSubscriptionFromVerifiedPaymentServiceTest extends TestCase
         $this->evidence->expects(self::never())->method('loadForUpdate');
         $this->subscriptions->expects(self::never())->method('save');
         $this->audit->expects(self::never())->method('record');
+        $this->outbox->expects(self::never())->method('add');
 
         $this->service()->execute($this->uuid(1), $this->time());
     }
@@ -98,7 +105,7 @@ final class ActivateSubscriptionFromVerifiedPaymentServiceTest extends TestCase
 
         return new ActivateSubscriptionFromVerifiedPaymentService(
             $this->applications, $this->evidence, $this->subscriptions, $entitlements,
-            $reconciliations, $this->audit, $transactions, new AnnualTermCalculator,
+            $reconciliations, $this->audit, $transactions, $this->outbox, new AnnualTermCalculator,
             new SubscriptionActivationRetryPolicy,
         );
     }
