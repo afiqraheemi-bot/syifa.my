@@ -7,6 +7,7 @@ namespace Tests\Unit\Modules\SubscriptionBilling\Infrastructure\Persistence\Mapp
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivatedIntegrationEvent;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionIntegrationOutboxPersistenceMapper;
 use DateTimeImmutable;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
 final class SubscriptionIntegrationOutboxPersistenceMapperTest extends TestCase
@@ -25,6 +26,24 @@ final class SubscriptionIntegrationOutboxPersistenceMapperTest extends TestCase
         self::assertSame(SubscriptionActivatedIntegrationEvent::TYPE, $record->eventType);
         self::assertSame($event->payload(), $restored->payload());
         self::assertStringNotContainsString('provider', json_encode($record->payload, JSON_THROW_ON_ERROR));
+    }
+
+    public function test_event_rejects_invalid_calendar_period(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new SubscriptionActivatedIntegrationEvent(
+            $this->uuid(1), $this->uuid(2), $this->uuid(3), $this->uuid(4), $this->uuid(5),
+            $this->uuid(6), $this->uuid(7), $this->uuid(8), '2026-02-30', '2027-07-24', new DateTimeImmutable,
+        );
+    }
+
+    public function test_occurred_at_is_normalized_to_utc(): void
+    {
+        $event = new SubscriptionActivatedIntegrationEvent(
+            $this->uuid(1), $this->uuid(2), $this->uuid(3), $this->uuid(4), $this->uuid(5),
+            $this->uuid(6), $this->uuid(7), $this->uuid(8), '2026-07-25', '2027-07-24', new DateTimeImmutable('2026-07-25T08:00:00+08:00'),
+        );
+        self::assertSame('2026-07-25T00:00:00.000000+00:00', $event->payload()['occurred_at']);
     }
 
     private function event(): SubscriptionActivatedIntegrationEvent

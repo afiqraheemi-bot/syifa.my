@@ -37,6 +37,9 @@ final class ActivateSubscriptionFromVerifiedPaymentServiceTest extends TestCase
 
     private SubscriptionIntegrationOutboxRepositoryInterface&MockObject $outbox;
 
+    /** @var list<string> */
+    private array $capabilityKeys = ['appointments.manage'];
+
     protected function setUp(): void
     {
         $this->applications = $this->createMock(SubscriptionActivationApplicationRepositoryInterface::class);
@@ -93,11 +96,29 @@ final class ActivateSubscriptionFromVerifiedPaymentServiceTest extends TestCase
         $this->service()->execute($this->uuid(1), $this->time());
     }
 
+    public function test_malformed_computed_entitlement_is_quarantined_without_partial_writes(): void
+    {
+        $this->capabilityKeys = ['Invalid Capability'];
+        $this->claim();
+        $this->evidence->method('loadForUpdate')->willReturn($this->evidence());
+        $this->subscriptions->method('findByPaymentId')->willReturn(null);
+        $this->subscriptions->method('findByTenantId')->willReturn(null);
+        $this->subscriptions->expects(self::never())->method('save');
+        $this->outbox->expects(self::never())->method('add');
+        $this->applications->expects(self::once())->method('complete')->with(
+            $this->uuid(1), $this->uuid(9), SubscriptionActivationApplicationStatus::Quarantined,
+            SubscriptionActivationApplicationResultCode::InvalidEvidence,
+        )->willReturn(true);
+        $this->audit->expects(self::once())->method('record')->with('subscription.activation.quarantined');
+
+        $this->service()->execute($this->uuid(1), $this->time());
+    }
+
     private function service(): ActivateSubscriptionFromVerifiedPaymentService
     {
         $entitlements = $this->createMock(SubscriptionEntitlementComputationInterface::class);
         $entitlements->method('compute')->willReturn(new ComputedSubscriptionEntitlementData(
-            $this->uuid(6), $this->uuid(7), 'capability-v1', ['appointments.manage'],
+            $this->uuid(6), $this->uuid(7), 'capability-v1', $this->capabilityKeys,
         ));
         $reconciliations = $this->createMock(SubscriptionActivationReconciliationCaseRepositoryInterface::class);
         $transactions = $this->createMock(SubscriptionActivationTransactionInterface::class);

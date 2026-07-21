@@ -32,11 +32,17 @@ final readonly class PostgresSubscriptionActivationApplicationRepository impleme
         $row = $this->connection->table('subscription_activation_applications')->where('source_event_id', $sourceEventId)->first()
             ?? $this->connection->table('subscription_activation_applications')->where('payment_id', $paymentId)->first();
 
-        return $this->map($row);
+        $application = $this->map($row);
+        if ($application->sourceEventId !== $sourceEventId || $application->paymentId !== $paymentId || $application->tenantId !== $tenantId) {
+            throw new RuntimeException('Subscription activation idempotency identity conflict.');
+        }
+
+        return $application;
     }
 
     public function claim(string $applicationId, DateTimeImmutable $now, int $leaseSeconds): ?SubscriptionActivationApplication
     {
+        $this->positiveSeconds($leaseSeconds);
         $token = (string) Str::uuid();
         $timestamp = $this->timestamp($now);
         $lease = $this->timestamp($now->modify('+'.$leaseSeconds.' seconds'));
@@ -62,6 +68,7 @@ final readonly class PostgresSubscriptionActivationApplicationRepository impleme
     {
         return $this->connection->table('subscription_activation_applications')
             ->where('id', $applicationId)->where('processing_claim_token', $claimToken)->where('status', 'processing')
+            ->where('processing_lease_expires_at', '>', $this->timestamp($now))
             ->update([
                 'status' => $status->value, 'result_code' => $resultCode->value, 'processing_claim_token' => null,
                 'processing_lease_expires_at' => null, 'next_attempt_at' => $nextAttemptAt === null ? null : $this->timestamp($nextAttemptAt),
@@ -93,5 +100,12 @@ final readonly class PostgresSubscriptionActivationApplicationRepository impleme
     private function date(mixed $value): ?DateTimeImmutable
     {
         return $value === null ? null : new DateTimeImmutable((string) $value);
+    }
+
+    private function positiveSeconds(int $seconds): void
+    {
+        if ($seconds < 1) {
+            throw new \InvalidArgumentException('Lease duration must be positive.');
+        }
     }
 }

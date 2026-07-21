@@ -25,11 +25,17 @@ final readonly class PostgresSubscriptionIntegrationOutboxRepository implements 
     {
         $record = $this->mapper->toRecord($event);
         $timestamp = $this->timestamp($record->occurredAt);
-        $this->connection->table('subscription_integration_outbox')->insertOrIgnore([
+        $inserted = $this->connection->table('subscription_integration_outbox')->insertOrIgnore([
             'id' => $record->id, 'event_type' => $record->eventType, 'event_version' => $record->eventVersion,
             'subscription_id' => $record->subscriptionId, 'payload' => json_encode($record->payload, JSON_THROW_ON_ERROR),
             'occurred_at' => $timestamp, 'publish_attempt_count' => 0, 'created_at' => $timestamp, 'updated_at' => $timestamp,
         ]);
+        if ($inserted === 0) {
+            $existing = $this->connection->table('subscription_integration_outbox')->where('id', $record->id)->first();
+            if (! $existing instanceof stdClass || $this->mapper->toEvent($this->record($existing))->payload() !== $event->payload()) {
+                throw new RuntimeException('Subscription outbox idempotency identity conflict.');
+            }
+        }
     }
 
     public function pending(DateTimeImmutable $availableAt, int $limit = 100): array
@@ -51,6 +57,9 @@ final readonly class PostgresSubscriptionIntegrationOutboxRepository implements 
 
     public function claimNext(DateTimeImmutable $now, int $leaseSeconds = 120): ?SubscriptionIntegrationOutboxClaim
     {
+        if ($leaseSeconds < 1) {
+            throw new \InvalidArgumentException('Lease duration must be positive.');
+        }
         $token = (string) Str::uuid();
         $timestamp = $this->timestamp($now);
         $lease = $this->timestamp($now->modify('+'.$leaseSeconds.' seconds'));
@@ -73,7 +82,7 @@ final readonly class PostgresSubscriptionIntegrationOutboxRepository implements 
         $timestamp = $this->timestamp($dispatchedAt);
 
         return $this->connection->table('subscription_integration_outbox')->where('id', $eventId)
-            ->where('publish_claim_token', $leaseToken)->whereNull('published_at')->update([
+            ->where('publish_claim_token', $leaseToken)->where('publish_lease_expires_at', '>', $timestamp)->whereNull('published_at')->update([
                 'published_at' => $timestamp, 'publish_claim_token' => null, 'publish_lease_expires_at' => null,
                 'next_publish_attempt_at' => null, 'safe_failure_label' => null, 'updated_at' => $timestamp,
             ]) === 1;
@@ -84,9 +93,12 @@ final readonly class PostgresSubscriptionIntegrationOutboxRepository implements 
         if ($safeFailureLabel === '' || mb_strlen($safeFailureLabel) > 120) {
             throw new \InvalidArgumentException('Safe failure label is required and limited to 120 characters.');
         }
+        if ($nextRetryAt < $now) {
+            throw new \InvalidArgumentException('Next retry time cannot precede the current time.');
+        }
 
         return $this->connection->table('subscription_integration_outbox')->where('id', $eventId)
-            ->where('publish_claim_token', $leaseToken)->whereNull('published_at')->update([
+            ->where('publish_claim_token', $leaseToken)->where('publish_lease_expires_at', '>', $this->timestamp($now))->whereNull('published_at')->update([
                 'publish_claim_token' => null, 'publish_lease_expires_at' => null,
                 'next_publish_attempt_at' => $this->timestamp($nextRetryAt), 'safe_failure_label' => $safeFailureLabel,
                 'updated_at' => $this->timestamp($now),
@@ -102,6 +114,16 @@ final readonly class PostgresSubscriptionIntegrationOutboxRepository implements 
         }
         if (! is_array($payload)) {
             throw new RuntimeException('Stored Subscription outbox payload must be an object.');
+        }
+        $expectedKeys = ['event_id', 'event_version', 'subscription_id', 'tenant_id', 'clinic_registration_id', 'payment_id', 'commercial_offer_id', 'plan_id', 'billing_cycle_id', 'starts_on', 'ends_on', 'occurred_at'];
+        $actualKeys = array_keys($payload);
+        sort($actualKeys);
+        sort($expectedKeys);
+        if ($actualKeys !== $expectedKeys || ($payload['event_id'] ?? null) !== (string) $row->id
+            || ($payload['event_version'] ?? null) !== (int) $row->event_version
+            || ($payload['subscription_id'] ?? null) !== (string) $row->subscription_id
+            || (string) $row->event_type !== SubscriptionActivatedIntegrationEvent::TYPE) {
+            throw new RuntimeException('Stored Subscription outbox envelope and payload are inconsistent.');
         }
         foreach ($payload as $value) {
             if (! is_int($value) && ! is_string($value)) {

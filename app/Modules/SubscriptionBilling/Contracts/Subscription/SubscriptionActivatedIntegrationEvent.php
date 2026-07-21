@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\SubscriptionBilling\Contracts\Subscription;
 
 use DateTimeImmutable;
+use DateTimeZone;
 use InvalidArgumentException;
 
 final readonly class SubscriptionActivatedIntegrationEvent
@@ -35,6 +36,15 @@ final readonly class SubscriptionActivatedIntegrationEvent
         if ($eventVersion !== self::VERSION) {
             throw new InvalidArgumentException('Unsupported SubscriptionActivated event version.');
         }
+        foreach ([$startsOn, $endsOn] as $date) {
+            $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+            if ($parsed === false || $parsed->format('Y-m-d') !== $date) {
+                throw new InvalidArgumentException('Subscription integration event dates must use valid YYYY-MM-DD values.');
+            }
+        }
+        if ($endsOn < $startsOn) {
+            throw new InvalidArgumentException('Subscription integration event end date cannot precede its start date.');
+        }
     }
 
     /** @return array<string, int|string> */
@@ -46,7 +56,8 @@ final readonly class SubscriptionActivatedIntegrationEvent
             'clinic_registration_id' => $this->clinicRegistrationId, 'payment_id' => $this->paymentId,
             'commercial_offer_id' => $this->commercialOfferId, 'plan_id' => $this->planId,
             'billing_cycle_id' => $this->billingCycleId, 'starts_on' => $this->startsOn,
-            'ends_on' => $this->endsOn, 'occurred_at' => $this->occurredAt->format('Y-m-d\TH:i:s.uP'),
+            'ends_on' => $this->endsOn,
+            'occurred_at' => $this->occurredAt->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.uP'),
         ];
     }
 }

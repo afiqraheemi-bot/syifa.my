@@ -12,6 +12,7 @@ use DateTimeImmutable;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 use Tests\TestCase;
 
 final class PostgresSubscriptionActivationApplicationRepositoryTest extends TestCase
@@ -68,6 +69,74 @@ final class PostgresSubscriptionActivationApplicationRepositoryTest extends Test
         self::assertFalse($this->repository()->complete($first->id, (string) $claim->claimToken, SubscriptionActivationApplicationStatus::Applied, SubscriptionActivationApplicationResultCode::Applied, $now));
         self::assertTrue($this->repository()->complete($first->id, (string) $reclaimed->claimToken, SubscriptionActivationApplicationStatus::Applied, SubscriptionActivationApplicationResultCode::Applied, $now));
         self::assertSame(SubscriptionActivationApplicationStatus::Applied, $this->repository()->find($first->id)?->status);
+    }
+
+    public function test_registration_rejects_conflicting_idempotency_identity(): void
+    {
+        $now = new DateTimeImmutable('2026-07-25T00:00:00Z');
+        $this->repository()->register($this->uuid(1), $this->uuid(2), $this->uuid(3), $now);
+
+        $this->expectException(RuntimeException::class);
+        $this->repository()->register($this->uuid(1), $this->uuid(4), $this->uuid(3), $now);
+    }
+
+    public function test_expired_lease_cannot_complete_until_reclaimed(): void
+    {
+        $now = new DateTimeImmutable('2026-07-25T00:00:00Z');
+        $application = $this->repository()->register($this->uuid(1), $this->uuid(2), $this->uuid(3), $now);
+        $claim = $this->repository()->claim($application->id, $now, 120);
+        self::assertNotNull($claim);
+
+        self::assertFalse($this->repository()->complete(
+            $application->id, (string) $claim->claimToken, SubscriptionActivationApplicationStatus::Applied,
+            SubscriptionActivationApplicationResultCode::Applied, $now->modify('+3 minutes'),
+        ));
+    }
+
+    public function test_concurrent_claim_allows_exactly_one_winner(): void
+    {
+        if (! function_exists('pcntl_fork')) {
+            self::markTestSkipped('pcntl is required for process-level concurrency verification.');
+        }
+        $now = new DateTimeImmutable('2026-07-25T00:00:00Z');
+        $application = $this->repository()->register($this->uuid(1), $this->uuid(2), $this->uuid(3), $now);
+        $workspace = sys_get_temp_dir().'/syifa-subscription-claim-'.bin2hex(random_bytes(4));
+        mkdir($workspace);
+        $release = $workspace.'/release';
+
+        try {
+            $children = [];
+            foreach ([1, 2] as $child) {
+                $pid = pcntl_fork();
+                if ($pid === -1) {
+                    self::fail('Unable to fork claim worker.');
+                }
+                if ($pid === 0) {
+                    DB::purge(self::CONNECTION);
+                    while (! file_exists($release)) {
+                        usleep(1000);
+                    }
+                    $repository = new PostgresSubscriptionActivationApplicationRepository(DB::connection(self::CONNECTION), new SubscriptionActivationApplicationPersistenceMapper);
+                    $claim = $repository->claim($application->id, $now, 120);
+                    file_put_contents($workspace.'/result-'.$child, $claim === null ? '0' : '1');
+                    exit(0);
+                }
+                $children[] = $pid;
+            }
+            touch($release);
+            foreach ($children as $pid) {
+                pcntl_waitpid($pid, $status);
+                self::assertSame(0, pcntl_wexitstatus($status));
+            }
+            $results = array_map(static fn (string $file): string => (string) file_get_contents($file), glob($workspace.'/result-*') ?: []);
+            sort($results);
+            self::assertSame(['0', '1'], $results);
+        } finally {
+            foreach (glob($workspace.'/*') ?: [] as $file) {
+                unlink($file);
+            }
+            rmdir($workspace);
+        }
     }
 
     private function repository(): PostgresSubscriptionActivationApplicationRepository

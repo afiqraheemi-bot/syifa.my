@@ -12,6 +12,7 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 use Tests\TestCase;
 
 final class PostgresSubscriptionIntegrationOutboxRepositoryTest extends TestCase
@@ -94,6 +95,90 @@ final class PostgresSubscriptionIntegrationOutboxRepositoryTest extends TestCase
         self::assertNotNull($row->published_at);
         self::assertNull($row->publish_claim_token);
         self::assertNull($row->next_publish_attempt_at);
+    }
+
+    public function test_expired_lease_cannot_complete_or_schedule_retry(): void
+    {
+        $this->repository()->add($this->event());
+        $claim = $this->repository()->claimNext($this->time(), 120);
+        self::assertNotNull($claim);
+        $afterExpiry = $this->time()->modify('+3 minutes');
+
+        self::assertFalse($this->repository()->completeDispatch($claim->event->eventId, $claim->leaseToken, $afterExpiry));
+        self::assertFalse($this->repository()->releaseForRetry($claim->event->eventId, $claim->leaseToken, $afterExpiry->modify('+30 seconds'), 'delivery_failed', $afterExpiry));
+    }
+
+    public function test_idempotent_insert_rejects_conflicting_payload(): void
+    {
+        $event = $this->event();
+        $this->repository()->add($event);
+        $conflict = new SubscriptionActivatedIntegrationEvent(
+            $event->eventId, $event->subscriptionId, $event->tenantId, $event->clinicRegistrationId,
+            $event->paymentId, $event->commercialOfferId, $event->planId, $event->billingCycleId,
+            $event->startsOn, '2027-07-23', $event->occurredAt,
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->repository()->add($conflict);
+    }
+
+    public function test_inconsistent_stored_envelope_fails_closed(): void
+    {
+        $this->repository()->add($this->event());
+        $row = $this->connection()->table('subscription_integration_outbox')->first();
+        self::assertNotNull($row);
+        $payload = json_decode((string) $row->payload, true, flags: JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+        $payload['event_id'] = $this->uuid(99);
+        $this->connection()->table('subscription_integration_outbox')->update(['payload' => json_encode($payload, JSON_THROW_ON_ERROR)]);
+
+        $this->expectException(RuntimeException::class);
+        $this->repository()->pending($this->time());
+    }
+
+    public function test_concurrent_outbox_claim_allows_exactly_one_winner(): void
+    {
+        if (! function_exists('pcntl_fork')) {
+            self::markTestSkipped('pcntl is required for process-level concurrency verification.');
+        }
+        $this->repository()->add($this->event());
+        $workspace = sys_get_temp_dir().'/syifa-subscription-outbox-'.bin2hex(random_bytes(4));
+        mkdir($workspace);
+        $release = $workspace.'/release';
+
+        try {
+            $children = [];
+            foreach ([1, 2] as $child) {
+                $pid = pcntl_fork();
+                if ($pid === -1) {
+                    self::fail('Unable to fork outbox worker.');
+                }
+                if ($pid === 0) {
+                    DB::purge(self::CONNECTION);
+                    while (! file_exists($release)) {
+                        usleep(1000);
+                    }
+                    $repository = new PostgresSubscriptionIntegrationOutboxRepository(DB::connection(self::CONNECTION), new SubscriptionIntegrationOutboxPersistenceMapper);
+                    $claim = $repository->claimNext($this->time(), 120);
+                    file_put_contents($workspace.'/result-'.$child, $claim === null ? '0' : '1');
+                    exit(0);
+                }
+                $children[] = $pid;
+            }
+            touch($release);
+            foreach ($children as $pid) {
+                pcntl_waitpid($pid, $status);
+                self::assertSame(0, pcntl_wexitstatus($status));
+            }
+            $results = array_map(static fn (string $file): string => (string) file_get_contents($file), glob($workspace.'/result-*') ?: []);
+            sort($results);
+            self::assertSame(['0', '1'], $results);
+        } finally {
+            foreach (glob($workspace.'/*') ?: [] as $file) {
+                unlink($file);
+            }
+            rmdir($workspace);
+        }
     }
 
     private function insertSubscription(): void

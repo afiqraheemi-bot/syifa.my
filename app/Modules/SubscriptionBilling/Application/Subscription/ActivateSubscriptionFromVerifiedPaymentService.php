@@ -18,6 +18,9 @@ use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivatio
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationReconciliationCaseRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationTransactionInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxRepositoryInterface;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\Exceptions\InvalidSubscriptionLifecycleTransitionException;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\Exceptions\InvalidSubscriptionOfferingException;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\Exceptions\InvalidSubscriptionValueException;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\Subscription;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\BillingCycleId;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\BillingPeriod;
@@ -128,19 +131,25 @@ final readonly class ActivateSubscriptionFromVerifiedPaymentService
 
                 return;
             }
-            $planId = new PlanId($evidence->planId);
-            $billingCycleId = new BillingCycleId($evidence->billingCycleId);
-            $term = $this->terms->calculate($now);
-            $subscription = Subscription::create(
-                new SubscriptionId($claim->subscriptionId), new TenantId($claim->tenantId),
-                new ClinicRegistrationId($evidence->clinicRegistrationId), new PaymentId($evidence->paymentId),
-                new CommercialOfferId($evidence->offerId), $planId, $billingCycleId,
-                new Money($evidence->paymentAmountMinor, $evidence->paymentCurrency),
-                new BillingPeriod($term['starts_on'], $term['ends_on']),
-                new Entitlement($planId, $billingCycleId, $computed->configurationVersion, EntitlementStatus::Pending, array_map(static fn (string $key): CapabilityKey => new CapabilityKey($key), $computed->capabilityKeys)),
-                $now,
-            );
-            $subscription->activate($now);
+            try {
+                $planId = new PlanId($evidence->planId);
+                $billingCycleId = new BillingCycleId($evidence->billingCycleId);
+                $term = $this->terms->calculate($now);
+                $subscription = Subscription::create(
+                    new SubscriptionId($claim->subscriptionId), new TenantId($claim->tenantId),
+                    new ClinicRegistrationId($evidence->clinicRegistrationId), new PaymentId($evidence->paymentId),
+                    new CommercialOfferId($evidence->offerId), $planId, $billingCycleId,
+                    new Money($evidence->paymentAmountMinor, $evidence->paymentCurrency),
+                    new BillingPeriod($term['starts_on'], $term['ends_on']),
+                    new Entitlement($planId, $billingCycleId, $computed->configurationVersion, EntitlementStatus::Pending, array_map(static fn (string $key): CapabilityKey => new CapabilityKey($key), $computed->capabilityKeys)),
+                    $now,
+                );
+                $subscription->activate($now);
+            } catch (InvalidSubscriptionLifecycleTransitionException|InvalidSubscriptionOfferingException|InvalidSubscriptionValueException) {
+                $this->terminal($claim, SubscriptionActivationApplicationStatus::Quarantined, SubscriptionActivationApplicationResultCode::InvalidEvidence, 'subscription.activation.quarantined', $now);
+
+                return;
+            }
             $this->subscriptions->save($subscription);
             $this->outbox->add(new SubscriptionActivatedIntegrationEvent(
                 eventId: $this->eventId($claim->id), subscriptionId: $claim->subscriptionId, tenantId: $claim->tenantId,
