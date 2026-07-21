@@ -22,7 +22,81 @@ final class PaymentCoreArchitectureTest extends TestCase
         foreach ($this->phpFilesIn($module) as $file) {
             self::assertStringNotContainsString('PaymentAttemptRepository', $this->source($file), $file);
             self::assertStringNotContainsString('WebhookReceipt extends', $this->source($file), $file);
+        }
+
+        // ProviderWebhookReceipt is an Infrastructure/Contracts idempotency
+        // record, never an entity inside the Payment aggregate (docs/31). Its
+        // repository is therefore approved only outside Domain.
+        foreach ($this->phpFilesIn($module.'/Domain') as $file) {
             self::assertStringNotContainsString('WebhookReceiptRepository', $this->source($file), $file);
+            self::assertStringNotContainsString('Receipt', $this->source($file), $file);
+        }
+    }
+
+    public function test_provider_webhook_receipt_persistence_belongs_only_to_contracts_and_infrastructure(): void
+    {
+        $module = $this->root().'/app/Modules/SubscriptionBilling';
+
+        self::assertFileExists($module.'/Contracts/Payment/ProviderWebhookReceipt.php');
+        self::assertFileExists($module.'/Contracts/Payment/ProviderWebhookReceiptStatus.php');
+        self::assertFileExists($module.'/Contracts/Payment/ProviderWebhookReceiptRepositoryInterface.php');
+        self::assertFileExists($module.'/Infrastructure/Payment/PostgresProviderWebhookReceiptRepository.php');
+        self::assertFileDoesNotExist($module.'/Domain/Aggregates/Payment/ProviderWebhookReceipt.php');
+
+        $repository = $this->source($module.'/Infrastructure/Payment/PostgresProviderWebhookReceiptRepository.php');
+        self::assertStringNotContainsString('DB::transaction', $repository);
+        self::assertStringNotContainsString('->transaction(', $repository);
+
+        // The receipt id is an opaque surrogate; only the (provider_key,
+        // provider_event_id) unique index is the idempotency guard. No
+        // deterministic hash-derivation helper may return as a shortcut.
+        self::assertStringNotContainsString('deterministicId', $repository);
+        self::assertStringNotContainsString("hash('sha256'", $repository);
+        self::assertStringContainsString('Str::uuid()', $repository);
+    }
+
+    public function test_provider_webhook_receipt_types_do_not_accumulate_business_or_orchestration_responsibilities(): void
+    {
+        $root = $this->root().'/app/Modules/SubscriptionBilling/Contracts/Payment';
+
+        foreach (['ProviderWebhookReceipt.php', 'ProviderWebhookReceiptStatus.php'] as $file) {
+            $path = $root.'/'.$file;
+            self::assertFileExists($path);
+            $source = $this->source($path);
+
+            foreach ([
+                // Payment aggregate or Payment lifecycle services.
+                'Domain\\Aggregates\\Payment',
+                'Application\\Payment\\',
+                'PaymentAttempt',
+                // Subscription and CommercialOffer (namespace-qualified, not
+                // the bare word, since the module itself is "SubscriptionBilling").
+                'Domain\\Aggregates\\Subscription\\',
+                'SubscriptionActivated',
+                'CommercialOffer',
+                // Provider SDK classes/namespaces and transport implementations.
+                'Infrastructure\\Payment\\Stripe',
+                'Infrastructure\\Payment\\ToyyibPay',
+                'StripePaymentProvider',
+                'ToyyibPayPaymentProvider',
+                'PaymentProviderInterface',
+                'PaymentProviderRegistry',
+                'PaymentProviderTransportException',
+                // Policy and Service classes.
+                'Policy',
+                'Service',
+                // Delivery-layer, queue, and event-listener concerns.
+                'Controller',
+                'Route',
+                'Middleware',
+                'ShouldQueue',
+                'Illuminate\\Bus\\',
+                'Illuminate\\Queue\\',
+                'Illuminate\\Events\\',
+                'Listener',
+            ] as $forbidden) {
+                self::assertStringNotContainsString($forbidden, $source, "{$file} must not reference {$forbidden}.");
+            }
         }
     }
 
@@ -87,6 +161,20 @@ final class PaymentCoreArchitectureTest extends TestCase
         self::assertStringNotContainsString('payment_provider_webhook_receipts', $source);
 
         foreach (['invoices', 'subscriptions', 'tenants', 'onboarding_jobs', 'refunds'] as $forbiddenTable) {
+            self::assertStringNotContainsString("Schema::create('{$forbiddenTable}'", $source);
+        }
+    }
+
+    public function test_provider_webhook_receipts_have_their_own_dedicated_migration(): void
+    {
+        $path = $this->root().'/database/migrations/subscription_billing/2026_07_23_000001_create_payment_provider_webhook_receipts.php';
+        self::assertFileExists($path);
+
+        $source = $this->source($path);
+        self::assertStringContainsString("Schema::create('payment_provider_webhook_receipts'", $source);
+        self::assertStringContainsString("unique(['provider_key', 'provider_event_id'])", $source);
+
+        foreach (['invoices', 'subscriptions', 'tenants', 'onboarding_jobs', 'refunds', 'payments', 'payment_attempts'] as $forbiddenTable) {
             self::assertStringNotContainsString("Schema::create('{$forbiddenTable}'", $source);
         }
     }

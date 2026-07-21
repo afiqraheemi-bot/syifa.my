@@ -250,7 +250,6 @@ Responsibilities:
 - find Payment by idempotency key scope.
 - find Payment by provider reference.
 - save Payment atomically with optimistic locking.
-- record and query provider webhook receipt uniqueness by provider event ID.
 
 Repository return types:
 
@@ -259,6 +258,17 @@ Repository return types:
 - No database rows.
 - No Eloquent models.
 - No DTOs.
+
+### ProviderWebhookReceiptRepositoryInterface
+
+Owned by Subscription & Billing Contracts, deliberately separate from `PaymentRepositoryInterface` since its return types (a receipt record and a created-or-duplicate result) are not a Domain Payment aggregate and registration must remain resolvable before any Payment match exists.
+
+Responsibilities:
+
+- register receipt of a provider webhook event, atomically detecting a duplicate `(provider_key, provider_event_id)` pair at the database level.
+- find a receipt by `(provider_key, provider_event_id)`.
+
+It performs a single atomic statement per call and does not open its own transaction, so a future webhook-orchestration service may call it standalone or nested inside a Payment-transition transaction.
 
 ### PaymentReadModelInterface
 

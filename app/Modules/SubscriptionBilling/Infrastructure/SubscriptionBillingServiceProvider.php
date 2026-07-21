@@ -27,6 +27,7 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderConfigurati
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderRegistryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentTransactionInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\BillingOptionRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\CapabilityDefinitionRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\PlanOfferingRepositoryInterface;
@@ -38,6 +39,7 @@ use App\Modules\SubscriptionBilling\Infrastructure\CommercialCatalogue\Commercia
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PaymentProviderRegistry;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentProviderConfigurationRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentTransaction;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresProviderWebhookReceiptRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\Stripe\StripePaymentProvider;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\ToyyibPay\ToyyibPayPaymentProvider;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\CommercialCataloguePersistenceMapper;
@@ -143,6 +145,12 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
                     $application->make(PaymentPersistenceMapper::class),
                 );
             },
+        );
+        $this->app->singleton(
+            ProviderWebhookReceiptRepositoryInterface::class,
+            static fn (Application $application): PostgresProviderWebhookReceiptRepository => new PostgresProviderWebhookReceiptRepository(
+                $application->make('db')->connection(),
+            ),
         );
 
         $this->app->singleton(
