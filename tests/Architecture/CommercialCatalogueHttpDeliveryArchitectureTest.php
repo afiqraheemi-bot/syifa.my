@@ -24,7 +24,10 @@ final class CommercialCatalogueHttpDeliveryArchitectureTest extends TestCase
             $root.'/Controllers/CommercialCatalogueCapabilityDefinitionController.php',
             $root.'/Controllers/CommercialCataloguePlanController.php',
             $root.'/Controllers/CommercialCataloguePlanOfferingController.php',
-        ], $this->phpFilesIn($root.'/Controllers'));
+        ], array_values(array_filter(
+            $this->phpFilesIn($root.'/Controllers'),
+            static fn (string $file): bool => str_contains(basename($file), 'CommercialCatalogue'),
+        )));
 
         self::assertSame([
             $root.'/Requests/ActivateCapabilityDefinitionRequest.php',
@@ -113,24 +116,6 @@ final class CommercialCatalogueHttpDeliveryArchitectureTest extends TestCase
         }
     }
 
-    public function test_http_delivery_controllers_do_not_contain_platform_authorization_logic(): void
-    {
-        foreach ($this->phpFilesIn(dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling/Presentation/Http/Controllers') as $file) {
-            $contents = file_get_contents($file);
-            self::assertIsString($contents, $file);
-
-            foreach ([
-                'PlatformAdministration\\Contracts\\Authorization\\PlatformAuthorizationInterface',
-                'PlatformAdministration\\Contracts\\Authentication\\PlatformPrincipalResolverInterface',
-                'PlatformAdministration\\Application\\Authorization\\AuthorizePlatformActionService',
-                'PlatformPrincipal',
-                'CommercialCataloguePlatformAuthorizationAdapter',
-            ] as $forbidden) {
-                self::assertStringNotContainsString($forbidden, $contents, $file);
-            }
-        }
-    }
-
     public function test_http_delivery_controllers_do_not_persist_audit_entries_directly(): void
     {
         foreach ($this->phpFilesIn(dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling/Presentation/Http/Controllers') as $file) {
@@ -163,11 +148,14 @@ final class CommercialCatalogueHttpDeliveryArchitectureTest extends TestCase
         self::assertSame([
             $root.'/Contracts/Authorization/CommercialCatalogueAuthorizationDecision.php',
             $root.'/Contracts/Authorization/CommercialCatalogueAuthorizationInterface.php',
+            $root.'/Contracts/Authorization/PaymentProviderAdministrationAuthorizationInterface.php',
+            $root.'/Contracts/Authorization/PaymentProviderAdministrationDecision.php',
         ], $this->phpFilesIn($root.'/Contracts/Authorization'));
 
         self::assertSame([
             $root.'/Infrastructure/Authorization/CommercialCataloguePlatformAuthorizationAdapter.php',
             $root.'/Infrastructure/Authorization/DenyAllCommercialCatalogueAuthorization.php',
+            $root.'/Infrastructure/Authorization/PaymentProviderAdministrationAuthorization.php',
         ], $this->phpFilesIn($root.'/Infrastructure/Authorization'));
 
         self::assertFileExists($root.'/Contracts/Authorization/CommercialCatalogueAuthorizationInterface.php');

@@ -1,0 +1,127 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Unit\Modules\SubscriptionBilling\Infrastructure\Payment;
+
+use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\PaymentProviderConfigurationException;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderConfiguration;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderConfigurationRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\PaymentAttempt;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\ProviderReference;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\PaymentProviderRegistry;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\Stripe\StripePaymentProvider;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\ToyyibPay\ToyyibPayPaymentProvider;
+use DateTimeImmutable;
+use Illuminate\Http\Client\Factory;
+use Illuminate\Support\Facades\Http;
+use LogicException;
+use Tests\TestCase;
+
+final class PaymentProviderInfrastructureTest extends TestCase
+{
+    public function test_disabled_provider_rejects_new_attempts_but_remains_available_for_existing_attempts(): void
+    {
+        $provider = $this->toyyibPay();
+        $configurations = new MemoryProviderConfigurations(new PaymentProviderConfiguration('toyyibpay', false, true, true, true, false));
+        $registry = new PaymentProviderRegistry([$provider], $configurations);
+
+        self::assertSame($provider, $registry->forExistingAttempt('toyyibpay'));
+        $this->expectException(PaymentProviderConfigurationException::class);
+        $registry->forNewAttempt('toyyibpay');
+    }
+
+    public function test_attempt_provider_is_immutable(): void
+    {
+        $attempt = PaymentAttempt::start('attempt-1', 'stripe', new DateTimeImmutable('2026-07-22T00:00:00Z'));
+        $this->expectException(LogicException::class);
+        $attempt->markPending(new ProviderReference('toyyibpay', 'bill-1'), new DateTimeImmutable('2026-07-22T00:01:00Z'));
+    }
+
+    public function test_toyyibpay_creates_and_verifies_a_bill_and_validates_callback_hash(): void
+    {
+        Http::fake([
+            'https://dev.toyyibpay.test/index.php/api/createBill' => Http::response([['BillCode' => 'bill-code']], 200),
+            'https://dev.toyyibpay.test/index.php/api/getBillTransactions' => Http::response([[
+                'billpaymentStatus' => '1', 'billpaymentAmount' => '25.50',
+            ]], 200),
+        ]);
+        $provider = $this->toyyibPay();
+        $result = $provider->start(new ProviderPaymentRequest('payment-1', 2550, 'MYR', 'idempotency-1', 'correlation-1'));
+        self::assertSame('bill-code', $result->providerPaymentReference);
+        $verification = $provider->verify('bill-code');
+        self::assertSame('succeeded', $verification->status);
+        self::assertSame(2550, $verification->amountMinor);
+
+        $hash = md5('secret'.'1'.'payment-1'.'reference-1'.'ok');
+        $event = $provider->verifyWebhook(http_build_query([
+            'refno' => 'reference-1', 'status' => '1', 'order_id' => 'payment-1', 'billcode' => 'bill-code', 'hash' => $hash,
+        ]), []);
+        self::assertSame('toyyibpay', $event->providerKey);
+        self::assertSame('bill-code', $event->providerPaymentReference);
+    }
+
+    public function test_stripe_uses_idempotency_and_verifies_timestamped_webhook(): void
+    {
+        Http::fake(['https://stripe.test/v1/checkout/sessions' => Http::response(['id' => 'cs_test_1'], 200)]);
+        $provider = new StripePaymentProvider(
+            $this->app->make(Factory::class), 'sk_test', 'whsec_test', 'https://return.test/success', 'https://return.test/cancel', 'https://stripe.test/v1',
+        );
+        $result = $provider->start(new ProviderPaymentRequest('payment-1', 2550, 'MYR', 'idem-1', 'corr-1'));
+        self::assertSame('cs_test_1', $result->providerPaymentReference);
+        Http::assertSent(fn ($request): bool => $request->hasHeader('Idempotency-Key', 'idem-1'));
+
+        $payload = json_encode(['id' => 'evt_1', 'type' => 'checkout.session.completed', 'data' => ['object' => ['id' => 'cs_test_1']]], JSON_THROW_ON_ERROR);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$payload, 'whsec_test');
+        $event = $provider->verifyWebhook($payload, ['Stripe-Signature' => "t={$timestamp},v1={$signature}"]);
+        self::assertSame('evt_1', $event->providerEventId);
+    }
+
+    private function toyyibPay(): ToyyibPayPaymentProvider
+    {
+        return new ToyyibPayPaymentProvider(
+            $this->app->make(Factory::class), 'secret', 'category', 'https://return.test', 'https://callback.test', 'https://dev.toyyibpay.test',
+        );
+    }
+}
+
+final class MemoryProviderConfigurations implements PaymentProviderConfigurationRepositoryInterface
+{
+    public function __construct(private PaymentProviderConfiguration $configuration) {}
+
+    public function all(): array
+    {
+        return [$this->configuration];
+    }
+
+    public function find(string $providerKey): ?PaymentProviderConfiguration
+    {
+        return $providerKey === $this->configuration->providerKey ? $this->configuration : null;
+    }
+
+    public function default(): ?PaymentProviderConfiguration
+    {
+        return $this->configuration->isDefault ? $this->configuration : null;
+    }
+
+    public function save(PaymentProviderConfiguration $configuration): void
+    {
+        $this->configuration = $configuration;
+    }
+
+    public function disable(string $providerKey): void {}
+
+    public function makeDefault(string $providerKey): void {}
+
+    public function findForUpdate(string $providerKey): ?PaymentProviderConfiguration
+    {
+        return $this->find($providerKey);
+    }
+
+    public function allForUpdate(): array
+    {
+        return $this->all();
+    }
+}

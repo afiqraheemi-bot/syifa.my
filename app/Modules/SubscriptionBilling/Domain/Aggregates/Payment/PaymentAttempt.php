@@ -12,6 +12,7 @@ final class PaymentAttempt
 {
     public function __construct(
         public string $attemptReference,
+        public readonly string $providerKey,
         public PaymentStatus $status,
         public ?ProviderReference $providerReference,
         public ?string $failureReasonCode,
@@ -19,10 +20,11 @@ final class PaymentAttempt
         public DateTimeImmutable $lastChangedAt,
     ) {}
 
-    public static function start(string $attemptReference, DateTimeImmutable $occurredAt): self
+    public static function start(string $attemptReference, string $providerKey, DateTimeImmutable $occurredAt): self
     {
         return new self(
             attemptReference: $attemptReference,
+            providerKey: $providerKey,
             status: PaymentStatus::Draft,
             providerReference: null,
             failureReasonCode: null,
@@ -33,6 +35,10 @@ final class PaymentAttempt
 
     public function markPending(ProviderReference $providerReference, DateTimeImmutable $occurredAt): void
     {
+        if ($providerReference->providerKey !== $this->providerKey) {
+            throw new \LogicException('A PaymentAttempt provider cannot be changed.');
+        }
+
         $this->status = PaymentStatus::Pending;
         $this->providerReference = $providerReference;
         $this->lastChangedAt = $occurredAt;

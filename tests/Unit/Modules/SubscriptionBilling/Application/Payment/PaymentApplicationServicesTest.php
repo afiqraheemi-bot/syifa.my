@@ -17,11 +17,15 @@ use App\Modules\SubscriptionBilling\Application\Payment\StartPaymentService;
 use App\Modules\SubscriptionBilling\Contracts\Payment\CreatePaymentCommand;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAuditInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderRegistryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentTransactionInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentTransitionCommand;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderConfigurationVerification;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentResult;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerification;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookEvent;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\Payment;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\IdempotencyKey;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentId;
@@ -258,7 +262,7 @@ final class RecordingPaymentAudit implements PaymentAuditInterface
     }
 }
 
-final class RecordingPaymentProvider implements PaymentProviderInterface
+final class RecordingPaymentProvider implements PaymentProviderInterface, PaymentProviderRegistryInterface
 {
     public function providerKey(): string
     {
@@ -268,6 +272,41 @@ final class RecordingPaymentProvider implements PaymentProviderInterface
     public function start(ProviderPaymentRequest $request): ProviderPaymentResult
     {
         return new ProviderPaymentResult('provider-neutral', 'provider-payment-reference');
+    }
+
+    public function defaultForNewAttempt(): PaymentProviderInterface
+    {
+        return $this;
+    }
+
+    public function forNewAttempt(string $providerKey): PaymentProviderInterface
+    {
+        return $this;
+    }
+
+    public function forExistingAttempt(string $providerKey): PaymentProviderInterface
+    {
+        return $this;
+    }
+
+    public function verify(string $providerPaymentReference): ProviderPaymentVerification
+    {
+        throw new \LogicException;
+    }
+
+    public function verifyWebhook(string $rawPayload, array $headers): ProviderWebhookEvent
+    {
+        throw new \LogicException;
+    }
+
+    public function credentialsConfigured(): bool
+    {
+        return true;
+    }
+
+    public function verifyConfiguration(): ProviderConfigurationVerification
+    {
+        return new ProviderConfigurationVerification(true, 'verified');
     }
 }
 

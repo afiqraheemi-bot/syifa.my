@@ -16,13 +16,15 @@ use App\Modules\SubscriptionBilling\Application\Payment\PaymentDataAssembler;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGenerator;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGeneratorInterface;
 use App\Modules\SubscriptionBilling\Contracts\Authorization\CommercialCatalogueAuthorizationInterface;
+use App\Modules\SubscriptionBilling\Contracts\Authorization\PaymentProviderAdministrationAuthorizationInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\BillingOptionCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\CapabilityDefinitionCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanOfferingCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CommercialCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAuditInterface;
-use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderConfigurationRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderRegistryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentTransactionInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\BillingOptionRepositoryInterface;
@@ -31,9 +33,13 @@ use App\Modules\SubscriptionBilling\Contracts\Repositories\PlanOfferingRepositor
 use App\Modules\SubscriptionBilling\Contracts\Repositories\PlanRepositoryInterface;
 use App\Modules\SubscriptionBilling\Infrastructure\Audit\PaymentAuditAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\CommercialCataloguePlatformAuthorizationAdapter;
+use App\Modules\SubscriptionBilling\Infrastructure\Authorization\PaymentProviderAdministrationAuthorization;
 use App\Modules\SubscriptionBilling\Infrastructure\CommercialCatalogue\CommercialCatalogueTransactionalService;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\PaymentProviderRegistry;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentProviderConfigurationRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentTransaction;
-use App\Modules\SubscriptionBilling\Infrastructure\Payment\UnavailablePaymentProvider;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\Stripe\StripePaymentProvider;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\ToyyibPay\ToyyibPayPaymentProvider;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\CommercialCataloguePersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\PaymentPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresCommercialCatalogueQueryAdapter;
@@ -46,15 +52,21 @@ use App\Modules\SubscriptionBilling\Presentation\Contracts\ErrorResponseMapperIn
 use App\Modules\SubscriptionBilling\Presentation\Http\Responses\CommercialCatalogueErrorResponseMapper;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\ServiceProvider;
 
 final class SubscriptionBillingServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->mergeConfigFrom(config_path('payment_providers.php'), 'payment_providers');
         $this->app->singleton(
             CommercialCatalogueAuthorizationInterface::class,
             CommercialCataloguePlatformAuthorizationAdapter::class,
+        );
+        $this->app->singleton(
+            PaymentProviderAdministrationAuthorizationInterface::class,
+            PaymentProviderAdministrationAuthorization::class,
         );
 
         $this->app->singleton(
@@ -88,7 +100,35 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(PaymentIdentifierGeneratorInterface::class, PaymentIdentifierGenerator::class);
         $this->app->singleton(PaymentPersistenceMapper::class);
         $this->app->singleton(PaymentAuditInterface::class, PaymentAuditAdapter::class);
-        $this->app->singleton(PaymentProviderInterface::class, UnavailablePaymentProvider::class);
+        $this->app->singleton(StripePaymentProvider::class, static fn (Application $application): StripePaymentProvider => new StripePaymentProvider(
+            $application->make(HttpFactory::class),
+            (string) config('payment_providers.stripe.secret_key', ''),
+            (string) config('payment_providers.stripe.webhook_secret', ''),
+            (string) config('payment_providers.stripe.success_url', ''),
+            (string) config('payment_providers.stripe.cancel_url', ''),
+            (string) config('payment_providers.stripe.base_url', 'https://api.stripe.com/v1'),
+        ));
+        $this->app->singleton(ToyyibPayPaymentProvider::class, static fn (Application $application): ToyyibPayPaymentProvider => new ToyyibPayPaymentProvider(
+            $application->make(HttpFactory::class),
+            (string) config('payment_providers.toyyibpay.secret_key', ''),
+            (string) config('payment_providers.toyyibpay.category_code', ''),
+            (string) config('payment_providers.toyyibpay.return_url', ''),
+            (string) config('payment_providers.toyyibpay.callback_url', ''),
+            (string) config('payment_providers.toyyibpay.base_url', 'https://toyyibpay.com'),
+        ));
+        $this->app->singleton(
+            PaymentProviderConfigurationRepositoryInterface::class,
+            static fn (Application $application): PostgresPaymentProviderConfigurationRepository => new PostgresPaymentProviderConfigurationRepository(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->singleton(
+            PaymentProviderRegistryInterface::class,
+            static fn (Application $application): PaymentProviderRegistry => new PaymentProviderRegistry(
+                [$application->make(StripePaymentProvider::class), $application->make(ToyyibPayPaymentProvider::class)],
+                $application->make(PaymentProviderConfigurationRepositoryInterface::class),
+            ),
+        );
         $this->app->singleton(
             PaymentTransactionInterface::class,
             static fn (Application $application): PostgresPaymentTransaction => new PostgresPaymentTransaction(
@@ -247,5 +287,6 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(database_path('migrations/subscription_billing'));
+        $this->loadRoutesFrom(__DIR__.'/routes/payment_providers.php');
     }
 }

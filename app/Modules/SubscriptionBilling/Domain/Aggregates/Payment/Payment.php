@@ -73,7 +73,7 @@ final class Payment
         return $payment;
     }
 
-    public function start(string $attemptReference, DateTimeImmutable $occurredAt): void
+    public function start(string $attemptReference, string $providerKey, DateTimeImmutable $occurredAt): void
     {
         $this->assertNotTerminal();
 
@@ -81,7 +81,7 @@ final class Payment
             throw new InvalidPaymentStateTransitionException('Payment may only be started from draft or failed state.');
         }
 
-        $this->attempts[] = PaymentAttempt::start($attemptReference, $occurredAt);
+        $this->attempts[] = PaymentAttempt::start($attemptReference, $providerKey, $occurredAt);
         $this->lastChangedAt = $occurredAt;
     }
 

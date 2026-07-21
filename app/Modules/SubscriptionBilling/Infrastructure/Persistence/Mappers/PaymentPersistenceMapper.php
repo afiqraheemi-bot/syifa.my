@@ -48,7 +48,7 @@ final class PaymentPersistenceMapper
                 paymentId: $payment->id->value,
                 attemptReference: $attempt->attemptReference,
                 status: $attempt->status->value,
-                providerKey: $attempt->providerReference?->providerKey,
+                providerKey: $attempt->providerKey,
                 providerPaymentReference: $attempt->providerReference?->providerPaymentReference,
                 failureReasonCode: $attempt->failureReasonCode,
                 startedAt: $attempt->startedAt,
@@ -83,8 +83,9 @@ final class PaymentPersistenceMapper
             attempts: array_map(
                 static fn (PaymentAttemptStorageRecord $attempt): PaymentAttempt => new PaymentAttempt(
                     attemptReference: $attempt->attemptReference,
+                    providerKey: $attempt->providerKey,
                     status: PaymentStatus::from($attempt->status),
-                    providerReference: $attempt->providerKey === null || $attempt->providerPaymentReference === null
+                    providerReference: $attempt->providerPaymentReference === null
                         ? null
                         : new ProviderReference($attempt->providerKey, $attempt->providerPaymentReference),
                     failureReasonCode: $attempt->failureReasonCode,

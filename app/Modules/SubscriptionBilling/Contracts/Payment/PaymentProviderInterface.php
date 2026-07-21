@@ -9,4 +9,13 @@ interface PaymentProviderInterface
     public function providerKey(): string;
 
     public function start(ProviderPaymentRequest $request): ProviderPaymentResult;
+
+    public function verify(string $providerPaymentReference): ProviderPaymentVerification;
+
+    /** @param array<string, string|list<string>> $headers */
+    public function verifyWebhook(string $rawPayload, array $headers): ProviderWebhookEvent;
+
+    public function credentialsConfigured(): bool;
+
+    public function verifyConfiguration(): ProviderConfigurationVerification;
 }

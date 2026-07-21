@@ -2,7 +2,7 @@
 
 ## Status
 
-Current provider-neutral architecture design. ADR-008 selects Stripe Malaysia for the Phase 1 Infrastructure adapter without changing the Domain model.
+Current provider-neutral architecture design. ADR-008 selects Stripe Malaysia for the Phase 1 Infrastructure adapter without changing the Domain model. ADR-009 subsequently extends the runtime to a registry-based multi-provider architecture (see [docs/33](./33_MULTI_PROVIDER_PAYMENT_ARCHITECTURE.md)); Stripe is one configured adapter alongside ToyyibPay, not the sole runtime provider architecture. ADR-008 remains authoritative for the Stripe-specific evaluation and selection.
 
 ## Document Authority
 
@@ -22,6 +22,9 @@ This document designs the Payment architecture for Syifa.my inside the current i
 - [ADR-003](./decisions/ADR-003-Technology-Stack.md)
 - [ADR-006](./decisions/ADR-006-Commercial.md)
 - [ADR-007](./decisions/ADR-007-Provisioning-Orchestrator.md)
+- [ADR-008](./decisions/ADR-008-Phase-1-Payment-Provider.md)
+- [ADR-009](./decisions/ADR-009-Multi-Provider-Payment-Infrastructure.md)
+- [docs/33_MULTI_PROVIDER_PAYMENT_ARCHITECTURE.md](./33_MULTI_PROVIDER_PAYMENT_ARCHITECTURE.md)
 
 Where this document conflicts with an accepted ADR or the Product Vision, the higher-authority document controls.
 

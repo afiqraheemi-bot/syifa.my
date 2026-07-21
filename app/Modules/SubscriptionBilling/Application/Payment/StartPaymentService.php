@@ -8,7 +8,7 @@ use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\PaymentNotFou
 use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\PaymentVersionMismatchException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAuditInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentData;
-use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderRegistryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentTransactionInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentTransitionCommand;
@@ -21,7 +21,7 @@ final readonly class StartPaymentService
     public function __construct(
         private PaymentIdentifierGeneratorInterface $identifiers,
         private PaymentRepositoryInterface $payments,
-        private PaymentProviderInterface $provider,
+        private PaymentProviderRegistryInterface $providers,
         private PaymentDataAssembler $data,
         private PaymentAuditInterface $audit,
         private PaymentTransactionInterface $transactions,
@@ -40,14 +40,19 @@ final readonly class StartPaymentService
                 throw new PaymentVersionMismatchException('Payment version does not match.');
             }
 
-            $payment->start($this->identifiers->generate(), $command->occurredAt);
-            $result = $this->provider->start(new ProviderPaymentRequest(
+            $provider = $this->providers->defaultForNewAttempt();
+            $payment->start($this->identifiers->generate(), $provider->providerKey(), $command->occurredAt);
+            $result = $provider->start(new ProviderPaymentRequest(
                 paymentId: $payment->id->value,
                 amountMinor: $payment->amount->minorUnits,
                 currency: $payment->currency->value,
                 idempotencyKey: $payment->idempotencyKey->value,
                 correlationId: $command->correlationId,
             ));
+
+            if ($result->providerKey !== $provider->providerKey()) {
+                throw new \LogicException('Payment provider returned an incompatible provider key.');
+            }
             $payment->markPending(new ProviderReference($result->providerKey, $result->providerPaymentReference), $command->occurredAt);
             $this->payments->save($payment);
             $this->audit->record('payment.start', $payment, $command->occurredAt, $command->correlationId);

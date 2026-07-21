@@ -165,7 +165,7 @@ final readonly class PostgresPaymentRepository implements PaymentRepositoryInter
                 paymentId: $record->id,
                 attemptReference: $this->stringValue($attemptRow, 'attempt_reference'),
                 status: $this->stringValue($attemptRow, 'status'),
-                providerKey: $this->nullableStringValue($attemptRow->provider_key ?? null, 'provider_key'),
+                providerKey: $this->stringValue($attemptRow, 'provider_key'),
                 providerPaymentReference: $this->nullableStringValue($attemptRow->provider_payment_reference ?? null, 'provider_payment_reference'),
                 failureReasonCode: $this->nullableStringValue($attemptRow->failure_reason_code ?? null, 'failure_reason_code'),
                 startedAt: $this->dateTimeValue($attemptRow->started_at ?? null, 'started_at'),

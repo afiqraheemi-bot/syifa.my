@@ -28,18 +28,20 @@ final class PaymentCoreArchitectureTest extends TestCase
 
     public function test_payment_core_is_provider_neutral_and_contains_no_gateway_sdk(): void
     {
-        foreach ($this->phpFilesIn($this->root().'/app/Modules/SubscriptionBilling') as $file) {
-            $source = $this->source($file);
+        foreach (['Domain', 'Application', 'Contracts'] as $layer) {
+            foreach ($this->phpFilesIn($this->root().'/app/Modules/SubscriptionBilling/'.$layer) as $file) {
+                $source = $this->source($file);
 
-            foreach ([
-                'Billplz',
-                'Stripe',
-                'ToyyibPay',
-                'FPX',
-                'PaymentGateway',
-                'GatewaySdk',
-            ] as $forbidden) {
-                self::assertStringNotContainsString($forbidden, $source, $file);
+                foreach ([
+                    'Billplz',
+                    'Stripe',
+                    'ToyyibPay',
+                    'FPX',
+                    'PaymentGateway',
+                    'GatewaySdk',
+                ] as $forbidden) {
+                    self::assertStringNotContainsString($forbidden, $source, $file);
+                }
             }
         }
     }

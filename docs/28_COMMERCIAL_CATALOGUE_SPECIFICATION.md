@@ -261,7 +261,7 @@ Professional Services are one-off, platform-managed, optionally purchased servic
 
 - Professional Services must never be referenced by, embedded in, or read by the Subscription Aggregate.
 - Professional Services must never contribute to, gate, or otherwise influence an `Entitlement` computation.
-- Professional Services are billed as independent, one-off obligations — conceptually adjacent to a future Payment/Invoice model. Payment is an accepted Aggregate Root (ADR-004, Aggregate Root #11, Subscription & Billing Context); its implementation remains deferred. Commercial Catalogue does not own Payment behavior and does not decide Professional Services' final billing mechanism here — that is Payment's own future implementation concern, not this document's.
+- Professional Services are billed as independent, one-off obligations — conceptually adjacent to a future Payment/Invoice model. Payment is an accepted Aggregate Root (ADR-004, Aggregate Root #11, Subscription & Billing Context); its implementation was deferred at the time this document was written and has since been implemented under ADR-008 and ADR-009. Commercial Catalogue does not own Payment behavior and does not decide Professional Services' final billing mechanism here — that is Payment's own future implementation concern, not this document's.
 - No final Professional Services catalogue (specific offerings, pricing, delivery workflow) is designed in this document — only this boundary.
 
 ## 23. Add-On Decision

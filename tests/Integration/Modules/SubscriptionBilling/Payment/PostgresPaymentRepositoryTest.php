@@ -90,7 +90,7 @@ final class PostgresPaymentRepositoryTest extends TestCase
         self::assertNotNull($firstCopy);
         self::assertNotNull($staleCopy);
 
-        $firstCopy->start($this->uuid(9), $this->time());
+        $firstCopy->start($this->uuid(9), 'provider-neutral', $this->time());
         $firstCopy->markPending(new ProviderReference('provider-neutral', 'provider-payment-1'), $this->time());
         $this->repository()->save($firstCopy);
 
@@ -102,7 +102,7 @@ final class PostgresPaymentRepositoryTest extends TestCase
     public function test_idempotency_and_provider_reference_lookup(): void
     {
         $payment = $this->payment();
-        $payment->start($this->uuid(9), $this->time());
+        $payment->start($this->uuid(9), 'provider-neutral', $this->time());
         $payment->markPending(new ProviderReference('provider-neutral', 'provider-payment-1'), $this->time());
         $this->repository()->save($payment);
 

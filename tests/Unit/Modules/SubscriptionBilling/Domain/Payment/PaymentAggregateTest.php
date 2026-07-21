@@ -30,7 +30,7 @@ final class PaymentAggregateTest extends TestCase
         self::assertSame(PaymentStatus::Draft, $payment->status);
         self::assertContainsOnlyInstancesOf(PaymentCreated::class, $payment->releaseEvents());
 
-        $payment->start($this->uuid(8), $this->time());
+        $payment->start($this->uuid(8), 'provider-neutral', $this->time());
         $payment->markPending(new ProviderReference('provider-neutral', 'provider-payment-1'), $this->time());
         self::assertSame(PaymentStatus::Pending, $payment->status);
         self::assertContainsOnlyInstancesOf(PaymentPending::class, $payment->releaseEvents());
@@ -47,7 +47,7 @@ final class PaymentAggregateTest extends TestCase
     {
         $payment = $this->payment();
         $payment->releaseEvents();
-        $payment->start($this->uuid(8), $this->time());
+        $payment->start($this->uuid(8), 'provider-neutral', $this->time());
         $payment->markPending(new ProviderReference('provider-neutral', 'provider-payment-1'), $this->time());
         $payment->releaseEvents();
         $payment->markFailed('declined', $this->time());
@@ -55,7 +55,7 @@ final class PaymentAggregateTest extends TestCase
         self::assertSame(PaymentStatus::Failed, $payment->status);
         self::assertContainsOnlyInstancesOf(PaymentFailed::class, $payment->releaseEvents());
 
-        $payment->start($this->uuid(9), $this->time('+1 minute'));
+        $payment->start($this->uuid(9), 'provider-neutral', $this->time('+1 minute'));
 
         self::assertCount(2, $payment->attempts);
         self::assertSame('declined', $payment->attempts[0]->failureReasonCode);

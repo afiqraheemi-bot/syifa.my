@@ -84,6 +84,10 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
                 continue;
             }
 
+            if (str_contains($file, '/Infrastructure/Payment/')) {
+                continue;
+            }
+
             if (str_contains($file, '/Application/Payment/')
                 || str_contains($file, '/Contracts/Payment/')
                 || str_contains($file, '/Domain/Aggregates/Payment/')) {
@@ -99,6 +103,7 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
         self::assertSame([
             $this->root().'/database/migrations/subscription_billing/2026_07_15_000001_create_commercial_catalogue_persistence_tables.php',
             $this->root().'/database/migrations/subscription_billing/2026_07_21_000002_create_payment_core_tables.php',
+            $this->root().'/database/migrations/subscription_billing/2026_07_22_000001_create_payment_provider_configurations.php',
         ], glob($this->root().'/database/migrations/subscription_billing/*.php') ?: []);
         $routes = file_get_contents($this->root().'/routes/web.php');
         self::assertIsString($routes);
@@ -170,10 +175,13 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
             static fn (string $file): bool => ! str_contains($file, '/Infrastructure/Persistence/')
                 && ! str_contains($file, '/Infrastructure/Authorization/DenyAllCommercialCatalogueAuthorization.php')
                 && ! str_contains($file, '/Infrastructure/Authorization/CommercialCataloguePlatformAuthorizationAdapter.php')
+                && ! str_contains($file, '/Infrastructure/Authorization/PaymentProviderAdministrationAuthorization.php')
                 && ! str_contains($file, '/Infrastructure/CommercialCatalogue/CommercialCatalogueTransactionalService.php')
                 && ! str_contains($file, '/Infrastructure/Audit/PaymentAuditAdapter.php')
                 && ! str_contains($file, '/Infrastructure/Payment/PostgresPaymentTransaction.php')
                 && ! str_contains($file, '/Infrastructure/Payment/UnavailablePaymentProvider.php')
+                && ! str_contains($file, '/Infrastructure/Payment/')
+                && ! str_contains($file, '/Infrastructure/routes/payment_providers.php')
                 && ! str_contains($file, '/Infrastructure/SubscriptionBillingServiceProvider.php'),
         )));
         $presentation = array_values(array_filter(

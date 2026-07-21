@@ -12,7 +12,7 @@ final readonly class PaymentAttemptStorageRecord
         public string $paymentId,
         public string $attemptReference,
         public string $status,
-        public ?string $providerKey,
+        public string $providerKey,
         public ?string $providerPaymentReference,
         public ?string $failureReasonCode,
         public DateTimeImmutable $startedAt,
