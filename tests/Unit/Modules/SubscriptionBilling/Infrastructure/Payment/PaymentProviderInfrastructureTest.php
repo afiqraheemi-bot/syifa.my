@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\SubscriptionBilling\Infrastructure\Payment;
 
 use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\PaymentProviderConfigurationException;
+use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\InvalidProviderWebhookSignatureException;
+use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\MalformedProviderWebhookException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderConfiguration;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderConfigurationRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
@@ -50,6 +52,8 @@ final class PaymentProviderInfrastructureTest extends TestCase
         $provider = $this->toyyibPay();
         $result = $provider->start(new ProviderPaymentRequest('payment-1', 2550, 'MYR', 'idempotency-1', 'correlation-1'));
         self::assertSame('bill-code', $result->providerPaymentReference);
+        Http::assertSent(static fn ($request): bool => str_ends_with($request->url(), '/index.php/api/createBill')
+            && $request['billCallbackUrl'] === 'https://callback.test');
         $verification = $provider->verify('bill-code');
         self::assertSame('succeeded', $verification->status);
         self::assertSame(2550, $verification->amountMinor);
@@ -60,6 +64,14 @@ final class PaymentProviderInfrastructureTest extends TestCase
         ]), []);
         self::assertSame('toyyibpay', $event->providerKey);
         self::assertSame('bill-code', $event->providerPaymentReference);
+    }
+
+    public function test_toyyibpay_default_callback_configuration_targets_provider_neutral_route(): void
+    {
+        self::assertSame(
+            config('app.url').'/api/v1/payment-provider-webhooks/toyyibpay',
+            config('payment_providers.toyyibpay.callback_url'),
+        );
     }
 
     public function test_stripe_uses_idempotency_and_verifies_timestamped_webhook(): void
@@ -77,6 +89,23 @@ final class PaymentProviderInfrastructureTest extends TestCase
         $signature = hash_hmac('sha256', $timestamp.'.'.$payload, 'whsec_test');
         $event = $provider->verifyWebhook($payload, ['Stripe-Signature' => "t={$timestamp},v1={$signature}"]);
         self::assertSame('evt_1', $event->providerEventId);
+    }
+
+    public function test_stripe_rejects_invalid_signature_and_toyyibpay_rejects_malformed_callback(): void
+    {
+        $stripe = new StripePaymentProvider(
+            $this->app->make(Factory::class), 'sk_test', 'whsec_test', 'https://return.test/success', 'https://return.test/cancel', 'https://stripe.test/v1',
+        );
+
+        try {
+            $stripe->verifyWebhook('{"id":"evt_1"}', ['Stripe-Signature' => 't=1,v1=invalid']);
+            self::fail('Invalid Stripe signature was accepted.');
+        } catch (InvalidProviderWebhookSignatureException) {
+            self::assertTrue(true);
+        }
+
+        $this->expectException(MalformedProviderWebhookException::class);
+        $this->toyyibPay()->verifyWebhook('status=1', []);
     }
 
     private function toyyibPay(): ToyyibPayPaymentProvider

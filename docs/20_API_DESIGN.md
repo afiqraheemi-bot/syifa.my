@@ -991,6 +991,13 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 - Idempotency: Required.
 - Audit Requirements: None.
 
+**`POST /payment-provider-webhooks/{providerKey}`**
+- Purpose: Receive, authenticate, normalize and idempotently register an implemented provider webhook delivery.
+- Authentication: Provider-specific signature verification; no browser session and no Tenant resolution.
+- Business Rules: Uses the raw request body, resolves disabled providers for existing-attempt continuity, and stops before authoritative provider status verification or any Payment/Subscription transition.
+- Response Summary: Safe acknowledgement only — `202` new, `200` duplicate, `400` malformed, `401` invalid signature, `404` unknown provider, `503` retryable internal failure.
+- Data Handling: Does not persist or return raw payloads, signatures, secrets, provider event IDs or Payment identifiers.
+
 ---
 
 ### 16. Onboarding Jobs

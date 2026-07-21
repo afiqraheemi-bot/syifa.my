@@ -139,6 +139,25 @@ final class PaymentCoreArchitectureTest extends TestCase
         }
     }
 
+    public function test_webhook_receiving_stops_before_financial_verification_or_state_transition(): void
+    {
+        $root = $this->root().'/app/Modules/SubscriptionBilling';
+        $service = $this->source($root.'/Application/Payment/ReceivePaymentProviderWebhookService.php');
+        $controller = $this->source($root.'/Presentation/Http/Controllers/PaymentProviderWebhookController.php');
+
+        foreach (['Illuminate\\Http', 'PaymentRepositoryInterface', 'PaymentTransactionInterface', 'MarkPayment', 'Domain\\Aggregates\\Subscription', 'SubscriptionActivated', 'verify('] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $service, $forbidden);
+        }
+
+        foreach (['hash_hmac', 'hash_equals', 'Stripe-Signature', 'parse_str', 'PaymentRepositoryInterface', 'MarkPayment', 'Domain\\Aggregates\\Subscription', 'SubscriptionActivated'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $controller, $forbidden);
+        }
+
+        self::assertStringContainsString('getContent()', $controller);
+        self::assertStringContainsString('forExistingAttempt', $service);
+        self::assertStringContainsString('ProviderWebhookReceiptRepositoryInterface', $service);
+    }
+
     public function test_payment_domain_is_framework_independent(): void
     {
         foreach ($this->phpFilesIn($this->root().'/app/Modules/SubscriptionBilling/Domain/Aggregates/Payment') as $file) {

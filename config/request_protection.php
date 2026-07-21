@@ -64,5 +64,15 @@ return [
             'detail' => 'Authentication is temporarily unavailable. Please try again later.',
             'key_parts' => ['host', 'email', 'network'],
         ],
+
+        'payment_provider_webhook' => [
+            'limiter' => 'payment-provider-webhook',
+            'max_attempts' => (int) env('REQUEST_PROTECTION_PAYMENT_WEBHOOK_MAX_ATTEMPTS', 300),
+            'decay_seconds' => (int) env('REQUEST_PROTECTION_PAYMENT_WEBHOOK_DECAY_SECONDS', 60),
+            'type' => 'webhook_temporarily_unavailable',
+            'title' => 'Webhook Temporarily Unavailable',
+            'detail' => 'The webhook endpoint is temporarily unavailable. Please retry later.',
+            'key_parts' => ['host', 'network'],
+        ],
     ],
 ];

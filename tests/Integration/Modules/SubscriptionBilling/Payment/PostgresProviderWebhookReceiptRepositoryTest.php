@@ -4,13 +4,20 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Modules\SubscriptionBilling\Payment;
 
+use App\Modules\SubscriptionBilling\Application\Payment\ReceivePaymentProviderWebhookService;
+use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\InvalidProviderWebhookSignatureException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\NewProviderWebhookReceiptData;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderRegistryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptStatus;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookRequest;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresProviderWebhookReceiptRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\Stripe\StripePaymentProvider;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -71,6 +78,39 @@ final class PostgresProviderWebhookReceiptRepositoryTest extends TestCase
         self::assertSame('evt_1', $result->receipt->providerEventId);
         self::assertSame(ProviderWebhookReceiptStatus::Received, $result->receipt->status);
         self::assertSame(1, $this->connection()->table('payment_provider_webhook_receipts')->count());
+    }
+
+    public function test_receiving_service_registers_one_verified_receipt_and_reports_duplicate(): void
+    {
+        $raw = json_encode([
+            'id' => 'evt_orchestration_1',
+            'type' => 'checkout.session.completed',
+            'data' => ['object' => ['id' => 'cs_orchestration_1']],
+        ], JSON_THROW_ON_ERROR);
+        $timestamp = time();
+        $headers = ['Stripe-Signature' => "t={$timestamp},v1=".hash_hmac('sha256', $timestamp.'.'.$raw, 'webhook-secret')];
+        $request = new ProviderWebhookRequest('stripe', $raw, $headers, new DateTimeImmutable, 'correlation-1');
+        $service = $this->receiver('webhook-secret');
+
+        self::assertFalse($service->execute($request)->wasDuplicate);
+        self::assertTrue($service->execute($request)->wasDuplicate);
+        self::assertSame(1, $this->connection()->table('payment_provider_webhook_receipts')->count());
+        self::assertTrue((bool) $this->connection()->table('payment_provider_webhook_receipts')->value('signature_verified'));
+        self::assertSame(hash('sha256', $raw), $this->connection()->table('payment_provider_webhook_receipts')->value('payload_hash'));
+    }
+
+    public function test_receiving_service_invalid_signature_creates_no_receipt(): void
+    {
+        $service = $this->receiver('webhook-secret');
+
+        try {
+            $service->execute(new ProviderWebhookRequest(
+                'stripe', '{"id":"evt_invalid"}', ['Stripe-Signature' => 't=1,v1=invalid'], new DateTimeImmutable, 'correlation-1',
+            ));
+            self::fail('Invalid signature was accepted.');
+        } catch (InvalidProviderWebhookSignatureException) {
+            self::assertSame(0, $this->connection()->table('payment_provider_webhook_receipts')->count());
+        }
     }
 
     public function test_receipt_id_is_a_valid_random_uuid(): void
@@ -344,6 +384,34 @@ final class PostgresProviderWebhookReceiptRepositoryTest extends TestCase
         self::assertInstanceOf(ConnectionInterface::class, $this->connection);
 
         return $this->connection;
+    }
+
+    private function receiver(string $webhookSecret): ReceivePaymentProviderWebhookService
+    {
+        $provider = new StripePaymentProvider(
+            $this->app->make(Factory::class), 'unused-api-key', $webhookSecret, 'https://example.test/success', 'https://example.test/cancel',
+        );
+        $registry = new readonly class($provider) implements PaymentProviderRegistryInterface
+        {
+            public function __construct(private PaymentProviderInterface $provider) {}
+
+            public function defaultForNewAttempt(): PaymentProviderInterface
+            {
+                throw new \LogicException;
+            }
+
+            public function forNewAttempt(string $providerKey): PaymentProviderInterface
+            {
+                throw new \LogicException;
+            }
+
+            public function forExistingAttempt(string $providerKey): PaymentProviderInterface
+            {
+                return $this->provider;
+            }
+        };
+
+        return new ReceivePaymentProviderWebhookService($registry, $this->repository());
     }
 
     private function dropTables(): void

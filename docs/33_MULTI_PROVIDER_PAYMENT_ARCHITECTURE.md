@@ -62,6 +62,14 @@ Authenticated platform routes are under `/api/v1/platform/payment-providers`:
 - `POST /{provider}/disable` blocks only new attempts;
 - `POST /{provider}/default` selects an already-active provider.
 
+## Webhook receiving boundary
+
+`POST /api/v1/payment-provider-webhooks/{providerKey}` is an unauthenticated provider endpoint protected by its own network-scoped rate limit. It does not resolve a clinic-owner, platform session, Tenant or Payment. The route key resolves only an implemented adapter through `forExistingAttempt()`, so disabling a provider blocks new attempts but never blocks signature verification or receipt registration for existing attempts.
+
+The controller passes the unchanged raw request body and normalized headers to `ReceivePaymentProviderWebhookService`. The adapter verifies the provider signature and parses the request into `ProviderWebhookEvent` before the Application service atomically registers `ProviderWebhookReceipt`. Raw payload, signatures, authorization headers and secrets are never persisted or logged; only normalized identifiers, `signature_verified = true`, received time and a SHA-256 payload digest are stored.
+
+This receiving increment stops at acknowledgement. It does not call authoritative payment verification, load or transition Payment, invoke Subscription, publish financial events or enqueue reconciliation. A new valid event returns `202`; a valid duplicate returns `200`; malformed payload returns `400`; invalid signature returns `401`; malformed/unknown provider returns `404`; and a temporary internal failure returns `503`. Responses contain only a generic outcome and never internal or financial identifiers.
+
 ## Invariants and acceptance tests
 
 - Domain/Application/Contracts contain no provider names or provider SDK types.

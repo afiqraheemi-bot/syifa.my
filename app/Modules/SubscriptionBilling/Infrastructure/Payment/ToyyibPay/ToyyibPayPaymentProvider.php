@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\SubscriptionBilling\Infrastructure\Payment\ToyyibPay;
 
+use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\InvalidProviderWebhookSignatureException;
+use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\MalformedProviderWebhookException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderConfigurationVerification;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
@@ -92,12 +94,12 @@ final readonly class ToyyibPayPaymentProvider implements PaymentProviderInterfac
         parse_str($rawPayload, $payload);
         foreach (['refno', 'status', 'order_id', 'billcode', 'hash'] as $field) {
             if (! is_string($payload[$field] ?? null) || $payload[$field] === '') {
-                throw new PaymentProviderTransportException('ToyyibPay callback is missing required fields.');
+                throw new MalformedProviderWebhookException('ToyyibPay callback is missing required fields.');
             }
         }
         $expected = md5($this->secretKey.$payload['status'].$payload['order_id'].$payload['refno'].'ok');
         if (! hash_equals($expected, $payload['hash'])) {
-            throw new PaymentProviderTransportException('ToyyibPay callback hash is invalid.');
+            throw new InvalidProviderWebhookSignatureException('ToyyibPay callback hash is invalid.');
         }
 
         return new ProviderWebhookEvent(

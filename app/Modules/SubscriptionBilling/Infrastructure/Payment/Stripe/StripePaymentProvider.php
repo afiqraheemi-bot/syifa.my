@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\SubscriptionBilling\Infrastructure\Payment\Stripe;
 
+use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\InvalidProviderWebhookSignatureException;
+use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\MalformedProviderWebhookException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderConfigurationVerification;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
@@ -111,18 +113,18 @@ final readonly class StripePaymentProvider implements PaymentProviderInterface
         }
         $valid = $timestamp > 0 && abs(time() - $timestamp) <= 300 && $signatureMatches;
         if (! $valid) {
-            throw new PaymentProviderTransportException('Stripe webhook signature is invalid or stale.');
+            throw new InvalidProviderWebhookSignatureException('Stripe webhook signature is invalid or stale.');
         }
 
         try {
             $payload = json_decode($rawPayload, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
-            throw new PaymentProviderTransportException('Stripe webhook payload is invalid.');
+            throw new MalformedProviderWebhookException('Stripe webhook payload is invalid.');
         }
         $object = $payload['data']['object'] ?? [];
         $reference = $object['id'] ?? null;
         if (! is_string($payload['id'] ?? null) || ! is_string($payload['type'] ?? null) || ! is_string($reference)) {
-            throw new PaymentProviderTransportException('Stripe webhook is missing required identifiers.');
+            throw new MalformedProviderWebhookException('Stripe webhook is missing required identifiers.');
         }
 
         return new ProviderWebhookEvent('stripe', $payload['id'], $reference, $payload['type']);
