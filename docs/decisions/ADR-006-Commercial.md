@@ -69,12 +69,27 @@ CommercialOffer does not execute payment, issue invoices, activate subscriptions
 
 ## Immutable Snapshot
 
-CommercialOffer snapshots are immutable with respect to commercial meaning. After preparation, the snapshot may only transition through its lifecycle:
+CommercialOffer snapshots are immutable with respect to commercial meaning. SYIFA-090A.1 clarifies the downstream Payment handoff terminology: the Payment-bound lifecycle transition is **claimed**, not consumed. After preparation, the snapshot may only transition through its lifecycle:
 
 - prepared;
+- claimed;
 - cancelled;
-- expired;
-- consumed.
+- expired.
+
+`claimed` means the CommercialOffer has been exclusively bound to one Payment ID. A claim is idempotent for the same Payment ID and conflicts for any different Payment ID. Claiming does not mean payment succeeded, does not activate Subscription, does not provision Tenant, and does not start Onboarding.
+
+The allowed transitions are:
+
+- prepared → claimed;
+- prepared → cancelled;
+- prepared → expired.
+
+The forbidden transitions are:
+
+- claimed → cancelled;
+- claimed → expired;
+- cancelled → claimed;
+- expired → claimed.
 
 Any future change to price, plan, billing option, or capability reference data must produce a new CommercialOffer rather than rewriting an existing prepared snapshot.
 
@@ -91,13 +106,15 @@ Commercial does not author Commercial Catalogue records. Plan, Billing Option, P
 
 ## Payment Relationship
 
-Payment consumes CommercialOffer as the trusted checkout snapshot. Payment remains responsible for payment execution, reconciliation, and downstream payment outcomes.
+Payment claims CommercialOffer as the trusted checkout snapshot. Payment remains responsible for payment execution, reconciliation, and downstream payment outcomes.
 
-CommercialOffer consumption is a lifecycle signal that the snapshot was accepted by a trusted downstream consumer. It is not itself payment execution and does not imply Subscription activation.
+CommercialOffer claim is a lifecycle signal that the snapshot was exclusively bound to a Payment ID. It is not itself payment execution, is not proof of payment success, and does not imply Subscription activation.
+
+Subscription and the Provisioning Orchestrator consume verified Payment outcomes, not CommercialOffer claim events.
 
 ## TTL
 
-CommercialOffer has a 30-minute time-to-live. Expired offers cannot be consumed as active checkout snapshots.
+CommercialOffer has a 30-minute time-to-live. Expired offers cannot be claimed as active checkout snapshots.
 
 ## Ownership and Authorization
 
@@ -119,6 +136,12 @@ This ADR does not approve:
 - Public anonymous catalogue browsing.
 - Tenant provisioning.
 - Onboarding execution.
+
+## Implementation Terminology Migration
+
+The current PHP implementation may still contain earlier `consumed` naming, including `CommercialOfferConsumed` or `MarkConsumedCommercialOfferService`-style names. SYIFA-090A.1 locks the business terminology as `claimed`, `CommercialOfferClaimed`, and `ClaimCommercialOfferService`.
+
+Migrating those implementation names is a prerequisite for SYIFA-090B Payment Core Foundation. This ADR records the required migration explicitly and does not silently redefine payment success as offer consumption.
 
 ## Consequences
 

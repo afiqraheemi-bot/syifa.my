@@ -29,9 +29,28 @@ Where this document conflicts with an accepted ADR or the Product Vision, the hi
 
 Payment remains an Aggregate Root owned by the Subscription & Billing bounded context. It records payment execution and reconciliation against an immutable CommercialOffer checkout snapshot prepared by the Commercial context.
 
-Payment does not own pricing, catalogue configuration, CommercialOffer calculation, Subscription activation, Tenant creation, or Internal Onboarding. Payment consumes the CommercialOffer through the approved Commercial checkout contract, initiates or verifies a provider payment, records the PaymentAttempt lifecycle, and publishes a verified payment outcome for the Provisioning Orchestrator.
+Payment does not own pricing, catalogue configuration, CommercialOffer calculation, Subscription activation, Tenant creation, or Internal Onboarding. Payment claims the CommercialOffer through the approved Commercial checkout contract, initiates or verifies a provider payment, records the PaymentAttempt lifecycle, and publishes a verified payment outcome for the Provisioning Orchestrator.
 
 Payment is provider-neutral. Provider details live in Infrastructure behind Payment provider contracts. The Domain records trusted provider references, provider outcomes, and reconciliation evidence without depending on gateway SDKs.
+
+## SYIFA-090A.1 Clarification
+
+SYIFA-090A.1 locks the Commercial-to-Payment handoff terminology as **claimed**.
+
+`claimed` means:
+
+- the CommercialOffer has been exclusively bound to one Payment ID;
+- no other Payment may use the same offer;
+- the claim is idempotent for the same Payment ID;
+- a claim using a different Payment ID conflicts;
+- the claim does not mean payment succeeded;
+- the claim does not activate Subscription;
+- the claim does not provision Tenant;
+- the claim does not start Onboarding.
+
+Payment success is represented only by Payment state `succeeded`. Subscription and the Provisioning Orchestrator must consume verified Payment outcomes, never CommercialOffer claim state.
+
+This clarification supersedes the earlier `consumed` terminology used in SYIFA-090A and in current PHP names. SYIFA-090B must migrate implementation terminology to `claimed`, `CommercialOfferClaimed`, and `ClaimCommercialOfferService` before or during Payment Core Foundation.
 
 ## 1. Bounded Context
 
@@ -52,11 +71,11 @@ Payment is distinct from Subscription because payment attempts reconcile asynchr
 
 ### Upstream dependency
 
-Payment consumes:
+Payment claims:
 
 - CommercialOffer from the Commercial context, through `CommercialOfferCheckoutInterface`.
 
-Payment must not consume:
+Payment must not consume or call:
 
 - Plan repository.
 - Plan Offering repository.
@@ -103,7 +122,7 @@ Payment should contain:
 - CommercialOffer ID.
 - clinic registration ID from the CommercialOffer snapshot.
 - platform actor identity ID that initiated checkout, if available.
-- trusted consumer name used when consuming the CommercialOffer.
+- trusted consumer name used when claiming the CommercialOffer.
 - amount in minor units.
 - currency.
 - provider code.
@@ -121,7 +140,7 @@ Payment enforces:
 
 - Payment amount and currency come only from CommercialOffer.
 - Payment never recomputes, modifies, or recalculates CommercialOffer totals.
-- Payment cannot be initiated from an expired, cancelled, or already consumed CommercialOffer.
+- Payment cannot be initiated from an expired, cancelled, or already claimed CommercialOffer unless the claim is for the same Payment ID.
 - Payment cannot transition to succeeded unless provider verification succeeds.
 - Once succeeded, amount and currency are immutable.
 - A failed attempt is never overwritten.
@@ -158,16 +177,18 @@ Fields:
 Rules:
 
 - PaymentAttempt cannot exist outside Payment.
-- PaymentAttempt has no repository.
-- PaymentAttempt is never updated independently.
+- PaymentAttempt lifecycle is controlled only by Payment.
+- PaymentAttempt mutations participate in the Payment aggregate transaction.
+- PaymentAttempt has no independent repository.
+- PaymentAttempt is never updated independently of Payment.
 - Failed PaymentAttempt records remain part of immutable history.
 - Retry creates a new PaymentAttempt.
 
 ### ProviderWebhookReceipt
 
-`ProviderWebhookReceipt` is an internal entity or immutable history record inside Payment.
+`ProviderWebhookReceipt` is not an entity inside the Payment aggregate.
 
-It records the fact that a provider webhook was received and evaluated.
+It is an append-only Infrastructure/Application idempotency record used for provider webhook deduplication, replay detection, processing status, safe processing metadata, and failure diagnostics without secrets. It must not contain business rules belonging to Payment and must not be required when loading a Payment aggregate.
 
 Fields:
 
@@ -187,6 +208,8 @@ Rules:
 - Invalid signature receipts may be recorded safely without changing Payment state.
 - Raw webhook payloads must not be stored by default.
 - Sensitive payment instrument data must never be stored.
+- The uniqueness boundary is `(provider_key, provider_event_id)`.
+- Payment repositories do not reconstruct Payment by loading webhook receipt history.
 
 ## 4. Value Objects
 
@@ -196,7 +219,7 @@ Payment should use immutable Value Objects for:
 |---|---|
 | `PaymentId` | Opaque Payment identity. |
 | `PaymentAttemptId` | Opaque attempt identity. |
-| `CommercialOfferReference` | References the CommercialOffer consumed by Payment. |
+| `CommercialOfferReference` | References the CommercialOffer claimed by Payment. |
 | `ClinicRegistrationReference` | References the registration associated with the offer. |
 | `PaymentMoney` | Minor-unit amount plus currency from CommercialOffer. |
 | `PaymentCurrency` | ISO currency code; Phase 1 remains MYR unless commercial governance changes. |
@@ -288,24 +311,26 @@ Input:
 
 - CommercialOffer ID.
 - idempotency key.
-- authenticated PlatformPrincipal or future approved actor context.
+- authenticated PlatformPrincipal.
 - correlation ID.
-- payment provider selection if provider selection has been approved.
 
 Flow:
 
 1. Load CommercialOffer through `CommercialOfferCheckoutInterface::offerForCheckout`.
 2. Reject if no valid checkout snapshot is available.
-3. Check payment idempotency scope.
-4. Create or load Payment aggregate.
-5. Create PaymentAttempt inside Payment.
-6. Persist Payment.
-7. Call Payment Provider through provider abstraction outside the database transaction.
-8. Record provider initiation result in Payment.
-9. Mark CommercialOffer consumed only after Payment has accepted the offer for checkout.
-10. Publish application/domain events after successful Payment transaction.
+3. Verify the authenticated PlatformPrincipal owns the relevant Clinic Registration and owns the CommercialOffer being claimed.
+4. Check payment idempotency scope.
+5. Create or load Payment aggregate.
+6. Claim the CommercialOffer for that Payment ID.
+7. Create PaymentAttempt inside Payment.
+8. Persist Payment.
+9. Call Payment Provider through provider abstraction outside the database transaction.
+10. Record provider initiation result in Payment.
+11. Publish application/domain events after successful Payment transaction.
 
 Design note: if provider session creation must occur before the final Payment state write, the Application service must use a provider-safe idempotency key and reconcile provider reference in a second Payment transaction. It must never hold a database transaction open across a network call.
+
+Phase 1 initiator rule: Payment may be initiated only by an authenticated Platform Identity that owns the relevant Clinic Registration and CommercialOffer. Ownership is derived from the trusted PlatformPrincipal. Client-supplied Platform Identity identifiers must never define ownership.
 
 ### VerifyPaymentService
 
@@ -336,10 +361,10 @@ Flow:
 
 1. Verify signature through provider abstraction.
 2. Reject invalid signatures without changing Payment state.
-3. Check duplicate provider event ID.
+3. Check duplicate provider event ID through the append-only webhook receipt boundary.
 4. Load Payment by provider reference.
 5. Apply verified provider outcome.
-6. Persist Payment and webhook receipt atomically.
+6. Persist Payment and webhook receipt atomically where a state transition is applied.
 7. Publish verified outcome event if the aggregate state changed.
 
 ### RetryPaymentService
@@ -438,7 +463,9 @@ They must not expose:
 
 ### Provider selection
 
-Provider selection is an application/configuration concern. The Domain knows only `PaymentProviderCode`.
+Provider selection is deferred from Payment Core. SYIFA-090B implements provider-neutral Payment Core only. SYIFA-090C implements the selected Payment Provider Integration after provider approval.
+
+The Domain knows only `PaymentProviderCode`.
 
 Future providers must be added by:
 
@@ -484,11 +511,23 @@ Replay protection uses:
 
 If a provider lacks event IDs, the adapter must derive a safe deterministic fingerprint from signed provider fields only. That fallback requires explicit implementation approval.
 
+### Webhook response policy
+
+Exact HTTP status mapping may remain provider-adapter-specific, but the semantic policy is fixed:
+
+- invalid signature: reject;
+- malformed payload: reject;
+- unknown provider event: reject or safely ignore according to the explicit provider adapter contract;
+- duplicate valid provider event: acknowledge idempotently;
+- already-applied business outcome: acknowledge idempotently;
+- transient internal failure: return a retryable failure response;
+- no secret, signature, or raw sensitive payload may appear in errors or logs.
+
 ### Webhook transaction
 
-Webhook processing uses one Payment aggregate transaction:
+Webhook processing uses one Payment aggregate transaction when a business state transition is applied:
 
-1. record webhook receipt.
+1. verify or create the append-only webhook receipt idempotency record.
 2. apply Payment transition if legal.
 3. save Payment.
 4. commit.
@@ -533,7 +572,24 @@ Payment retry uses its own idempotency key. A retry does not modify an earlier f
 
 ### Duplicate submission
 
-Duplicate user submission against the same active CommercialOffer must not create two chargeable Payment aggregates. The idempotency boundary and CommercialOffer consumption boundary together protect against double charging.
+Duplicate user submission against the same active CommercialOffer must not create two chargeable Payment aggregates. The idempotency boundary and CommercialOffer claim boundary together protect against double charging.
+
+### CommercialOffer claim idempotency
+
+CommercialOffer claim idempotency is scoped by:
+
+- CommercialOffer ID.
+- Payment ID.
+
+Duplicate claim for the same CommercialOffer ID and same Payment ID:
+
+- succeeds idempotently.
+
+Claim for the same CommercialOffer ID and a different Payment ID:
+
+- fails with conflict.
+
+A claimed CommercialOffer is not payment success. It is only exclusive binding to a Payment ID.
 
 ## 12. Payment State Machine
 
@@ -541,7 +597,7 @@ Duplicate user submission against the same active CommercialOffer must not creat
 
 | State | Meaning |
 |---|---|
-| `draft` | Payment aggregate prepared locally before provider initiation is recorded. |
+| `draft` | Internal-only Payment aggregate state prepared locally before provider initiation is recorded. It must not be returned as a customer-facing status unless a later ADR explicitly changes this decision. |
 | `pending` | Provider payment/session has been initiated and final outcome is not verified. |
 | `action_required` | Provider requires customer action before the outcome can be finalized. |
 | `succeeded` | Provider outcome has been verified as successful. Terminal. |
@@ -588,7 +644,7 @@ The transaction may write:
 
 - Payment aggregate root record.
 - PaymentAttempt internal records.
-- ProviderWebhookReceipt internal records.
+- append-only webhook receipt idempotency records when processing a webhook.
 - AuditEntry only when an approved audit policy requires synchronous transactional audit for that mutation.
 
 The transaction must not write:
@@ -605,18 +661,18 @@ Provider calls happen outside database transactions whenever possible.
 
 Recommended initiation pattern:
 
-1. create local Payment record as `draft`.
+1. create local Payment record as internal `draft`.
 2. commit.
 3. call provider with idempotency key.
 4. record provider result in Payment transaction.
 
-If implementation needs to avoid a visible `draft` state, it may keep `draft` internal but must still avoid holding database locks across network calls.
+`draft` is internal-only. Public APIs must return `pending`, `action_required`, `failed`, or another customer-facing state, never `draft`, unless a later ADR explicitly changes this decision.
 
-### CommercialOffer consumption
+### CommercialOffer claim
 
-Payment consumes CommercialOffer through `CommercialOfferCheckoutInterface`.
+Payment claims CommercialOffer through `CommercialOfferCheckoutInterface`.
 
-CommercialOffer consumption is a Commercial aggregate lifecycle transition. It is not a Payment repository write. The integration must be idempotent and coordinated by Application services, not by a cross-module database transaction.
+CommercialOffer claim is a Commercial aggregate lifecycle transition. It is not a Payment repository write. The integration must be idempotent and coordinated by Application services, not by a cross-module database transaction.
 
 ### Audit
 
@@ -697,7 +753,7 @@ Payment integrates with Provisioning Orchestrator through events and contracts.
 Flow:
 
 1. Commercial prepares a CommercialOffer.
-2. Payment consumes the immutable CommercialOffer snapshot.
+2. Payment claims the immutable CommercialOffer snapshot for one Payment ID.
 3. Payment records provider execution/reconciliation.
 4. Payment publishes a verified outcome.
 5. Provisioning Orchestrator receives the outcome.
@@ -776,7 +832,7 @@ No JSON shortcuts for core Payment state, amount, currency, provider references,
 | Condition | Domain/Application error | HTTP mapping |
 |---|---|---|
 | CommercialOffer unavailable | Offer not available | `404` or `409` depending on whether identifier exists but is unusable. |
-| CommercialOffer expired/cancelled/consumed | Invalid offer lifecycle | `409` |
+| CommercialOffer expired/cancelled/claimed by another Payment | Invalid offer lifecycle | `409` |
 | Idempotency payload mismatch | Idempotency conflict | `409` |
 | Provider initiation failure | Payment initiation failed | `502` for provider/infrastructure failure; `422` for business-invalid payment method token. |
 | Provider requires action | Payment action required | `202` with action-required state. |
@@ -854,12 +910,12 @@ sequenceDiagram
     Commercial-->>App: immutable CommercialOffer snapshot
     App->>Repo: find by idempotency scope
     Repo-->>App: no existing Payment
-    App->>Repo: save Payment draft / attempt
+    App->>Repo: save internal Payment draft / attempt
     App->>Provider: initiate payment with provider idempotency key
     Provider-->>App: provider payment reference / action
     App->>Repo: save provider result
-    App->>Commercial: markConsumed(offerId, expectedVersion)
-    Commercial-->>App: consumed CommercialOffer
+    App->>Commercial: claim(offerId, paymentId, expectedVersion)
+    Commercial-->>App: claimed CommercialOffer
     App->>Events: publish PaymentInitiated or PaymentActionRequired
     App-->>HTTP: Payment response
 ```
@@ -1038,24 +1094,58 @@ Recommended implementation sequence:
 
 Each slice must pass architecture tests proving Payment does not own pricing, CommercialOffer calculation, Subscription activation, Tenant provisioning, or Onboarding execution.
 
+### Provider-neutral delivery split
+
+The delivery split is locked:
+
+- **SYIFA-090B Payment Core Foundation**: provider-neutral Domain, Contracts, Application boundaries, state machine, idempotency, and architecture tests.
+- **SYIFA-090C Selected Payment Provider Integration**: approved provider adapter, signature validation, provider-specific webhook envelope parsing, and provider-specific HTTP response mapping.
+
+SYIFA-090B must not select a production provider.
+
+### Required implementation migration before or during SYIFA-090B
+
+SYIFA-090B must explicitly migrate current Commercial handoff terminology:
+
+- `consumed` → `claimed`.
+- `CommercialOfferConsumed` → `CommercialOfferClaimed`.
+- `MarkConsumedCommercialOfferService` or `MarkCommercialOfferConsumedService` style naming → `ClaimCommercialOfferService`.
+- CommercialOffer status value `consumed`, if present → `claimed`.
+- audit action `commercial.offer.consume` → `commercial.offer.claim`.
+- tests, contracts, data fields, events, route/resource language, and persistence columns that expose the business term must align to `claimed`.
+
+This is an implementation prerequisite because Payment Core must bind one CommercialOffer to one Payment ID and must not model payment success as offer consumption.
+
+### Receipts, invoices, and accounting documents
+
+Official receipts, invoices, tax documents, and accounting documents remain outside SYIFA-090B. Payment Core may record payment execution and reconciliation evidence, but it must not model receipt issuance, invoice lifecycle, tax documents, or accounting workflows.
+
+### Pending payment cancellation
+
+Payment cancellation requires:
+
+- explicit Payment Application policy;
+- a legal Payment state transition;
+- provider capability where external cancellation is required.
+
+A local cancellation must not falsely claim that the provider transaction was cancelled unless the provider confirms cancellation or the selected provider contract defines a safe equivalent.
+
 ## 24. Risks
 
 - Holding database transactions across provider calls could create lock contention and inconsistent recovery. The implementation must avoid this.
 - Treating a provider decline as an infrastructure failure would make customer-facing flows confusing and operationally noisy.
 - Storing raw provider payloads would increase privacy and secret-management risk.
-- Consuming CommercialOffer too early could block legitimate retries; consuming it too late could permit duplicate payment starts. The implementation must define the exact idempotent handoff with Commercial.
+- Claiming CommercialOffer too early could block legitimate retries; claiming it too late could permit duplicate payment starts. The implementation must define the exact idempotent handoff with Commercial.
 - Webhook endpoints can become a hidden authorization bypass if signature verification and replay protection are not centralized.
 - Payment provider selection remains open; the abstraction must be stable enough for future providers but not become a generic payment engine.
 
 ## 25. Open Questions
 
 1. Which Payment provider is approved for Phase 1?
-2. Should `draft` be externally visible or internal-only?
-3. What exact provider-compatible HTTP response policy is required for rejected webhooks?
-4. What retention period applies to webhook receipts and safe provider metadata?
-5. Does Phase 1 require customer-facing receipts, or only payment confirmation evidence for provisioning?
-6. What is the approved operational policy for cancelling pending/action-required payments?
-7. Should Payment initiation be available to Clinic Owner directly in Phase 1, or only platform-assisted during registration/provisioning?
+2. Which provider-compatible HTTP status mapping is required for each fixed webhook response policy outcome?
+3. What retention period applies to Payment history, webhook receipts, and safe provider metadata? This remains deferred pending legal, accounting, and payment-provider contractual requirements and is a production-readiness decision, not a blocker for Payment Core Domain implementation.
+4. What is the approved operational policy for cancelling pending/action-required payments?
+5. Should a future ADR allow Clinic Owner self-service payment initiation, or does Phase 1 remain platform-assisted only?
 
 ## 26. Quality Gate Assertions
 
@@ -1064,8 +1154,13 @@ This design satisfies the required architecture checks:
 - Payment never owns pricing.
 - Payment never creates Tenant.
 - Payment never activates Onboarding.
-- Payment consumes CommercialOffer only.
+- Payment claims CommercialOffer only through the approved Commercial checkout boundary.
 - CommercialOffer remains immutable and owned by Commercial.
+- CommercialOffer claim cannot be confused with payment success.
+- One CommercialOffer cannot be bound to two Payments.
+- Duplicate same-Payment claim is idempotent.
+- Different-Payment claim is rejected.
+- ProviderWebhookReceipt is not an Aggregate entity.
 - Provisioning Orchestrator decides downstream business steps.
 - Payment aligns with ADR-007 module-owned transaction boundaries.
 - No gateway SDK, invoice, refund, renewal, accounting, finance reporting, migration, route, controller, service, repository, or implementation is introduced by this document.

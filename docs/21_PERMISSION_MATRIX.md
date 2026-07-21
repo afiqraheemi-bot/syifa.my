@@ -426,13 +426,13 @@ Nineteen resources, matching 20_API_DESIGN.md's Resource Catalogue exactly. Colu
 |---|---|---|---|---|
 | View | ❌ | ✅ Own | ❌ | ✅ |
 | List | ❌ | ✅ Own | ❌ | ✅ |
-| Create | ❌ | ✅ Own (initiate) | ❌ | ❌ |
+| Create | ❌ | ❌ Phase 1 | 🔒 Assigned platform workflow only | 🔒 Category |
 | Update | N/A [R1] — immutable once recorded; a correction is a new, linked record, never an edit | same | same | same |
 | Delete | N/A [R1] | N/A [R1] | N/A [R1] | N/A [R1] |
 | Approve | N/A [R7] | N/A [R7] | N/A [R7] | N/A [R7] |
 | Publish | N/A [R2] | N/A [R2] | N/A [R2] | N/A [R2] |
 | Assign | N/A [R3] | N/A [R3] | N/A [R3] | N/A [R3] |
-| Cancel | ❌ | 🔒 Own (a pending attempt only, before settlement) | ❌ | ❌ |
+| Cancel | ❌ | ❌ Phase 1 | ❌ | 🔒 Category, only if Payment application policy and provider capability permit |
 | Confirm | N/A [R7] — outcome recording is provider-driven reconciliation, not a role action | same | same | same |
 | Complete | N/A [R5] | N/A [R5] | N/A [R5] | N/A [R5] |
 | Archive | ❌ | ❌ | ❌ | 🔒 Privileged |
@@ -441,6 +441,8 @@ Nineteen resources, matching 20_API_DESIGN.md's Resource Catalogue exactly. Colu
 | Export | ❌ | 🔒 Own | ❌ | 🔒 Privileged |
 | Manage | N/A [R12] | N/A [R12] | N/A [R12] | N/A [R12] |
 | Support | ❌ | ❌ | ❌ | ✅ (reconciliation) |
+
+Phase 1 Payment initiation is platform-assisted only. It may be performed only by an authenticated Platform Identity that owns the relevant Clinic Registration and owns the CommercialOffer being claimed. Ownership is derived from the trusted PlatformPrincipal, never from client-supplied identity fields. Clinic Owner self-service Payment initiation requires a future ADR or approved implementation decision.
 
 ### 1.16 Onboarding Jobs
 
@@ -568,7 +570,7 @@ Commercial Offer endpoints require authenticated Platform Identity. The actor id
 | List | ❌ | ❌ | 🔒 Assigned platform workflow only | 🔒 Category |
 | Create | ❌ | ❌ | 🔒 Assigned platform workflow only | 🔒 Category |
 | Update | N/A [R13] — lifecycle actions replace generic update | same | same | same |
-| Delete | N/A [R1] — CommercialOffer is cancelled, expired, or consumed; never deleted | N/A [R1] | N/A [R1] | N/A [R1] |
+| Delete | N/A [R1] — CommercialOffer is cancelled, expired, or claimed; never deleted | N/A [R1] | N/A [R1] | N/A [R1] |
 | Cancel | ❌ | ❌ | 🔒 Assigned platform workflow only | 🔒 Category |
 | Archive | N/A [R10] | N/A [R10] | N/A [R10] | N/A [R10] |
 | Restore | N/A [R9] | N/A [R9] | N/A [R9] | N/A [R9] |
@@ -580,7 +582,9 @@ CommercialOffer mutations require mandatory Audit Entry coverage:
 - `commercial.offer.prepare`
 - `commercial.offer.cancel`
 - `commercial.offer.expire`
-- `commercial.offer.consume`
+- `commercial.offer.claim`
+
+Claiming a CommercialOffer means exclusive binding to one Payment ID. It is not proof of payment success and is not Subscription activation, Tenant provisioning, or Onboarding.
 
 ---
 
@@ -632,7 +636,7 @@ The same data as Section 1, pivoted by role rather than by resource — useful f
 | Booking | View/manage, cancel, confirm (per policy), complete | Own Tenant's Bookings only |
 | Subscription | Full commercial actions | Own Tenant only |
 | Invoices | Read-only | Own Tenant only |
-| Payments | Initiate/retry, view | Own Tenant only |
+| Payments | View own Phase 1 records only; no self-service initiation/retry in Phase 1 | Own Tenant only |
 | Onboarding Jobs | View, task input, approval decisions | Own Tenant's Job only |
 | Notifications | Read-only | Own Tenant only |
 | Reports | Full (own scope) | Own Tenant scope only |
@@ -684,7 +688,7 @@ The same data as Section 1, pivoted by role rather than by resource — useful f
 | Booking | View, privileged correction only | Cannot submit, confirm, or complete on a Tenant's behalf |
 | Subscription | Controlled administrative actions | Privileged, not routine commercial self-service |
 | Invoices | Read-only, any | Portfolio visibility |
-| Payments | View any, reconciliation support | Cannot initiate a Payment on a Tenant's behalf |
+| Payments | View any, reconciliation support, authorized platform-assisted initiation where category-scoped | Cannot bypass CommercialOffer claim or Payment provider verification |
 | Onboarding Jobs | Full, privileged | Assignment, lifecycle control, and exception handling are exclusively Super Admin functions |
 | Notifications | Read-only, any + remediation | Portfolio visibility and delivery remediation only |
 | Reports | Portfolio scope | Explicit privileged, minimized cross-tenant aggregation path, never the ordinary Clinic Owner pathway with scoping disabled |

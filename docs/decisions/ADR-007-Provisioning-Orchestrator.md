@@ -65,6 +65,8 @@ Each module owns its own transaction boundary:
 
 The orchestrator must not perform one database transaction that writes multiple Aggregate Roots across modules. Cross-module consistency is achieved by idempotent handoffs and compensating/retry behavior, not by cross-aggregate writes.
 
+Payment integration uses the SYIFA-090A.1 handoff language: Payment may claim one CommercialOffer, but the Provisioning Orchestrator advances downstream business steps only from verified Payment outcomes. A CommercialOffer claim event is not payment success.
+
 ## Event Publication
 
 Each module publishes events after its own transaction succeeds. Downstream modules consume events or commands through approved contracts. An event is evidence that one module completed its own state change; it is not permission for another module to bypass its own invariants.
@@ -77,6 +79,7 @@ Idempotency is required for:
 
 - registration approval handoff;
 - CommercialOffer preparation;
+- CommercialOffer claim by Payment;
 - payment initiation / confirmation handoff;
 - subscription activation handoff;
 - tenant provisioning;
@@ -98,6 +101,7 @@ Retry attempts must preserve:
 Failure handling is fail-closed:
 
 - a failed CommercialOffer preparation does not start Payment;
+- a CommercialOffer claim does not activate Subscription;
 - a failed Payment does not activate Subscription;
 - a failed Subscription activation does not provision Tenant;
 - a failed Tenant provisioning does not start Onboarding;

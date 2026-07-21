@@ -953,7 +953,7 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 
 ### 15. Payments
 
-**Purpose:** An independently reconciled attempt or completed transfer of value against a Subscription or Invoice obligation.
+**Purpose:** An independently reconciled Payment process against a claimed CommercialOffer checkout snapshot.
 
 **Aggregate Owner:** Payment (18_AGGREGATE_DESIGN.md — explicitly its own aggregate root, not a mutable detail of Subscription).
 
@@ -966,18 +966,18 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 - Business Rules: None beyond tenant-scoped access.
 - Authorization: Clinic Owner (own) · Super Admin (any).
 - Request Summary: Path/query identifiers; list is cursor-paginated.
-- Response Summary: Amount, currency, intended obligation reference, outcome, timing, reconciliation state.
+- Response Summary: Amount, currency, CommercialOffer reference, outcome, timing, reconciliation state.
 - Possible Errors: `404` if not found or not accessible.
 - Idempotency: Naturally idempotent.
 - Audit Requirements: None for ordinary reads.
 
 **`POST /payments`**
-- Purpose: Initiate a Payment attempt against a Subscription or Invoice obligation.
-- Business Rules: A successful Payment does not by itself authorize a participant — it may cause Subscription and Entitlement transition only through Subscription's own approved commercial rules (18_AGGREGATE_DESIGN.md); the final outcome of a given attempt is frequently confirmed asynchronously through a provider callback that this business API surfaces as a state change, not as a synchronous response value.
-- Authorization: Clinic Owner (own).
-- Request Summary: Target obligation reference, payment method reference (via the approved payment provider's tokenized mechanism — never raw payment-instrument data through this API, per 06_SECURITY_STANDARD.md).
+- Purpose: Initiate a Payment by claiming an immutable CommercialOffer checkout snapshot.
+- Business Rules: Payment may only be initiated from a claimable CommercialOffer. A CommercialOffer claim is not payment success. A successful Payment does not by itself authorize a participant — it may cause Subscription and Entitlement transition only through Subscription's own approved commercial rules (18_AGGREGATE_DESIGN.md); the final outcome of a given attempt is frequently confirmed asynchronously through a provider callback that this business API surfaces as a state change, not as a synchronous response value.
+- Authorization: Authenticated Platform Identity that owns the relevant Clinic Registration and CommercialOffer; ownership is derived from the server-side PlatformPrincipal, never from body, query, headers, or DTO fields.
+- Request Summary: CommercialOffer reference and approved payment method reference (via the approved payment provider's tokenized mechanism — never raw payment-instrument data through this API, per 06_SECURITY_STANDARD.md).
 - Response Summary: `202 Accepted` with a Payment reference in `pending` or `action_required` state.
-- Possible Errors: `422` for an invalid or already-settled obligation reference; `409` if a Payment is already in progress for the same obligation.
+- Possible Errors: `422` for invalid input; `409` if the CommercialOffer is expired, cancelled, already claimed by a different Payment, or otherwise not claimable.
 - Idempotency: **Required** — a retried initiation with the same idempotency key must never produce two charge attempts.
 - Audit Requirements: None for ordinary initiation (not a privileged action); reconciliation outcomes are tracked for Financial and Commercial Data governance per 19_DATABASE_STRATEGY.md.
 
@@ -1237,7 +1237,7 @@ No `DELETE` exists for any Commercial Catalogue resource, including Plan Offerin
 
 ### 21. Commercial Offers
 
-**Purpose:** Prepared checkout snapshot for a clinic registration, created from governed Commercial Catalogue reference data and consumed later by Payment.
+**Purpose:** Prepared checkout snapshot for a clinic registration, created from governed Commercial Catalogue reference data and claimed later by Payment.
 
 **Aggregate Owner:** CommercialOffer.
 
@@ -1267,7 +1267,7 @@ No `DELETE` exists for any Commercial Catalogue resource, including Plan Offerin
 
 **`GET /api/v1/commercial/offers/current`**
 - Purpose: View the current prepared CommercialOffer for the authenticated platform actor scope.
-- Business Rules: Expired, cancelled, or consumed offers are not treated as current.
+- Business Rules: Expired, cancelled, or claimed offers are not treated as current.
 - Authorization: Authenticated Platform Identity with the required platform authorization.
 - Request Summary: No client-supplied actor identity.
 - Response Summary: Current prepared CommercialOffer or not found.
@@ -1295,7 +1295,7 @@ No `DELETE` exists for any Commercial Catalogue resource, including Plan Offerin
 - Idempotency: Required.
 - Audit Requirements: **Mandatory Audit Entry** with action `commercial.offer.cancel`.
 
-CommercialOffer has no `DELETE`. Expiry and consumption are lifecycle transitions owned by Commercial Application services and trusted downstream boundaries, not generic update endpoints.
+CommercialOffer has no `DELETE`. Expiry and claim are lifecycle transitions owned by Commercial Application services and trusted downstream Payment boundaries, not generic update endpoints. Claiming a CommercialOffer does not prove payment success and does not activate Subscription, provision Tenant, or start Onboarding.
 
 ---
 
@@ -1369,8 +1369,8 @@ Role codes: **PV** = Public Visitor · **CO** = Clinic Owner · **WD** = Website
 | Subscription | `POST .../plan-changes`, `.../cancellation`, `.../reactivation` | Commercial actions | CO (own), SA |
 | Invoices | `GET /subscriptions/{id}/invoices`, `GET /invoices/{id}` | List/view (read-only) | CO (own), SA |
 | Payments | `GET /payments`, `GET /payments/{id}` | List/view | CO (own), SA |
-| Payments | `POST /payments` | Initiate | CO (own) |
-| Payments | `POST /payments/{id}/retry` | Retry | CO (own) |
+| Payments | `POST /payments` | Initiate from CommercialOffer claim | Authorized Platform Identity owning Clinic Registration + CommercialOffer |
+| Payments | `POST /payments/{id}/retry` | Retry | Authorized Platform Identity owning the original Payment scope |
 | Onboarding Jobs | `GET /onboarding-jobs`, `GET /onboarding-jobs/{id}` | List/view | CO (own), WD (assigned), SA |
 | Onboarding Jobs | `POST /onboarding-jobs/{id}/assignment` | Assign/reassign designer | SA |
 | Onboarding Jobs | `GET .../tasks`, `PATCH .../tasks/{id}` | View/progress tasks | WD (assigned), CO (own), SA |
@@ -1413,7 +1413,7 @@ Role codes: **PV** = Public Visitor · **CO** = Clinic Owner · **WD** = Website
 | Booking | Submit, view own (via reference), cancel own | View/manage own Tenant's Bookings | — | Privileged support correction |
 | Subscription | — | Full, own Tenant | — | Controlled administrative actions |
 | Invoices | — | Read-only, own | — | Read-only, any |
-| Payments | — | Initiate/retry, view own | — | View any |
+| Payments | — | View own Phase 1 records only; no self-service initiation/retry in Phase 1 | Authorized platform-assigned initiation only where explicitly approved | View any; authorized platform-assisted initiation where category-scoped |
 | Onboarding Jobs | — | View own, task input, approval decisions | Full within assignment | Full, privileged |
 | Notifications | — | Read-only, own Tenant | — | Read-only, any |
 | Reports | — | Own Tenant scope | Own workload scope | Portfolio scope |

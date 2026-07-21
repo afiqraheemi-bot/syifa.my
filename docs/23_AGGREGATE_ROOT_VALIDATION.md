@@ -171,15 +171,15 @@ A root that passes all ten questions without a qualifying note is marked **Confi
 
 **Verdict: Confirmed.**
 
-1. **Why is it an Aggregate Root?** It owns an independently reconciled commercial outcome that must survive multiple attempts, asynchronous provider callbacks, and disputes without being treated as a mutable detail of the Subscription it settles.
-2. **Business invariant protected:** Once successful, amount and currency are immutable; a successful Payment does not by itself authorize a participant; a failed attempt is never overwritten.
-3. **Can it exist independently?** No independently of a Subscription or Invoice obligation, but its own reconciliation lifecycle — pending, successful, failed, disputed — is materially different in shape and timing from Subscription's own lifecycle, which is the substantive independence test.
+1. **Why is it an Aggregate Root?** It owns an independently reconciled commercial outcome that must survive multiple attempts, asynchronous provider callbacks, and disputes without being treated as a mutable detail of CommercialOffer or Subscription.
+2. **Business invariant protected:** Once successful, amount and currency are immutable; a successful Payment does not by itself authorize a participant; a failed attempt is never overwritten; CommercialOffer claim is not payment success.
+3. **Can it exist independently?** No independently of a claimed CommercialOffer checkout snapshot, but its own reconciliation lifecycle — pending, successful, failed, disputed if later approved — is materially different in shape and timing from CommercialOffer and Subscription lifecycles, which is the substantive independence test.
 4. **Owns a transaction boundary?** Yes — recording one Payment attempt and its outcome is explicitly one atomic action, independent of any other attempt against the same obligation.
 5. **Owns a lifecycle?** Yes — initiated → pending → successful/failed/action required → disputed (if later supported) → reconciled.
 6. **Could it become an internal Entity?** No — 18_AGGREGATE_DESIGN.md already gives explicit reasoning for this: Payment needs independent reconciliation, potentially against asynchronous, out-of-band provider outcomes, which a child entity sharing Subscription's transaction boundary could not safely represent.
 7. **Could it become a Value Object?** No — each Payment attempt has independent identity, its own outcome history, and financial-record-keeping obligations that outlive any single Subscription state.
 8. **What breaks if merged (into Subscription)?** A retried Payment attempt would need to write into the same aggregate a concurrent Subscription commercial action (a plan change, a cancellation) is also trying to write, and 19_DATABASE_STRATEGY.md's explicit rule that "Payment and Invoice history must not be silently rewritten or deleted" becomes far harder to guarantee once Payment is no longer its own independently-versioned, independently-locked record.
-9. **What breaks if split (no internal entities exist to split)?** Not applicable — Payment has no composed internal entities in this model.
+9. **What breaks if split (no internal entities exist to split)?** PaymentAttempt may be modeled as a composed internal entity of Payment because it cannot exist independently, has no repository, and mutates only through the Payment transaction. ProviderWebhookReceipt is not part of this aggregate; it is an append-only Infrastructure/Application idempotency record keyed by `(provider_key, provider_event_id)`.
 10. **Should it remain an Aggregate Root?** Yes.
 
 ---

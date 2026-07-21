@@ -269,7 +269,7 @@ No context introduces a fifth role or a capability outside the locked MVP scope.
 
 **Purpose.** Supporting commercial-orchestration context. Prepares a short-lived CommercialOffer checkout snapshot from governed commercial reference data before Payment, Subscription activation, Tenant provisioning, and Internal Onboarding proceed.
 
-**Responsibilities.** Lists available commercial offers for authenticated platform operators, prepares a CommercialOffer snapshot for a clinic registration, exposes the current prepared offer, cancels prepared offers, expires stale offers, and marks an offer consumed by an approved downstream Payment workflow. It does not execute payment, activate subscriptions, provision tenants, or publish websites.
+**Responsibilities.** Lists available commercial offers for authenticated platform operators, prepares a CommercialOffer snapshot for a clinic registration, exposes the current prepared offer, cancels prepared offers, expires stale offers, and marks an offer claimed by one approved downstream Payment. It does not execute payment, activate subscriptions, provision tenants, or publish websites.
 
 **Owned Entities.** CommercialOffer and its composed line items / checkout snapshot.
 
@@ -277,13 +277,13 @@ No context introduces a fifth role or a capability outside the locked MVP scope.
 
 **Events Produced.** Commercial Offer Prepared; Commercial Offer Cancelled; Commercial Offer Expired; Commercial Offer Consumed.
 
-**Events Consumed.** Clinic Registration Approved or equivalent provisioning handoff; Commercial Catalogue reference-data availability from Subscription & Billing; Payment consumption acknowledgement from the future Payment workflow.
+**Events Consumed.** Clinic Registration Approved or equivalent provisioning handoff; Commercial Catalogue reference-data availability from Subscription & Billing; Payment claim acknowledgement from the future Payment workflow.
 
 **Dependencies.** Depends on Platform Administration for authenticated Platform Principal identity, platform authorization, and audit. Depends on Subscription & Billing only through reference-data contracts for Plan, Billing Cycle, Pricing, and Plan Offering. Depends on Clinic Registration by identifier only.
 
 **Public Interfaces (conceptual).** List Available Commercial Offers; Prepare Commercial Offer; View Current Commercial Offer; Get Commercial Offer; Cancel Commercial Offer; Mark Commercial Offer Consumed (trusted downstream boundary only).
 
-**Invariants.** CommercialOffer is an immutable checkout snapshot except for lifecycle transitions. It expires after 30 minutes. Only one current prepared offer may exist for the relevant platform actor scope at a time. CommercialOffer never becomes Payment, Invoice, Subscription, Renewal, Coupon, Promotion, Tax, or Tenant Provisioning.
+**Invariants.** CommercialOffer is an immutable checkout snapshot except for lifecycle transitions. It expires after 30 minutes. Only one current prepared offer may exist for the relevant platform actor scope at a time. Once claimed, it is exclusively bound to one Payment ID; the same-Payment claim is idempotent and a different-Payment claim conflicts. CommercialOffer claim is not payment success. CommercialOffer never becomes Payment, Invoice, Subscription, Renewal, Coupon, Promotion, Tax, or Tenant Provisioning.
 
 **Business Rules.** Commercial APIs require authenticated Platform Identity. Customer-facing public catalogue browsing is not approved. Add-On vocabulary may remain in governance language, but Add-On checkout behavior is disabled for Phase 1.
 

@@ -26,7 +26,7 @@ Governed platform reference data used to define sellable commercial configuratio
 
 ## CommercialOffer
 
-The Commercial Aggregate Root representing one immutable, short-lived checkout snapshot prepared from governed commercial reference data. It expires after 30 minutes and may transition only through prepared, cancelled, expired, and consumed lifecycle states.
+The Commercial Aggregate Root representing one immutable, short-lived checkout snapshot prepared from governed commercial reference data. It expires after 30 minutes and may transition only from prepared to claimed, cancelled, or expired. Claimed means the offer has been exclusively bound to one Payment ID; it is not proof of payment success.
 
 ## Subscription
 
@@ -54,7 +54,7 @@ The bounded context that owns Clinic Service and Booking behavior. It governs bo
 
 ## Payment
 
-The Subscription Billing Aggregate Root responsible for payment execution and reconciliation. Payment may consume a CommercialOffer snapshot but does not own checkout preparation.
+The Subscription Billing Aggregate Root responsible for payment execution and reconciliation. Payment may claim a CommercialOffer snapshot but does not own checkout preparation, pricing, Subscription activation, Tenant provisioning, or Onboarding.
 
 ## Provisioning Orchestrator
 

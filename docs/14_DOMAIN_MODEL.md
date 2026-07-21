@@ -88,7 +88,7 @@ An entity may be viewed by several modules without transferring ownership. Copie
 | Email Notifications | Governed transactional communication and its delivery outcome |
 | Reports & Analytics | Metric meaning, authorized Report production, and Phase 1 outcome interpretation |
 | Payments & Subscriptions | Governed Commercial Catalogue reference data, Subscription, entitlement, Invoice, Payment, and commercial Customer status |
-| Commercial | CommercialOffer checkout snapshot, commercial selection orchestration, expiry/cancel/consume lifecycle, and handoff to Payment |
+| Commercial | CommercialOffer checkout snapshot, commercial selection orchestration, expiry/cancel/claim lifecycle, and handoff to Payment |
 | Internal Onboarding / Project Management | Onboarding Job, assignment, tasks, readiness, review cycle, Website approval, and launch coordination |
 
 Platform Identity, Activity Log, Audit Log, Platform Setting, and any retained System Setting are cross-module governance concepts. They support the product modules without creating additional customer-facing product categories.
@@ -1174,7 +1174,7 @@ These are candidates for later architecture review, not implementation instructi
 - **Booking** for booked service meaning, Booking Contact, lifecycle, and related communication intent.
 - **Subscription** for Plan selection, approved Add-Ons, Entitlement, Invoice relationship, and commercial lifecycle.
 - **Payment** as an independently reconciled commercial outcome rather than a mutable detail of Subscription.
-- **CommercialOffer** for one immutable, short-lived checkout snapshot prepared from governed commercial reference data and consumed by Payment.
+- **CommercialOffer** for one immutable, short-lived checkout snapshot prepared from governed commercial reference data and claimed by one Payment.
 - **Onboarding Job** for assignment, Tasks, approval cycle, and Launch Readiness.
 - **Notification** for its Delivery Attempts and final communication outcome.
 - **Report** for one authorized analytical result using governed Metric Definitions.

@@ -446,7 +446,7 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 ### Aggregate: Payment
 
-**Purpose.** Protects the independently reconciled outcome of an attempt or completed transfer of value against a Subscription or Invoice obligation.
+**Purpose.** Protects the independently reconciled outcome of a Payment process created from an immutable CommercialOffer checkout snapshot. The older Subscription/Invoice-obligation wording is superseded for the approved Phase 1 handoff by SYIFA-090A.1: Payment receives CommercialOffer, never recalculates price, and emits verified outcomes for the Provisioning Orchestrator.
 
 **Business Owner.** The Customer relationship (on Tenant) owns payer responsibility; Syifa.my Commercial and Finance leadership owns outcome recognition.
 
@@ -454,11 +454,11 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Aggregate Root.** Payment.
 
-**Internal Entities.** None.
+**Internal Entities.** PaymentAttempt may be modeled as an internal entity when Payment implementation begins. It cannot exist independently, its lifecycle is controlled by Payment, its mutations participate in the Payment transaction, and it has no independent repository. ProviderWebhookReceipt is not a Payment internal entity; it is an append-only Infrastructure/Application idempotency record.
 
-**Value Objects.** Amount, Currency, intended obligation reference, outcome, timing.
+**Value Objects.** Amount, Currency, CommercialOffer reference, outcome, timing, provider reference, idempotency key.
 
-**Business Invariants.** Once a Payment's outcome is recorded as successful, its amount and currency are immutable. A failed attempt is never overwritten — a new attempt is recorded instead, preserving the earlier outcome for reconciliation.
+**Business Invariants.** Once a Payment's outcome is recorded as successful, its amount and currency are immutable. A failed attempt is never overwritten — a new attempt is recorded instead, preserving the earlier outcome for reconciliation. Amount and currency come only from the claimed CommercialOffer; CommercialOffer claim is not payment success.
 
 **Lifecycle.** Initiated → pending → successful | failed | action required → disputed (if later supported) → reconciled.
 
@@ -470,7 +470,7 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Business Rules.** A successful Payment does not by itself authorize a participant — it may cause Subscription and Entitlement transition only through Subscription's own approved commercial rules. An Invoice is not a Payment; the two concepts must never be conflated.
 
-**External References.** References Subscription (by identifier) and, where applicable, the specific Invoice within it (by identifier). Also carries a direct Tenant reference for isolation-enforcement purposes even though its business relationship is mediated through Subscription, consistent with ADR-002's requirement that tenant-owned records carry explicit, direct ownership rather than only transitive ownership.
+**External References.** References CommercialOffer by identifier and carries the approved registration/tenant ownership references needed for isolation enforcement. Subscription receives verified Payment outcomes through orchestration; Payment does not mutate Subscription directly.
 
 **Events Produced.** Payment Initiated; Payment Succeeded; Payment Failed; Payment Action Required; Payment Reconciled.
 
