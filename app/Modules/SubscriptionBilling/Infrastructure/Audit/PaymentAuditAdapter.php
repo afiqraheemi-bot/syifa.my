@@ -18,25 +18,43 @@ use DateTimeZone;
 
 final readonly class PaymentAuditAdapter implements PaymentAuditInterface
 {
+    private const string TARGET_TYPE = 'payment';
+
+    /**
+     * AuditEntry::record() rejects any action whose final dot-segment names
+     * an outcome rather than an operation (e.g. "succeeded", "failed"). These
+     * two call sites are the only ones affected; the alias is applied only
+     * for the persisted audit action, not the caller-facing action string.
+     */
+    private const array OUTCOME_ENCODING_ACTION_ALIASES = [
+        'payment.succeeded' => 'payment.mark_succeeded',
+        'payment.failed' => 'payment.mark_failed',
+    ];
+
     public function __construct(private AuditEntryRecorderInterface $auditEntries) {}
 
     public function record(string $action, Payment $payment, DateTimeImmutable $occurredAt, string $correlationId): void
     {
         $occurredAt = $occurredAt->setTimezone(new DateTimeZone('UTC'));
+        $auditAction = self::OUTCOME_ENCODING_ACTION_ALIASES[$action] ?? $action;
         $this->auditEntries->record(new AuditEntryData(
-            auditEntryId: $this->auditEntryId($action, $payment->id->value, $occurredAt, $correlationId),
+            auditEntryId: $this->auditEntryId($auditAction, $payment->id->value, $occurredAt, $correlationId),
             occurredAt: $occurredAt,
             actor: new AuditActorData(AuditActorType::PlatformIdentity->value, $payment->platformIdentityId->value),
             tenantId: null,
-            action: $action,
-            target: new AuditTargetData('payment', $payment->id->value),
+            action: $auditAction,
+            target: new AuditTargetData(self::TARGET_TYPE, $payment->id->value),
             outcome: new AuditOutcomeData(AuditOutcomeType::Succeeded->value, null),
             correlationId: $correlationId,
             safeMetadata: [
-                'commercial_offer_id' => $payment->commercialOfferId->value,
-                'payment_status' => $payment->status->value,
-                'currency' => $payment->currency->value,
-                'amount_minor' => $payment->amount->minorUnits,
+                'resource_type' => self::TARGET_TYPE,
+                'resource_label' => $payment->status->value,
+                'target_label' => sprintf(
+                    'commercial_offer_id=%s;currency=%s;amount_minor=%d',
+                    $payment->commercialOfferId->value,
+                    $payment->currency->value,
+                    $payment->amount->minorUnits,
+                ),
             ],
         ));
     }
