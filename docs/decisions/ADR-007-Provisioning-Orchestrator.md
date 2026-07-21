@@ -126,3 +126,29 @@ This ADR does not approve:
 ## Consequences
 
 Future implementation must keep orchestration outside controllers and outside domain entities. Controllers invoke application services. Application services coordinate through module contracts. Each aggregate still protects its own invariants.
+
+## Addendum (2026-07-22): Tenant Identity Reservation Timing
+
+This addendum clarifies a timing question this ADR left open; it does not reverse, supersede, or reopen any decision above. The official provisioning order is unchanged.
+
+[ADR-011](./ADR-011-Initial-Subscription-Activation.md) establishes that `TenantId` is an immutable, opaque UUID **reserved** when Clinic Registration is submitted for the commercial onboarding flow (the existing `Draft → Submitted` transition) — before Commercial, before Payment, before Subscription activation — and carried unchanged as a plain identifier value through `CommercialOffer`, `Payment`, and `Subscription`. No `Approved`/`UnderReview` status is introduced to support this. The identifier is generated once by an Application-layer generator and passed into `submit()`; the `ClinicRegistration` aggregate itself never depends on an identifier-generator interface.
+
+Reservation is not Tenant provisioning and not Tenant activation. `Tenant::provision()` still runs using that same reserved identifier, and Tenant aggregate provisioning still happens strictly after Subscription activation, exactly where this ADR's provisioning order already places it:
+
+```text
+Platform Identity
+↓
+Clinic Registration        (TenantId reserved here, at submission — Draft → Submitted)
+↓
+Commercial
+↓
+Payment
+↓
+Subscription                (activation)
+↓
+Tenant Provisioning         (Tenant::provision(existing TenantId) — unchanged position)
+↓
+Internal Onboarding
+```
+
+No aggregate boundary, ownership assignment, or transaction rule in this ADR changes. This addendum only records where the identifier that Tenant Provisioning will eventually consume comes from, and confirms it does not require moving Tenant Provisioning earlier.

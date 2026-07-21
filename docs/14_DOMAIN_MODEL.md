@@ -723,9 +723,9 @@ Platform Identity, Activity Log, Audit Log, Platform Setting, and any retained S
 
 **Responsibilities.** Tracks selected Plan, approved Add-Ons, entitlement, commercial period, renewal intention, payment condition, cancellation, expiry, and reactivation.
 
-**Ownership.** Tenant-associated commercial entity owned by the Customer relationship.
+**Ownership.** Tenant-associated commercial entity owned by the Customer relationship. Per [ADR-011](./decisions/ADR-011-Initial-Subscription-Activation.md), "Tenant" here is the immutable `TenantId` reserved when Clinic Registration is submitted for the commercial onboarding flow, not necessarily a yet-provisioned Tenant aggregate — a Subscription's first activation happens before `Tenant::provision()` runs, per ADR-007's unchanged provisioning order.
 
-**Relationships.** Belongs to one Tenant and Customer, follows one Plan at a time, may include approved Add-Ons, produces Invoices, receives Payments, and determines Entitlements.
+**Relationships.** Belongs to one Tenant and Customer, follows one Plan at a time, may include approved Add-Ons, produces Invoices, receives Payments, and determines Entitlements. A Subscription does not exist before its first successful Payment; initial activation is defined by ADR-011 and [docs/34](./34_SUBSCRIPTION_ACTIVATION_ARCHITECTURE.md).
 
 **Lifecycle.** Pending, active, payment action required, restricted, renewal due, cancelled, expired, suspended, and reactivated according to approved policy.
 
@@ -789,7 +789,7 @@ Platform Identity, Activity Log, Audit Log, Platform Setting, and any retained S
 
 **Lifecycle.** Initiated, pending, successful, failed, action required, reversed or refunded only if approved policy permits, disputed if later supported, and reconciled.
 
-**Business Rules.** Successful Payment does not by itself authorize a participant; it may cause Subscription and Entitlement transition only through approved commercial rules. Ambiguous outcomes require reconciliation.
+**Business Rules.** Successful Payment does not by itself authorize a participant; it may cause Subscription and Entitlement transition only through approved commercial rules. Ambiguous outcomes require reconciliation. The concrete mechanism by which a verified Payment outcome activates a Subscription — a durable `SubscriptionActivationApplication`, never a direct call from Payment into a Subscription repository — is defined by [ADR-011](./decisions/ADR-011-Initial-Subscription-Activation.md); Payment itself is unchanged by that ADR.
 
 **Who can modify it.** The Clinic Owner may initiate approved payment behavior; authorized commercial processes and Super Admin may reconcile or perform permitted actions.
 

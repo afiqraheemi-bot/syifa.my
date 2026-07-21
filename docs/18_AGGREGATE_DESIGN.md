@@ -112,7 +112,7 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Business Rules.** Approval is never medical credentialing or regulatory endorsement. Only an authorized Super Admin may decide a Registration. Correction and rejection outcomes must be explainable and accountable.
 
-**External References.** None inbound before approval. On approval, it references the Tenant identifier it produced, for traceability only — it never reaches back into the Tenant aggregate to modify it.
+**External References.** None inbound before submission. When submitted for the commercial onboarding flow (`Draft → Submitted`), it reserves the immutable `TenantId` that Commercial, Payment, and Subscription will carry forward and that `Tenant::provision()` will eventually consume (per [ADR-011](./decisions/ADR-011-Initial-Subscription-Activation.md)); the identifier is generated once by an Application-layer generator and passed into `submit()` — the aggregate itself never depends on an identifier-generator interface — and it never reaches back into a Tenant aggregate to modify it, since reservation is not itself Tenant provisioning or activation.
 
 **Events Produced.** Clinic Registration Submitted; Clinic Registration Correction Requested; Clinic Registration Approved; Clinic Registration Rejected; Clinic Registration Withdrawn.
 
@@ -434,11 +434,11 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Business Rules.** Entitlement never grants a participant authority — it only gates capability availability; authorization is always evaluated separately (ADR-002, Security Invariant 15). Phase 1 assumes one Plan family and no usage-based pricing; Invoice is treated as a provisional Phase 1 concept pending confirmation of the approved payment model. Add-On's Phase 1 open question (14_DOMAIN_MODEL.md) is resolved by 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md: deferred until a real recurring entitlement-supplement use case is approved.
 
-**External References.** References Tenant (owner and customer identity, by identifier), Plan (reference data, by identifier), Billing Option (reference data, by identifier), Add-On (reference data, by identifier, deferred). 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md is the authoritative Phase 1 specification for Plan, Billing Option, Plan Offering, and Capability Catalogue as governed reference data, and for the Entitlement Computation boundary that resolves them into this aggregate's commercial snapshot; it does not modify this aggregate's evaluation.
+**External References.** References Tenant (owner and customer identity, by identifier — the immutable `TenantId` reserved when Clinic Registration is submitted for the commercial onboarding flow, per [ADR-011](./decisions/ADR-011-Initial-Subscription-Activation.md); a Subscription's first activation happens before `Tenant::provision()` runs), Plan (reference data, by identifier), Billing Option (reference data, by identifier), Add-On (reference data, by identifier, deferred). 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md is the authoritative Phase 1 specification for Plan, Billing Option, Plan Offering, and Capability Catalogue as governed reference data, and for the Entitlement Computation boundary that resolves them into this aggregate's commercial snapshot; it does not modify this aggregate's evaluation.
 
 **Events Produced.** Subscription Created; Subscription Activated; Subscription Renewal Due; Subscription Cancelled; Subscription Expired; Subscription Suspended; Subscription Reactivated; Entitlement Changed.
 
-**Events Consumed.** Clinic Registration Approved (establishes commercial eligibility); Payment Succeeded / Payment Failed / Payment Action Required (from the Payment aggregate — informs Subscription lifecycle transitions but never lets Payment directly mutate Subscription state).
+**Events Consumed.** Clinic Registration Approved (establishes commercial eligibility); a verified Payment-succeeded outcome, consumed through the durable `SubscriptionActivationApplication` mechanism [ADR-011](./decisions/ADR-011-Initial-Subscription-Activation.md) and [docs/34](./34_SUBSCRIPTION_ACTIVATION_ARCHITECTURE.md) define — never a direct call from Payment into a Subscription repository. This increment covers only the first `Pending → Active` transition; Subscription's reaction to Payment failure/action-required outcomes remains future work.
 
 **Security Considerations.** Entitlement must never substitute for tenant authorization anywhere it is checked (ADR-002). This aggregate's data is Tenant-owned and must remain isolated per the same rules as any other tenant-owned aggregate.
 
@@ -470,7 +470,7 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Business Rules.** A successful Payment does not by itself authorize a participant — it may cause Subscription and Entitlement transition only through Subscription's own approved commercial rules. An Invoice is not a Payment; the two concepts must never be conflated.
 
-**External References.** References CommercialOffer by identifier and carries the approved registration/tenant ownership references needed for isolation enforcement. Subscription receives verified Payment outcomes through orchestration; Payment does not mutate Subscription directly.
+**External References.** References CommercialOffer by identifier and carries the approved registration/tenant ownership references needed for isolation enforcement, including the immutable `TenantId` reserved during Clinic Registration and propagated through the claimed CommercialOffer (per [ADR-011](./decisions/ADR-011-Initial-Subscription-Activation.md)). Subscription receives verified Payment outcomes through orchestration; Payment does not mutate Subscription directly, and Payment's own Domain/Application layers never call a Subscription repository.
 
 **Events Produced.** Payment Initiated; Payment Succeeded; Payment Failed; Payment Action Required; Payment Reconciled.
 

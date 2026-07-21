@@ -765,7 +765,7 @@ Published for other modules:
 - `PaymentRequiresAction`
 - `PaymentTimedOut`
 
-The Provisioning Orchestrator consumes these events and decides subsequent steps. Subscription consumes only approved orchestration commands or events and still applies Subscription's own invariants.
+The Provisioning Orchestrator consumes these events and decides subsequent steps. Subscription consumes only approved orchestration commands or events and still applies Subscription's own invariants. [ADR-011](./decisions/ADR-011-Initial-Subscription-Activation.md) defines the concrete mechanism for `VerifiedPaymentSucceeded`'s consumption by Subscription (a durable `SubscriptionActivationApplication`, never a direct Payment-to-Subscription-repository call) without changing anything in this document about how or when Payment publishes the event.
 
 ## 15. Provisioning Integration
 
@@ -787,6 +787,8 @@ Payment never:
 - creates Clinic Owner Authority.
 - creates OnboardingJob.
 - assigns Website Designer.
+
+Per [ADR-011](./decisions/ADR-011-Initial-Subscription-Activation.md), Payment carries a `tenant_id` field — the immutable `TenantId` reserved when Clinic Registration is submitted for the commercial onboarding flow and propagated through the claimed CommercialOffer — so that Subscription activation can revalidate tenant ownership without Payment ever calling into Subscription. This is an additive field, not a change to Payment's existing outcome, verification, or reconciliation behavior described elsewhere in this document. Before Subscription activation is wired, this same increment also adds an `event_version` field (starting at `1`) to `payment_integration_outbox`/`PaymentIntegrationOutboxEvent` — additive integration-contract hardening, not a change to Payment's own outcome or reconciliation behavior.
 
 Provisioning Orchestrator never:
 

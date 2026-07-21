@@ -20,6 +20,8 @@ This document is the governance index for architecture decisions and architectur
 | [ADR-007](./decisions/ADR-007-Provisioning-Orchestrator.md) | Provisioning Orchestrator | Active | Defines architecture-only orchestration sequence and transaction/idempotency rules. |
 | [ADR-008](./decisions/ADR-008-Phase-1-Payment-Provider.md) | Phase 1 Payment Provider | Active | Selects Stripe Malaysia hosted Checkout for one-off MYR FPX and cards, with webhook notification plus provider verification and a provider-neutral exit strategy. |
 | [ADR-009](./decisions/ADR-009-Multi-Provider-Payment-Infrastructure.md) | Multi-Provider Payment Infrastructure | Active | Adds Stripe/ToyyibPay coexistence, immutable attempt binding, operational activation gates and no automatic failover without changing ADR-008. |
+| [ADR-010](./decisions/ADR-010-Payment-Verification-Application.md) | Payment Verification Application and Reconciliation | Active | Defines the durable `PaymentVerificationApplication` lifecycle, atomic system-audit/outbox/reconciliation-case creation, and the transactional-outbox delivery pattern. Explicitly excludes Subscription activation from its own scope. |
+| [ADR-011](./decisions/ADR-011-Initial-Subscription-Activation.md) | Initial Subscription Activation | Active | Defines Subscription's first `Pending → Active` activation from one verified Payment outcome via a durable `SubscriptionActivationApplication`, the reserved-`TenantId` ownership chain, and the annual-term calendar-anniversary date algorithm. Adds a narrow, non-superseding addendum to ADR-007 on tenant-identity reservation timing. |
 
 ## Superseded ADRs
 
@@ -65,6 +67,7 @@ No ADR is deprecated as of SYIFA-085A.
 | [31_PAYMENT_ARCHITECTURE_DESIGN.md](./31_PAYMENT_ARCHITECTURE_DESIGN.md) | Current | Provider-neutral Payment design, refined by ADR-008 for the Phase 1 adapter. |
 | [32_PAYMENT_PROVIDER_EVALUATION.md](./32_PAYMENT_PROVIDER_EVALUATION.md) | Current, time-sensitive | Official-source provider comparison and 2026-07-21 pricing snapshot supporting ADR-008. |
 | [33_MULTI_PROVIDER_PAYMENT_ARCHITECTURE.md](./33_MULTI_PROVIDER_PAYMENT_ARCHITECTURE.md) | Current | Provider contract, registry, readiness lifecycle, immutable attempt binding and Stripe/ToyyibPay Infrastructure placement. |
+| [34_SUBSCRIPTION_ACTIVATION_ARCHITECTURE.md](./34_SUBSCRIPTION_ACTIVATION_ARCHITECTURE.md) | Current | Initial Subscription Activation detailed design refined by ADR-011: activation-application lifecycle, eligibility/outcome policy, annual-term algorithm, reconciliation boundary, outbox contract, and database design. |
 
 ## Governance Notes
 
