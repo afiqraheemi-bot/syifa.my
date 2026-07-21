@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Architecture;
 
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\Payment;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\Subscription;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
@@ -14,16 +15,18 @@ use SplFileInfo;
 
 final class SubscriptionFoundationArchitectureTest extends TestCase
 {
-    public function test_subscription_is_the_only_new_aggregate_root_and_internal_concepts_are_not_roots(): void
+    public function test_subscription_and_payment_are_the_only_new_aggregate_roots_and_internal_concepts_are_not_roots(): void
     {
         $aggregates = $this->root().'/app/Modules/SubscriptionBilling/Domain/Aggregates';
 
         self::assertFileExists($aggregates.'/Subscription/Subscription.php');
+        self::assertFileExists($aggregates.'/Payment/Payment.php');
         self::assertDirectoryDoesNotExist($aggregates.'/Entitlement');
         self::assertDirectoryDoesNotExist($aggregates.'/Invoice');
         self::assertDirectoryDoesNotExist($aggregates.'/Plan');
         self::assertDirectoryDoesNotExist($aggregates.'/BillingCycle');
         self::assertSame(Subscription::class, (new ReflectionClass(Subscription::class))->getName());
+        self::assertSame(Payment::class, (new ReflectionClass(Payment::class))->getName());
     }
 
     public function test_subscription_domain_is_framework_independent_and_has_no_cross_module_import(): void
@@ -81,14 +84,21 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
                 continue;
             }
 
+            if (str_contains($file, '/Application/Payment/')
+                || str_contains($file, '/Contracts/Payment/')
+                || str_contains($file, '/Domain/Aggregates/Payment/')) {
+                continue;
+            }
+
             self::assertDoesNotMatchRegularExpression(
-                '/(?:Controller|Request|Resource|Middleware|Repository|Record|Model|Payment|Invoice)\.php$/',
+                '/(?:Controller|Request|Resource|Middleware|Repository|Record|Model|Invoice)\.php$/',
                 $file,
             );
         }
 
         self::assertSame([
             $this->root().'/database/migrations/subscription_billing/2026_07_15_000001_create_commercial_catalogue_persistence_tables.php',
+            $this->root().'/database/migrations/subscription_billing/2026_07_21_000002_create_payment_core_tables.php',
         ], glob($this->root().'/database/migrations/subscription_billing/*.php') ?: []);
         $routes = file_get_contents($this->root().'/routes/web.php');
         self::assertIsString($routes);
@@ -161,6 +171,8 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
                 && ! str_contains($file, '/Infrastructure/Authorization/DenyAllCommercialCatalogueAuthorization.php')
                 && ! str_contains($file, '/Infrastructure/Authorization/CommercialCataloguePlatformAuthorizationAdapter.php')
                 && ! str_contains($file, '/Infrastructure/CommercialCatalogue/CommercialCatalogueTransactionalService.php')
+                && ! str_contains($file, '/Infrastructure/Audit/PaymentAuditAdapter.php')
+                && ! str_contains($file, '/Infrastructure/Payment/UnavailablePaymentProvider.php')
                 && ! str_contains($file, '/Infrastructure/SubscriptionBillingServiceProvider.php'),
         )));
         $presentation = array_values(array_filter(
@@ -184,7 +196,7 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
             $presentation,
         );
 
-        self::assertSame([], glob($module.'/**/*Payment*.php') ?: []);
+        self::assertFileExists($module.'/Domain/Aggregates/Payment/Payment.php');
         self::assertFileExists($module.'/Infrastructure/SubscriptionBillingServiceProvider.php');
     }
 

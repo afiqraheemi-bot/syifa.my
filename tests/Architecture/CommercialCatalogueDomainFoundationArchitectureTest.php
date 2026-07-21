@@ -68,7 +68,7 @@ final class CommercialCatalogueDomainFoundationArchitectureTest extends TestCase
             self::assertDirectoryDoesNotExist($domain.'/Aggregates/'.$name);
         }
 
-        self::assertSame(['Subscription'], array_values(array_filter(
+        self::assertSame(['Payment', 'Subscription'], array_values(array_filter(
             scandir($domain.'/Aggregates') ?: [],
             static fn (string $entry): bool => ! in_array($entry, ['.', '..'], true),
         )));
@@ -185,7 +185,13 @@ final class CommercialCatalogueDomainFoundationArchitectureTest extends TestCase
         $subscription = file_get_contents($this->module().'/Domain/Aggregates/Subscription/Subscription.php');
         self::assertIsString($subscription);
         self::assertStringNotContainsString('CommercialCatalogue', $subscription);
-        self::assertDirectoryDoesNotExist($this->module().'/Domain/Aggregates/Payment');
+        self::assertDirectoryExists($this->module().'/Domain/Aggregates/Payment');
+
+        foreach ($this->phpFilesIn($this->catalogue()) as $file) {
+            $source = file_get_contents($file);
+            self::assertIsString($source);
+            self::assertStringNotContainsString('Aggregates\\Payment', $source, $file);
+        }
     }
 
     /** @return class-string */

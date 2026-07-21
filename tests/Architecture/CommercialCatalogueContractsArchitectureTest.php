@@ -25,7 +25,7 @@ final class CommercialCatalogueContractsArchitectureTest extends TestCase
 {
     public function test_contract_surface_is_framework_free_and_has_no_cross_module_dependencies(): void
     {
-        foreach ($this->phpFilesIn($this->contractsRoot()) as $file) {
+        foreach ($this->phpFilesIn($this->commercialCatalogueContractsRoot()) as $file) {
             $source = file_get_contents($file);
             self::assertIsString($source, $file);
 
@@ -78,7 +78,7 @@ final class CommercialCatalogueContractsArchitectureTest extends TestCase
     public function test_contract_names_do_not_introduce_plan_tier_or_permission_based_capability_contracts(): void
     {
         $source = '';
-        foreach ($this->phpFilesIn($this->contractsRoot()) as $file) {
+        foreach ($this->phpFilesIn($this->commercialCatalogueContractsRoot()) as $file) {
             $contents = file_get_contents($file);
             self::assertIsString($contents, $file);
             $source .= $contents;
@@ -126,7 +126,7 @@ final class CommercialCatalogueContractsArchitectureTest extends TestCase
 
     public function test_contract_surface_does_not_expose_subscription_aggregate_or_domain_entitlement_types(): void
     {
-        foreach ($this->phpFilesIn($this->contractsRoot()) as $file) {
+        foreach ($this->phpFilesIn($this->commercialCatalogueContractsRoot()) as $file) {
             $source = file_get_contents($file);
             self::assertIsString($source, $file);
 
@@ -166,6 +166,11 @@ final class CommercialCatalogueContractsArchitectureTest extends TestCase
     private function contractsRoot(): string
     {
         return $this->moduleRoot().'/Contracts';
+    }
+
+    private function commercialCatalogueContractsRoot(): string
+    {
+        return $this->contractsRoot().'/CommercialCatalogue';
     }
 
     private function moduleRoot(): string

@@ -112,7 +112,8 @@ final readonly class PostgresCommercialOfferRepository implements CommercialOffe
             'total_amount_minor' => $record->totalAmountMinor,
             'currency' => $record->currency,
             'expires_at' => $this->databaseTimestamp($record->expiresAt),
-            'consumed_at' => $this->nullableDatabaseTimestamp($record->consumedAt),
+            'claimed_payment_id' => $record->claimedPaymentId,
+            'claimed_at' => $this->nullableDatabaseTimestamp($record->claimedAt),
             'cancelled_at' => $this->nullableDatabaseTimestamp($record->cancelledAt),
             'expired_at' => $this->nullableDatabaseTimestamp($record->expiredAt),
             'correlation_id' => $record->correlationId,
@@ -163,7 +164,8 @@ final readonly class PostgresCommercialOfferRepository implements CommercialOffe
             $this->integerValue($row, 'total_amount_minor'),
             $this->stringValue($row, 'currency'),
             $this->dateTimeValue($row->expires_at ?? null, 'expires_at'),
-            $this->nullableDateTimeValue($row->consumed_at ?? null),
+            $this->nullableStringValue($row->claimed_payment_id ?? null, 'claimed_payment_id'),
+            $this->nullableDateTimeValue($row->claimed_at ?? null),
             $this->nullableDateTimeValue($row->cancelled_at ?? null),
             $this->nullableDateTimeValue($row->expired_at ?? null),
             $this->stringValue($row, 'correlation_id'),
@@ -197,6 +199,19 @@ final readonly class PostgresCommercialOfferRepository implements CommercialOffe
     private function stringValue(stdClass $row, string $field): string
     {
         $value = $row->{$field} ?? null;
+
+        if (! is_string($value)) {
+            throw new InvalidCommercialOfferStorageStateException(sprintf('Storage field %s must be a string.', $field));
+        }
+
+        return $value;
+    }
+
+    private function nullableStringValue(mixed $value, string $field): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
 
         if (! is_string($value)) {
             throw new InvalidCommercialOfferStorageStateException(sprintf('Storage field %s must be a string.', $field));

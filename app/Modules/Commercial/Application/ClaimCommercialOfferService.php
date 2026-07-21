@@ -9,7 +9,7 @@ use App\Modules\Commercial\Application\Exceptions\CommercialOfferNotFoundExcepti
 use App\Modules\Commercial\Application\Exceptions\CommercialOfferVersionMismatchException;
 use App\Modules\Commercial\Application\Exceptions\UntrustedCommercialOfferConsumerException;
 use App\Modules\Commercial\Contracts\Checkout\CommercialOfferCheckoutInterface;
-use App\Modules\Commercial\Contracts\Commands\MarkCommercialOfferConsumedCommand;
+use App\Modules\Commercial\Contracts\Commands\ClaimCommercialOfferCommand;
 use App\Modules\Commercial\Contracts\Data\CommercialOfferData;
 use App\Modules\Commercial\Contracts\Events\CommercialOfferEventPublisherInterface;
 use App\Modules\Commercial\Contracts\Repositories\CommercialOfferRepositoryInterface;
@@ -17,7 +17,7 @@ use App\Modules\Commercial\Contracts\Transactions\CommercialTransactionInterface
 use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferId;
 use DateTimeImmutable;
 
-final readonly class MarkCommercialOfferConsumedService implements CommercialOfferCheckoutInterface
+final readonly class ClaimCommercialOfferService implements CommercialOfferCheckoutInterface
 {
     public function __construct(
         private CommercialOfferRepositoryInterface $offers,
@@ -43,7 +43,7 @@ final readonly class MarkCommercialOfferConsumedService implements CommercialOff
         return $this->data->fromDomain($offer);
     }
 
-    public function markConsumed(MarkCommercialOfferConsumedCommand $command): CommercialOfferData
+    public function claim(ClaimCommercialOfferCommand $command): CommercialOfferData
     {
         if (! $this->trustedConsumers->trusts($command->trustedConsumer)) {
             throw new UntrustedCommercialOfferConsumerException('Commercial Offer consumer is not trusted.');
@@ -60,9 +60,9 @@ final readonly class MarkCommercialOfferConsumedService implements CommercialOff
                 throw new CommercialOfferVersionMismatchException('Commercial Offer version does not match.');
             }
 
-            $offer->consume($command->occurredAt);
+            $offer->claim($command->paymentId, $command->occurredAt);
             $this->offers->save($offer);
-            $this->audit->recordForSystem('commercial.offer.consume', $offer, $command->occurredAt, $command->correlationId);
+            $this->audit->recordForSystem('commercial.offer.claim', $offer, $command->occurredAt, $command->correlationId);
             $this->events->publish($offer->releaseEvents());
 
             return $this->data->fromDomain($offer);

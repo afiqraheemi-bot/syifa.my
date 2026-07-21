@@ -6,19 +6,19 @@ namespace Tests\Unit\Modules\Commercial\Application;
 
 use App\Modules\Commercial\Application\Audit\CommercialOfferAuditTrail;
 use App\Modules\Commercial\Application\CancelCommercialOfferService;
+use App\Modules\Commercial\Application\ClaimCommercialOfferService;
 use App\Modules\Commercial\Application\CommercialOfferDataAssembler;
 use App\Modules\Commercial\Application\CommercialOfferIdentifierGeneratorInterface;
 use App\Modules\Commercial\Application\Exceptions\CommercialOfferVersionMismatchException;
 use App\Modules\Commercial\Application\Exceptions\CommercialSelectionUnavailableException;
 use App\Modules\Commercial\Application\Exceptions\UntrustedCommercialOfferConsumerException;
 use App\Modules\Commercial\Application\ListAvailableCommercialOffersService;
-use App\Modules\Commercial\Application\MarkCommercialOfferConsumedService;
 use App\Modules\Commercial\Application\PrepareCommercialOfferService;
 use App\Modules\Commercial\Application\ResolveCommercialSelectionService;
 use App\Modules\Commercial\Application\TrustedCommercialOfferConsumers;
 use App\Modules\Commercial\Application\ViewCurrentCommercialOfferService;
 use App\Modules\Commercial\Contracts\Commands\CancelCommercialOfferCommand;
-use App\Modules\Commercial\Contracts\Commands\MarkCommercialOfferConsumedCommand;
+use App\Modules\Commercial\Contracts\Commands\ClaimCommercialOfferCommand;
 use App\Modules\Commercial\Contracts\Commands\PrepareCommercialOfferCommand;
 use App\Modules\Commercial\Contracts\Events\CommercialOfferEventPublisherInterface;
 use App\Modules\Commercial\Contracts\ReferenceData\PlanOfferingQueryInterface;
@@ -41,7 +41,7 @@ use RuntimeException;
 
 final class CommercialOfferApplicationServicesTest extends TestCase
 {
-    public function test_list_resolve_prepare_cancel_and_consume_flow_records_audit(): void
+    public function test_list_resolve_prepare_cancel_and_claim_flow_records_audit(): void
     {
         $referenceData = new RecordingPlanOfferingQuery([$this->offering()]);
         $repository = new InMemoryCommercialOfferRepository;
@@ -101,19 +101,20 @@ final class CommercialOfferApplicationServicesTest extends TestCase
         );
         $offer = $prepared->execute(new PrepareCommercialOfferCommand($this->uuid(2), $this->uuid(3), 'offering-basic-monthly', $this->time(), $this->uuid(92)));
 
-        $consumed = (new MarkCommercialOfferConsumedService(
+        $claimed = (new ClaimCommercialOfferService(
             $repository,
             new CommercialOfferDataAssembler,
             new CommercialOfferAuditTrail($audit),
             $events,
             new TrustedCommercialOfferConsumers(['payment']),
             $transaction,
-        ))->markConsumed(new MarkCommercialOfferConsumedCommand($offer->id, 'payment', 1, $this->time('+10 minutes'), $this->uuid(93)));
+        ))->claim(new ClaimCommercialOfferCommand($offer->id, $this->uuid(15), 'payment', 1, $this->time('+10 minutes'), $this->uuid(93)));
 
-        self::assertSame('consumed', $consumed->status);
+        self::assertSame('claimed', $claimed->status);
+        self::assertSame($this->uuid(15), $claimed->claimedPaymentId);
         self::assertSame([
             'commercial.offer.prepare',
-            'commercial.offer.consume',
+            'commercial.offer.claim',
         ], array_map(static fn (AuditEntryData $entry): string => $entry->action, $audit->entries));
     }
 
@@ -127,7 +128,7 @@ final class CommercialOfferApplicationServicesTest extends TestCase
     {
         $this->expectException(UntrustedCommercialOfferConsumerException::class);
 
-        (new MarkCommercialOfferConsumedService(
+        (new ClaimCommercialOfferService(
             new InMemoryCommercialOfferRepository,
             new CommercialOfferDataAssembler,
             new CommercialOfferAuditTrail(new RecordingCommercialAuditEntryRecorder),

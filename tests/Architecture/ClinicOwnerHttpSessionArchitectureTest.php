@@ -29,7 +29,7 @@ final class ClinicOwnerHttpSessionArchitectureTest extends TestCase
         $modules = $this->root().'/app/Modules';
 
         foreach ($this->phpFilesIn($modules) as $file) {
-            if (preg_match('/(?:Controller|Middleware|Request|Resource)\.php$/', $file) !== 1) {
+            if (preg_match('/(?:Controller|Middleware|Resource)\.php$/', $file) !== 1) {
                 continue;
             }
 

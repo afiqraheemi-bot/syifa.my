@@ -100,7 +100,7 @@ final class CommercialModuleArchitectureTest extends TestCase
             foreach ([
                 'Contracts\\Repositories',
                 'Infrastructure\\Persistence',
-                'Payment',
+                'PaymentRepository',
                 'DB::',
             ] as $forbidden) {
                 self::assertStringNotContainsString($forbidden, $source, $file);

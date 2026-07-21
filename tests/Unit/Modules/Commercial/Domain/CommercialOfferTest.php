@@ -6,7 +6,7 @@ namespace Tests\Unit\Modules\Commercial\Domain;
 
 use App\Modules\Commercial\Domain\CommercialOffer;
 use App\Modules\Commercial\Domain\Events\CommercialOfferCancelled;
-use App\Modules\Commercial\Domain\Events\CommercialOfferConsumed;
+use App\Modules\Commercial\Domain\Events\CommercialOfferClaimed;
 use App\Modules\Commercial\Domain\Events\CommercialOfferExpired;
 use App\Modules\Commercial\Domain\Events\CommercialOfferPrepared;
 use App\Modules\Commercial\Domain\Exceptions\InvalidCommercialOfferTransitionException;
@@ -45,7 +45,7 @@ final class CommercialOfferTest extends TestCase
         self::assertContainsOnlyInstancesOf(CommercialOfferCancelled::class, $offer->releaseEvents());
 
         $this->expectException(InvalidCommercialOfferTransitionException::class);
-        $offer->consume($this->time());
+        $offer->claim($this->uuid(5), $this->time());
     }
 
     public function test_expire_requires_expiry_time_to_have_passed(): void
@@ -56,7 +56,7 @@ final class CommercialOfferTest extends TestCase
         $offer->expire($this->time());
     }
 
-    public function test_expired_offer_cannot_be_consumed(): void
+    public function test_expired_offer_cannot_be_claimed(): void
     {
         $offer = $this->offer();
         $offer->releaseEvents();
@@ -66,18 +66,21 @@ final class CommercialOfferTest extends TestCase
         self::assertContainsOnlyInstancesOf(CommercialOfferExpired::class, $offer->releaseEvents());
 
         $this->expectException(InvalidCommercialOfferTransitionException::class);
-        $offer->consume($this->time('+32 minutes'));
+        $offer->claim($this->uuid(5), $this->time('+32 minutes'));
     }
 
-    public function test_prepared_offer_can_be_consumed_once_before_expiry(): void
+    public function test_prepared_offer_can_be_claimed_once_before_expiry(): void
     {
         $offer = $this->offer();
         $offer->releaseEvents();
 
-        $offer->consume($this->time('+10 minutes'));
+        $offer->claim($this->uuid(5), $this->time('+10 minutes'));
 
-        self::assertSame(CommercialOfferStatus::Consumed, $offer->status);
-        self::assertContainsOnlyInstancesOf(CommercialOfferConsumed::class, $offer->releaseEvents());
+        self::assertSame(CommercialOfferStatus::Claimed, $offer->status);
+        self::assertSame($this->uuid(5), $offer->claimedPaymentId);
+        self::assertContainsOnlyInstancesOf(CommercialOfferClaimed::class, $offer->releaseEvents());
+        $offer->claim($this->uuid(5), $this->time('+11 minutes'));
+        self::assertSame([], $offer->releaseEvents());
     }
 
     public function test_money_is_integer_minor_units_and_myr_only(): void

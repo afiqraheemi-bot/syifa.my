@@ -27,7 +27,8 @@ return new class extends Migration
             $table->unsignedBigInteger('total_amount_minor');
             $table->char('currency', 3);
             $table->timestampTz('expires_at');
-            $table->timestampTz('consumed_at')->nullable();
+            $table->uuid('claimed_payment_id')->nullable();
+            $table->timestampTz('claimed_at')->nullable();
             $table->timestampTz('cancelled_at')->nullable();
             $table->timestampTz('expired_at')->nullable();
             $table->uuid('correlation_id');
@@ -63,7 +64,15 @@ return new class extends Migration
         DB::statement(<<<'SQL'
             ALTER TABLE commercial_offers
             ADD CONSTRAINT commercial_offers_status_check
-            CHECK (status IN ('prepared', 'consumed', 'cancelled', 'expired'))
+            CHECK (status IN ('prepared', 'claimed', 'cancelled', 'expired'))
+            SQL);
+        DB::statement(<<<'SQL'
+            ALTER TABLE commercial_offers
+            ADD CONSTRAINT commercial_offers_claim_consistency_check
+            CHECK (
+                (status = 'claimed' AND claimed_payment_id IS NOT NULL AND claimed_at IS NOT NULL)
+                OR (status <> 'claimed' AND claimed_payment_id IS NULL AND claimed_at IS NULL)
+            )
             SQL);
         DB::statement(<<<'SQL'
             ALTER TABLE commercial_offers

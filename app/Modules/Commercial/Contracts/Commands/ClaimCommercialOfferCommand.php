@@ -6,10 +6,11 @@ namespace App\Modules\Commercial\Contracts\Commands;
 
 use DateTimeImmutable;
 
-final readonly class MarkCommercialOfferConsumedCommand
+final readonly class ClaimCommercialOfferCommand
 {
     public function __construct(
         public string $commercialOfferId,
+        public string $paymentId,
         public string $trustedConsumer,
         public int $expectedVersion,
         public DateTimeImmutable $occurredAt,

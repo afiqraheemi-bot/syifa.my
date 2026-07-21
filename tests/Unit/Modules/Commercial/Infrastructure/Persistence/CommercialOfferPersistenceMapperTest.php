@@ -59,6 +59,7 @@ final class CommercialOfferPersistenceMapperTest extends TestCase
             null,
             null,
             null,
+            null,
             $this->uuid(4),
             5,
         );

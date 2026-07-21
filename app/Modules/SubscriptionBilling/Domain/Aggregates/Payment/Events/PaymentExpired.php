@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Commercial\Domain\Events;
+namespace App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\Events;
 
 use DateTimeImmutable;
 
-final readonly class CommercialOfferConsumed
+final readonly class PaymentExpired
 {
     public function __construct(
-        public string $commercialOfferId,
+        public string $paymentId,
         public DateTimeImmutable $occurredAt,
     ) {}
 }

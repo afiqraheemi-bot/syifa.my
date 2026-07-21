@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Commercial\Domain;
 
 use App\Modules\Commercial\Domain\Events\CommercialOfferCancelled;
-use App\Modules\Commercial\Domain\Events\CommercialOfferConsumed;
+use App\Modules\Commercial\Domain\Events\CommercialOfferClaimed;
 use App\Modules\Commercial\Domain\Events\CommercialOfferExpired;
 use App\Modules\Commercial\Domain\Events\CommercialOfferPrepared;
 use App\Modules\Commercial\Domain\Exceptions\InvalidCommercialOfferTransitionException;
@@ -29,7 +29,8 @@ final class CommercialOffer
         public CommercialOfferStatus $status,
         public CheckoutSnapshot $checkoutSnapshot,
         public OfferExpiry $expiry,
-        public ?DateTimeImmutable $consumedAt,
+        public ?string $claimedPaymentId,
+        public ?DateTimeImmutable $claimedAt,
         public ?DateTimeImmutable $cancelledAt,
         public ?DateTimeImmutable $expiredAt,
         public string $correlationId,
@@ -53,7 +54,8 @@ final class CommercialOffer
             status: CommercialOfferStatus::Prepared,
             checkoutSnapshot: $checkoutSnapshot,
             expiry: $expiry,
-            consumedAt: null,
+            claimedPaymentId: null,
+            claimedAt: null,
             cancelledAt: null,
             expiredAt: null,
             correlationId: $correlationId,
@@ -86,17 +88,26 @@ final class CommercialOffer
         $this->record(new CommercialOfferExpired($this->id->value, $this->platformIdentity->value, $occurredAt));
     }
 
-    public function consume(DateTimeImmutable $occurredAt): void
+    public function claim(string $paymentId, DateTimeImmutable $occurredAt): void
     {
-        $this->assertPrepared('Only prepared commercial offers may be consumed.');
-
-        if ($this->expiry->isExpiredAt($occurredAt)) {
-            throw new InvalidCommercialOfferTransitionException('Expired commercial offers cannot be consumed.');
+        if ($this->status === CommercialOfferStatus::Claimed && $this->claimedPaymentId === $paymentId) {
+            return;
         }
 
-        $this->status = CommercialOfferStatus::Consumed;
-        $this->consumedAt = $occurredAt;
-        $this->record(new CommercialOfferConsumed($this->id->value, $occurredAt));
+        if ($this->status === CommercialOfferStatus::Claimed && $this->claimedPaymentId !== $paymentId) {
+            throw new InvalidCommercialOfferTransitionException('Commercial Offer is already claimed by another Payment.');
+        }
+
+        $this->assertPrepared('Only prepared commercial offers may be claimed.');
+
+        if ($this->expiry->isExpiredAt($occurredAt)) {
+            throw new InvalidCommercialOfferTransitionException('Expired commercial offers cannot be claimed.');
+        }
+
+        $this->status = CommercialOfferStatus::Claimed;
+        $this->claimedPaymentId = $paymentId;
+        $this->claimedAt = $occurredAt;
+        $this->record(new CommercialOfferClaimed($this->id->value, $paymentId, $occurredAt));
     }
 
     public function assertOwnedBy(PlatformIdentityReference $platformIdentity): void

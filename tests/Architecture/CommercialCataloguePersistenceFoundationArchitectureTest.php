@@ -14,7 +14,15 @@ final class CommercialCataloguePersistenceFoundationArchitectureTest extends Tes
     public function test_commercial_catalogue_has_exactly_four_repository_implementations(): void
     {
         $root = dirname(__DIR__, 2).'/app/Modules/SubscriptionBilling';
-        $implementations = glob($root.'/Infrastructure/Persistence/Repositories/*Repository.php') ?: [];
+        $implementations = array_values(array_filter(
+            glob($root.'/Infrastructure/Persistence/Repositories/*Repository.php') ?: [],
+            static fn (string $file): bool => in_array(basename($file), [
+                'PostgresBillingOptionRepository.php',
+                'PostgresCapabilityDefinitionRepository.php',
+                'PostgresPlanOfferingRepository.php',
+                'PostgresPlanRepository.php',
+            ], true),
+        ));
         sort($implementations);
 
         self::assertSame(

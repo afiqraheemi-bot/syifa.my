@@ -7,7 +7,7 @@ namespace App\Modules\Commercial\Domain\ValueObjects;
 enum CommercialOfferStatus: string
 {
     case Prepared = 'prepared';
-    case Consumed = 'consumed';
+    case Claimed = 'claimed';
     case Cancelled = 'cancelled';
     case Expired = 'expired';
 
