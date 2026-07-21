@@ -5,10 +5,12 @@ declare(strict_types=1);
 use App\Http\Middleware\ApplyHttpSecurityHeaders;
 use App\Http\Middleware\ApplyPlatformEdgeSecurity;
 use App\Modules\PlatformAdministration\Presentation\Http\Responses\ProblemDetailsResponse as PlatformProblemDetailsResponse;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\Jobs\PublishPaymentOutboxJob;
 use App\Modules\SubscriptionBilling\Presentation\Contracts\ErrorResponseMapperInterface;
 use App\Modules\SubscriptionBilling\Presentation\Http\Support\CommercialCatalogueProblemDetailsResponseFactory;
 use App\Modules\TenantManagement\Presentation\Http\Middleware\AttachRequestIdentifiers;
 use App\Modules\TenantManagement\Presentation\Http\Responses\ProblemDetailsResponse;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -92,4 +94,13 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withRouting(web: __DIR__.'/../routes/web.php')
+    ->withSchedule(function (Schedule $schedule): void {
+        // Sweep/recovery entry point: the transactional outbox must not
+        // depend solely on the after-commit queue dispatch. A committed
+        // outbox row that never reached the queue (or whose lease expired
+        // after a worker crash) is still discovered and delivered here.
+        $schedule->job(new PublishPaymentOutboxJob, 'payment-outbox', 'redis')
+            ->onOneServer()
+            ->everyMinute();
+    })
     ->create();

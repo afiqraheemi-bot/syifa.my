@@ -61,6 +61,27 @@ final class PaymentAggregateTest extends TestCase
         self::assertSame('declined', $payment->attempts[0]->failureReasonCode);
     }
 
+    public function test_current_attempt_moves_between_pending_and_action_required_explicitly(): void
+    {
+        $payment = $this->payment();
+        $payment->start($this->uuid(8), 'provider-neutral', $this->time());
+        $payment->markPending(new ProviderReference('provider-neutral', 'provider-payment-1'), $this->time());
+        $payment->markActionRequired($this->time('+1 minute'));
+        self::assertSame(PaymentStatus::ActionRequired, $payment->status);
+        self::assertSame(PaymentStatus::ActionRequired, $payment->attempts[0]->status);
+
+        $payment->resumePending($this->time('+2 minutes'));
+        self::assertSame(PaymentStatus::Pending, $payment->status);
+        self::assertSame(PaymentStatus::Pending, $payment->attempts[0]->status);
+    }
+
+    public function test_action_required_transition_is_not_a_generic_status_setter(): void
+    {
+        $payment = $this->payment();
+        $this->expectException(InvalidPaymentStateTransitionException::class);
+        $payment->markActionRequired($this->time());
+    }
+
     public function test_money_is_integer_minor_units_and_myr_only(): void
     {
         $this->expectException(InvalidPaymentValueException::class);

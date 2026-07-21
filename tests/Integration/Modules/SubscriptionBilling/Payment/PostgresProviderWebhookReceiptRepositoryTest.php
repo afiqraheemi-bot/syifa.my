@@ -10,12 +10,15 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\InvalidProvider
 use App\Modules\SubscriptionBilling\Contracts\Payment\NewProviderWebhookReceiptData;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderRegistryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentVerificationApplicationResultCode;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentVerificationApplicationStatus;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptCompletion;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptStatus;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookRequest;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentAttemptResolver;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresProviderWebhookReceiptRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\Stripe\StripePaymentProvider;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentVerificationApplicationRepository;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\ConnectionInterface;
@@ -196,6 +199,28 @@ final class PostgresProviderWebhookReceiptRepositoryTest extends TestCase
             self::assertSame($expected, $persisted->nextVerificationAttemptAt?->getTimestamp() - $now->getTimestamp());
             self::assertNull($persisted->verificationOutcome);
         }
+    }
+
+    public function test_payment_application_is_one_per_receipt_and_claim_is_lease_guarded(): void
+    {
+        $receipt = $this->repository()->register($this->event('stripe', 'application-1'))->receipt;
+        $applications = new PostgresPaymentVerificationApplicationRepository($this->connection());
+        $now = new DateTimeImmutable('2026-07-25T00:00:00Z');
+        $first = $applications->register($receipt->id, $now);
+        $duplicate = $applications->register($receipt->id, $now);
+        self::assertSame($first->id, $duplicate->id);
+        self::assertSame(1, $this->connection()->table('payment_verification_applications')->count());
+
+        $claim = $applications->claim($first->id, $now, 120);
+        self::assertNotNull($claim);
+        self::assertSame(1, $claim->attemptCount);
+        self::assertNull($applications->claim($first->id, $now->modify('+119 seconds'), 120));
+        $reclaimed = $applications->claim($first->id, $now->modify('+121 seconds'), 120);
+        self::assertNotNull($reclaimed);
+        self::assertNotSame($claim->claimToken, $reclaimed->claimToken);
+        self::assertFalse($applications->complete($first->id, (string) $claim->claimToken, PaymentVerificationApplicationStatus::Applied, PaymentVerificationApplicationResultCode::Applied, $now));
+        self::assertTrue($applications->complete($first->id, (string) $reclaimed->claimToken, PaymentVerificationApplicationStatus::Applied, PaymentVerificationApplicationResultCode::Applied, $now));
+        self::assertNull($applications->claim($first->id, $now->modify('+1 day'), 120));
     }
 
     public function test_attempt_resolution_uses_provider_key_and_finds_historical_attempt(): void
@@ -572,6 +597,7 @@ final class PostgresProviderWebhookReceiptRepositoryTest extends TestCase
             'database/migrations/subscription_billing/2026_07_23_000001_create_payment_provider_webhook_receipts.php',
             'database/migrations/subscription_billing/2026_07_24_000001_add_authoritative_verification_to_webhook_receipts.php',
             'database/migrations/subscription_billing/2026_07_24_000002_index_payment_attempt_provider_reference.php',
+            'database/migrations/subscription_billing/2026_07_25_000001_create_payment_verification_application_tables.php',
         ] as $path) {
             $migration = require base_path($path);
             self::assertInstanceOf(Migration::class, $migration);

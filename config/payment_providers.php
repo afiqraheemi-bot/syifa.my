@@ -15,6 +15,12 @@ return [
         'max_delay_seconds' => (int) env('PAYMENT_VERIFICATION_MAX_DELAY_SECONDS', 1800),
         'max_retry_after_seconds' => (int) env('PAYMENT_VERIFICATION_MAX_RETRY_AFTER_SECONDS', 21600),
     ],
+    'application' => [
+        'lease_seconds' => (int) env('PAYMENT_APPLICATION_LEASE_SECONDS', 120),
+        'max_attempts' => (int) env('PAYMENT_APPLICATION_MAX_ATTEMPTS', 5),
+        'base_delay_seconds' => (int) env('PAYMENT_APPLICATION_BASE_DELAY_SECONDS', 5),
+        'max_delay_seconds' => (int) env('PAYMENT_APPLICATION_MAX_DELAY_SECONDS', 120),
+    ],
     'stripe' => [
         'secret_key' => env('STRIPE_SECRET_KEY', ''),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET', ''),

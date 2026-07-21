@@ -12,6 +12,7 @@ use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\GrandfatherP
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\MakePlanUnavailableService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\RetirePlanService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\UpdatePlanDetailsService;
+use App\Modules\SubscriptionBilling\Application\Payment\PaymentApplicationRetryPolicy;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentDataAssembler;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGenerator;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGeneratorInterface;
@@ -23,12 +24,17 @@ use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\C
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanOfferingCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CommercialCatalogueQueryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentApplicationJobDispatcherInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentApplicationTransactionInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAttemptResolverInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAuditInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentOutboxRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderConfigurationRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderRegistryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentReconciliationCaseRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentTransactionInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentVerificationApplicationRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderVerificationClockInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderVerificationJobDispatcherInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptRepositoryInterface;
@@ -40,8 +46,10 @@ use App\Modules\SubscriptionBilling\Infrastructure\Audit\PaymentAuditAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\CommercialCataloguePlatformAuthorizationAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\PaymentProviderAdministrationAuthorization;
 use App\Modules\SubscriptionBilling\Infrastructure\CommercialCatalogue\CommercialCatalogueTransactionalService;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\LaravelPaymentApplicationJobDispatcher;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\LaravelProviderVerificationJobDispatcher;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PaymentProviderRegistry;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentApplicationTransaction;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentAttemptResolver;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentProviderConfigurationRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentTransaction;
@@ -54,7 +62,10 @@ use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\PaymentPe
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresCommercialCatalogueQueryAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresBillingOptionRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresCapabilityDefinitionRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentOutboxRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentReconciliationCaseRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentVerificationApplicationRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPlanOfferingRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPlanRepository;
 use App\Modules\SubscriptionBilling\Presentation\Contracts\ErrorResponseMapperInterface;
@@ -109,7 +120,18 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(PaymentIdentifierGeneratorInterface::class, PaymentIdentifierGenerator::class);
         $this->app->singleton(PaymentPersistenceMapper::class);
         $this->app->singleton(PaymentAuditInterface::class, PaymentAuditAdapter::class);
+        $this->app->singleton(PaymentApplicationRetryPolicy::class, static fn (): PaymentApplicationRetryPolicy => new PaymentApplicationRetryPolicy(
+            (int) config('payment_providers.application.lease_seconds', 120),
+            (int) config('payment_providers.application.max_attempts', 5),
+            (int) config('payment_providers.application.base_delay_seconds', 5),
+            (int) config('payment_providers.application.max_delay_seconds', 120),
+        ));
         $this->app->singleton(ProviderVerificationJobDispatcherInterface::class, LaravelProviderVerificationJobDispatcher::class);
+        $this->app->singleton(PaymentApplicationJobDispatcherInterface::class, LaravelPaymentApplicationJobDispatcher::class);
+        $this->app->singleton(PaymentApplicationTransactionInterface::class, PostgresPaymentApplicationTransaction::class);
+        $this->app->singleton(PaymentVerificationApplicationRepositoryInterface::class, PostgresPaymentVerificationApplicationRepository::class);
+        $this->app->singleton(PaymentReconciliationCaseRepositoryInterface::class, PostgresPaymentReconciliationCaseRepository::class);
+        $this->app->singleton(PaymentOutboxRepositoryInterface::class, PostgresPaymentOutboxRepository::class);
         $this->app->singleton(ProviderVerificationClockInterface::class, SystemProviderVerificationClock::class);
         $this->app->singleton(ProviderVerificationRetryPolicy::class, static fn (): ProviderVerificationRetryPolicy => new ProviderVerificationRetryPolicy(
             (int) config('payment_providers.verification.lease_seconds', 300),

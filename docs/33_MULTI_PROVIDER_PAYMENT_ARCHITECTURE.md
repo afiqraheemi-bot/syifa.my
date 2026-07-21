@@ -80,6 +80,8 @@ Historical and current attempts resolve from `payment_attempts` by `(provider_ke
 
 Transport/unavailable verification retries at most eight total attempts with configurable exponential delay from 30 seconds to 30 minutes and up to 20% jitter. `Retry-After` is honored but capped at six hours. Malformed or contradictory authoritative responses receive at most two total attempts and are then quarantined. Exhaustion records safe evidence and requires operational attention; it never infers Payment failure. Raw requests, provider responses, signatures, credentials and exception internals are neither queued nor persisted.
 
+Processed evidence is applied through the separate lifecycle approved by [ADR-010](./decisions/ADR-010-Payment-Verification-Application.md). Application never reuses the provider-verification lease or retry policy. It recalculates currentness, preserves historical provenance, opens reconciliation for inapplicable success, records system financial audit and writes consequential events to the transactional outbox. It does not activate Subscription.
+
 ## Invariants and acceptance tests
 
 - Domain/Application/Contracts contain no provider names or provider SDK types.

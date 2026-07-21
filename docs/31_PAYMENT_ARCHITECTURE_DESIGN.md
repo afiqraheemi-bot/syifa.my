@@ -364,6 +364,8 @@ Flow:
 
 The durable authoritative-verification increment introduces a narrower `VerifyProviderWebhookReceiptService` before this state-transition service. It atomically claims receipt work, resolves the exact current or historical `PaymentAttempt`, calls that attempt's provider outside a transaction, and stores only normalized verification evidence. It may read Payment to reconfirm ownership but does not invoke transitions, save Payment, publish financial outcomes, or activate Subscription.
 
+`ApplyAuthoritativePaymentVerificationService` consumes that evidence through a separate one-to-one application record. It recalculates attempt currentness inside the Payment transaction. Current legal outcomes mutate Payment; historical non-success is ignored; and authoritative success that cannot legally transition opens an immutable, unique reconciliation case. Payment, system audit, application completion, reconciliation and outbox insertion commit atomically. See [ADR-010](./decisions/ADR-010-Payment-Verification-Application.md).
+
 ### HandlePaymentWebhookService
 
 Input:
@@ -707,6 +709,8 @@ Audit must not store:
 ### Event publication
 
 Events are published only after the Payment transaction commits.
+
+Financial integration events use `payment_integration_outbox`. Inserting the event is part of the Payment transaction; an independently retryable publisher claims and delivers committed records. Consumers deduplicate by the stable outbox event ID.
 
 If event publication fails after commit, retry/resume belongs to the orchestration/event-delivery mechanism. Payment state must not be rolled back after its own transaction commits.
 

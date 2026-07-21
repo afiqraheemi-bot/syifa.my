@@ -108,6 +108,22 @@ final class Payment
         $this->record(new PaymentSucceeded($this->id->value, $occurredAt));
     }
 
+    public function markActionRequired(DateTimeImmutable $occurredAt): void
+    {
+        $this->assertTransitionAllowed([PaymentStatus::Pending], 'Payment may only require action from pending state.');
+        $this->status = PaymentStatus::ActionRequired;
+        $this->lastChangedAt = $occurredAt;
+        $this->currentAttempt()?->requireAction($occurredAt);
+    }
+
+    public function resumePending(DateTimeImmutable $occurredAt): void
+    {
+        $this->assertTransitionAllowed([PaymentStatus::ActionRequired], 'Payment may only resume pending from action required state.');
+        $this->status = PaymentStatus::Pending;
+        $this->lastChangedAt = $occurredAt;
+        $this->currentAttempt()?->resumePending($occurredAt);
+    }
+
     public function markFailed(string $reasonCode, DateTimeImmutable $occurredAt): void
     {
         $this->assertTransitionAllowed([PaymentStatus::Draft, PaymentStatus::Pending, PaymentStatus::ActionRequired], 'Payment may only fail from draft, pending, or action required state.');

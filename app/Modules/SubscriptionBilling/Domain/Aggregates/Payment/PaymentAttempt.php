@@ -51,6 +51,18 @@ final class PaymentAttempt
         $this->lastChangedAt = $occurredAt;
     }
 
+    public function requireAction(DateTimeImmutable $occurredAt): void
+    {
+        $this->status = PaymentStatus::ActionRequired;
+        $this->lastChangedAt = $occurredAt;
+    }
+
+    public function resumePending(DateTimeImmutable $occurredAt): void
+    {
+        $this->status = PaymentStatus::Pending;
+        $this->lastChangedAt = $occurredAt;
+    }
+
     public function markFailed(string $reasonCode, DateTimeImmutable $occurredAt): void
     {
         $this->status = PaymentStatus::Failed;

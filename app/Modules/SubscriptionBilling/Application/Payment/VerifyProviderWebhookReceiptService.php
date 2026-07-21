@@ -8,9 +8,11 @@ use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\PaymentProvid
 use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\PaymentProviderUnavailableException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\MalformedProviderVerificationException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\RetryableProviderVerificationException;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentApplicationJobDispatcherInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAttemptResolverInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderRegistryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentVerificationApplicationRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerification;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderVerificationClockInterface;
@@ -32,6 +34,8 @@ final readonly class VerifyProviderWebhookReceiptService
         private ProviderVerificationJobDispatcherInterface $jobs,
         private ProviderVerificationRetryPolicy $retryPolicy,
         private ProviderVerificationClockInterface $clock,
+        private ?PaymentVerificationApplicationRepositoryInterface $paymentApplications = null,
+        private ?PaymentApplicationJobDispatcherInterface $paymentApplicationJobs = null,
     ) {}
 
     public function execute(string $receiptId): void
@@ -82,9 +86,13 @@ final readonly class VerifyProviderWebhookReceiptService
 
                 return;
             }
-            $this->receipts->complete($receiptId, $claim->claimToken, new ProviderWebhookReceiptCompletion(
+            $completed = $this->receipts->complete($receiptId, $claim->claimToken, new ProviderWebhookReceiptCompletion(
                 ProviderWebhookReceiptStatus::Processed, $this->clock->now(), $attempt, $verification,
             ));
+            if ($completed && $this->paymentApplications !== null) {
+                $application = $this->paymentApplications->register($receiptId, $this->clock->now());
+                $this->paymentApplicationJobs?->dispatch($application->id);
+            }
         } catch (RetryableProviderVerificationException $exception) {
             $this->retryTransport($receiptId, $claim->claimToken, $receipt->verificationAttemptCount, $exception->retryAfterSeconds, $attempt);
         } catch (MalformedProviderVerificationException) {
