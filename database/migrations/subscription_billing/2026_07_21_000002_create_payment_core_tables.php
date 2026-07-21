@@ -28,7 +28,7 @@ return new class extends Migration
             $table->unsignedBigInteger('version');
             $table->timestampsTz(6);
 
-            $table->index('commercial_offer_id');
+            $table->unique('commercial_offer_id');
             $table->index('clinic_registration_id');
             $table->index('platform_identity_id');
             $table->index(['provider_key', 'provider_payment_reference']);
@@ -51,19 +51,6 @@ return new class extends Migration
             $table->foreign('payment_id')->references('id')->on('payments')->cascadeOnDelete();
             $table->unique(['payment_id', 'position']);
             $table->unique(['payment_id', 'attempt_reference']);
-        });
-
-        Schema::create('payment_provider_webhook_receipts', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->string('provider_key', 80);
-            $table->string('provider_event_id', 160);
-            $table->string('processing_status', 40);
-            $table->timestampTz('occurred_at', 6);
-            $table->uuid('correlation_id');
-            $table->timestampsTz(6);
-
-            $table->unique(['provider_key', 'provider_event_id']);
-            $table->index('processing_status');
         });
 
         DB::statement(<<<'SQL'
@@ -92,7 +79,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('payment_provider_webhook_receipts');
         Schema::dropIfExists('payment_attempts');
         Schema::dropIfExists('payments');
     }

@@ -26,6 +26,7 @@ use App\Modules\Commercial\Infrastructure\ReferenceData\SubscriptionBillingPlanO
 use App\Modules\Commercial\Infrastructure\ReferenceData\SubscriptionBillingPlanQueryAdapter;
 use App\Modules\Commercial\Infrastructure\ReferenceData\SubscriptionBillingPricingQueryAdapter;
 use App\Modules\Commercial\Infrastructure\Transactions\PostgresCommercialTransaction;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 
@@ -37,7 +38,13 @@ final class CommercialServiceProvider extends ServiceProvider
 
         $this->app->singleton(CommercialOfferDataAssembler::class);
         $this->app->singleton(CommercialOfferIdentifierGeneratorInterface::class, CommercialOfferIdentifierGenerator::class);
-        $this->app->singleton(CommercialOfferEventPublisherInterface::class, LaravelCommercialOfferEventPublisher::class);
+        $this->app->singleton(
+            CommercialOfferEventPublisherInterface::class,
+            static fn (Application $application): LaravelCommercialOfferEventPublisher => new LaravelCommercialOfferEventPublisher(
+                $application->make(Dispatcher::class),
+                $application->make('db')->connection(),
+            ),
+        );
         $this->app->singleton(CommercialOfferPersistenceMapper::class);
         $this->app->singleton(
             TrustedCommercialOfferConsumers::class,

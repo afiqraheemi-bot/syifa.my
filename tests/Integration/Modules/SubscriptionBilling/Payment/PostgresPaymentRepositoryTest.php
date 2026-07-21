@@ -14,7 +14,6 @@ use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\Provi
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Exceptions\StalePaymentWriteException;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\PaymentPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentRepository;
-use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresWebhookReceiptRepository;
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Migrations\Migration;
@@ -55,7 +54,6 @@ final class PostgresPaymentRepositoryTest extends TestCase
         ]);
         DB::purge(self::CONNECTION_NAME);
         $this->connection = DB::connection(self::CONNECTION_NAME);
-        Schema::connection(self::CONNECTION_NAME)->dropIfExists('payment_provider_webhook_receipts');
         Schema::connection(self::CONNECTION_NAME)->dropIfExists('payment_attempts');
         Schema::connection(self::CONNECTION_NAME)->dropIfExists('payments');
 
@@ -112,15 +110,21 @@ final class PostgresPaymentRepositoryTest extends TestCase
         self::assertSame($payment->id->value, $this->repository()->findByProviderReference(new ProviderReference('provider-neutral', 'provider-payment-1'))?->id->value);
     }
 
-    public function test_webhook_receipt_uniqueness(): void
+    public function test_database_rejects_second_payment_for_same_commercial_offer(): void
     {
-        $receipts = new PostgresWebhookReceiptRepository($this->connection());
-        $receipts->recordProcessed('provider-neutral', 'event-1', 'processed', $this->time(), $this->uuid(90));
-
-        self::assertTrue($receipts->hasProcessed('provider-neutral', 'event-1'));
+        $this->repository()->save($this->payment());
 
         $this->expectException(QueryException::class);
-        $receipts->recordProcessed('provider-neutral', 'event-1', 'processed', $this->time(), $this->uuid(91));
+        $this->repository()->save(Payment::create(
+            new PaymentId($this->uuid(90)),
+            new PaymentReference($this->uuid(2)),
+            new PaymentReference($this->uuid(3)),
+            new PaymentReference($this->uuid(4)),
+            new PaymentAmount(3000),
+            new PaymentCurrency('MYR'),
+            new IdempotencyKey('idem-90'),
+            $this->time(),
+        ));
     }
 
     private function payment(): Payment

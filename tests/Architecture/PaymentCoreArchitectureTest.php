@@ -22,6 +22,7 @@ final class PaymentCoreArchitectureTest extends TestCase
         foreach ($this->phpFilesIn($module) as $file) {
             self::assertStringNotContainsString('PaymentAttemptRepository', $this->source($file), $file);
             self::assertStringNotContainsString('WebhookReceipt extends', $this->source($file), $file);
+            self::assertStringNotContainsString('WebhookReceiptRepository', $this->source($file), $file);
         }
     }
 
@@ -77,9 +78,11 @@ final class PaymentCoreArchitectureTest extends TestCase
     {
         $source = $this->source($this->root().'/database/migrations/subscription_billing/2026_07_21_000002_create_payment_core_tables.php');
 
-        foreach (['payments', 'payment_attempts', 'payment_provider_webhook_receipts'] as $table) {
+        foreach (['payments', 'payment_attempts'] as $table) {
             self::assertStringContainsString("Schema::create('{$table}'", $source);
         }
+
+        self::assertStringNotContainsString('payment_provider_webhook_receipts', $source);
 
         foreach (['invoices', 'subscriptions', 'tenants', 'onboarding_jobs', 'refunds'] as $forbiddenTable) {
             self::assertStringNotContainsString("Schema::create('{$forbiddenTable}'", $source);

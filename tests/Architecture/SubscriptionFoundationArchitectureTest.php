@@ -172,6 +172,7 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
                 && ! str_contains($file, '/Infrastructure/Authorization/CommercialCataloguePlatformAuthorizationAdapter.php')
                 && ! str_contains($file, '/Infrastructure/CommercialCatalogue/CommercialCatalogueTransactionalService.php')
                 && ! str_contains($file, '/Infrastructure/Audit/PaymentAuditAdapter.php')
+                && ! str_contains($file, '/Infrastructure/Payment/PostgresPaymentTransaction.php')
                 && ! str_contains($file, '/Infrastructure/Payment/UnavailablePaymentProvider.php')
                 && ! str_contains($file, '/Infrastructure/SubscriptionBillingServiceProvider.php'),
         )));

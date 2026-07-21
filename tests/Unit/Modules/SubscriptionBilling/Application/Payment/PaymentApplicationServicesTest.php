@@ -18,6 +18,7 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\CreatePaymentCommand;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAuditInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentTransactionInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentTransitionCommand;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentResult;
@@ -83,6 +84,7 @@ final class PaymentApplicationServicesTest extends TestCase
             new RecordingPaymentProvider,
             new PaymentDataAssembler,
             $audit,
+            new ImmediatePaymentTransaction,
         ))->execute(new PaymentTransitionCommand($payment->paymentId, 1, $this->time('+1 minute'), $this->uuid(91)));
 
         self::assertSame('pending', $started->status);
@@ -99,6 +101,7 @@ final class PaymentApplicationServicesTest extends TestCase
             $repository,
             new PaymentDataAssembler,
             $audit,
+            new ImmediatePaymentTransaction,
         );
     }
 
@@ -265,5 +268,13 @@ final class RecordingPaymentProvider implements PaymentProviderInterface
     public function start(ProviderPaymentRequest $request): ProviderPaymentResult
     {
         return new ProviderPaymentResult('provider-neutral', 'provider-payment-reference');
+    }
+}
+
+final class ImmediatePaymentTransaction implements PaymentTransactionInterface
+{
+    public function run(callable $operation): mixed
+    {
+        return $operation();
     }
 }
