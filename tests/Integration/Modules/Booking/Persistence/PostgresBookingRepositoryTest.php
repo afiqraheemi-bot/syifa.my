@@ -1,0 +1,216 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Integration\Modules\Booking\Persistence;
+
+use App\Modules\Booking\Domain\Booking;
+use App\Modules\Booking\Domain\Exceptions\StaleBookingWriteException;
+use App\Modules\Booking\Domain\ValueObjects\AppointmentDate;
+use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
+use App\Modules\Booking\Domain\ValueObjects\BookingId;
+use App\Modules\Booking\Domain\ValueObjects\BookingReference;
+use App\Modules\Booking\Domain\ValueObjects\ClinicId;
+use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
+use App\Modules\Booking\Domain\ValueObjects\PatientName;
+use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
+use App\Modules\Booking\Domain\ValueObjects\TenantId;
+use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingPersistenceMapper;
+use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingRepository;
+use DateTimeImmutable;
+use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
+
+final class PostgresBookingRepositoryTest extends TestCase
+{
+    private const string CONNECTION_NAME = 'booking_postgres_integration';
+
+    private ?ConnectionInterface $connection = null;
+
+    private ?PostgresBookingRepository $repository = null;
+
+    private ?Migration $migration = null;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $dsn = getenv('BOOKING_POSTGRES_TEST_DSN') ?: getenv('SUBSCRIPTION_BILLING_POSTGRES_TEST_DSN');
+
+        if (! is_string($dsn) || $dsn === '') {
+            self::markTestSkipped('Requires BOOKING_POSTGRES_TEST_DSN (or SUBSCRIPTION_BILLING_POSTGRES_TEST_DSN) for a dedicated disposable PostgreSQL database.');
+        }
+
+        config()->set('database.default', self::CONNECTION_NAME);
+        config()->set('database.connections.'.self::CONNECTION_NAME, [
+            'driver' => 'pgsql',
+            'url' => $dsn,
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => 'prefer',
+            'timezone' => 'UTC',
+        ]);
+        DB::purge(self::CONNECTION_NAME);
+        $this->connection = DB::connection(self::CONNECTION_NAME);
+        Schema::connection(self::CONNECTION_NAME)->dropIfExists('bookings');
+
+        $migration = require base_path('database/migrations/booking/2026_07_30_000001_create_bookings_table.php');
+        self::assertInstanceOf(Migration::class, $migration);
+        $this->migration = $migration;
+        $this->migration->up();
+
+        $this->repository = new PostgresBookingRepository($this->connection, new BookingPersistenceMapper);
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->migration !== null) {
+            $this->migration->down();
+        }
+
+        DB::purge(self::CONNECTION_NAME);
+        parent::tearDown();
+    }
+
+    public function test_persist_and_reload_a_newly_submitted_booking(): void
+    {
+        $booking = $this->booking();
+        $this->repository()->save($booking);
+
+        $reloaded = $this->repository()->findById($booking->id);
+
+        self::assertNotNull($reloaded);
+        self::assertSame(1, $reloaded->version());
+        self::assertSame($booking->tenantId->value, $reloaded->tenantId->value);
+        self::assertSame($booking->clinicId->value, $reloaded->clinicId->value);
+        self::assertSame($booking->reference->value, $reloaded->reference->value);
+        self::assertSame('submitted', $reloaded->status()->value);
+        self::assertSame($booking->patientName->value, $reloaded->patientName->value);
+        self::assertSame($booking->patientPhone->value, $reloaded->patientPhone->value);
+        self::assertSame($booking->patientEmail?->value, $reloaded->patientEmail?->value);
+        self::assertSame($booking->appointmentDate->value, $reloaded->appointmentDate->value);
+        self::assertSame($booking->appointmentTime->value, $reloaded->appointmentTime->value);
+        self::assertSame($booking->notes, $reloaded->notes);
+        self::assertSame($booking->createdAt->format(DATE_ATOM), $reloaded->createdAt->format(DATE_ATOM));
+        self::assertSame($booking->updatedAt()->format(DATE_ATOM), $reloaded->updatedAt()->format(DATE_ATOM));
+    }
+
+    public function test_find_by_reference_locates_the_same_booking(): void
+    {
+        $booking = $this->booking();
+        $this->repository()->save($booking);
+
+        $found = $this->repository()->findByReference($booking->reference->value);
+
+        self::assertNotNull($found);
+        self::assertSame($booking->id->value, $found->id->value);
+    }
+
+    public function test_unknown_id_and_reference_resolve_to_null(): void
+    {
+        self::assertNull($this->repository()->findById(new BookingId($this->uuid(99))));
+        self::assertNull($this->repository()->findByReference('UNKNOWN-REF'));
+    }
+
+    public function test_booking_without_email_or_notes_round_trips_as_null(): void
+    {
+        $booking = $this->booking(patientEmail: null, notes: null);
+        $this->repository()->save($booking);
+
+        $reloaded = $this->repository()->findById($booking->id);
+
+        self::assertNotNull($reloaded);
+        self::assertNull($reloaded->patientEmail);
+        self::assertNull($reloaded->notes);
+    }
+
+    public function test_database_rejects_a_duplicate_booking_reference(): void
+    {
+        $this->repository()->save($this->booking());
+
+        $this->expectException(QueryException::class);
+
+        $this->repository()->save($this->booking(id: 9, reference: $this->booking()->reference->value));
+    }
+
+    public function test_optimistic_locking_rejects_a_stale_write(): void
+    {
+        $booking = $this->booking();
+        $this->repository()->save($booking);
+
+        $firstCopy = $this->repository()->findById($booking->id);
+        $staleCopy = $this->repository()->findById($booking->id);
+        self::assertNotNull($firstCopy);
+        self::assertNotNull($staleCopy);
+
+        $this->repository()->save($firstCopy);
+
+        $this->expectException(StaleBookingWriteException::class);
+
+        $this->repository()->save($staleCopy);
+    }
+
+    public function test_appointment_date_and_time_columns_hold_exact_approved_types(): void
+    {
+        $columns = $this->connection()->select(
+            "select column_name, data_type from information_schema.columns where table_name = 'bookings' and column_name in ('appointment_on', 'appointment_time', 'booking_reference', 'status')",
+        );
+
+        $types = [];
+        foreach ($columns as $column) {
+            $types[$column->column_name] = $column->data_type;
+        }
+
+        self::assertSame('date', $types['appointment_on']);
+        self::assertSame('time without time zone', $types['appointment_time']);
+        self::assertSame('character varying', $types['booking_reference']);
+        self::assertSame('character varying', $types['status']);
+    }
+
+    private function booking(int $id = 1, ?string $patientEmail = 'aisyah@example.test', ?string $notes = 'First visit', ?string $reference = null): Booking
+    {
+        return Booking::submit(
+            new BookingId($this->uuid($id)),
+            new TenantId($this->uuid(2)),
+            new ClinicId($this->uuid(3)),
+            new BookingReference($reference ?? 'BOOK-'.str_pad((string) $id, 4, '0', STR_PAD_LEFT)),
+            new PatientName('Aisyah Rahman'),
+            new PatientPhone('+60123456789'),
+            $patientEmail === null ? null : new PatientEmail($patientEmail),
+            new AppointmentDate('2026-08-01'),
+            new AppointmentTime('09:30'),
+            $notes,
+            $this->time(),
+        );
+    }
+
+    private function repository(): PostgresBookingRepository
+    {
+        self::assertNotNull($this->repository);
+
+        return $this->repository;
+    }
+
+    private function connection(): ConnectionInterface
+    {
+        self::assertNotNull($this->connection);
+
+        return $this->connection;
+    }
+
+    private function time(): DateTimeImmutable
+    {
+        return new DateTimeImmutable('2026-07-30T00:00:00Z');
+    }
+
+    private function uuid(int $suffix): string
+    {
+        return sprintf('00000000-0000-4000-8000-%012d', $suffix);
+    }
+}
