@@ -26,7 +26,9 @@ This document defines the official Phase 1 business API contract for Syifa.my. I
 
 This document does not authorize implementation. Every resource, endpoint, and rule below still requires the separately governed engineering work ADR-001 reserves for later — route definitions, controllers, request validation, response serialization, and the OpenAPI/Swagger contract that would normally be generated from an accepted version of this design.
 
-[28_COMMERCIAL_CATALOGUE_SPECIFICATION.md](./28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) formally exposes Plan, Billing Option, and Capability Catalogue as a governed Commercial Catalogue resource (Resource 20 below), superseding this document's prior "not independently exposed" treatment of Plan. Add-On remains not exposed, per that specification's Add-On Decision.
+[28_COMMERCIAL_CATALOGUE_SPECIFICATION.md](./28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) formally exposes Plan, Billing Option, Plan Offering, and Capability Catalogue as a governed Commercial Catalogue resource (Resource 20 below), superseding this document's prior "not independently exposed" treatment of Plan. Add-On remains not exposed, per that specification's Add-On Decision.
+
+SYIFA-085A additionally records the implemented Commercial module and CommercialOffer Aggregate Root. CommercialOffer is documented as Resource 21 below. It is a checkout-preparation snapshot and must not be confused with Commercial Catalogue reference-data administration.
 
 ## Purpose and Method
 
@@ -137,7 +139,7 @@ Twenty-two candidates plus two justified additions evaluate to **nineteen top-le
 
 | # | Resource | Aggregate Owner | Bounded Context | Nesting |
 |---|---|---|---|---|
-| 1 | Clinic Registration | Clinic Registration | Tenant Management | Top-level |
+| 1 | Clinic Registration | Clinic Registration | Clinic Registration | Top-level |
 | 2 | Tenant | Tenant | Tenant Management | Top-level |
 | 3 | Session | Cross-cutting (Tenant / Onboarding Job / Platform Administration) | Tenant Management (primary) | Top-level |
 | 4 | Profile | Cross-cutting (Tenant / Onboarding Job / Platform Administration) | Tenant Management (primary) | Top-level |
@@ -157,6 +159,7 @@ Twenty-two candidates plus two justified additions evaluate to **nineteen top-le
 | 18 | Reports | Report (projection) | Reporting & Analytics | Top-level, read-only |
 | 19 | Platform Settings | Platform Setting | Platform Administration | Top-level |
 | 20 | Commercial Catalogue | Governed reference data (Plan, Billing Option, Plan Offering, Capability Catalogue — not an Aggregate; 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) | Subscription & Billing | Top-level, under `/platform/` |
+| 21 | Commercial Offers | CommercialOffer | Commercial | Top-level, under `/commercial/` |
 
 ### Detailed Resource Definitions
 
@@ -1086,7 +1089,7 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 
 ### 18. Reports
 
-**Purpose:** Authorized analytical output for the seven Phase 1 modules, using governed Metric Definitions — absorbing what the candidate list separately named "Analytics," since no independent Analytics aggregate, entity, or bounded-context concept exists anywhere in 14/15/16/18.
+**Purpose:** Authorized analytical output for the Phase 1 product modules and governance contexts, using governed Metric Definitions — absorbing what the candidate list separately named "Analytics," since no independent Analytics aggregate, entity, or bounded-context concept exists anywhere in 14/15/16/18.
 
 **Aggregate Owner:** Report — a Projection, not an aggregate (15_DOMAIN_CLASSIFICATION.md, 18_AGGREGATE_DESIGN.md); it is never a source of transactional truth and must never be the basis of a business decision made anywhere else in this API.
 
@@ -1232,6 +1235,70 @@ No `DELETE` exists for any Commercial Catalogue resource, including Plan Offerin
 
 ---
 
+### 21. Commercial Offers
+
+**Purpose:** Prepared checkout snapshot for a clinic registration, created from governed Commercial Catalogue reference data and consumed later by Payment.
+
+**Aggregate Owner:** CommercialOffer.
+
+**Bounded Context:** Commercial Context.
+
+**Supported Operations:** `GET` ✓ · `POST` ✓ · `POST /cancel` ✓ · `PATCH`/`PUT`/`DELETE` ✗.
+
+**`GET /api/v1/commercial/available-offers`**
+- Purpose: List currently available commercial selections for an authenticated platform actor preparing a clinic registration.
+- Business Rules: Returns trusted selections derived from governed reference data; it is not public catalogue browsing.
+- Authorization: Authenticated Platform Identity with the required platform authorization.
+- Request Summary: Optional bounded filtering approved by the Commercial Application layer.
+- Response Summary: Available commercial offer summaries.
+- Possible Errors: `401`, `403`, `422`.
+- Idempotency: Naturally idempotent.
+- Audit Requirements: None for ordinary reads.
+
+**`POST /api/v1/commercial/offers`**
+- Purpose: Prepare a CommercialOffer checkout snapshot.
+- Business Rules: Snapshot TTL is 30 minutes. The request may reference clinic registration and plan offering identifiers only through approved fields. Tenant identifiers, payment method details, and Add-On selections are prohibited.
+- Authorization: Authenticated Platform Identity with the required platform authorization.
+- Request Summary: Clinic Registration reference and selected Plan Offering reference.
+- Response Summary: Prepared CommercialOffer snapshot.
+- Possible Errors: `401`, `403`, `404`, `409`, `422`.
+- Idempotency: Required where a caller can retry the same prepare operation.
+- Audit Requirements: **Mandatory Audit Entry** with action `commercial.offer.prepare`.
+
+**`GET /api/v1/commercial/offers/current`**
+- Purpose: View the current prepared CommercialOffer for the authenticated platform actor scope.
+- Business Rules: Expired, cancelled, or consumed offers are not treated as current.
+- Authorization: Authenticated Platform Identity with the required platform authorization.
+- Request Summary: No client-supplied actor identity.
+- Response Summary: Current prepared CommercialOffer or not found.
+- Possible Errors: `401`, `403`, `404`.
+- Idempotency: Naturally idempotent.
+- Audit Requirements: None for ordinary reads.
+
+**`GET /api/v1/commercial/offers/{offerId}`**
+- Purpose: View a specific CommercialOffer snapshot.
+- Business Rules: The platform actor scope and ownership are revalidated after lookup.
+- Authorization: Authenticated Platform Identity with the required platform authorization.
+- Request Summary: CommercialOffer identifier.
+- Response Summary: CommercialOffer snapshot.
+- Possible Errors: `401`, `403`, `404`.
+- Idempotency: Naturally idempotent.
+- Audit Requirements: None for ordinary reads.
+
+**`POST /api/v1/commercial/offers/{offerId}/cancel`**
+- Purpose: Cancel a prepared CommercialOffer.
+- Business Rules: Only a prepared, unexpired offer may be cancelled. Stale versions fail with conflict.
+- Authorization: Authenticated Platform Identity with the required platform authorization.
+- Request Summary: Expected version.
+- Response Summary: Cancelled CommercialOffer snapshot.
+- Possible Errors: `401`, `403`, `404`, `409`, `422`.
+- Idempotency: Required.
+- Audit Requirements: **Mandatory Audit Entry** with action `commercial.offer.cancel`.
+
+CommercialOffer has no `DELETE`. Expiry and consumption are lifecycle transitions owned by Commercial Application services and trusted downstream boundaries, not generic update endpoints.
+
+---
+
 ## 2. Endpoint Matrix
 
 Role codes: **PV** = Public Visitor · **CO** = Clinic Owner · **WD** = Website Designer · **SA** = Super Admin · **SYS** = system-triggered, no direct human caller.
@@ -1322,6 +1389,11 @@ Role codes: **PV** = Public Visitor · **CO** = Clinic Owner · **WD** = Website
 | Plan Offering | `GET /api/v1/platform/commercial-catalogue/plan-offerings`, `GET .../{planOfferingId}` | List/view | SA (category-scoped) |
 | Plan Offering | `POST /api/v1/platform/commercial-catalogue/plan-offerings` | Propose | SA (category-scoped) |
 | Plan Offering | `PATCH /api/v1/platform/commercial-catalogue/plan-offerings/{planOfferingId}` | Lifecycle transition / new effective-dated version | SA (category-scoped) |
+| Commercial Offers | `GET /api/v1/commercial/available-offers` | List available checkout selections | SA / authorized platform actor |
+| Commercial Offers | `POST /api/v1/commercial/offers` | Prepare checkout snapshot | SA / authorized platform actor |
+| Commercial Offers | `GET /api/v1/commercial/offers/current` | View current prepared snapshot | SA / authorized platform actor |
+| Commercial Offers | `GET /api/v1/commercial/offers/{offerId}` | View checkout snapshot | SA / authorized platform actor |
+| Commercial Offers | `POST /api/v1/commercial/offers/{offerId}/cancel` | Cancel checkout snapshot | SA / authorized platform actor |
 
 ## 3. Authorization Matrix
 
@@ -1348,6 +1420,7 @@ Role codes: **PV** = Public Visitor · **CO** = Clinic Owner · **WD** = Website
 | Platform Settings | — | — | — | Category-scoped only |
 | Commercial Catalogue | — | — | — | Category-scoped only |
 | Plan Offering | — | — | — | Category-scoped only |
+| Commercial Offers | — | — | Authorized platform-assigned preparation only | Authorized platform preparation/cancel only |
 
 **Why these boundaries hold:** Public Visitor access is limited to the narrow, genuinely interactive surface identified in API Conventions (Booking, live availability, Clinic Registration) — everything else is either private administrative data or server-rendered public content outside this API entirely. Clinic Owner access is always scoped to their own Tenant, per ADR-002's tenant-ownership rule, and never implies authority over another Tenant even for the same individual. Website Designer access is strictly assignment-bound (05_MULTI_TENANCY.md) and ends the moment the assignment ends. Super Admin access is never implicit Tenant membership — every cross-tenant or privileged action listed above routes through an explicit, purpose-limited, audited pathway (ADR-002, Security Invariant 19), and several Platform Setting and Template actions are further scoped by category even within the Super Admin role, so that no single operator implicitly holds universal authority.
 

@@ -1,5 +1,7 @@
 # Aggregate Design
 
+**Implementation Alignment Note — SYIFA-085A.** This document remains the historical aggregate-design analysis that produced the original fifteen-root baseline. The current official Aggregate Root registry is the sixteen-root implementation-aligned registry in [26_ARCHITECTURE_FREEZE_V1.md](./26_ARCHITECTURE_FREEZE_V1.md), superseded by [ADR-006](./decisions/ADR-006-Commercial.md). CommercialOffer is now an accepted Aggregate Root owned by the Commercial context. Clinic Registration is owned by the Clinic Registration context rather than Tenant Management.
+
 ## Table of Contents
 
 - [Document Authority](#document-authority)

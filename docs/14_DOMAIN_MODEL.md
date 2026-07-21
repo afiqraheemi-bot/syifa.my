@@ -28,7 +28,7 @@ The Product Vision remains authoritative for product identity. The MVP Scope rem
 
 ## Purpose and Scope
 
-The purpose is to give product, design, architecture, security, engineering, operations, and commercial stakeholders one shared language for the Phase 1 business. The model covers exactly the seven locked modules:
+The purpose is to give product, design, architecture, security, engineering, operations, and commercial stakeholders one shared language for the Phase 1 business. The product-scope baseline covers the seven MVP capability modules:
 
 1. Clinic Registration
 2. Website Builder
@@ -38,7 +38,7 @@ The purpose is to give product, design, architecture, security, engineering, ope
 6. Payments & Subscriptions
 7. Internal Onboarding / Project Management
 
-The model includes cross-module governance concepts where the business requires common policy, accountability, history, or tenant ownership. Such concepts do not create additional customer-facing Phase 1 modules.
+The model includes cross-module governance concepts where the business requires common policy, accountability, history, commercial checkout preparation, platform identity, or tenant ownership. Such concepts do not create additional customer-facing Phase 1 product categories.
 
 The document does not add patient accounts, clinical records, enquiry-first workflows, clinic staff roles, franchise hierarchies, reseller arrangements, cross-clinic sharing, marketing automation, or general-purpose content, project, finance, or customer-management products.
 
@@ -87,10 +87,11 @@ An entity may be viewed by several modules without transferring ownership. Copie
 | Booking System | Clinic Service, Service Setup, availability, Booking, and booking contact information |
 | Email Notifications | Governed transactional communication and its delivery outcome |
 | Reports & Analytics | Metric meaning, authorized Report production, and Phase 1 outcome interpretation |
-| Payments & Subscriptions | Plan, Add-On policy, Subscription, entitlement, Invoice, Payment, and commercial Customer status |
+| Payments & Subscriptions | Governed Commercial Catalogue reference data, Subscription, entitlement, Invoice, Payment, and commercial Customer status |
+| Commercial | CommercialOffer checkout snapshot, commercial selection orchestration, expiry/cancel/consume lifecycle, and handoff to Payment |
 | Internal Onboarding / Project Management | Onboarding Job, assignment, tasks, readiness, review cycle, Website approval, and launch coordination |
 
-Activity Log, Audit Log, Platform Setting, and any retained System Setting are cross-module governance concepts. They support the seven modules but do not create an eighth product module.
+Platform Identity, Activity Log, Audit Log, Platform Setting, and any retained System Setting are cross-module governance concepts. They support the product modules without creating additional customer-facing product categories.
 
 ## Domain Participants
 
@@ -984,7 +985,7 @@ Activity Log, Audit Log, Platform Setting, and any retained System Setting are c
 
 **Ownership.** Platform-governed evidence with explicit Tenant scope where applicable.
 
-**Relationships.** Records relevant actions across all seven modules, especially Super Admin access, Website Designer assignment, ownership changes, exports, domains, publication, Subscription, Payment, Booking correction, suspension, and deletion.
+**Relationships.** Records relevant actions across all product modules and governance contexts, especially Super Admin access, Website Designer assignment, ownership changes, CommercialOffer preparation, exports, domains, publication, Subscription, Payment, Booking correction, suspension, and deletion.
 
 **Lifecycle.** Appended, protected, reviewed, retained, legally held if applicable, archived, and removed only under approved policy.
 
@@ -1135,9 +1136,13 @@ Owns Website, Template, Theme, Website Content, Publication, Media presentation,
 
 Owns Clinic Service business behavior, Service Setup, Availability Schedule, Availability Exception, Booking Opportunity, Booking, Booking Contact, and booking lifecycle. It publishes approved service meaning to the Website Experience Context.
 
+### Subscription & Billing Context
+
+Owns Customer commercial status, governed Commercial Catalogue reference data, Subscription, Entitlement, Invoice, and Payment. It determines capability entitlement but does not grant participant authorization or own Website, Booking, or CommercialOffer entities.
+
 ### Commercial Context
 
-Owns Customer commercial status, Plan, Add-On, Subscription, Entitlement, Invoice, and Payment. It determines capability entitlement but does not grant participant authorization or own Website and Booking entities.
+Owns CommercialOffer checkout snapshots and the commercial-selection handoff before Payment. It consumes Plan, Billing Cycle, Pricing, and Plan Offering through reference-data contracts; it does not author Commercial Catalogue records, execute payment, activate subscriptions, provision tenants, or start onboarding.
 
 ### Managed Onboarding Context
 
@@ -1155,7 +1160,7 @@ Owns Metric Definition and Report. It consumes approved business outcomes throug
 
 Owns cross-module Activity Log presentation, Audit Log policy, Platform Setting, and provisional System Setting. It preserves governance and evidence while respecting each originating context's business meaning.
 
-Context boundaries must not create new Phase 1 modules or roles. The seven locked modules remain the product scope; contexts clarify business language that crosses them.
+Context boundaries must not create new Phase 1 roles or product categories. They clarify business language and implementation ownership around the managed WaaS product scope.
 
 ## Aggregate Root Candidates
 
@@ -1169,6 +1174,7 @@ These are candidates for later architecture review, not implementation instructi
 - **Booking** for booked service meaning, Booking Contact, lifecycle, and related communication intent.
 - **Subscription** for Plan selection, approved Add-Ons, Entitlement, Invoice relationship, and commercial lifecycle.
 - **Payment** as an independently reconciled commercial outcome rather than a mutable detail of Subscription.
+- **CommercialOffer** for one immutable, short-lived checkout snapshot prepared from governed commercial reference data and consumed by Payment.
 - **Onboarding Job** for assignment, Tasks, approval cycle, and Launch Readiness.
 - **Notification** for its Delivery Attempts and final communication outcome.
 - **Report** for one authorized analytical result using governed Metric Definitions.

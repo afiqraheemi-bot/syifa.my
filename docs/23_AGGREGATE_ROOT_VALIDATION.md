@@ -1,6 +1,6 @@
 # Aggregate Root Validation
 
-**Status: Draft — Under CTO Review.** This is an audit, not a redesign. It validates the fifteen Aggregate Roots already established in [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md) and drawn in [22_ERD.md](./22_ERD.md) against a fixed set of ten questions each. It does not change any aggregate boundary, does not modify the ERD, and does not introduce a sixteenth root or remove any of the fifteen. Where this audit finds a genuine tension, it is reported as a finding for a future, separately governed decision — never acted on here.
+**Status: Historical validation with implementation-alignment note.** This is an audit, not a redesign. It validates the fifteen Aggregate Roots originally established in [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md) and drawn in [22_ERD.md](./22_ERD.md) against a fixed set of ten questions each. SYIFA-085A keeps this audit traceable but supersedes the count through [ADR-006](./decisions/ADR-006-Commercial.md): the current official registry contains sixteen Aggregate Roots, adding CommercialOffer under the Commercial context.
 
 ## Table of Contents
 

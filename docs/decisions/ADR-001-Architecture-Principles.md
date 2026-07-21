@@ -1,5 +1,9 @@
 # ADR-001: Architecture Principles
 
+## Implementation Alignment Note
+
+SYIFA-085A preserves this ADR's principles. References below to the original seven Phase 1 modules are product-scope references from the MVP documents, not the current bounded-context module-directory registry. The current implementation registry is twelve bounded contexts and sixteen Aggregate Roots, indexed in [26_ARCHITECTURE_FREEZE_V1.md](../26_ARCHITECTURE_FREEZE_V1.md).
+
 ## Status
 
 **Accepted**

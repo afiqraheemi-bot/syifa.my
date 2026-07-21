@@ -556,6 +556,34 @@ Per 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md, resolving this document's prior "n
 
 ---
 
+### 1.21 Commercial Offers
+
+CommercialOffer is a checkout-preparation Aggregate Root owned by the Commercial context. It is not public browsing, not Commercial Catalogue authoring, not Payment, not Subscription activation, and not Tenant provisioning.
+
+Commercial Offer endpoints require authenticated Platform Identity. The actor identity must come from the server-side PlatformPrincipalResolver, never from request body, query string, headers, or client-supplied DTO fields.
+
+| Action | PV | CO | WD | SA |
+|---|---|---|---|---|
+| View | ❌ | ❌ | 🔒 Assigned platform workflow only | 🔒 Category |
+| List | ❌ | ❌ | 🔒 Assigned platform workflow only | 🔒 Category |
+| Create | ❌ | ❌ | 🔒 Assigned platform workflow only | 🔒 Category |
+| Update | N/A [R13] — lifecycle actions replace generic update | same | same | same |
+| Delete | N/A [R1] — CommercialOffer is cancelled, expired, or consumed; never deleted | N/A [R1] | N/A [R1] | N/A [R1] |
+| Cancel | ❌ | ❌ | 🔒 Assigned platform workflow only | 🔒 Category |
+| Archive | N/A [R10] | N/A [R10] | N/A [R10] | N/A [R10] |
+| Restore | N/A [R9] | N/A [R9] | N/A [R9] | N/A [R9] |
+| Configure | N/A [R13] | N/A [R13] | N/A [R13] | N/A [R13] |
+| Manage | N/A [R12] | N/A [R12] | N/A [R12] | N/A [R12] |
+
+CommercialOffer mutations require mandatory Audit Entry coverage:
+
+- `commercial.offer.prepare`
+- `commercial.offer.cancel`
+- `commercial.offer.expire`
+- `commercial.offer.consume`
+
+---
+
 ## 2. Role Permission Matrix
 
 The same data as Section 1, pivoted by role rather than by resource — useful for a role-centric security review ("what can a Website Designer reach, system-wide?") rather than a resource-centric one.
@@ -692,9 +720,10 @@ Every resource in Section 1 belongs to exactly one of the five ownership classes
 | Ownership Class | Resources | Access Rule |
 |---|---|---|
 | **Tenant-owned** | Clinic Registration (pre-approval), Tenant, Clinic, Website, Website Pages, Custom Domains, Clinic Services, Booking, Subscription, Invoices, Payments, Onboarding Jobs, Notifications, Media (Tenant assets) | Accessible only to that Tenant's own Clinic Owner, an actively assigned Website Designer (where marked in Section 1), and Super Admin through a privileged pathway. Never accessible to another Tenant's Clinic Owner or Website Designer under any circumstance. |
-| **Platform-owned** | Template, Platform Settings, Media (platform assets) | Accessible only to Super Admin, and only within an explicitly authorized category where one applies (Template design governance, Platform Setting category). **Clinic Owner and Website Designer have zero standing on any platform-owned resource** — this is the direct implementation of the brief's explicit rule: Clinic Owner cannot access platform resources, and by the same logic, neither can Website Designer. |
+| **Platform-owned** | Template, Platform Settings, Media (platform assets), Platform Identity and Platform Authorization runtime | Accessible only through authenticated Platform Identity and explicitly authorized platform pathways. Category scope applies where one applies (Template design governance, Platform Setting category, Commercial Catalogue category). **Clinic Owner has zero standing on platform-owned resources. Website Designer access is only through Platform Identity plus assignment/permission, not tenant ownership.** |
 | **Reference or governed shared data** | Not independently exposed as a Phase 1 resource (Add-On, Notification Template, Metric Definition — referenced by, but not directly addressable through, Subscription, Notifications, and Reports respectively) | Consumed by reference only; no role directly authors this data through this API in Phase 1. |
 | **Commercial Catalogue (governed reference data with authoring)** | Plan, Billing Option, Plan Offering, Capability Catalogue (28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) | Category-scoped Super Admin only, following exactly the Platform Settings pattern (Section 1.20 below) — never Clinic Owner, Website Designer, or Public Visitor, and never unscoped Super Admin authority. Every mutation requires a mandatory Audit Entry (Audit Requirements below). Consumed by Subscription and its future Entitlement Computation boundary by reference only. |
+| **Commercial Offer (checkout snapshot)** | CommercialOffer | Authenticated Platform Identity only. Website Designer may act only through an assigned, authorized platform workflow. Super Admin requires category-scoped platform authority. Public Visitor and Clinic Owner do not prepare or cancel CommercialOffer in Phase 1. |
 | **Projection or derived data** | Reports, Clinic Services' available-slots read, Onboarding Jobs' launch-readiness read | Read-only for every role that may see it at all; never a source of truth and never a write target, per 18_AGGREGATE_DESIGN.md's explicit interaction rule. |
 | **Audit or accountability data** | Not exposed as a Phase 1 resource (Audit Entry, deliberately excluded per 20_API_DESIGN.md) | No role accesses Audit Entry through this general API; it requires its own privileged-tooling design. |
 

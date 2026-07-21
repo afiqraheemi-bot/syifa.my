@@ -1,6 +1,6 @@
 # System Architecture
 
-**Status: Draft — Under CTO Review.** This document is the synthesized production architecture for Syifa.my Phase 1. It explains **how** the platform is structured, using only decisions already locked elsewhere. It introduces no new module, no new Aggregate Root, no microservice, no Kubernetes topology, and no technology not already selected in [ADR-003](./decisions/ADR-003-Technology-Stack.md). It replaces the earlier, deliberately technology-agnostic version of this document, which was written before the Domain Model, Bounded Contexts, Aggregate Design, Database Strategy, API Design, Permission Matrix, ERD, and Technology Stack were locked.
+**Status: Current — implementation-aligned.** This document is the synthesized production architecture for Syifa.my Phase 1. It explains **how** the platform is structured, using decisions locked elsewhere and the accepted implementation-alignment ADRs. It introduces no microservice, no Kubernetes topology, and no technology not already selected in [ADR-003](./decisions/ADR-003-Technology-Stack.md). It replaces the earlier, deliberately technology-agnostic version of this document, which was written before the Domain Model, Bounded Contexts, Aggregate Design, Database Strategy, API Design, Permission Matrix, ERD, Technology Stack, Platform Identity, Commercial, and Provisioning Orchestrator decisions were locked.
 
 ## Table of Contents
 
@@ -30,11 +30,11 @@
 
 This document synthesizes, and does not redecide, the following locked authorities: [01_PRODUCT_VISION.md](./01_PRODUCT_VISION.md) (highest authority), [02_MVP_SCOPE.md](./02_MVP_SCOPE.md), [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md), [15_DOMAIN_CLASSIFICATION.md](./15_DOMAIN_CLASSIFICATION.md), [16_BOUNDED_CONTEXTS.md](./16_BOUNDED_CONTEXTS.md), [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md), [19_DATABASE_STRATEGY.md](./19_DATABASE_STRATEGY.md), [20_API_DESIGN.md](./20_API_DESIGN.md), [21_PERMISSION_MATRIX.md](./21_PERMISSION_MATRIX.md), [22_ERD.md](./22_ERD.md), [23_AGGREGATE_ROOT_VALIDATION.md](./23_AGGREGATE_ROOT_VALIDATION.md), [24_FOLDER_STRUCTURE.md](./24_FOLDER_STRUCTURE.md), and [ADR-001](./decisions/ADR-001-Architecture-Principles.md), [ADR-002](./decisions/ADR-002-Multi-Tenant-Strategy.md), [ADR-003](./decisions/ADR-003-Technology-Stack.md), [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md). Where this document appears to say something new, it is a synthesis error, not an intended decision — the owning document above always controls.
 
-**A note on Aggregate Root count.** This document uses the fifteen Aggregate Roots confirmed in 18_AGGREGATE_DESIGN.md, independently re-validated in 23_AGGREGATE_ROOT_VALIDATION.md, and formally accepted as the Phase 1 baseline in [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md): Clinic Registration, Tenant, Clinic, Website, Custom Domain, Template, Media, Clinic Service, Booking, Subscription, Payment, Onboarding Job, Notification, Audit Entry, and Platform Setting. A prior revision of 24_FOLDER_STRUCTURE.md stated a narrower, unsupported eleven-item list; ADR-004 formally supersedes that statement, and 24_FOLDER_STRUCTURE.md has been corrected to match this document.
+**A note on Aggregate Root count.** This document now uses the sixteen Aggregate Roots indexed in [26_ARCHITECTURE_FREEZE_V1.md](./26_ARCHITECTURE_FREEZE_V1.md) after SYIFA-085A: Clinic Registration, Tenant, Clinic, Website, Custom Domain, Template, Media, Clinic Service, Booking, Subscription, Payment, CommercialOffer, Onboarding Job, Notification, Audit Entry, and Platform Setting. [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md) remains the historical fifteen-root baseline; [ADR-006](./decisions/ADR-006-Commercial.md) supersedes it for the current aggregate registry by adding CommercialOffer and accepting Commercial as its owning bounded context.
 
 ## 1. Executive Summary
 
-Syifa.my Phase 1 is a **modular monolith**: one deployable Laravel/PHP application, organized internally into ten bounded-context modules that each own an explicit slice of the fifteen-Aggregate-Root domain model, deployed as a stateless web tier plus independently scalable background worker pools and a scheduler, all sharing one PostgreSQL database under row-level tenant isolation. Public clinic websites are server-rendered for speed, accessibility, and cacheability; the three authenticated experiences (Clinic Owner, Website Designer, Super Admin) are delivered through a Vue 3 + Inertia.js reactive layer bridged into the same application, so the platform ships as one artifact with one release process rather than a constellation of independently deployed services.
+Syifa.my Phase 1 is a **modular monolith**: one deployable Laravel/PHP application, organized internally into twelve bounded-context modules that each own an explicit slice of the sixteen-Aggregate-Root domain model, deployed as a stateless web tier plus independently scalable background worker pools and a scheduler, all sharing one PostgreSQL database under row-level tenant isolation. Public clinic websites are server-rendered for speed, accessibility, and cacheability; the authenticated experiences (Clinic Owner, Website Designer, Super Admin, and platform operators) are delivered through controlled browser-session and API surfaces bridged into the same application, so the platform ships as one artifact with one release process rather than a constellation of independently deployed services.
 
 Every structural claim in this document — which module owns which aggregate, which layer may depend on which, how a request resolves its tenant, how a Booking is accepted without conflict — restates a decision already made and approved in the documents listed above. This document's only original contribution is showing how those decisions compose into one working system.
 
@@ -65,7 +65,7 @@ This architecture is evaluated against ADR-001's twelve principles, now applied 
 | **Admin Application** | Authenticated Clinic Owner, Website Designer, and Super Admin experiences: dashboards, content editing, onboarding workflow, portfolio views. | Vue 3 mounted via Inertia.js, sharing the same deployable artifact as the public website (Decision 3). |
 | **API Layer** | The narrow, genuinely interactive surface: Booking submission and availability, Clinic Registration submission, and the in-process contract the Inertia-mounted admin frontend calls. | Contract-first REST-style HTTP JSON per 20_API_DESIGN.md (Decision 5). |
 | **Application Layer** | Use-case orchestration per module: sequencing domain calls, enforcing authorization, coordinating a single aggregate's transaction. | Laravel Application classes inside each module's `Application/` folder. |
-| **Domain Layer** | Aggregate invariants, business rules, lifecycle transitions — the fifteen Aggregate Roots and their composed internal entities. | Framework-independent domain code inside each module's `Domain/` folder. |
+| **Domain Layer** | Aggregate invariants, business rules, lifecycle transitions — the sixteen Aggregate Roots and their composed internal entities. | Framework-independent domain code inside each module's `Domain/` folder. |
 | **Infrastructure Layer** | Technical adapters implementing each module's `Contracts/`: persistence, object storage, mail, search. | Laravel/Eloquent, PostgreSQL client, S3-compatible SDK, mail transport. |
 | **Database** | The single shared, row-isolated source of transactional truth. | PostgreSQL, latest stable major version (Decision 8). |
 | **Storage** | Tenant and platform Media assets, referenced by identifier, never embedded. | S3-compatible object storage API, vendor deferred (Decision 12). |
@@ -123,16 +123,18 @@ flowchart TB
 
 ### Module Ownership
 
-Each of the ten bounded contexts from 16_BOUNDED_CONTEXTS.md owns an explicit, non-overlapping subset of the fifteen Aggregate Roots:
+Each of the twelve bounded contexts from 16_BOUNDED_CONTEXTS.md owns an explicit, non-overlapping subset of the sixteen Aggregate Roots:
 
 | Module (`app/Modules/<Context>/`) | Bounded Context | Owned Aggregate Root(s) |
 |---|---|---|
-| `TenantManagement` | Tenant Management | Clinic Registration, Tenant |
+| `ClinicRegistration` | Clinic Registration | Clinic Registration |
+| `TenantManagement` | Tenant Management | Tenant |
 | `WebsiteBuilder` | Website Builder | Clinic, Website, Custom Domain |
 | `TemplateDesignSystem` | Template & Design System | Template |
 | `MediaAssetManagement` | Media & Asset Management | Media |
 | `Booking` | Booking | Clinic Service, Booking |
 | `SubscriptionBilling` | Subscription & Billing | Subscription, Payment |
+| `Commercial` | Commercial | CommercialOffer |
 | `Onboarding` | Onboarding | Onboarding Job |
 | `Notification` | Notification | Notification |
 | `ReportingAnalytics` | Reporting & Analytics | None owned — consumes read-only projections from every other module; Report itself is a projection, never a stored Aggregate Root (15_DOMAIN_CLASSIFICATION.md). |

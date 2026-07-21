@@ -1,5 +1,9 @@
 # ADR-003: Technology Stack
 
+## Implementation Alignment Note
+
+SYIFA-085A preserves every technology decision in this ADR. References below to the original seven product modules and fifteen-aggregate model are historical inputs to the technology evaluation. The current implementation registry is twelve bounded contexts and sixteen Aggregate Roots, indexed in [26_ARCHITECTURE_FREEZE_V1.md](../26_ARCHITECTURE_FREEZE_V1.md). No superseding technology ADR is required because Platform Reference Data authorization and CommercialOffer ownership are architecture/domain governance changes, not technology-stack changes.
+
 ## Status
 
 **Accepted**
@@ -873,4 +877,3 @@ This ADR knowingly defers several decisions rather than resolving them now, cons
 - [ ] Require this ADR be formally revisited whenever any named migration trigger in the Technology Debt Assessment fires, rather than allowing an ad hoc, undocumented technology change.
 - [ ] Confirm this ADR does not conflict with any budget, staffing, or timeline constraint not visible in the documents this ADR was built from.
 - [x] Approve status change from Proposed to Accepted (approved 2026-07-13; remaining items above are follow-up evaluations and confirmations that do not gate Accepted status).
-

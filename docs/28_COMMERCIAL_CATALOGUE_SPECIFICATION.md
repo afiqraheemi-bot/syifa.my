@@ -47,7 +47,7 @@
 
 ## 2. Document Authority
 
-This document sits below [01_PRODUCT_VISION.md](./01_PRODUCT_VISION.md), [02_MVP_SCOPE.md](./02_MVP_SCOPE.md), [ADR-001](./decisions/ADR-001-Architecture-Principles.md), [ADR-002](./decisions/ADR-002-Multi-Tenant-Strategy.md), [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md), [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md), and [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md), all of which remain authoritative for anything this document does not explicitly refine. It is the authoritative Phase 1 specification for the commercial-configuration layer feeding the Subscription Aggregate: Subscription Plan, Billing Option, Price, Capability Catalogue, Entitlement computation, Lifetime offering, and the Professional Services and Add-On boundaries. Where this document states something new, it is filling a gap those documents left open (most notably `14_DOMAIN_MODEL.md`'s own unresolved question about Add-On's Phase 1 status) or resolving a documented conflict (`21_PERMISSION_MATRIX.md`'s Plan/Add-On exposure statement) — it never overrides a decision those higher documents already made. This document introduces no new bounded context and no new Aggregate Root; Commercial Catalogue remains inside the Subscription & Billing Context, and the fifteen-Aggregate-Root baseline in ADR-004 is unchanged.
+This document sits below [01_PRODUCT_VISION.md](./01_PRODUCT_VISION.md), [02_MVP_SCOPE.md](./02_MVP_SCOPE.md), [ADR-001](./decisions/ADR-001-Architecture-Principles.md), [ADR-002](./decisions/ADR-002-Multi-Tenant-Strategy.md), [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md), [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md), and [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md), all of which remain authoritative for anything this document does not explicitly refine. It is the authoritative Phase 1 specification for the commercial-configuration layer feeding the Subscription Aggregate: Subscription Plan, Billing Option, Price, Capability Catalogue, Entitlement computation, Lifetime offering, and the Professional Services and Add-On boundaries. Where this document states something new, it is filling a gap those documents left open (most notably `14_DOMAIN_MODEL.md`'s own unresolved question about Add-On's Phase 1 status) or resolving a documented conflict (`21_PERMISSION_MATRIX.md`'s Plan/Add-On exposure statement) — it never overrides a decision those higher documents already made. This document introduces no new bounded context and no new Aggregate Root for Commercial Catalogue reference data; Commercial Catalogue remains inside the Subscription & Billing Context. Later [ADR-006](./decisions/ADR-006-Commercial.md) separately accepts CommercialOffer as a checkout-snapshot Aggregate Root in the Commercial context, without changing this document's reference-data classifications.
 
 ## 3. Product Context
 
@@ -127,11 +127,11 @@ No platform-owned catalogue record (Plan, Billing Option, Plan Offering, Capabil
 | Add-On | Deferred Phase 2 concept (Section 23) | No |
 | Subscription commercial snapshot | Value Objects composed within the existing Subscription Aggregate Root | N/A — already Subscription |
 
-No concept in this document requires or justifies a sixteenth Aggregate Root. This is consistent with `19_DATABASE_STRATEGY.md`'s existing classification of Plan and Add-On as Reference Data (distinct from Template and Platform Setting, which are "full aggregates in their own right" that happen to also function as reference data) — this document extends that same grouping to Billing Option, Plan Offering, and Capability Catalogue rather than inventing a different category for them.
+No Commercial Catalogue reference-data concept in this document requires or justifies an Aggregate Root. This is consistent with `19_DATABASE_STRATEGY.md`'s existing classification of Plan and Add-On as Reference Data (distinct from Template and Platform Setting, which are "full aggregates in their own right" that happen to also function as reference data) — this document extends that same grouping to Billing Option, Plan Offering, and Capability Catalogue rather than inventing a different category for them. CommercialOffer is a separate checkout-snapshot Aggregate Root governed by ADR-006, not a Commercial Catalogue reference-data concept.
 
 ## 10. Subscription Plan Model
 
-Plan is platform-owned governed commercial configuration, not Tenant-owned, and not a sixteenth Aggregate Root. It has independent identity and a lifecycle as reference data — not as a Domain Aggregate Root — meaning its lifecycle is a governance workflow (who approved what, and when it may be sold), not a set of invariant-protecting Domain methods enforcing a transaction boundary the way `Tenant` or `Subscription` do.
+Plan is platform-owned governed commercial configuration, not Tenant-owned, and not an Aggregate Root. It has independent identity and a lifecycle as reference data — not as a Domain Aggregate Root — meaning its lifecycle is a governance workflow (who approved what, and when it may be sold), not a set of invariant-protecting Domain methods enforcing a transaction boundary the way `Tenant`, `Subscription`, or `CommercialOffer` do.
 
 **Lifecycle states:** `draft`, `active`, `unavailable`, `grandfathered`, `retired`.
 
@@ -381,7 +381,7 @@ Trial configuration, Promotions and coupons, tax handling, usage-based billing, 
 
 **Confirmed as of this document's acceptance (2026-07-14):**
 
-1. **Confirmed.** Plan's classification as Governed Reference Data rather than a sixteenth Aggregate Root, notwithstanding its documented multi-stage lifecycle (Section 10).
+1. **Confirmed.** Plan's classification as Governed Reference Data rather than an Aggregate Root, notwithstanding its documented multi-stage lifecycle (Section 10).
 2. **Confirmed.** The `21_PERMISSION_MATRIX.md`/`20_API_DESIGN.md` amendment granting Super Admin category-scoped, audited authority over the Commercial Catalogue resource, including the explicit Plan Offering endpoint family (Section 24, Section 27).
 3. **Confirmed.** MYR as the explicit, sole Phase 1 launch currency (Section 13).
 4. **Confirmed.** The Add-On deferral decision (Section 23, Option 4) — Add-On remains deferred.

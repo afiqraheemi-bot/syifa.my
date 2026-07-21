@@ -76,7 +76,7 @@ Where this document names a Laravel-idiomatic pattern (Service, Repository, DTO,
 
 ## 4. DDD Rules
 
-- The fifteen Aggregate Roots confirmed in 18_AGGREGATE_DESIGN.md, re-validated in 23_AGGREGATE_ROOT_VALIDATION.md, and formally accepted as the Phase 1 baseline in [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md) are the only classes that may be loaded, mutated, and persisted as a unit of consistency. No code introduces a sixteenth.
+- The sixteen Aggregate Roots indexed in [26_ARCHITECTURE_FREEZE_V1.md](./26_ARCHITECTURE_FREEZE_V1.md), with CommercialOffer added by [ADR-006](./decisions/ADR-006-Commercial.md), are the only classes that may be loaded, mutated, and persisted as a unit of consistency. No code introduces an unapproved seventeenth.
 - One transaction touches exactly one Aggregate Root, per 18_AGGREGATE_DESIGN.md's Aggregate Persistence Principles — a Service class that needs to affect two aggregates issues two separate, independently-authorized operations, never one shared transaction.
 - Cross-aggregate references are identifiers only. A Domain class never holds a live object reference into another aggregate; it holds an ID and resolves it, when needed, through that aggregate's own Repository or Contract.
 - Internal entities (Registration Decision, Clinic Owner Authority, Clinic Location, Practitioner Profile, Website Content, Availability Schedule, Availability Exception, Onboarding Task, Website Designer Assignment, Invoice) are only ever constructed, mutated, and persisted through their owning Aggregate Root — never independently instantiated or persisted by another class.
@@ -142,7 +142,7 @@ Terms 14_DOMAIN_MODEL.md's Domain Language Rules warn must not be used interchan
 
 This document does not redefine folder structure — [24_FOLDER_STRUCTURE.md](./24_FOLDER_STRUCTURE.md) remains authoritative. The rules restated here are the ones most frequently relevant during day-to-day coding:
 
-- Every class lives under `app/Modules/<Context>/<Layer>/`, where `<Context>` is one of the ten bounded-context module shells and `<Layer>` is exactly one of `Application/`, `Contracts/`, `Domain/`, `Infrastructure/`, or `Presentation/`.
+- Every class lives under `app/Modules/<Context>/<Layer>/`, where `<Context>` is one of the twelve bounded-context module shells and `<Layer>` is exactly one of `Application/`, `Contracts/`, `Domain/`, `Infrastructure/`, or `Presentation/`.
 - An Aggregate-specific subfolder (`Domain/Aggregates/<ApprovedAggregateRoot>/`) is created only when implementation of that specific aggregate begins and will contain legitimate files in the same change — never scaffolded speculatively (24_FOLDER_STRUCTURE.md's Aggregate Folder Rules).
 - No `Common/`, `Shared/`, `Helpers/`, `Misc/`, or `Utils/` folder is created at any level, at the top of the repository or inside a module. A broadly reusable concept still needs a named owner and a narrow responsibility.
 - No `.gitkeep` file is added merely to preserve a speculative empty folder.

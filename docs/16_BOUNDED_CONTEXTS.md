@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [Document Authority](#document-authority)
+- [Implementation Alignment Status](#implementation-alignment-status)
 - [Purpose and Method](#purpose-and-method)
 - [Candidate Context Evaluation](#candidate-context-evaluation)
 - [Final Bounded Context Set](#final-bounded-context-set)
@@ -25,11 +26,22 @@
 
 ## Document Authority
 
-This document defines the Bounded Contexts of Syifa.my for Phase 1. It is authoritative for context boundaries, ownership, and cross-context contracts at the business level. It does not define storage, services, deployment topology, database tables, or an entity-relationship model — those remain governed by [03_SYSTEM_ARCHITECTURE.md](./03_SYSTEM_ARCHITECTURE.md), [04_DATABASE_STRATEGY.md](./04_DATABASE_STRATEGY.md), [13_FOLDER_STRUCTURE.md](./13_FOLDER_STRUCTURE.md), and future ADRs.
+This document defines the Bounded Contexts of Syifa.my for Phase 1. It is authoritative for context boundaries, ownership, and cross-context contracts at the business level. It does not define storage, services, deployment topology, database tables, or an entity-relationship model — those remain governed by [03_SYSTEM_ARCHITECTURE.md](./03_SYSTEM_ARCHITECTURE.md), [04_DATABASE_STRATEGY.md](./04_DATABASE_STRATEGY.md), [13_FOLDER_STRUCTURE.md](./13_FOLDER_STRUCTURE.md), and ADRs.
 
 If this document conflicts with [01_PRODUCT_VISION.md](./01_PRODUCT_VISION.md), [02_MVP_SCOPE.md](./02_MVP_SCOPE.md), [ADR-001](./decisions/ADR-001-Architecture-Principles.md), [ADR-002](./decisions/ADR-002-Multi-Tenant-Strategy.md), or [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md), the higher authority prevails and this document must be corrected. This document refines, rather than replaces, the "Bounded Context Proposal" already sketched in 14_DOMAIN_MODEL.md; where the two differ, the reasoning here supersedes the earlier sketch because it was produced with an explicit evaluation mandate.
 
-A note on source completeness: this brief asked for `docs/15_DOMAIN_CLASSIFICATION.md` to be read as an input. That file does not exist in the repository at the time of writing. The Entity Catalogue's three-part ownership model ("Ownership," "Who owns it," "What module owns it") and the "Bounded Context Proposal," "Aggregate Root Candidates," and "Future Expansion Candidates" sections of 14_DOMAIN_MODEL.md already carry most of what a domain classification register would provide, so this document applies standard DDD Core/Supporting/Generic classification inline per context rather than blocking on a missing artifact. If `15_DOMAIN_CLASSIFICATION.md` is produced later, it must be reconciled against the classifications stated here.
+A note on document history: an earlier revision of this document was written before [15_DOMAIN_CLASSIFICATION.md](./15_DOMAIN_CLASSIFICATION.md) existed. That historical note is superseded; the classification audit now exists and remains part of the governance record.
+
+## Implementation Alignment Status
+
+**Status: Current as of SYIFA-085A.** This document has been aligned with the implemented modular-monolith architecture at commit `dfb677b`. The implementation-established bounded-context modules are accepted unless a future ADR supersedes this registry.
+
+The earlier ten-context registry is superseded by the twelve-context implementation registry below. The main changes are:
+
+- Clinic Registration is its own bounded context and module; it is no longer owned by Tenant Management.
+- Commercial is its own bounded context and module; it owns the CommercialOffer Aggregate Root and consumes Commercial Catalogue reference data through contracts.
+- Subscription & Billing continues to own Subscription, Payment, and the governed Commercial Catalogue reference-data model. It does not own CommercialOffer.
+- Platform Administration owns Platform Identity and Platform Authorization runtime governance, in addition to Audit Entry and Platform Setting.
 
 ## Purpose and Method
 
@@ -37,71 +49,87 @@ The objective is to divide Syifa.my into bounded contexts with explicit business
 
 The method:
 
-1. Start from the seven locked Phase 1 modules (02_MVP_SCOPE.md) and the entity/module ownership already recorded in 14_DOMAIN_MODEL.md — these are the ground truth, not a blank-slate exercise.
+1. Start from the product capabilities in 02_MVP_SCOPE.md, the entity/module ownership already recorded in 14_DOMAIN_MODEL.md, and the accepted implementation-alignment ADRs — these are the ground truth, not a blank-slate exercise.
 2. Evaluate each of the thirteen candidate contexts named in the brief against that ground truth: does it have its own aggregate root, its own accountable owner, and its own invariant that no other context can safely own? If not, it is merged into the context that already owns that responsibility.
 3. Split a context only when two sub-responsibilities have genuinely different accountable owners, different lifecycles, or different rates of change — never merely because they involve different entities.
-4. Preserve the locked product boundary at every step: no new module, role, or customer-facing capability is introduced. A bounded context is a way of organizing the seven modules and their cross-module governance concepts, not an eighth module.
+4. Preserve the locked product boundary at every step: no new role or customer-facing capability is introduced. A bounded context is a way of organizing product capabilities and cross-module governance concepts, not a license to expand the MVP.
 
 ## Candidate Context Evaluation
 
 | # | Candidate | Disposition | Justification |
 |---|---|---|---|
-| 1 | Tenant Management | **Kept**, broadened to include registration/admission and continuing governance as one context | Both phases operate on the same aggregate (Tenant) and the same accountable owner (Syifa.my governance, per 14_DOMAIN_MODEL.md "Who owns it" for Tenant and Clinic Registration). Splitting them now would fragment one small aggregate's lifecycle across two contexts without evidence that they need independent ownership or scaling. Internal phase separation (Admission vs. Governance) is documented but not treated as a context boundary. |
+| 1 | Tenant Management | **Kept**, narrowed to continuing tenant governance | Implementation has separated Clinic Registration from Tenant Management. Tenant Management owns the Tenant lifecycle and Clinic Owner Authority boundary after registration approval; it no longer owns the intake/review workflow. |
 | 2 | Clinic Management | **Merged into Website Builder** | 02_MVP_SCOPE.md explicitly places "clinic identity, brand assets, contact information, operating hours, locations, practitioners, services... approved page content" inside the Website Builder module's in-scope list. 14_DOMAIN_MODEL.md assigns Clinic's presentation-facing maintenance to Website Builder. There is no evidence of an independent accountable owner or lifecycle for "Clinic Management" distinct from website presentation; treating it as separate would duplicate authority over the same content the Clinic Owner approves once. |
 | 3 | Website Builder | **Kept** as a Core context, narrowed | Confirmed as one of the seven locked modules and a primary product differentiator (Product Vision, Market Differentiation). Narrowed by extracting Template & Theme and Media into their own contexts (see below) because those carry different accountable owners. |
 | 4 | Theme & Template | **Kept**, renamed Template & Design System | Template is platform-owned by Syifa.my Product and Design leadership with a centrally governed lifecycle (proposed → approved → retired) independent of any one tenant's Website. Theme is tenant-owned but constrained entirely by the selected Template's boundary. This is a supplier relationship, not the same authority as a Clinic Owner approving their own content — it justifies a separate context in a customer-supplier relationship with Website Builder. |
 | 5 | CMS & Content | **Merged into Website Builder** | Website Content, Publication, and Media presentation are explicitly one module in 14_DOMAIN_MODEL.md's Website Experience Context sketch and in 02_MVP_SCOPE.md's Website Builder scope. Publication cannot be a coherent business act if content approval and site publication live in different contexts — the Clinic Owner approves one thing, not two. |
 | 6 | Booking | **Kept** as a Core context | One of the seven locked modules; explicitly the MVP's primary conversion workflow (02_MVP_SCOPE.md, Scope Principles). Owns Clinic Service business behavior per 14_DOMAIN_MODEL.md's module map, resolving the "service duplication" risk the domain model itself flags. |
 | 7 | Customer | **Merged into Subscription & Billing** | 14_DOMAIN_MODEL.md states plainly: "What module owns it: Payments & Subscriptions, established from Clinic Registration." Customer has no independent lifecycle or invariant apart from the commercial relationship it represents. |
-| 8 | Subscription & Billing | **Kept** as a Supporting context, absorbing Customer | Matches the locked Payments & Subscriptions module. Owns Plan, Add-On, Subscription, Entitlement, Invoice, Payment, and now Customer as one commercial aggregate family. |
+| 8 | Subscription & Billing | **Kept** as a Supporting context | Owns Subscription and Payment and the governed Commercial Catalogue reference-data model. It does not own CommercialOffer; checkout snapshots belong to the Commercial context. Add-On remains deferred from active Phase 1 behavior. |
 | 9 | Onboarding | **Kept** as a Core context | Matches the locked Internal Onboarding / Project Management module. This is where the managed-service promise ("Kami uruskan") is actually delivered — a genuine product differentiator, not merely internal tooling. |
 | 10 | Notification | **Kept** as a Generic Supporting context | Matches the locked Email Notifications module. Deliberately generic — 02_MVP_SCOPE.md rejects marketing automation, keeping this context's responsibility narrow and reusable. |
 | 11 | Media | **Kept** as a Generic Supporting context, extracted from Website Builder | Media has its own lifecycle (submitted → reviewed → approved → published/private → retired) independent of Website publication, and is consumed by two different contexts (Website Builder for public presentation, Onboarding for private onboarding assets per 14_DOMAIN_MODEL.md). A shared, generic capability serving two consumers is a textbook case for its own supporting context rather than being owned by either consumer. |
 | 12 | Reporting & Analytics | **Kept** as a Supporting context | Matches the locked Reports & Analytics module. Deliberately downstream-only: it must never become a second source of transactional truth (14_DOMAIN_MODEL.md, "Reports becoming transactional truth" risk). |
 | 13 | Platform Administration | **Kept** as a Supporting/Generic context | Matches 14_DOMAIN_MODEL.md's Accountability Context (Audit Log, Activity Log, Platform Setting, System Setting) plus the Super Admin privileged, cross-tenant pathways described throughout ADR-002. This is not the same authority as Tenant Management's ordinary tenant lifecycle — it is explicitly the *exception* pathway that must stay separate from ordinary Clinic Owner pathways (ADR-002, Security Invariant 19). |
 
-Net result: thirteen candidates evaluated, three absorbed (Clinic Management, CMS & Content, Customer) into contexts that already carried their accountable ownership, ten contexts retained as the final set.
+Net result after implementation alignment: twelve bounded contexts are retained as the official Phase 1 set.
 
 ## Final Bounded Context Set
 
 | Context | Classification | Locked module(s) it corresponds to |
 |---|---|---|
-| Tenant Management | Core | Clinic Registration, plus cross-module tenant governance |
+| Clinic Registration | Core | Clinic Registration |
+| Tenant Management | Core | Tenant boundary and continuing tenant governance |
 | Website Builder | Core | Website Builder |
 | Template & Design System | Core (product differentiator, platform-owned) | Website Builder (Template/Theme sub-scope) |
 | Media & Asset Management | Generic Supporting | Website Builder / Onboarding (shared sub-scope) |
 | Booking | Core | Booking System |
 | Subscription & Billing | Supporting | Payments & Subscriptions |
+| Commercial | Supporting | Checkout preparation, CommercialOffer snapshots, commercial selection orchestration |
 | Onboarding | Core | Internal Onboarding / Project Management |
 | Notification | Generic Supporting | Email Notifications |
 | Reporting & Analytics | Supporting | Reports & Analytics |
-| Platform Administration | Supporting/Generic (governance) | Cross-module governance (Activity Log, Audit Log, Platform Setting, Super Admin) |
+| Platform Administration | Supporting/Generic (governance) | Cross-module governance (Platform Identity, Platform Authorization, Activity Log, Audit Log, Platform Setting, Super Admin) |
 
-No context introduces an eighth customer-facing module, a fifth role, or a capability outside the locked MVP scope. Template & Design System, Media & Asset Management, and Platform Administration are internal refinements of existing module ownership, not new product surfaces.
+No context introduces a fifth role or a capability outside the locked MVP scope. Commercial is a checkout-preparation boundary, not Payment, Subscription activation, Invoice, renewal, or Tenant provisioning.
+
+## Clinic Registration Context
+
+**Purpose.** Core context. Owns the prospective-clinic intake, review, decision, and transition trigger that precedes Tenant provisioning.
+
+**Responsibilities.** Captures registration request information, manages the registration lifecycle, records review decisions, and emits the approved handoff into the Provisioning Orchestrator. It does not own continuing Tenant lifecycle governance after successful transition.
+
+**Owned Entities.** Clinic Registration and its composed decision/history records.
+
+**Aggregate Roots.** Clinic Registration.
+
+**Dependencies.** Depends on Platform Administration for authenticated Super Admin review authority and audit. Publishes approved handoff events for provisioning orchestration.
+
+**Invariants.** One approved registration may transition into provisioning only once. Registration approval is not medical credentialing and does not itself activate a Tenant.
 
 ---
 
 ## 1. Tenant Management Context
 
-**Purpose.** Core context. Establishes and protects the one stable security, ownership, and accountability boundary — the Tenant — that every other context depends on. Covers both the admission workflow (a prospective clinic becoming an approved Tenant) and the continuing governance of that boundary (lifecycle state, Clinic Owner authority) for as long as the Tenant exists.
+**Purpose.** Core context. Protects the stable security, ownership, and accountability boundary — the Tenant — that every other context depends on after registration approval. Clinic Registration owns admission before this boundary exists.
 
-**Responsibilities.** Intake and review of Clinic Registration; recording Registration Decisions; provisioning the Tenant, its initial Clinic profile stub, its Customer record, and its first Clinic Owner Authority on approval; maintaining Tenant lifecycle state (provisioning, active, suspended, reactivated, offboarding, deleted/anonymized); establishing, transferring, restricting, and revoking Clinic Owner Authority; preventing duplicate or unauthorized Tenant creation.
+**Responsibilities.** Maintains Tenant lifecycle state (provisioning, active, suspended, reactivated, offboarding, deleted/anonymized); establishes, transfers, restricts, and revokes Clinic Owner Authority; protects tenant-scoped identity and ownership invariants; prevents duplicate or unauthorized Tenant activation.
 
-**Owned Entities.** Clinic Registration, Registration Decision, Tenant, Clinic Owner Authority. (Clinic itself is established here but its ongoing presentation content is owned downstream by Website Builder — see Dependencies.)
+**Owned Entities.** Tenant and Clinic Owner Authority. Clinic Registration and Registration Decision are owned by the Clinic Registration context.
 
-**Aggregate Roots.** Clinic Registration (for the admission workflow, ending at approval/rejection/withdrawal). Tenant (for the boundary, lifecycle, and authority relationships, active for the Tenant's entire life).
+**Aggregate Roots.** Tenant.
 
-**Events Produced.** Clinic Registration Submitted; Clinic Registration Correction Requested; Clinic Registration Approved; Clinic Registration Rejected; Tenant Provisioned; Clinic Owner Authority Established; Clinic Owner Authority Transferred; Clinic Owner Authority Revoked; Tenant Activated; Tenant Suspended; Tenant Reactivated; Tenant Offboarding Started; Tenant Deleted or Anonymized.
+**Events Produced.** Tenant Provisioned; Clinic Owner Authority Established; Clinic Owner Authority Transferred; Clinic Owner Authority Revoked; Tenant Activated; Tenant Suspended; Tenant Reactivated; Tenant Offboarding Started; Tenant Deleted or Anonymized.
 
 **Events Consumed.** Subscription Activated / Subscription Payment Restricted / Subscription Expired / Subscription Cancelled (from Subscription & Billing — informs whether commercial preconditions for Tenant Activation are met, and whether suspension or offboarding should begin); Launch Readiness Achieved (from Onboarding — informational only; it does not by itself change Tenant lifecycle state, per ADR-002's rule that Tenant lifecycle and Subscription lifecycle are related but not interchangeable).
 
-**Dependencies.** Upstream of every other context — no other context can act until a Tenant exists and is resolved. Depends on Subscription & Billing to know whether commercial preconditions for activation are satisfied. Depends on Platform Administration for the audit trail of registration decisions and privileged lifecycle actions (Super Admin approve/reject/suspend).
+**Dependencies.** Upstream of tenant-scoped contexts after registration approval — no tenant-scoped context can act until a Tenant exists and is resolved. Depends on the Provisioning Orchestrator for admission handoff, Commercial/Payment/Subscription outcomes for activation prerequisites, and Platform Administration for privileged lifecycle authority and audit.
 
-**Public Interfaces (conceptual).** Submit Clinic Registration; Request Registration Correction; Decide Registration (Super Admin); Resolve Tenant Context(host, identity, or job payload) → Tenant identity + lifecycle state; Check Clinic Owner Authority(person, tenant) → active/inactive; Establish/Transfer/Revoke Clinic Owner Authority (privileged). Exact contracts belong to [12_API_STANDARD.md](./12_API_STANDARD.md).
+**Public Interfaces (conceptual).** Resolve Tenant Context(host, identity, or job payload) → Tenant identity + lifecycle state; Check Clinic Owner Authority(person, tenant) → active/inactive; Establish/Transfer/Revoke Clinic Owner Authority (privileged). Exact contracts belong to [12_API_STANDARD.md](./12_API_STANDARD.md).
 
 **Invariants.** A Tenant identifier never changes when clinic name, domain, owner, or subscription changes (ADR-002). Exactly one approved Registration produces exactly one Tenant — repeated transition attempts must not create duplicates. Clinic Owner Authority for one Tenant never implies authority for another, even for the same person. Registration approval is never treated as medical credentialing or regulatory endorsement.
 
-**Business Rules.** Only an authorized Super Admin may decide a Registration. A Tenant may exist in a non-public provisioning state before any other context is permitted to act on it. Suspension denies new tenant-changing and public booking activity by default and must never silently delete data. Missing or conflicting tenant context anywhere in the platform fails closed, not open (ADR-002, Security Invariant 4–5) — this context is the sole source of truth for what "the tenant" means.
+**Business Rules.** A Tenant may exist in a non-public provisioning state before any other context is permitted to act on it. Suspension denies new tenant-changing and public booking activity by default and must never silently delete data. Missing or conflicting tenant context anywhere in the platform fails closed, not open (ADR-002, Security Invariant 4–5) — this context is the sole source of truth for what "the tenant" means.
 
 **Future Expansion.** More than one accountable Clinic Owner per Tenant; one legal Customer purchasing for several Tenants; franchise, parent-child, or reseller hierarchies. All are explicitly out of Phase 1 (14_DOMAIN_MODEL.md, Future Expansion Candidates) and require Product Vision and scope review before any domain redesign here.
 
@@ -223,7 +251,7 @@ No context introduces an eighth customer-facing module, a fifth role, or a capab
 
 **Events Produced.** Subscription Created; Subscription Activated; Payment Succeeded; Payment Failed; Payment Action Required; Subscription Renewal Due; Subscription Cancelled; Subscription Expired; Subscription Suspended; Subscription Reactivated; Entitlement Changed.
 
-**Events Consumed.** Clinic Registration Approved (from Tenant Management — establishes the Customer and the eligibility to present a Plan); Tenant Offboarding Started (from Tenant Management — triggers commercial offboarding steps).
+**Events Consumed.** Clinic Registration Approved (from Clinic Registration — establishes eligibility for commercial checkout preparation); Tenant Offboarding Started (from Tenant Management — triggers commercial offboarding steps).
 
 **Dependencies.** Depends on Tenant Management for the Tenant and Customer relationship to attach to. Every other capability-gated context (Website Builder, Booking) depends on this context's Entitlement output, but this context does not depend on them — Entitlement is published downstream only.
 
@@ -234,6 +262,32 @@ No context introduces an eighth customer-facing module, a fifth role, or a capab
 **Business Rules.** Entitlement never grants a participant authority — it only gates capability availability, and authorization is always evaluated separately (ADR-002, Security Invariant 15). A Clinic Owner may select, pay, renew, or cancel within policy; only Super Admin may perform controlled commercial actions beyond that. Phase 1 assumes one Plan family and no usage-based pricing.
 
 **Future Expansion.** Multiple plan families, usage-based billing, discount campaigns, and a broader Add-On catalogue. 14_DOMAIN_MODEL.md flags that Invoice and Add-On themselves are provisional Phase 1 concepts pending confirmation of the approved payment model — this context should not assume either is fully in scope without that confirmation.
+
+---
+
+## Commercial Context
+
+**Purpose.** Supporting commercial-orchestration context. Prepares a short-lived CommercialOffer checkout snapshot from governed commercial reference data before Payment, Subscription activation, Tenant provisioning, and Internal Onboarding proceed.
+
+**Responsibilities.** Lists available commercial offers for authenticated platform operators, prepares a CommercialOffer snapshot for a clinic registration, exposes the current prepared offer, cancels prepared offers, expires stale offers, and marks an offer consumed by an approved downstream Payment workflow. It does not execute payment, activate subscriptions, provision tenants, or publish websites.
+
+**Owned Entities.** CommercialOffer and its composed line items / checkout snapshot.
+
+**Aggregate Roots.** CommercialOffer.
+
+**Events Produced.** Commercial Offer Prepared; Commercial Offer Cancelled; Commercial Offer Expired; Commercial Offer Consumed.
+
+**Events Consumed.** Clinic Registration Approved or equivalent provisioning handoff; Commercial Catalogue reference-data availability from Subscription & Billing; Payment consumption acknowledgement from the future Payment workflow.
+
+**Dependencies.** Depends on Platform Administration for authenticated Platform Principal identity, platform authorization, and audit. Depends on Subscription & Billing only through reference-data contracts for Plan, Billing Cycle, Pricing, and Plan Offering. Depends on Clinic Registration by identifier only.
+
+**Public Interfaces (conceptual).** List Available Commercial Offers; Prepare Commercial Offer; View Current Commercial Offer; Get Commercial Offer; Cancel Commercial Offer; Mark Commercial Offer Consumed (trusted downstream boundary only).
+
+**Invariants.** CommercialOffer is an immutable checkout snapshot except for lifecycle transitions. It expires after 30 minutes. Only one current prepared offer may exist for the relevant platform actor scope at a time. CommercialOffer never becomes Payment, Invoice, Subscription, Renewal, Coupon, Promotion, Tax, or Tenant Provisioning.
+
+**Business Rules.** Commercial APIs require authenticated Platform Identity. Customer-facing public catalogue browsing is not approved. Add-On vocabulary may remain in governance language, but Add-On checkout behavior is disabled for Phase 1.
+
+**Future Expansion.** Payment may consume CommercialOffer as the checkout snapshot. Any future public browsing, promotions, discounts, tax, optional services, or customer self-service checkout requires separate product and architecture approval.
 
 ---
 
@@ -275,7 +329,7 @@ No context introduces an eighth customer-facing module, a fifth role, or a capab
 
 **Events Produced.** Notification Queued; Notification Sent; Notification Delivered; Notification Delayed; Notification Failed; Notification Suppressed.
 
-**Events Consumed.** Clinic Registration Approved/Rejected, Tenant Suspended (Tenant Management); Website Approval Requested/Granted, Onboarding Job Completed (Onboarding); Subscription Activated, Payment Failed, Payment Action Required (Subscription & Billing); Booking Submitted, Booking Confirmed, Booking Changed, Booking Cancelled (Booking); Website Published (Website Builder). This context is intentionally downstream of every other context — it originates no business truth of its own.
+**Events Consumed.** Clinic Registration Approved/Rejected (Clinic Registration), Tenant Suspended (Tenant Management); Commercial Offer Prepared/Cancelled/Expired/Consumed (Commercial); Website Approval Requested/Granted, Onboarding Job Completed (Onboarding); Subscription Activated, Payment Failed, Payment Action Required (Subscription & Billing); Booking Submitted, Booking Confirmed, Booking Changed, Booking Cancelled (Booking); Website Published (Website Builder). This context is intentionally downstream of every other context — it originates no business truth of its own.
 
 **Dependencies.** Depends on every context that can trigger a transactional event, but none of them depend back on this context for correctness — a failed notification must never block or reverse the business event that triggered it.
 
@@ -317,25 +371,25 @@ No context introduces an eighth customer-facing module, a fifth role, or a capab
 
 ## 10. Platform Administration Context
 
-**Purpose.** Supporting/generic governance context. Owns the privileged, cross-tenant pathway that Super Admin uses, and the accountability evidence (Audit Log), human-readable history (Activity Log), and service-wide policy (Platform Setting, provisional System Setting) that no single customer-facing module can safely own itself.
+**Purpose.** Supporting/generic governance context. Owns platform workforce identity, platform authorization runtime, the privileged cross-tenant pathway that Super Admin uses, and the accountability evidence (Audit Log), human-readable history (Activity Log), and service-wide policy (Platform Setting, provisional System Setting) that no single customer-facing module can safely own itself.
 
-**Responsibilities.** Providing the explicit, purpose-limited, audited entry point for cross-tenant Super Admin actions; recording protected Audit evidence for security-sensitive, privileged, lifecycle, commercial, and approval actions across all contexts; maintaining tenant-scoped, human-readable Activity Log summaries derived from other contexts' events; holding approved service-wide Platform Settings and evaluating whether the provisional System Setting concept should be retained at all.
+**Responsibilities.** Maintaining Platform Identity records for Super Admin and Website Designer workforce participants; resolving PlatformPrincipal from authenticated browser sessions; providing the explicit, purpose-limited, audited authorization runtime for cross-tenant Super Admin actions; recording protected Audit evidence for security-sensitive, privileged, lifecycle, commercial, and approval actions across all contexts; maintaining tenant-scoped, human-readable Activity Log summaries derived from other contexts' events; holding approved service-wide Platform Settings and evaluating whether the provisional System Setting concept should be retained at all.
 
-**Owned Entities.** Activity Log, Audit Log, Platform Setting, System Setting (provisional — 14_DOMAIN_MODEL.md flags this concept for removal if it cannot demonstrate independent business meaning from Platform Setting).
+**Owned Entities.** Platform Identity, Platform Principal (runtime representation), Platform Authorization grants/categories/permissions, Activity Log, Audit Log, Platform Setting, System Setting (provisional — 14_DOMAIN_MODEL.md flags this concept for removal if it cannot demonstrate independent business meaning from Platform Setting).
 
 **Aggregate Roots.** Audit Log (append-only accountability ledger — a role this document adds to 14_DOMAIN_MODEL.md's Aggregate Root Candidates list, since that list did not name a root for the Accountability Context). Platform Setting (service-wide policy record).
 
-**Events Produced.** Privileged Action Recorded; Platform Setting Changed; System Setting Activated/Expired (provisional).
+**Events Produced.** Platform Login Succeeded; Platform Login Failed; Platform Logout Succeeded; Platform Authorization Denied; Privileged Action Recorded; Platform Setting Changed; System Setting Activated/Expired (provisional).
 
 **Events Consumed.** Every privileged or lifecycle-sensitive event from every other context (Tenant suspension, Website Designer assignment/revocation, Subscription commercial actions, Booking corrections, domain detachment, exports, deletions). This context is a universal downstream subscriber for accountability purposes — but, symmetrically with Reporting & Analytics, nothing may treat its Activity Log as authoritative business truth; it is derived history only.
 
 **Dependencies.** Depends on every other context as an event source. No context should depend on Platform Administration to perform its own ordinary business logic — only Tenant Management's privileged (Super Admin) actions and any cross-tenant exception pathway route through here.
 
-**Public Interfaces (conceptual).** Enter Privileged Context(operator, permission, purpose, target) → scoped, audited session; Record Audit Event(actor, action, tenant scope, outcome); Get Activity Log(tenant); Get Audit Log(scope) — privileged, reviewable; Get/Set Platform Setting(key) — explicitly authorized participants only.
+**Public Interfaces (conceptual).** Authenticate Platform Session; Resolve Platform Principal; Authorize Platform Action(actor, category, permission, target); Record Audit Event(actor, action, tenant scope, outcome); Get Activity Log(tenant); Get Audit Log(scope) — privileged, reviewable; Get/Set Platform Setting(key) — explicitly authorized participants only.
 
 **Invariants.** No ordinary participant may rewrite or silently delete Audit history. Audit access is itself auditable. A Platform Setting can never bypass tenant isolation, authorization, Product Vision, or locked MVP scope (14_DOMAIN_MODEL.md). Privileged platform pathways are structurally separate from Clinic Owner pathways and must never silently reuse them (ADR-002, Security Invariant 19).
 
-**Business Rules.** Super Admin authority must be explicit, purpose-limited, observable, revocable, and audited for every cross-tenant action — it is never implicit tenant membership. Activity Log may summarize other contexts' lifecycle events but is never a substitute for security-grade Audit evidence. Material Platform Setting changes require accountable review and Audit evidence of their own.
+**Business Rules.** Platform Identity is never Tenant-owned. Super Admin and Website Designer identities belong to Platform Administration; tenant access is granted through assignments and authorization, not by copying identities into Tenants. Super Admin authority must be explicit, purpose-limited, observable, revocable, and audited for every cross-tenant action — it is never implicit tenant membership. Activity Log may summarize other contexts' lifecycle events but is never a substitute for security-grade Audit evidence. Material Platform Setting changes require accountable review and Audit evidence of their own.
 
 **Future Expansion.** Formal impersonation tooling is explicitly not approved by ADR-002 and would require its own security decision (visible indication, prohibited actions, consent, audit, duration, revocation) before this context could support it.
 
@@ -354,19 +408,33 @@ Text-only, organized around the Core MVP Journey (02_MVP_SCOPE.md). Arrows show 
                                          │ privileged entry only
                                          │
   Clinic Owner ──submits──► ┌───────────────────────────┐
+                             │   CLINIC REGISTRATION     │
+                             │ (intake → review →        │
+                             │  approval handoff)        │
+                             └─────────────┬─────────────┘
+                                           │ approved handoff
+                                           ▼
+                             ┌───────────────────────────┐
                              │      TENANT MANAGEMENT     │
-                             │ (Registration → Tenant →   │
-                             │  Owner Authority → Lifecycle)│
-                             └──────┬──────────┬──────────┘
-                                    │ tenant    │ eligibility
-                                    │ resolved  │ established
+                             │ (Tenant → Owner Authority │
+                             │  → Lifecycle)             │
+                             └──────┬──────────┬─────────┘
+                                    │ tenant    │ commercial
+                                    │ resolved  │ eligibility
                                     ▼           ▼
                      ┌───────────────────┐  ┌───────────────────────┐
-                     │ SUBSCRIPTION &     │  │      ONBOARDING        │
-                     │ BILLING            │◄─┤ (Designer assigned,    │
-                     │ (Plan, Entitlement,│  │  Tasks, Approval,       │
-                     │  Payment)          │  │  Launch Readiness)      │
-                     └─────────┬──────────┘  └───┬────────┬───────┬───┘
+                     │    COMMERCIAL      │  │ SUBSCRIPTION & BILLING │
+                     │ (CommercialOffer   │─►│ (Plan, Entitlement,    │
+                     │  checkout snapshot)│  │  Payment)              │
+                     └─────────┬──────────┘  └──────────┬────────────┘
+                               │ consumed               │ subscription active
+                               ▼                        ▼
+                                      ┌───────────────────────┐
+                                      │      ONBOARDING        │
+                                      │ (Designer assigned,    │
+                                      │  Tasks, Approval,      │
+                                      │  Launch Readiness)     │
+                                      └───┬────────┬───────┬───┘
                      entitlement gates            │        │       │
                      checked by ▼                 ▼        ▼       ▼
         ┌─────────────────────────┐   ┌──────────────┐ ┌─────────────────┐
@@ -391,24 +459,26 @@ Text-only, organized around the Core MVP Journey (02_MVP_SCOPE.md). Arrows show 
                                                               Designer dashboards)
 ```
 
-Key reading notes: Tenant Management is upstream of everything — no context acts before a Tenant is resolved. Subscription & Billing publishes Entitlement downstream to Website Builder and Booking but never depends on them. Website Builder and Booking depend on each other in one narrow, explicit way each (public host resolution one way, Clinic Service read model the other) — this is the platform's tightest legitimate coupling, not a design flaw. Onboarding is the only context that legitimately reads evidence from nearly all others. Notification and Reporting & Analytics are leaves: many contexts feed them, they feed nothing back into business logic. Platform Administration sits beside the diagram, not inside the customer journey — it is entered explicitly, never traversed implicitly.
+Key reading notes: Clinic Registration owns intake before a Tenant exists. Tenant Management is upstream of tenant-scoped work after registration approval. Commercial prepares the CommercialOffer checkout snapshot before Payment and Subscription proceed. Subscription & Billing publishes Entitlement downstream to Website Builder and Booking but never depends on them. Website Builder and Booking depend on each other in one narrow, explicit way each (public host resolution one way, Clinic Service read model the other) — this is the platform's tightest legitimate coupling, not a design flaw. Onboarding is the only context that legitimately reads evidence from nearly all others. Notification and Reporting & Analytics are leaves: many contexts feed them, they feed nothing back into business logic. Platform Administration sits beside the diagram, not inside the customer journey — it is entered explicitly, never traversed implicitly.
 
 ## Dependency Matrix
 
 `→` = depends on (consumer → supplier). Cells left blank indicate no direct dependency is expected.
 
-| Consumer ↓ / Supplier → | Tenant Mgmt | Website Builder | Template & Design | Media | Booking | Subscription & Billing | Onboarding | Notification | Reporting | Platform Admin |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Tenant Management | — | | | | | → | | | | → (audit) |
-| Website Builder | → | — | → | → | → | → | → (approval) | | | |
-| Template & Design System | | | — | | | | | | | |
-| Media & Asset Management | → | | → | — | | | → (context) | | | |
-| Booking | → | → | | | — | → | | | | |
-| Subscription & Billing | → | | | | | — | | | | |
-| Onboarding | → | → | → | → | → | → | — | | | |
-| Notification | → | → | | | → | → | → | — | | |
-| Reporting & Analytics | → | → | | | → | → | → | → | — | → (privileged reads) |
-| Platform Administration | → (privileged) | → (audit) | | | → (audit) | → (audit) | → (audit) | → (audit) | | — |
+| Consumer ↓ / Supplier → | Clinic Reg | Tenant Mgmt | Commercial | Website Builder | Template & Design | Media | Booking | Subscription & Billing | Onboarding | Notification | Reporting | Platform Admin |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Clinic Registration | — | | | | | | | | | | | → (auth/audit) |
+| Tenant Management | → (handoff) | — | | | | | | → | | | | → (audit) |
+| Commercial | → | | — | | | | | → (reference data) | | | | → (auth/audit) |
+| Website Builder | | → | | — | → | → | → | → | → (approval) | | | |
+| Template & Design System | | | | | — | | | | | | | |
+| Media & Asset Management | | → | | | → | — | | | → (context) | | | |
+| Booking | | → | | → | | | — | → | | | | |
+| Subscription & Billing | | → | → (offer consumed) | | | | | — | | | | |
+| Onboarding | → | → | → | → | → | → | → | → | — | | | |
+| Notification | → | → | → | → | | | → | → | → | — | | |
+| Reporting & Analytics | → | → | → | → | | | → | → | → | → | — | → (privileged reads) |
+| Platform Administration | → (audit) | → (privileged/audit) | → (audit) | → (audit) | | | → (audit) | → (audit) | → (audit) | → (audit) | | — |
 
 Reading the matrix: Tenant Management is depended on by every other context and depends on almost none of them — the textbook shape of a foundational upstream context. Template & Design System has the fewest inbound dependencies to manage but the widest blast radius when it changes, because Website Builder and (transitively) Onboarding depend on it. Reporting & Analytics and Notification are pure downstream consumers with nothing depending on them, which is intentional and should be preserved.
 
@@ -416,7 +486,7 @@ Reading the matrix: Tenant Management is depended on by every other context and 
 
 **Tightest legitimate coupling: Website Builder ↔ Booking.** Each depends on the other — Website Builder needs Booking's Clinic Service read model to display services and booking calls to action; Booking needs Website Builder's resolved public host to establish tenant context for a Public Visitor's booking attempt. This is acceptable because each direction is narrow (one read model, one resolved identity) and one-directional in *authority* even though bidirectional in *data flow*: Booking is always authoritative for service meaning, Website Builder is always authoritative for public routing. Any future change that lets Website Builder write Clinic Service data, or lets Booking write Website Content, would collapse this into an unsafe shared-kernel relationship and should be rejected.
 
-**Highest fan-in: Tenant Management.** Nine of ten contexts depend on it directly. This is expected and correct — it is the security boundary ADR-002 requires every context to resolve before acting. The risk is not that other contexts depend on it, but that a future implementation might let some context cache or infer tenant identity instead of resolving it fresh each time, which ADR-002 already prohibits (Security Invariant 17).
+**Highest fan-in: Tenant Management.** Most tenant-scoped contexts depend on it directly. This is expected and correct — it is the security boundary ADR-002 requires every tenant-scoped context to resolve before acting. The risk is not that other contexts depend on it, but that a future implementation might let some context cache or infer tenant identity instead of resolving it fresh each time, which ADR-002 already prohibits (Security Invariant 17).
 
 **Highest fan-out: Onboarding.** It legitimately reads from six other contexts to assess Launch Readiness. The risk here is scope creep — if Onboarding starts writing to those contexts instead of reading their published evidence, it becomes a shadow authority over work that Website Builder, Booking, Template & Design System, and Subscription & Billing are each individually accountable for. Its interface must stay read/aggregate-only against those contexts.
 
@@ -430,7 +500,7 @@ Reading the matrix: Tenant Management is depended on by every other context and 
 
 These are logical boundary recommendations for later architecture and folder-structure work (13_FOLDER_STRUCTURE.md), not a physical-deployment decision — ADR-001 explicitly defers runtime composition and physical distribution.
 
-1. Each of the ten contexts should correspond to one clearly named logical module with a single owning team responsibility, even while all ten run inside one shared application per ADR-002's Phase 1 default topology.
+1. Each of the twelve contexts should correspond to one clearly named logical module with a single owning team responsibility, even while all twelve run inside one shared application per ADR-002's Phase 1 default topology.
 2. Tenant Management's Resolve Tenant Context interface should be the one place every other module obtains tenant identity — no module should independently infer tenant identity from a domain, session, or object reference, per ADR-002.
 3. Template & Design System and Media & Asset Management should be structured as internal shared/supporting modules consumed by Website Builder and Onboarding, not folded into Website Builder's own module — their different accountable owners (platform design governance vs. tenant Clinic Owner) should stay visible in the module boundary even though today they ship together.
 4. Booking's Clinic Service ownership must be structurally protected from Website Builder writing to it directly — the module boundary should expose only a read projection to Website Builder, enforcing the "one authoritative service meaning" rule 14_DOMAIN_MODEL.md calls for.
@@ -453,7 +523,7 @@ These are logical boundary recommendations for later architecture and folder-str
 
 ## CTO Recommendations
 
-1. **Approve this context set before any physical architecture work begins.** Persistence topology (ADR-002), API design (12_API_STANDARD.md), and folder structure (13_FOLDER_STRUCTURE.md) should all be evaluated against these ten contexts rather than against the seven-module list alone, since three of the ten (Template & Design System, Media & Asset Management, Platform Administration) carry ownership distinctions the module list alone does not surface.
+1. **Use this context set for all physical architecture work.** Persistence topology (ADR-002), API design (12_API_STANDARD.md), and folder structure (13_FOLDER_STRUCTURE.md) should all be evaluated against these twelve contexts rather than against the seven product-capability modules alone, since several contexts carry ownership distinctions the product-scope list alone does not surface.
 2. **Resolve the open aggregate-root question for Booking before implementation.** 14_DOMAIN_MODEL.md leaves whether Clinic Service or Service Setup is the true root open; this document inherits that gap and it should not reach engineering unresolved, since it directly affects how the Website Builder ↔ Booking coupling is implemented.
 3. **Treat the Website Builder ↔ Booking coupling as a designed exception, not a pattern to repeat.** It is the only bidirectional dependency in the matrix and should stay that way — any future context proposal with two-way dependencies should be challenged with the same scrutiny applied here.
 4. **Require an explicit interface contract for Subscription & Billing's Entitlement check before Website Builder or Booking implementation begins**, since both depend on it for a locked first-class capability (02_MVP_SCOPE.md) and independent reimplementation is the most likely source of entitlement-enforcement drift.

@@ -1,5 +1,9 @@
 # ADR-002: Multi-Tenant Strategy
 
+## Implementation Alignment Note
+
+SYIFA-085A preserves this ADR's tenant-isolation strategy. References below to the original seven Phase 1 modules are product-scope references from MVP governance, not the current bounded-context module-directory registry. Platform Identity placement is now governed by [ADR-005](./ADR-005-Platform-Identity.md): Super Admin and Website Designer are Platform Identities owned by Platform Administration, never Tenant-owned identities.
+
 ## Status
 
 **Accepted**

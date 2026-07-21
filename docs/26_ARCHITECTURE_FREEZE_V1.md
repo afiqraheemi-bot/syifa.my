@@ -40,10 +40,10 @@ The decisions listed below are the stable foundation that implementation work ma
 | Domain | [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md), [15_DOMAIN_CLASSIFICATION.md](./15_DOMAIN_CLASSIFICATION.md), [16_BOUNDED_CONTEXTS.md](./16_BOUNDED_CONTEXTS.md), [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md), [23_AGGREGATE_ROOT_VALIDATION.md](./23_AGGREGATE_ROOT_VALIDATION.md), [22_ERD.md](./22_ERD.md) |
 | Architecture | [03_SYSTEM_ARCHITECTURE.md](./03_SYSTEM_ARCHITECTURE.md), [13_FOLDER_STRUCTURE.md](./13_FOLDER_STRUCTURE.md), [24_FOLDER_STRUCTURE.md](./24_FOLDER_STRUCTURE.md) |
 | Data | [19_DATABASE_STRATEGY.md](./19_DATABASE_STRATEGY.md) (Draft — see [Documents Still Requiring CTO Approval](#documents-still-requiring-cto-approval)) |
-| Commercial Catalogue | [28_COMMERCIAL_CATALOGUE_SPECIFICATION.md](./28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) (Accepted — CTO Approved, 2026-07-14; one precondition remains open for lifetime activation specifically — see [Documents Still Requiring CTO Approval](#documents-still-requiring-cto-approval)) — governs Plan, Billing Option, Plan Offering, and Capability Catalogue as reference data feeding the Subscription Aggregate; introduces no new Aggregate Root and no new bounded context |
+| Commercial Catalogue | [28_COMMERCIAL_CATALOGUE_SPECIFICATION.md](./28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) (Accepted — CTO Approved, 2026-07-14; one precondition remains open for lifetime activation specifically — see [Documents Still Requiring CTO Approval](#documents-still-requiring-cto-approval)) — governs Plan, Billing Option, Plan Offering, and Capability Catalogue as reference data feeding the Subscription Aggregate; introduces no new Aggregate Root and no new bounded context for that reference-data family. CommercialOffer is governed separately by ADR-006. |
 | API and Access | [20_API_DESIGN.md](./20_API_DESIGN.md), [21_PERMISSION_MATRIX.md](./21_PERMISSION_MATRIX.md) (both Draft — see below) |
 | Engineering Standard | [25_CODING_STANDARD.md](./25_CODING_STANDARD.md) (Draft — see below) |
-| Decisions | [docs/decisions/](./decisions/) — ADR-001 through ADR-004, all Accepted |
+| Decisions | [docs/decisions/](./decisions/) — see [29_ARCHITECTURE_DECISION_INDEX.md](./29_ARCHITECTURE_DECISION_INDEX.md) for active, superseded, and deprecated decision status |
 | Historical, non-authoritative | [docs/archive/](./archive/) |
 
 This table is a navigation index, not a new statement of scope. Each document's own Document Authority section is the precise, controlling statement of what it owns.
@@ -55,36 +55,41 @@ This table is a navigation index, not a new statement of scope. Each document's 
 | [ADR-001](./decisions/ADR-001-Architecture-Principles.md) | Architecture Principles | Accepted | Chief Technology Officer |
 | [ADR-002](./decisions/ADR-002-Multi-Tenant-Strategy.md) | Multi-Tenant Strategy | Accepted | Chief Technology Officer |
 | [ADR-003](./decisions/ADR-003-Technology-Stack.md) | Technology Stack | Accepted (v1.1) | Chief Technology Officer |
-| [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md) | Aggregate Root Baseline | Accepted | Chief Technology Officer |
+| [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md) | Aggregate Root Baseline | Superseded by ADR-006 for the aggregate registry; retained as historical baseline | Chief Technology Officer |
+| [ADR-005](./decisions/ADR-005-Platform-Identity.md) | Platform Identity | Accepted | Chief Technology Officer |
+| [ADR-006](./decisions/ADR-006-Commercial.md) | Commercial | Accepted | Chief Technology Officer |
+| [ADR-007](./decisions/ADR-007-Provisioning-Orchestrator.md) | Provisioning Orchestrator | Accepted | Chief Technology Officer |
 
 `docs/decisions/` is the sole official location for Architecture Decision Records, per [13_FOLDER_STRUCTURE.md](./13_FOLDER_STRUCTURE.md). No ADR exists outside this directory.
 
 ## Official Bounded Contexts
 
-The ten Phase 1 bounded contexts, per [16_BOUNDED_CONTEXTS.md](./16_BOUNDED_CONTEXTS.md):
+The twelve Phase 1 bounded contexts, per [16_BOUNDED_CONTEXTS.md](./16_BOUNDED_CONTEXTS.md) as aligned with the accepted implementation:
 
-1. Tenant Management
-2. Website Builder
-3. Template & Design System
-4. Media & Asset Management
-5. Booking
-6. Subscription & Billing
-7. Onboarding
-8. Notification
-9. Reporting & Analytics
-10. Platform Administration
+1. Clinic Registration
+2. Tenant Management
+3. Website Builder
+4. Template & Design System
+5. Media & Asset Management
+6. Booking
+7. Subscription & Billing
+8. Commercial
+9. Onboarding
+10. Notification
+11. Reporting & Analytics
+12. Platform Administration
 
-Each is a permanent architecture boundary and a fixed module directory under `app/Modules/`, per [24_FOLDER_STRUCTURE.md](./24_FOLDER_STRUCTURE.md). No eleventh context exists, and none may be added without amending 16_BOUNDED_CONTEXTS.md through the Change-Control Process below.
+Each is a permanent architecture boundary and a fixed module directory under `app/Modules/`, per [24_FOLDER_STRUCTURE.md](./24_FOLDER_STRUCTURE.md). No additional context may be added without amending 16_BOUNDED_CONTEXTS.md through the Change-Control Process below.
 
 ## Official Aggregate Root List
 
-The fifteen Aggregate Roots accepted in [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md), independently confirmed in [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md) and audited in [23_AGGREGATE_ROOT_VALIDATION.md](./23_AGGREGATE_ROOT_VALIDATION.md):
+The sixteen Aggregate Roots accepted for the implementation-aligned Phase 1 baseline. ADR-004 remains the historical fifteen-root baseline; [ADR-006](./decisions/ADR-006-Commercial.md) supersedes it for the current aggregate registry by adding CommercialOffer and moving Clinic Registration ownership to the Clinic Registration context.
 
 | # | Aggregate Root | Owning Bounded Context |
 |---|---|---|
-| 1 | Clinic Registration | Tenant Management |
+| 1 | Clinic Registration | Clinic Registration |
 | 2 | Tenant | Tenant Management |
-| 3 | Clinic | Tenant Management |
+| 3 | Clinic | Website Builder |
 | 4 | Website | Website Builder |
 | 5 | Custom Domain | Website Builder |
 | 6 | Template | Template & Design System |
@@ -93,12 +98,13 @@ The fifteen Aggregate Roots accepted in [ADR-004](./decisions/ADR-004-Aggregate-
 | 9 | Booking | Booking |
 | 10 | Subscription | Subscription & Billing |
 | 11 | Payment | Subscription & Billing |
-| 12 | Onboarding Job | Onboarding |
-| 13 | Notification | Notification |
-| 14 | Audit Entry | Platform Administration |
-| 15 | Platform Setting | Platform Administration |
+| 12 | CommercialOffer | Commercial |
+| 13 | Onboarding Job | Onboarding |
+| 14 | Notification | Notification |
+| 15 | Audit Entry | Platform Administration |
+| 16 | Platform Setting | Platform Administration |
 
-Fifteen Aggregate Roots does not mean fifteen implementation folders exist now. Per [24_FOLDER_STRUCTURE.md](./24_FOLDER_STRUCTURE.md), an Aggregate folder is created only when its own implementation is authorized and legitimate source files are ready to occupy it — recognition on this list is necessary but not sufficient for a folder to exist.
+Sixteen Aggregate Roots does not mean sixteen implementation folders exist now. Per [24_FOLDER_STRUCTURE.md](./24_FOLDER_STRUCTURE.md), an Aggregate folder is created only when its own implementation is authorized and legitimate source files are ready to occupy it — recognition on this list is necessary but not sufficient for a folder to exist.
 
 ## Approved Technology Stack
 
@@ -125,7 +131,7 @@ Decisions ADR-003 explicitly leaves open (object-storage vendor, hosting provide
 
 ## Decisions Requiring a New ADR
 
-- Changing the Aggregate Root count, membership, or ownership stated in [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md).
+- Changing the Aggregate Root count, membership, or ownership stated in the current aggregate registry above.
 - Changing the tenant isolation topology, or any decision that weakens the tenant-isolation invariants in [ADR-002](./decisions/ADR-002-Multi-Tenant-Strategy.md).
 - Changing the Phase 1 technology stack (language, framework, database engine, frontend strategy, cache/queue technology, object storage, or infrastructure posture) selected in [ADR-003](./decisions/ADR-003-Technology-Stack.md).
 - Introducing a new bounded context, removing one of the ten, or moving an Aggregate Root's owning context.
@@ -143,22 +149,18 @@ Decisions ADR-003 explicitly leaves open (object-storage vendor, hosting provide
 
 ## Documents Still Requiring CTO Approval
 
-The following documents are functionally complete but remain **Draft — Under CTO Review** because no repository-recorded approval event exists for them, and each contains its own unresolved CTO Recommendations or CTO Review Checklist that this freeze does not have authority to close on the CTO's behalf:
+SYIFA-085A classifies architecture documents in [29_ARCHITECTURE_DECISION_INDEX.md](./29_ARCHITECTURE_DECISION_INDEX.md). The following open governance items remain:
 
-- [03_SYSTEM_ARCHITECTURE.md](./03_SYSTEM_ARCHITECTURE.md)
-- [19_DATABASE_STRATEGY.md](./19_DATABASE_STRATEGY.md) — retention durations remain explicitly deferred pending qualified legal input; the aggregate-count blocker it previously named is now resolved by ADR-004.
-- [20_API_DESIGN.md](./20_API_DESIGN.md)
-- [21_PERMISSION_MATRIX.md](./21_PERMISSION_MATRIX.md)
-- [22_ERD.md](./22_ERD.md)
-- [23_AGGREGATE_ROOT_VALIDATION.md](./23_AGGREGATE_ROOT_VALIDATION.md)
-- [25_CODING_STANDARD.md](./25_CODING_STANDARD.md)
+- [19_DATABASE_STRATEGY.md](./19_DATABASE_STRATEGY.md) — retention durations remain explicitly deferred pending qualified legal input; the aggregate-count blocker it previously named is now resolved by the active sixteen-root registry.
+- [22_ERD.md](./22_ERD.md) — the next ERD revision should draw CommercialOffer explicitly. Until then, the implementation-alignment note in 22_ERD.md and the registry in this document control the conflict.
 
 [28_COMMERCIAL_CATALOGUE_SPECIFICATION.md](./28_COMMERCIAL_CATALOGUE_SPECIFICATION.md) is **Accepted — CTO Approved** (2026-07-14) and is no longer listed above. One precondition from its own Section 36 remains explicitly open — the lifetime commercial/legal terms (published terms, service limitations, sunset right) — but this blocks only future lifetime Billing Option activation, not the document's own acceptance or any other Phase 1 Commercial Catalogue capability.
 
-Separately, [01_PRODUCT_VISION.md](./01_PRODUCT_VISION.md), [02_MVP_SCOPE.md](./02_MVP_SCOPE.md), [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md), [15_DOMAIN_CLASSIFICATION.md](./15_DOMAIN_CLASSIFICATION.md), [16_BOUNDED_CONTEXTS.md](./16_BOUNDED_CONTEXTS.md), and [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md) carry no Status field at all and have been treated as ground truth by every document written after them, but none records a dated CTO approval event either. They are not marked Locked here because that approval cannot be evidenced from repository history — only inferred from consistent downstream reliance. This is noted for the CTO to formally close, not resolved unilaterally by this document.
+Product, domain, and architecture status is now indexed explicitly in 29_ARCHITECTURE_DECISION_INDEX.md.
 
 ## Governance
 
 This freeze is owned by the CTO. It is updated only through the Change-Control Process above, and every update is recorded here with its date and authorizing record.
 
 - **2026-07-13:** Architecture Freeze v1 established. ADR-001 through ADR-004 confirmed Accepted. Fifteen-Aggregate-Root baseline and ten bounded contexts indexed from ADR-004 and 16_BOUNDED_CONTEXTS.md respectively.
+- **2026-07-21:** SYIFA-085A aligned architecture governance with accepted implementation. ADR-005 through ADR-007 added. Bounded-context registry updated to twelve contexts. Aggregate registry updated to sixteen roots, with CommercialOffer owned by Commercial and Clinic Registration owned by the Clinic Registration context.

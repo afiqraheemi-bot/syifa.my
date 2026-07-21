@@ -1,6 +1,6 @@
 # Database Strategy — Engineering Principles
 
-**Status: Draft — Under CTO Review.** This document is not Accepted or Locked. The final aggregate count this document previously named as an outstanding blocker is now resolved: [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md) formally accepts the fifteen Aggregate Roots from [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md) as the Phase 1 baseline. This document remains Draft solely because of the other outstanding decisions listed in [CTO Recommendations](#cto-recommendations), most notably every retention duration this document deliberately leaves unset pending qualified legal input.
+**Status: Current with implementation-alignment note.** The aggregate count this document previously named as an outstanding blocker is now resolved by the active registry in [26_ARCHITECTURE_FREEZE_V1.md](./26_ARCHITECTURE_FREEZE_V1.md): sixteen Aggregate Roots, with CommercialOffer added by [ADR-006](./decisions/ADR-006-Commercial.md). This document remains subject to its other outstanding decisions, most notably every retention duration this document deliberately leaves unset pending qualified legal input.
 
 ## Table of Contents
 
@@ -67,7 +67,7 @@ Three commitments follow directly from ADR-001 and ADR-002 and govern every deci
 
 ## Aggregate Count and Structural Classification
 
-18_AGGREGATE_DESIGN.md proposes a working target of approximately fifteen aggregates — eleven core transactional aggregates, two reference/configuration aggregates, one governance aggregate (modeled as a stream of small instances), and one independent-lifecycle supporting aggregate — organized under its own CTO Recommendation #1 as **a recommendation awaiting approval, not a locked final count**. This document treats that structure as the current working target range and defers entirely to 18_AGGREGATE_DESIGN.md as the single authoritative source for the exact number and membership of aggregate roots. No statement in this document should be read as asserting a final, locked aggregate count; wherever a specific number appears below, it describes the current working set and must be re-checked against 18_AGGREGATE_DESIGN.md before being treated as fact.
+The current official aggregate registry is indexed in 26_ARCHITECTURE_FREEZE_V1.md. Earlier references in this document to an approximate fifteen-aggregate working target are historical and are superseded by the sixteen-root implementation-aligned registry accepted through ADR-006.
 
 What *is* fixed, independent of the exact final count, is the structural vocabulary every persisted concept must be sorted into. Seven categories, used consistently throughout this document:
 
@@ -561,7 +561,7 @@ No entity-relationship diagram exists yet, and none should be produced until thi
 - Annotate every structure with both its **ownership classification** and its **data classification**, using the same categories this document establishes, so isolation and privacy requirements are visible on the diagram itself, not just in prose.
 - Explicitly mark every Projection, Reference Data item, and Audit Object as such, so a reader cannot mistake a rebuildable read model for a source of truth by looking at the diagram alone.
 - Produce it only after the engine-selection ADR, since some representational choices (native structured-data support, generated or computed fields) are engine-specific and committing to an ERD too early risks quietly foreclosing that decision.
-- Build it incrementally, one bounded context at a time (16_BOUNDED_CONTEXTS.md's ten contexts), rather than as one monolithic diagram, so each piece stays independently reviewable.
+- Build it incrementally, one bounded context at a time (16_BOUNDED_CONTEXTS.md's twelve contexts), rather than as one monolithic diagram, so each piece stays independently reviewable.
 
 ## CTO Recommendations
 

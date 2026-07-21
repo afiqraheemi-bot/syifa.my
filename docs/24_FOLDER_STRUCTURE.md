@@ -68,6 +68,8 @@ app/Modules/
 ├── TemplateDesignSystem/
 ├── MediaAssetManagement/
 ├── Booking/
+├── Commercial/
+├── ClinicRegistration/
 ├── SubscriptionBilling/
 ├── Onboarding/
 ├── Notification/
@@ -86,7 +88,7 @@ app/Modules/<Context>/
 └── Presentation/
 ```
 
-A bounded-context directory is a **permanent architecture boundary**, not a deployment unit and not a speculative or provisional grouping. The ten module shells listed above correspond exactly to the ten bounded contexts locked in 16_BOUNDED_CONTEXTS.md; they are created once, together, as the stable ownership map for the entire Phase 1 domain, and are not subject to the same lazy, implementation-triggered creation rule that governs Aggregate folders (see Aggregate Folder Rules below). Renaming, merging, or removing a bounded-context module folder is a bounded-context change requiring the same review 16_BOUNDED_CONTEXTS.md's own governance demands — it is never a routine folder-structure edit. The structure permits later modularization without requiring separate services, packages, repositories, or deployments in Phase 1.
+A bounded-context directory is a **permanent architecture boundary**, not a deployment unit and not a speculative or provisional grouping. The twelve module shells listed above correspond exactly to the twelve bounded contexts locked in 16_BOUNDED_CONTEXTS.md after SYIFA-085A alignment; they are created as the stable ownership map for the Phase 1 domain, and are not subject to the same lazy, implementation-triggered creation rule that governs Aggregate folders (see Aggregate Folder Rules below). Renaming, merging, or removing a bounded-context module folder is a bounded-context change requiring the same review 16_BOUNDED_CONTEXTS.md's own governance demands — it is never a routine folder-structure edit. The structure permits later modularization without requiring separate services, packages, repositories, or deployments in Phase 1.
 
 ## Internal Layer Responsibilities
 
@@ -139,7 +141,7 @@ The scaffold does not contain aggregate-specific folders. Approval as an Aggrega
 
 An aggregate folder may be created only when all of the following are true:
 
-1. The Aggregate Root is already recognized by the accepted baseline in [ADR-004](./decisions/ADR-004-Aggregate-Root-Baseline.md).
+1. The Aggregate Root is already recognized by the accepted baseline in [26_ARCHITECTURE_FREEZE_V1.md](./26_ARCHITECTURE_FREEZE_V1.md), currently superseding ADR-004 through [ADR-006](./decisions/ADR-006-Commercial.md).
 2. Its owning bounded context is established.
 3. Implementation of that aggregate has been explicitly authorized.
 4. The folder will contain legitimate source files in the same change.
@@ -151,11 +153,11 @@ When these conditions are met, the placement is:
 app/Modules/<OwningContext>/Domain/Aggregates/<ApprovedAggregateRoot>/
 ```
 
-The Phase 1 Aggregate Root baseline consumed by this structure is the **fifteen** roots formally accepted in ADR-004: `ClinicRegistration`, `Tenant`, `Clinic`, `Website`, `CustomDomain`, `Template`, `Media`, `ClinicService`, `Booking`, `Subscription`, `Payment`, `OnboardingJob`, `Notification`, `AuditEntry`, and `PlatformSetting`. This document records that set as consumed by the folder-creation rule above; it has no authority to add to it, remove from it, or reinterpret the classification of any concept — that authority belongs solely to ADR-004 and any ADR that later supersedes it.
+The Phase 1 Aggregate Root baseline consumed by this structure is the **sixteen** roots indexed in 26_ARCHITECTURE_FREEZE_V1.md and accepted through ADR-006: `ClinicRegistration`, `Tenant`, `Clinic`, `Website`, `CustomDomain`, `Template`, `Media`, `ClinicService`, `Booking`, `Subscription`, `Payment`, `CommercialOffer`, `OnboardingJob`, `Notification`, `AuditEntry`, and `PlatformSetting`. This document records that set as consumed by the folder-creation rule above; it has no authority to add to it, remove from it, or reinterpret the classification of any concept — that authority belongs solely to the active ADR set and any ADR that later supersedes it.
 
-**Recognizing fifteen names does not mean fifteen folders are created now.** The lazy-creation rule above applies identically regardless of the count: a name is available to be scaffolded the moment its own implementation begins, and not before. Raising the recognized baseline from a previously unsupported eleven to the formally accepted fifteen changes which names are correctly available — it does not change when any of them are actually created.
+**Recognizing sixteen names does not mean sixteen folders are created now.** The lazy-creation rule above applies identically regardless of the count: a name is available to be scaffolded the moment its own implementation begins, and not before.
 
-Creating a directory must never be treated as an architecture decision. Any change to the fifteen-item baseline requires a new ADR citing and superseding ADR-004, per that ADR's own governance rule — a folder-structure edit alone can never change the recognized set.
+Creating a directory must never be treated as an architecture decision. Any change to the sixteen-item baseline requires a new ADR citing and superseding the active registry — a folder-structure edit alone can never change the recognized set.
 
 ## Frontend Ownership Structure
 

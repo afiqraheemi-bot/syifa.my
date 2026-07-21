@@ -1,5 +1,7 @@
 # Domain Classification Audit
 
+**Implementation Alignment Note — SYIFA-085A.** This audit remains historically useful, but the current bounded-context and Aggregate Root registries are governed by [16_BOUNDED_CONTEXTS.md](./16_BOUNDED_CONTEXTS.md), [26_ARCHITECTURE_FREEZE_V1.md](./26_ARCHITECTURE_FREEZE_V1.md), and [ADR-006](./decisions/ADR-006-Commercial.md). CommercialOffer is now an accepted Aggregate Root in the Commercial context. Clinic Registration is now its own bounded context.
+
 ## Table of Contents
 
 - [Document Authority](#document-authority)

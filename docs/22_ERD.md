@@ -1,6 +1,6 @@
 # Entity Relationship Diagram (Logical)
 
-**Status: Draft — Under CTO Review.** This is a **logical** ERD. It contains no table names, no columns, no data types, no keys, no indexes, and no SQL — those all belong to a future, separately governed physical schema design once this logical model is approved. Every entity, relationship, and cardinality below is a statement about business relationships, not storage.
+**Status: Current with implementation-alignment note.** This is a **logical** ERD. It contains no table names, no columns, no data types, no keys, no indexes, and no SQL. The original diagram was produced from the fifteen-root baseline; SYIFA-085A records that the current official Aggregate Root registry contains sixteen roots, adding CommercialOffer under the Commercial context per [ADR-006](./decisions/ADR-006-Commercial.md). The next ERD revision should draw CommercialOffer explicitly; until then, this note controls any conflict between the diagram and the active registry.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@
 
 ## Document Authority
 
-This document is the authoritative logical entity-relationship model for Syifa.my Phase 1. It draws its entity set directly from [18_AGGREGATE_DESIGN.md](./18_AGGREGATE_DESIGN.md)'s fifteen aggregates, applies [19_DATABASE_STRATEGY.md](./19_DATABASE_STRATEGY.md)'s ownership classification and deletion/archive policy to each one, and stays within the vocabulary [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md) already established. It does not replace any of these documents — it is their visual and relational synthesis, produced specifically to satisfy 19_DATABASE_STRATEGY.md's own Future ERD Recommendations ("organize it by aggregate boundary... visually distinguish intra-aggregate composition lines from cross-aggregate identifier references... annotate every structure with its ownership tier").
+This document is the authoritative logical entity-relationship model for the originally approved Phase 1 roots, with the SYIFA-085A implementation-alignment note above controlling the CommercialOffer addition until the diagram is redrawn. It applies [19_DATABASE_STRATEGY.md](./19_DATABASE_STRATEGY.md)'s ownership classification and deletion/archive policy to each one, and stays within the vocabulary [14_DOMAIN_MODEL.md](./14_DOMAIN_MODEL.md) already established. It does not replace any of these documents — it is their visual and relational synthesis, produced specifically to satisfy 19_DATABASE_STRATEGY.md's own Future ERD Recommendations ("organize it by aggregate boundary... visually distinguish intra-aggregate composition lines from cross-aggregate identifier references... annotate every structure with its ownership tier").
 
 This document does not authorize a physical schema. No table, column, data type, key, or index is defined here; those require the engine-selection ADR and physical schema design ADR-001 and 19_DATABASE_STRATEGY.md both reserve for later.
 
@@ -43,7 +43,7 @@ A logical ERD answers one question for each pair of business concepts: **is ther
 | Excluded — pure value object (no independent multiplicity) | Booking Contact, Theme, Entitlement, captured service/location/practitioner snapshot | Not shown as a separate box; folded into the owning entity, noted in that aggregate's prose definition. |
 | Excluded — no persisted consumer in this model | Metric Definition | Not shown. Its only consumer, Report, is itself excluded as a projection. |
 
-Thirty entities appear in the diagram: fifteen aggregate roots, ten internal entities, two weak history entities, and three reference-data entities.
+The original diagram contains thirty entities: fifteen aggregate roots, ten internal entities, two weak history entities, and three reference-data entities. The current registry adds CommercialOffer as the sixteenth Aggregate Root; the next ERD revision must add its logical relationships explicitly.
 
 ## Per-Aggregate Definitions
 
