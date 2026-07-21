@@ -5,6 +5,16 @@ declare(strict_types=1);
 $applicationUrl = rtrim((string) config('app.url'), '/');
 
 return [
+    'verification' => [
+        'queue_connection' => env('PAYMENT_VERIFICATION_QUEUE_CONNECTION', 'redis'),
+        'queue_name' => env('PAYMENT_VERIFICATION_QUEUE', 'payment-verification'),
+        'lease_seconds' => (int) env('PAYMENT_VERIFICATION_LEASE_SECONDS', 300),
+        'transport_max_attempts' => (int) env('PAYMENT_VERIFICATION_TRANSPORT_MAX_ATTEMPTS', 8),
+        'malformed_max_attempts' => (int) env('PAYMENT_VERIFICATION_MALFORMED_MAX_ATTEMPTS', 2),
+        'base_delay_seconds' => (int) env('PAYMENT_VERIFICATION_BASE_DELAY_SECONDS', 30),
+        'max_delay_seconds' => (int) env('PAYMENT_VERIFICATION_MAX_DELAY_SECONDS', 1800),
+        'max_retry_after_seconds' => (int) env('PAYMENT_VERIFICATION_MAX_RETRY_AFTER_SECONDS', 21600),
+    ],
     'stripe' => [
         'secret_key' => env('STRIPE_SECRET_KEY', ''),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET', ''),

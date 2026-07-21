@@ -68,7 +68,7 @@ final class PaymentCoreArchitectureTest extends TestCase
                 // Payment aggregate or Payment lifecycle services.
                 'Domain\\Aggregates\\Payment',
                 'Application\\Payment\\',
-                'PaymentAttempt',
+                'Domain\\Aggregates\\Payment\\PaymentAttempt',
                 // Subscription and CommercialOffer (namespace-qualified, not
                 // the bare word, since the module itself is "SubscriptionBilling").
                 'Domain\\Aggregates\\Subscription\\',

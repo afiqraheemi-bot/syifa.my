@@ -7,9 +7,12 @@ namespace Tests\Unit\Modules\SubscriptionBilling\Infrastructure\Payment;
 use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\PaymentProviderConfigurationException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\InvalidProviderWebhookSignatureException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\MalformedProviderWebhookException;
+use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\RetryableProviderVerificationException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderConfiguration;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderConfigurationRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationOutcome;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationRequest;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\PaymentAttempt;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\ProviderReference;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PaymentProviderRegistry;
@@ -46,7 +49,7 @@ final class PaymentProviderInfrastructureTest extends TestCase
         Http::fake([
             'https://dev.toyyibpay.test/index.php/api/createBill' => Http::response([['BillCode' => 'bill-code']], 200),
             'https://dev.toyyibpay.test/index.php/api/getBillTransactions' => Http::response([[
-                'billpaymentStatus' => '1', 'billpaymentAmount' => '25.50',
+                'billpaymentStatus' => '1', 'billpaymentAmount' => '25.50', 'billExternalReferenceNo' => 'payment-1',
             ]], 200),
         ]);
         $provider = $this->toyyibPay();
@@ -54,9 +57,9 @@ final class PaymentProviderInfrastructureTest extends TestCase
         self::assertSame('bill-code', $result->providerPaymentReference);
         Http::assertSent(static fn ($request): bool => str_ends_with($request->url(), '/index.php/api/createBill')
             && $request['billCallbackUrl'] === 'https://callback.test');
-        $verification = $provider->verify('bill-code');
-        self::assertSame('succeeded', $verification->status);
-        self::assertSame(2550, $verification->amountMinor);
+        $verification = $provider->verify(new ProviderPaymentVerificationRequest('toyyibpay', 'bill-code', 'payment-1', 'attempt-1', 2550, 'MYR'));
+        self::assertSame(ProviderPaymentVerificationOutcome::Succeeded, $verification->outcome);
+        self::assertSame(2550, $verification->verifiedAmountMinor);
 
         $hash = md5('secret'.'1'.'payment-1'.'reference-1'.'ok');
         $event = $provider->verifyWebhook(http_build_query([
@@ -106,6 +109,26 @@ final class PaymentProviderInfrastructureTest extends TestCase
 
         $this->expectException(MalformedProviderWebhookException::class);
         $this->toyyibPay()->verifyWebhook('status=1', []);
+    }
+
+    public function test_provider_429_preserves_retry_after_as_retryable_classification(): void
+    {
+        Http::fake(['https://dev.toyyibpay.test/index.php/api/getBillTransactions' => Http::response('rate limited', 429, ['Retry-After' => '120'])]);
+
+        try {
+            $this->toyyibPay()->verify(new ProviderPaymentVerificationRequest('toyyibpay', 'bill-code', 'payment-1', 'attempt-1', 2550, 'MYR'));
+            self::fail('429 response was not classified as retryable.');
+        } catch (RetryableProviderVerificationException $exception) {
+            self::assertSame(120, $exception->retryAfterSeconds);
+        }
+    }
+
+    public function test_provider_5xx_is_classified_as_retryable_without_payment_outcome(): void
+    {
+        Http::fake(['https://dev.toyyibpay.test/index.php/api/getBillTransactions' => Http::response('temporary provider failure', 503)]);
+
+        $this->expectException(RetryableProviderVerificationException::class);
+        $this->toyyibPay()->verify(new ProviderPaymentVerificationRequest('toyyibpay', 'bill-code', 'payment-1', 'attempt-1', 2550, 'MYR'));
     }
 
     private function toyyibPay(): ToyyibPayPaymentProvider

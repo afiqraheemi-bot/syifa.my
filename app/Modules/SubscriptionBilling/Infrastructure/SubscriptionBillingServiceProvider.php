@@ -15,6 +15,7 @@ use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\UpdatePlanDe
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentDataAssembler;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGenerator;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGeneratorInterface;
+use App\Modules\SubscriptionBilling\Application\Payment\ProviderVerificationRetryPolicy;
 use App\Modules\SubscriptionBilling\Contracts\Authorization\CommercialCatalogueAuthorizationInterface;
 use App\Modules\SubscriptionBilling\Contracts\Authorization\PaymentProviderAdministrationAuthorizationInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\BillingOptionCatalogueQueryInterface;
@@ -22,11 +23,14 @@ use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\C
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanOfferingCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CommercialCatalogueQueryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAttemptResolverInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAuditInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderConfigurationRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderRegistryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentTransactionInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderVerificationClockInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderVerificationJobDispatcherInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\BillingOptionRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\CapabilityDefinitionRepositoryInterface;
@@ -36,11 +40,14 @@ use App\Modules\SubscriptionBilling\Infrastructure\Audit\PaymentAuditAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\CommercialCataloguePlatformAuthorizationAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\PaymentProviderAdministrationAuthorization;
 use App\Modules\SubscriptionBilling\Infrastructure\CommercialCatalogue\CommercialCatalogueTransactionalService;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\LaravelProviderVerificationJobDispatcher;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PaymentProviderRegistry;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentAttemptResolver;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentProviderConfigurationRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentTransaction;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresProviderWebhookReceiptRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\Stripe\StripePaymentProvider;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\SystemProviderVerificationClock;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\ToyyibPay\ToyyibPayPaymentProvider;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\CommercialCataloguePersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\PaymentPersistenceMapper;
@@ -102,6 +109,16 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(PaymentIdentifierGeneratorInterface::class, PaymentIdentifierGenerator::class);
         $this->app->singleton(PaymentPersistenceMapper::class);
         $this->app->singleton(PaymentAuditInterface::class, PaymentAuditAdapter::class);
+        $this->app->singleton(ProviderVerificationJobDispatcherInterface::class, LaravelProviderVerificationJobDispatcher::class);
+        $this->app->singleton(ProviderVerificationClockInterface::class, SystemProviderVerificationClock::class);
+        $this->app->singleton(ProviderVerificationRetryPolicy::class, static fn (): ProviderVerificationRetryPolicy => new ProviderVerificationRetryPolicy(
+            (int) config('payment_providers.verification.lease_seconds', 300),
+            (int) config('payment_providers.verification.transport_max_attempts', 8),
+            (int) config('payment_providers.verification.malformed_max_attempts', 2),
+            (int) config('payment_providers.verification.base_delay_seconds', 30),
+            (int) config('payment_providers.verification.max_delay_seconds', 1800),
+            (int) config('payment_providers.verification.max_retry_after_seconds', 21600),
+        ));
         $this->app->singleton(StripePaymentProvider::class, static fn (Application $application): StripePaymentProvider => new StripePaymentProvider(
             $application->make(HttpFactory::class),
             (string) config('payment_providers.stripe.secret_key', ''),
@@ -149,6 +166,12 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(
             ProviderWebhookReceiptRepositoryInterface::class,
             static fn (Application $application): PostgresProviderWebhookReceiptRepository => new PostgresProviderWebhookReceiptRepository(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->singleton(
+            PaymentAttemptResolverInterface::class,
+            static fn (Application $application): PostgresPaymentAttemptResolver => new PostgresPaymentAttemptResolver(
                 $application->make('db')->connection(),
             ),
         );

@@ -12,5 +12,6 @@ final readonly class ProviderPaymentRequest
         public string $currency,
         public string $idempotencyKey,
         public string $correlationId,
+        public ?string $paymentAttemptReference = null,
     ) {}
 }

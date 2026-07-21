@@ -41,13 +41,15 @@ final readonly class StartPaymentService
             }
 
             $provider = $this->providers->defaultForNewAttempt();
-            $payment->start($this->identifiers->generate(), $provider->providerKey(), $command->occurredAt);
+            $attemptReference = $this->identifiers->generate();
+            $payment->start($attemptReference, $provider->providerKey(), $command->occurredAt);
             $result = $provider->start(new ProviderPaymentRequest(
                 paymentId: $payment->id->value,
                 amountMinor: $payment->amount->minorUnits,
                 currency: $payment->currency->value,
                 idempotencyKey: $payment->idempotencyKey->value,
                 correlationId: $command->correlationId,
+                paymentAttemptReference: $attemptReference,
             ));
 
             if ($result->providerKey !== $provider->providerKey()) {

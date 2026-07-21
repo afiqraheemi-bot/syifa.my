@@ -18,6 +18,8 @@ Introduce a provider contract and registry. Register only implemented Stripe and
 
 Provider activation is platform-global operational configuration controlled by Super Admin. Activation requires credentials configured, verification passed, webhook configured and provider ready. Disabling prevents new attempts, clears default selection, and preserves webhook/verification access for existing attempts.
 
+Authoritative verification resolves both current and historical attempts from their stored `(provider_key, provider_payment_reference)` and uses `forExistingAttempt()`. Durable queue processing and receipt leases are delivery/recovery infrastructure; they do not change provider selection, permit failover, or authorize Payment or Subscription mutation.
+
 Automatic failover is prohibited. Billplz, CHIP and BayarCash remain future candidates without placeholder adapters.
 
 ## Consequences

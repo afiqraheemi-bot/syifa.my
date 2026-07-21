@@ -17,6 +17,7 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderConfigurationVerif
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentResult;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerification;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookEvent;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PaymentProviderRegistry;
 use DateTimeImmutable;
@@ -253,7 +254,7 @@ final class PaymentProviderAdministrationHttpDeliveryTest extends LaravelTestCas
                 throw new RuntimeException('Not used by PaymentProviderAdministrationHttpDeliveryTest.');
             }
 
-            public function verify(string $providerPaymentReference): ProviderPaymentVerification
+            public function verify(ProviderPaymentVerificationRequest $request): ProviderPaymentVerification
             {
                 throw new RuntimeException('Not used by PaymentProviderAdministrationHttpDeliveryTest.');
             }

@@ -14,18 +14,29 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderConfigurationVerif
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentResult;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerification;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookEvent;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceipt;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptClaim;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptCompletion;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptRegistrationResult;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptStatus;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\Jobs\VerifyProviderWebhookReceiptJob;
 use DateTimeImmutable;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
 use RuntimeException;
 use Tests\TestCase;
 
 final class PaymentProviderWebhookHttpTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Queue::fake();
+    }
+
     public function test_valid_new_and_duplicate_webhooks_receive_safe_success_acknowledgements(): void
     {
         $receipts = new HttpMemoryReceipts;
@@ -37,6 +48,7 @@ final class PaymentProviderWebhookHttpTest extends TestCase
             ->assertOk()->assertExactJson(['outcome' => 'duplicate']);
 
         self::assertCount(1, $receipts->registered);
+        Queue::assertPushed(VerifyProviderWebhookReceiptJob::class, 1);
     }
 
     public function test_disabled_implemented_provider_uses_existing_attempt_resolution(): void
@@ -114,7 +126,7 @@ final class HttpWebhookProvider implements PaymentProviderInterface
         throw new \LogicException;
     }
 
-    public function verify(string $providerPaymentReference): ProviderPaymentVerification
+    public function verify(ProviderPaymentVerificationRequest $request): ProviderPaymentVerification
     {
         throw new \LogicException;
     }
@@ -196,5 +208,20 @@ final class HttpMemoryReceipts implements ProviderWebhookReceiptRepositoryInterf
     public function find(string $providerKey, string $providerEventId): ?ProviderWebhookReceipt
     {
         return $this->receipt;
+    }
+
+    public function findById(string $receiptId): ?ProviderWebhookReceipt
+    {
+        return $this->receipt?->id === $receiptId ? $this->receipt : null;
+    }
+
+    public function claim(string $receiptId, DateTimeImmutable $now, int $leaseSeconds): ?ProviderWebhookReceiptClaim
+    {
+        return null;
+    }
+
+    public function complete(string $receiptId, string $claimToken, ProviderWebhookReceiptCompletion $completion): bool
+    {
+        return false;
     }
 }

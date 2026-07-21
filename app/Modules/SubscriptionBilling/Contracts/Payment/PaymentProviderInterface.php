@@ -10,7 +10,7 @@ interface PaymentProviderInterface
 
     public function start(ProviderPaymentRequest $request): ProviderPaymentResult;
 
-    public function verify(string $providerPaymentReference): ProviderPaymentVerification;
+    public function verify(ProviderPaymentVerificationRequest $request): ProviderPaymentVerification;
 
     /** @param array<string, string|list<string>> $headers */
     public function verifyWebhook(string $rawPayload, array $headers): ProviderWebhookEvent;

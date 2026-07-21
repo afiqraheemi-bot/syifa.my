@@ -70,6 +70,16 @@ The controller passes the unchanged raw request body and normalized headers to `
 
 This receiving increment stops at acknowledgement. It does not call authoritative payment verification, load or transition Payment, invoke Subscription, publish financial events or enqueue reconciliation. A new valid event returns `202`; a valid duplicate returns `200`; malformed payload returns `400`; invalid signature returns `401`; malformed/unknown provider returns `404`; and a temporary internal failure returns `503`. Responses contain only a generic outcome and never internal or financial identifiers.
 
+## Durable authoritative verification
+
+After a newly created receipt commits, Infrastructure dispatches a durable queue job containing only its opaque receipt ID. Duplicate receipt registration does not dispatch. The job is delivery orchestration only; the Application verification service owns claiming, historical-attempt resolution, provider lookup and evidence persistence. This increment remains verification-only: it never saves or transitions Payment and never invokes Subscription.
+
+Receipt verification uses `received → processing → processed|ignored|retry_pending|quarantined|exhausted`. The legacy `failed` value remains readable for backward compatibility but is not written by the authoritative flow. A PostgreSQL conditional update claims `received`, due `retry_pending`, or expired-lease `processing` rows, assigns a random UUID claim token, increments the attempt count and grants the configured five-minute lease. Every completion is conditional on receipt ID, active token and `processing`, preventing a stale worker from completing a reclaimed receipt.
+
+Historical and current attempts resolve from `payment_attempts` by `(provider_key, provider_payment_reference)`. Verification always uses `forExistingAttempt()` with the stored attempt provider; active/default selection and automatic failover are prohibited. Historical success is retained as processed financial evidence without mutating Payment.
+
+Transport/unavailable verification retries at most eight total attempts with configurable exponential delay from 30 seconds to 30 minutes and up to 20% jitter. `Retry-After` is honored but capped at six hours. Malformed or contradictory authoritative responses receive at most two total attempts and are then quarantined. Exhaustion records safe evidence and requires operational attention; it never infers Payment failure. Raw requests, provider responses, signatures, credentials and exception internals are neither queued nor persisted.
+
 ## Invariants and acceptance tests
 
 - Domain/Application/Contracts contain no provider names or provider SDK types.

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\SubscriptionBilling\Contracts\Payment;
 
+use DateTimeImmutable;
+
 /**
  * An append-only idempotency boundary for provider webhook deliveries. It is
  * deliberately separate from PaymentRepositoryInterface: registration must
@@ -24,4 +26,10 @@ interface ProviderWebhookReceiptRepositoryInterface
     public function register(NewProviderWebhookReceiptData $data): ProviderWebhookReceiptRegistrationResult;
 
     public function find(string $providerKey, string $providerEventId): ?ProviderWebhookReceipt;
+
+    public function findById(string $receiptId): ?ProviderWebhookReceipt;
+
+    public function claim(string $receiptId, DateTimeImmutable $now, int $leaseSeconds): ?ProviderWebhookReceiptClaim;
+
+    public function complete(string $receiptId, string $claimToken, ProviderWebhookReceiptCompletion $completion): bool;
 }

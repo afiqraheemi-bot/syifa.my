@@ -362,6 +362,8 @@ Flow:
 5. Record audit if required by the approved audit policy.
 6. Publish verified outcome event.
 
+The durable authoritative-verification increment introduces a narrower `VerifyProviderWebhookReceiptService` before this state-transition service. It atomically claims receipt work, resolves the exact current or historical `PaymentAttempt`, calls that attempt's provider outside a transaction, and stores only normalized verification evidence. It may read Payment to reconfirm ownership but does not invoke transitions, save Payment, publish financial outcomes, or activate Subscription.
+
 ### HandlePaymentWebhookService
 
 Input:
@@ -547,6 +549,8 @@ Webhook processing uses one Payment aggregate transaction when a business state 
 5. publish events after commit.
 
 No external provider call should occur inside that transaction unless the provider's signed webhook data is insufficient and a verification call is required; if a verification call is required, it must happen before opening the Payment write transaction.
+
+Authoritative verification is delivered through a durable queue after new receipt persistence. Claiming uses a short atomic PostgreSQL statement and a configured lease; the provider network call runs with no database transaction open. Claim-token-guarded completion prevents a stale worker from writing after lease reclamation. Retry scheduling is durable in both receipt metadata and delayed queue delivery.
 
 ## 11. Idempotency
 

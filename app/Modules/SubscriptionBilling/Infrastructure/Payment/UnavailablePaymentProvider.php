@@ -10,6 +10,7 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderConfigurationVerif
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentResult;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerification;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookEvent;
 
 final class UnavailablePaymentProvider implements PaymentProviderInterface
@@ -24,7 +25,7 @@ final class UnavailablePaymentProvider implements PaymentProviderInterface
         throw new PaymentProviderUnavailableException('No selected Payment provider is configured for Payment Core.');
     }
 
-    public function verify(string $providerPaymentReference): ProviderPaymentVerification
+    public function verify(ProviderPaymentVerificationRequest $request): ProviderPaymentVerification
     {
         throw new PaymentProviderUnavailableException('Payment provider is unavailable.');
     }

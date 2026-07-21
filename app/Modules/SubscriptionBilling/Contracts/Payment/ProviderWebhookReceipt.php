@@ -44,6 +44,21 @@ final readonly class ProviderWebhookReceipt
         public ?DateTimeImmutable $processingStartedAt = null,
         public ?DateTimeImmutable $processedAt = null,
         public ?string $failureLabel = null,
+        public ?string $processingClaimToken = null,
+        public ?DateTimeImmutable $processingLeaseExpiresAt = null,
+        public int $verificationAttemptCount = 0,
+        public ?DateTimeImmutable $lastVerificationAttemptAt = null,
+        public ?DateTimeImmutable $nextVerificationAttemptAt = null,
+        public ?string $resolvedPaymentId = null,
+        public ?string $resolvedPaymentAttemptReference = null,
+        public ?string $resolvedAttemptRelation = null,
+        public ?string $verificationOutcome = null,
+        public ?int $verifiedAmountMinor = null,
+        public ?string $verifiedCurrency = null,
+        public ?bool $providerObjectCorrelationPassed = null,
+        public ?bool $environmentCorrelationSupported = null,
+        public ?bool $environmentCorrelationPassed = null,
+        public ?DateTimeImmutable $authoritativeVerifiedAt = null,
     ) {
         self::assertSafeFailureLabel($failureLabel);
     }
@@ -78,6 +93,21 @@ final readonly class ProviderWebhookReceipt
                 ? $occurredAt
                 : $this->processedAt,
             failureLabel: $failureLabel ?? $this->failureLabel,
+            processingClaimToken: $this->processingClaimToken,
+            processingLeaseExpiresAt: $this->processingLeaseExpiresAt,
+            verificationAttemptCount: $this->verificationAttemptCount,
+            lastVerificationAttemptAt: $this->lastVerificationAttemptAt,
+            nextVerificationAttemptAt: $this->nextVerificationAttemptAt,
+            resolvedPaymentId: $this->resolvedPaymentId,
+            resolvedPaymentAttemptReference: $this->resolvedPaymentAttemptReference,
+            resolvedAttemptRelation: $this->resolvedAttemptRelation,
+            verificationOutcome: $this->verificationOutcome,
+            verifiedAmountMinor: $this->verifiedAmountMinor,
+            verifiedCurrency: $this->verifiedCurrency,
+            providerObjectCorrelationPassed: $this->providerObjectCorrelationPassed,
+            environmentCorrelationSupported: $this->environmentCorrelationSupported,
+            environmentCorrelationPassed: $this->environmentCorrelationPassed,
+            authoritativeVerifiedAt: $this->authoritativeVerifiedAt,
         );
     }
 

@@ -25,6 +25,7 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderConfigurationVerif
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentResult;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerification;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookEvent;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\Payment;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\IdempotencyKey;
@@ -289,7 +290,7 @@ final class RecordingPaymentProvider implements PaymentProviderInterface, Paymen
         return $this;
     }
 
-    public function verify(string $providerPaymentReference): ProviderPaymentVerification
+    public function verify(ProviderPaymentVerificationRequest $request): ProviderPaymentVerification
     {
         throw new \LogicException;
     }

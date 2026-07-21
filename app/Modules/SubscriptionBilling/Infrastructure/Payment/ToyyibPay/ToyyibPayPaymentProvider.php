@@ -5,14 +5,20 @@ declare(strict_types=1);
 namespace App\Modules\SubscriptionBilling\Infrastructure\Payment\ToyyibPay;
 
 use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\InvalidProviderWebhookSignatureException;
+use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\MalformedProviderVerificationException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\MalformedProviderWebhookException;
+use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\RetryableProviderVerificationException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderConfigurationVerification;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentResult;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerification;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationOutcome;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookEvent;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\Exceptions\PaymentProviderTransportException;
+use DateTimeImmutable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
 
 final readonly class ToyyibPayPaymentProvider implements PaymentProviderInterface
@@ -73,19 +79,38 @@ final readonly class ToyyibPayPaymentProvider implements PaymentProviderInterfac
         return new ProviderPaymentResult('toyyibpay', $code);
     }
 
-    public function verify(string $providerPaymentReference): ProviderPaymentVerification
+    public function verify(ProviderPaymentVerificationRequest $request): ProviderPaymentVerification
     {
-        $response = $this->http->asForm()->post($this->baseUrl.'/index.php/api/getBillTransactions', ['billCode' => $providerPaymentReference]);
+        try {
+            $response = $this->http->asForm()->post($this->baseUrl.'/index.php/api/getBillTransactions', ['billCode' => $request->providerPaymentReference]);
+        } catch (ConnectionException $exception) {
+            throw new RetryableProviderVerificationException('Provider verification transport failed.', previous: $exception);
+        }
+        if ($response->status() === 429 || $response->serverError()) {
+            $retryAfter = filter_var($response->header('Retry-After'), FILTER_VALIDATE_INT);
+            throw new RetryableProviderVerificationException('Provider verification is temporarily unavailable.', is_int($retryAfter) ? $retryAfter : null);
+        }
         $transaction = $response->json('0');
         if (! $response->successful() || ! is_array($transaction)) {
-            throw new PaymentProviderTransportException('ToyyibPay Bill verification failed.');
+            throw new MalformedProviderVerificationException('Provider verification response is malformed.');
         }
-        $status = match ((string) ($transaction['billpaymentStatus'] ?? '')) {
-            '1' => 'succeeded', '3' => 'failed', default => 'pending',
+        $status = match ($transaction['billpaymentStatus'] ?? null) {
+            '1' => ProviderPaymentVerificationOutcome::Succeeded,
+            '2', '4' => ProviderPaymentVerificationOutcome::Pending,
+            '3' => ProviderPaymentVerificationOutcome::Failed,
+            default => throw new MalformedProviderVerificationException('Provider verification status is unsupported.'),
         };
-        $amount = (int) round(((float) ($transaction['billpaymentAmount'] ?? 0)) * 100);
+        $amountValue = $transaction['billpaymentAmount'] ?? null;
+        if (! is_numeric($amountValue)) {
+            throw new MalformedProviderVerificationException('Provider verification amount is malformed.');
+        }
+        $amount = (int) round(((float) $amountValue) * 100);
+        $externalReference = $transaction['billExternalReferenceNo'] ?? $transaction['billpaymentOrderId'] ?? null;
 
-        return new ProviderPaymentVerification('toyyibpay', $providerPaymentReference, $status, $amount, 'MYR');
+        return new ProviderPaymentVerification(
+            'toyyibpay', $request->providerPaymentReference, $status, $amount, 'MYR', new DateTimeImmutable,
+            $externalReference === $request->paymentId, false, false,
+        );
     }
 
     /** @param array<string, string|list<string>> $headers */

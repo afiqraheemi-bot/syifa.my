@@ -105,6 +105,8 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
             $this->root().'/database/migrations/subscription_billing/2026_07_21_000002_create_payment_core_tables.php',
             $this->root().'/database/migrations/subscription_billing/2026_07_22_000001_create_payment_provider_configurations.php',
             $this->root().'/database/migrations/subscription_billing/2026_07_23_000001_create_payment_provider_webhook_receipts.php',
+            $this->root().'/database/migrations/subscription_billing/2026_07_24_000001_add_authoritative_verification_to_webhook_receipts.php',
+            $this->root().'/database/migrations/subscription_billing/2026_07_24_000002_index_payment_attempt_provider_reference.php',
         ], glob($this->root().'/database/migrations/subscription_billing/*.php') ?: []);
         $routes = file_get_contents($this->root().'/routes/web.php');
         self::assertIsString($routes);

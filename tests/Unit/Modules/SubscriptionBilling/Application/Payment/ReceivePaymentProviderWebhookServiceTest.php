@@ -12,8 +12,11 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderConfigurationVerif
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentResult;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerification;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookEvent;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceipt;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptClaim;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptCompletion;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptRegistrationResult;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptStatus;
@@ -70,7 +73,7 @@ final class WebhookRecordingProvider implements PaymentProviderInterface
         throw new \LogicException;
     }
 
-    public function verify(string $providerPaymentReference): ProviderPaymentVerification
+    public function verify(ProviderPaymentVerificationRequest $request): ProviderPaymentVerification
     {
         throw new \LogicException;
     }
@@ -141,5 +144,20 @@ final class MemoryWebhookReceipts implements ProviderWebhookReceiptRepositoryInt
     public function find(string $providerKey, string $providerEventId): ?ProviderWebhookReceipt
     {
         return $this->receipts[$providerKey.'|'.$providerEventId] ?? null;
+    }
+
+    public function findById(string $receiptId): ?ProviderWebhookReceipt
+    {
+        return $this->receipt?->id === $receiptId ? $this->receipt : null;
+    }
+
+    public function claim(string $receiptId, DateTimeImmutable $now, int $leaseSeconds): ?ProviderWebhookReceiptClaim
+    {
+        return null;
+    }
+
+    public function complete(string $receiptId, string $claimToken, ProviderWebhookReceiptCompletion $completion): bool
+    {
+        return false;
     }
 }

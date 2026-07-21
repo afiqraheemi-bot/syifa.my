@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Modules\SubscriptionBilling\Payment;
 
+use App\Modules\SubscriptionBilling\Application\Payment\ProviderVerificationRetryPolicy;
 use App\Modules\SubscriptionBilling\Application\Payment\ReceivePaymentProviderWebhookService;
 use App\Modules\SubscriptionBilling\Contracts\Payment\Exceptions\InvalidProviderWebhookSignatureException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\NewProviderWebhookReceiptData;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderRegistryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptCompletion;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptStatus;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookRequest;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentAttemptResolver;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresProviderWebhookReceiptRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\Stripe\StripePaymentProvider;
 use DateTimeImmutable;
@@ -78,6 +81,145 @@ final class PostgresProviderWebhookReceiptRepositoryTest extends TestCase
         self::assertSame('evt_1', $result->receipt->providerEventId);
         self::assertSame(ProviderWebhookReceiptStatus::Received, $result->receipt->status);
         self::assertSame(1, $this->connection()->table('payment_provider_webhook_receipts')->count());
+    }
+
+    public function test_claim_has_one_winner_and_stale_token_cannot_complete(): void
+    {
+        $receipt = $this->repository()->register($this->event('stripe', 'claim-1'))->receipt;
+        $now = new DateTimeImmutable('2026-07-24T00:00:00Z');
+        $claim = $this->repository()->claim($receipt->id, $now, 300);
+
+        self::assertNotNull($claim);
+        self::assertSame(ProviderWebhookReceiptStatus::Processing, $claim->receipt->status);
+        self::assertSame(1, $claim->receipt->verificationAttemptCount);
+        self::assertNull($this->repository()->claim($receipt->id, $now->modify('+1 second'), 300));
+        self::assertFalse($this->repository()->complete($receipt->id, '00000000-0000-4000-8000-000000000000', new ProviderWebhookReceiptCompletion(ProviderWebhookReceiptStatus::Processed, $now)));
+        self::assertTrue($this->repository()->complete($receipt->id, $claim->claimToken, new ProviderWebhookReceiptCompletion(ProviderWebhookReceiptStatus::Processed, $now)));
+    }
+
+    public function test_retry_due_time_and_expired_lease_control_reclaim(): void
+    {
+        $receipt = $this->repository()->register($this->event('stripe', 'claim-2'))->receipt;
+        $now = new DateTimeImmutable('2026-07-24T00:00:00Z');
+        $claim = $this->repository()->claim($receipt->id, $now, 300);
+        self::assertNotNull($claim);
+        self::assertNull($this->repository()->claim($receipt->id, $now->modify('+299 seconds'), 300));
+        $reclaimed = $this->repository()->claim($receipt->id, $now->modify('+301 seconds'), 300);
+        self::assertNotNull($reclaimed);
+        self::assertNotSame($claim->claimToken, $reclaimed->claimToken);
+
+        $next = $now->modify('+10 minutes');
+        self::assertTrue($this->repository()->complete($receipt->id, $reclaimed->claimToken, new ProviderWebhookReceiptCompletion(ProviderWebhookReceiptStatus::RetryPending, $now->modify('+302 seconds'), safeFailureLabel: 'provider_transport_retry', nextVerificationAttemptAt: $next)));
+        $persisted = $this->repository()->findById($receipt->id);
+        self::assertNotNull($persisted);
+        self::assertSame(ProviderWebhookReceiptStatus::RetryPending, $persisted->status);
+        self::assertSame(2, $persisted->verificationAttemptCount);
+        self::assertSame($next->getTimestamp(), $persisted->nextVerificationAttemptAt?->getTimestamp());
+        self::assertNull($persisted->processingClaimToken);
+        self::assertNull($persisted->processingLeaseExpiresAt);
+        self::assertNotNull($persisted->processingStartedAt);
+        self::assertNotNull($persisted->lastVerificationAttemptAt);
+        self::assertFalse($this->repository()->complete($receipt->id, $reclaimed->claimToken, new ProviderWebhookReceiptCompletion(ProviderWebhookReceiptStatus::Processed, $now)));
+        self::assertNull($this->repository()->claim($receipt->id, $next->modify('-1 second'), 300));
+        self::assertNotNull($this->repository()->claim($receipt->id, $next, 300));
+    }
+
+    public function test_quarantined_and_exhausted_cleanup_is_terminal_and_queryable(): void
+    {
+        foreach ([
+            [ProviderWebhookReceiptStatus::Quarantined, 'provider_response_malformed'],
+            [ProviderWebhookReceiptStatus::Exhausted, 'provider_transport_exhausted'],
+        ] as [$status, $label]) {
+            $receipt = $this->repository()->register($this->event('stripe', 'terminal-'.$status->value))->receipt;
+            $now = new DateTimeImmutable('2026-07-24T00:00:00Z');
+            if ($status === ProviderWebhookReceiptStatus::Exhausted) {
+                $this->connection()->table('payment_provider_webhook_receipts')->where('id', $receipt->id)->update(['verification_attempt_count' => 7]);
+            }
+            $claim = $this->repository()->claim($receipt->id, $now, 300);
+            self::assertNotNull($claim);
+            self::assertTrue($this->repository()->complete($receipt->id, $claim->claimToken, new ProviderWebhookReceiptCompletion($status, $now, safeFailureLabel: $label)));
+
+            $persisted = $this->repository()->findById($receipt->id);
+            self::assertNotNull($persisted);
+            self::assertSame($status, $persisted->status);
+            self::assertSame($label, $persisted->failureLabel);
+            self::assertNull($persisted->processingClaimToken);
+            self::assertNull($persisted->processingLeaseExpiresAt);
+            self::assertNotNull($persisted->processingStartedAt);
+            self::assertNotNull($persisted->lastVerificationAttemptAt);
+            self::assertSame($status === ProviderWebhookReceiptStatus::Exhausted ? 8 : 1, $persisted->verificationAttemptCount);
+            self::assertNull($persisted->nextVerificationAttemptAt);
+            self::assertNotNull($persisted->processedAt);
+            self::assertNull($this->repository()->claim($receipt->id, $now->modify('+1 day'), 300));
+            self::assertFalse($this->repository()->complete($receipt->id, $claim->claimToken, new ProviderWebhookReceiptCompletion(ProviderWebhookReceiptStatus::Processed, $now)));
+        }
+    }
+
+    public function test_retry_after_below_and_above_cap_survives_postgresql_reload(): void
+    {
+        $policy = new ProviderVerificationRetryPolicy(jitter: static fn (int $maximum): int => 0);
+        foreach ([[120, 120], [86400, 21600]] as [$requested, $expected]) {
+            $receipt = $this->repository()->register($this->event('stripe', 'retry-after-'.$requested))->receipt;
+            $now = new DateTimeImmutable('2026-07-24T00:00:00Z');
+            $claim = $this->repository()->claim($receipt->id, $now, 300);
+            self::assertNotNull($claim);
+            $next = $now->modify(sprintf('+%d seconds', $policy->delaySeconds(1, $requested)));
+            self::assertTrue($this->repository()->complete($receipt->id, $claim->claimToken, new ProviderWebhookReceiptCompletion(
+                ProviderWebhookReceiptStatus::RetryPending, $now, safeFailureLabel: 'provider_transport_retry', nextVerificationAttemptAt: $next,
+            )));
+
+            $persisted = $this->repository()->findById($receipt->id);
+            self::assertNotNull($persisted);
+            self::assertSame($expected, $persisted->nextVerificationAttemptAt?->getTimestamp() - $now->getTimestamp());
+            self::assertSame(1, $persisted->verificationAttemptCount);
+            self::assertNull($persisted->processingClaimToken);
+            self::assertNull($persisted->processingLeaseExpiresAt);
+            self::assertFalse($this->repository()->complete($receipt->id, $claim->claimToken, new ProviderWebhookReceiptCompletion(ProviderWebhookReceiptStatus::Processed, $now)));
+        }
+    }
+
+    public function test_retryable_5xx_backoff_bounds_persist_without_payment_outcome(): void
+    {
+        foreach ([[static fn (int $maximum): int => 0, 120], [static fn (int $maximum): int => $maximum, 144]] as [$jitter, $expected]) {
+            $receipt = $this->repository()->register($this->event('stripe', 'retry-5xx-'.$expected))->receipt;
+            $now = new DateTimeImmutable('2026-07-24T00:00:00Z');
+            $this->connection()->table('payment_provider_webhook_receipts')->where('id', $receipt->id)->update(['verification_attempt_count' => 2]);
+            $claim = $this->repository()->claim($receipt->id, $now, 300);
+            self::assertNotNull($claim);
+            $delay = (new ProviderVerificationRetryPolicy(jitter: $jitter))->delaySeconds(3);
+            self::assertTrue($this->repository()->complete($receipt->id, $claim->claimToken, new ProviderWebhookReceiptCompletion(
+                ProviderWebhookReceiptStatus::RetryPending, $now, safeFailureLabel: 'provider_transport_retry', nextVerificationAttemptAt: $now->modify('+'.$delay.' seconds'),
+            )));
+
+            $persisted = $this->repository()->findById($receipt->id);
+            self::assertNotNull($persisted);
+            self::assertSame($expected, $persisted->nextVerificationAttemptAt?->getTimestamp() - $now->getTimestamp());
+            self::assertNull($persisted->verificationOutcome);
+        }
+    }
+
+    public function test_attempt_resolution_uses_provider_key_and_finds_historical_attempt(): void
+    {
+        $paymentId = $this->insertPayment();
+        $now = now();
+        foreach ([
+            ['attempt-old', 'stripe', 'shared-reference', 0],
+            ['attempt-new', 'toyyibpay', 'new-reference', 1],
+        ] as [$attemptReference, $providerKey, $providerReference, $position]) {
+            $this->connection()->table('payment_attempts')->insert([
+                'id' => (string) Str::uuid(), 'payment_id' => $paymentId, 'attempt_reference' => $attemptReference,
+                'status' => 'pending', 'provider_key' => $providerKey, 'provider_payment_reference' => $providerReference,
+                'failure_reason_code' => null, 'started_at' => $now, 'last_changed_at' => $now,
+                'position' => $position, 'created_at' => $now, 'updated_at' => $now,
+            ]);
+        }
+
+        $resolver = new PostgresPaymentAttemptResolver($this->connection());
+        $resolved = $resolver->resolve('stripe', 'shared-reference');
+        self::assertNotNull($resolved);
+        self::assertSame('attempt-old', $resolved->attemptReference);
+        self::assertFalse($resolved->isCurrent);
+        self::assertNull($resolver->resolve('toyyibpay', 'shared-reference'));
     }
 
     public function test_receiving_service_registers_one_verified_receipt_and_reports_duplicate(): void
@@ -428,6 +570,8 @@ final class PostgresProviderWebhookReceiptRepositoryTest extends TestCase
             'database/migrations/subscription_billing/2026_07_21_000002_create_payment_core_tables.php',
             'database/migrations/subscription_billing/2026_07_22_000001_create_payment_provider_configurations.php',
             'database/migrations/subscription_billing/2026_07_23_000001_create_payment_provider_webhook_receipts.php',
+            'database/migrations/subscription_billing/2026_07_24_000001_add_authoritative_verification_to_webhook_receipts.php',
+            'database/migrations/subscription_billing/2026_07_24_000002_index_payment_attempt_provider_reference.php',
         ] as $path) {
             $migration = require base_path($path);
             self::assertInstanceOf(Migration::class, $migration);
