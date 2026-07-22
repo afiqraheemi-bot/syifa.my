@@ -18,12 +18,13 @@ final class BookingFoundationArchitectureTest extends TestCase
         self::assertStringContainsString('BookingServiceProvider::class', $providers);
     }
 
-    public function test_booking_is_the_only_aggregate_root(): void
+    public function test_booking_and_service_are_the_only_aggregate_roots(): void
     {
         self::assertFileExists($this->root().'/app/Modules/Booking/Domain/Booking.php');
+        self::assertFileExists($this->root().'/app/Modules/Booking/Domain/Service.php');
 
         foreach ($this->phpFilesIn($this->root().'/app/Modules/Booking/Domain') as $file) {
-            if (str_ends_with($file, '/Booking.php')) {
+            if (str_ends_with($file, '/Booking.php') || str_ends_with($file, '/Service.php')) {
                 continue;
             }
 
@@ -77,6 +78,7 @@ final class BookingFoundationArchitectureTest extends TestCase
     public function test_repository_implementation_exists_only_inside_infrastructure(): void
     {
         self::assertFileExists($this->root().'/app/Modules/Booking/Infrastructure/Persistence/Repositories/PostgresBookingRepository.php');
+        self::assertFileExists($this->root().'/app/Modules/Booking/Infrastructure/Persistence/Repositories/PostgresServiceRepository.php');
 
         foreach ($this->phpFilesIn(
             $this->root().'/app/Modules/Booking/Domain',
@@ -84,6 +86,7 @@ final class BookingFoundationArchitectureTest extends TestCase
             $this->root().'/app/Modules/Booking/Application',
         ) as $file) {
             self::assertStringNotContainsString('implements BookingRepositoryInterface', $this->source($file), $file);
+            self::assertStringNotContainsString('implements ServiceRepositoryInterface', $this->source($file), $file);
         }
     }
 
@@ -99,16 +102,24 @@ final class BookingFoundationArchitectureTest extends TestCase
                 'Notification',
                 'Reminder',
                 'WebsiteBuilder',
+                'Pricing',
+                'ServiceCategory',
+                'Doctor',
+                'Room',
+                'Controller',
             ] as $forbidden) {
                 self::assertStringNotContainsString($forbidden, $source, $file);
             }
         }
     }
 
-    public function test_only_one_additive_migration_exists_for_bookings(): void
+    public function test_only_the_approved_additive_migrations_exist_for_booking(): void
     {
         self::assertSame(
-            [$this->root().'/database/migrations/booking/2026_07_30_000001_create_bookings_table.php'],
+            [
+                $this->root().'/database/migrations/booking/2026_07_30_000001_create_bookings_table.php',
+                $this->root().'/database/migrations/booking/2026_07_31_000001_create_services_table.php',
+            ],
             glob($this->root().'/database/migrations/booking/*.php') ?: [],
         );
     }
