@@ -212,7 +212,7 @@ final class Website
         $this->transition(WebsiteLifecycle::Draft, WebsiteLifecycle::ReadyForReview, $at);
     }
 
-    public function publish(WebsitePublicationEvidence $evidence, WebsitePublicationReadiness $readiness, PublicationId $publicationId, string $publishedBy, DateTimeImmutable $at): void
+    public function publish(WebsitePublicationEvidence $evidence, WebsitePublicationReadiness $readiness, WebsitePublicationContent $content, PublicationId $publicationId, string $publishedBy, DateTimeImmutable $at): void
     {
         if (! in_array($this->lifecycle, [WebsiteLifecycle::ReadyForReview, WebsiteLifecycle::Published], true)) {
             throw new InvalidWebsiteValueException('Website is not ready to publish.');
@@ -225,9 +225,13 @@ final class Website
         $this->assertAssetAvailable($this->branding->logoReference, AssetUsage::Logo);
         $this->assertAssetAvailable($this->branding->faviconReference, AssetUsage::Favicon);
         $this->assertAssetAvailable($this->seo->openGraphImageReference(), AssetUsage::OpenGraphImage);
+        foreach ($content->assetReferences() as [$assetId, $usage]) {
+            $this->assertAssetAvailable($assetId, $usage);
+        }
 
         $publishedVersion = $this->publishedVersion() + 1;
         $sections = array_map(static fn (WebsiteSection $section): PublishedSectionSnapshot => new PublishedSectionSnapshot($section->id, $section->type, $section->displayOrder()->value, $section->enabled()), $this->sections->sections());
+        $sectionContents = $content->capture($this->sections, $publicationId, $this->id, $publishedVersion, $this->branding, $at);
         $assets = [];
         foreach ($this->assets->assets() as $asset) {
             if ($asset->status() === AssetStatus::Available) {
@@ -242,7 +246,7 @@ final class Website
             $branding->faviconReference, $branding->contactEmail, $branding->contactPhone, $branding->address, $branding->socialLinks,
             $seo->metaTitle(), $seo->metaDescription(), $seo->metaKeywords(), $seo->canonicalUrl(), $seo->robotsDirective(),
             $seo->openGraphTitle(), $seo->openGraphDescription(), $seo->openGraphImageReference(), $seo->indexingEnabled(),
-            $readiness->contentFingerprint, $sections, $assets,
+            $readiness->contentFingerprint, $sections, $assets, $sectionContents,
         );
         $history = new WebsitePublicationHistoryEntry($publicationId, $this->id, $publishedVersion, $at, $publishedBy, PublicationResult::Published);
         $this->publishedSnapshot = $snapshot;

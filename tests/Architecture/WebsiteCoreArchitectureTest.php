@@ -140,6 +140,24 @@ final class WebsiteCoreArchitectureTest extends TestCase
         }
     }
 
+    public function test_published_section_content_is_normalized_immutable_and_stays_inside_website(): void
+    {
+        foreach (['PublishedSectionContentSnapshot.php', 'PublishedContactProjection.php', 'WebsitePublicationContent.php'] as $name) {
+            $source = (string) file_get_contents($this->root().'/app/Modules/WebsiteBuilder/Domain/'.$name);
+            foreach (['App\\Modules\\Booking\\', 'App\\Modules\\SubscriptionBilling\\', 'Tracking\\', 'Rendering\\', 'Infrastructure\\', 'Illuminate\\'] as $forbidden) {
+                self::assertStringNotContainsString($forbidden, $source, $name);
+            }
+        }
+        self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Contracts/Repositories/PublishedSectionContentRepositoryInterface.php');
+        $migration = (string) file_get_contents($this->root().'/database/migrations/website_builder/2026_08_13_000001_create_website_published_section_content_tables.php');
+        foreach (['website_published_section_contents', 'website_published_hero_contents', 'website_published_about_contents', 'website_published_service_references', 'website_published_doctor_profiles', 'website_published_testimonials', 'website_published_gallery_images', 'website_published_faq_entries', 'website_published_contact_contents', 'website_published_booking_cta_contents'] as $table) {
+            self::assertStringContainsString("'{$table}'", $migration);
+        }
+        foreach (["json('", "jsonb('", 'serialized', 'storage_url', 'cdn_url'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $migration);
+        }
+    }
+
     /** @return list<string> */
     private function phpFiles(string ...$directories): array
     {

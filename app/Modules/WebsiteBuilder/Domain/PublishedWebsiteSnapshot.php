@@ -18,6 +18,7 @@ final readonly class PublishedWebsiteSnapshot
      * @param  array<string, string>  $socialLinks
      * @param  list<PublishedSectionSnapshot>  $sections
      * @param  list<PublishedAssetSnapshot>  $assets
+     * @param  list<PublishedSectionContentSnapshot>  $sectionContents
      */
     public function __construct(
         public PublicationId $publicationId,
@@ -49,6 +50,7 @@ final readonly class PublishedWebsiteSnapshot
         public string $contentFingerprint,
         public array $sections,
         public array $assets,
+        public array $sectionContents,
     ) {
         if ($publishedVersion < 1 || $sourceWebsiteVersion < 0 || preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $publishedBy) !== 1 || preg_match('/^[0-9a-f]{64}$/', $contentFingerprint) !== 1) {
             throw new InvalidWebsiteValueException('Published Website Snapshot state is invalid.');
@@ -56,7 +58,8 @@ final readonly class PublishedWebsiteSnapshot
         $sectionIds = array_map(static fn (PublishedSectionSnapshot $section): string => $section->sectionId->value, $sections);
         $orders = array_map(static fn (PublishedSectionSnapshot $section): int => $section->displayOrder, $sections);
         $assetIds = array_map(static fn (PublishedAssetSnapshot $asset): string => $asset->assetId->value, $assets);
-        if (count(array_unique($sectionIds)) !== count($sectionIds) || count(array_unique($orders)) !== count($orders) || count(array_unique($assetIds)) !== count($assetIds)) {
+        $contentSectionIds = array_map(static fn (PublishedSectionContentSnapshot $content): string => $content->sectionId->value, $sectionContents);
+        if (count(array_unique($sectionIds)) !== count($sectionIds) || count(array_unique($orders)) !== count($orders) || count(array_unique($assetIds)) !== count($assetIds) || count($sectionContents) !== count($sections) || $contentSectionIds !== $sectionIds) {
             throw new InvalidWebsiteValueException('Published Website Snapshot children are invalid.');
         }
     }

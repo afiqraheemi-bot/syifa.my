@@ -6,6 +6,7 @@ namespace Tests\Integration\Modules\WebsiteBuilder\Persistence;
 
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\GallerySectionContent;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetAvailabilityEvidence;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetMimeType;
@@ -35,6 +36,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\WebsitePublicationContentFactory;
 use Tests\TestCase;
 
 final class PostgresWebsiteRepositoryTest extends TestCase
@@ -57,6 +59,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         config()->set('database.connections.'.self::CONNECTION, ['driver' => 'pgsql', 'url' => $dsn, 'charset' => 'utf8', 'prefix' => '', 'prefix_indexes' => true, 'search_path' => 'public', 'sslmode' => 'prefer', 'timezone' => 'UTC']);
         DB::purge(self::CONNECTION);
         $this->connection = DB::connection(self::CONNECTION);
+        foreach (['website_published_faq_entries', 'website_published_gallery_images', 'website_published_testimonials', 'website_published_doctor_profiles', 'website_published_service_references', 'website_published_booking_cta_contents', 'website_published_contact_contents', 'website_published_about_contents', 'website_published_hero_contents', 'website_published_section_contents'] as $table) {
+            Schema::connection(self::CONNECTION)->dropIfExists($table);
+        }
         Schema::connection(self::CONNECTION)->dropIfExists('website_publication_history');
         Schema::connection(self::CONNECTION)->dropIfExists('website_published_snapshot_assets');
         Schema::connection(self::CONNECTION)->dropIfExists('website_published_snapshot_sections');
@@ -90,6 +95,10 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         self::assertInstanceOf(Migration::class, $publishingMigration);
         $publishingMigration->up();
         $this->migrations[] = $publishingMigration;
+        $contentMigration = require base_path('database/migrations/website_builder/2026_08_13_000001_create_website_published_section_content_tables.php');
+        self::assertInstanceOf(Migration::class, $contentMigration);
+        $contentMigration->up();
+        $this->migrations[] = $contentMigration;
     }
 
     protected function tearDown(): void
@@ -223,17 +232,32 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $website = $this->website();
         $this->repository()->save($website);
         $website->readyForReview($this->at('+1 hour'));
-        $website->publish($this->publicationEvidence(), $this->readiness(), new PublicationId($this->uuid(850)), $this->uuid(900), $this->at('+2 hours'));
+        $website->publish($this->publicationEvidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(850)), $this->uuid(900), $this->at('+2 hours'));
         $this->repository()->save($website);
 
         self::assertSame(1, $this->db()->table('website_published_snapshots')->where('website_id', $website->id->value)->count());
         self::assertSame(9, $this->db()->table('website_published_snapshot_sections')->where('publication_id', $this->uuid(850))->count());
+        self::assertSame(9, $this->db()->table('website_published_section_contents')->where('publication_id', $this->uuid(850))->count());
+        self::assertSame(1, $this->db()->table('website_published_service_references')->where('publication_id', $this->uuid(850))->count());
+        self::assertSame(1, $this->db()->table('website_published_doctor_profiles')->where('publication_id', $this->uuid(850))->count());
+        self::assertSame(1, $this->db()->table('website_published_testimonials')->where('publication_id', $this->uuid(850))->count());
+        self::assertSame(1, $this->db()->table('website_published_gallery_images')->where('publication_id', $this->uuid(850))->count());
+        self::assertSame(1, $this->db()->table('website_published_faq_entries')->where('publication_id', $this->uuid(850))->count());
+        self::assertSame('Trusted healthcare', $this->db()->table('website_published_hero_contents')->where('publication_id', $this->uuid(850))->value('headline'));
+        self::assertSame($this->uuid(702), $this->db()->table('website_published_service_references')->where('publication_id', $this->uuid(850))->value('service_id'));
+        self::assertSame($this->uuid(9990), $this->db()->table('website_published_gallery_images')->where('publication_id', $this->uuid(850))->value('asset_id'));
+        self::assertSame('When are you open?', $this->db()->table('website_published_faq_entries')->where('publication_id', $this->uuid(850))->value('question'));
+        self::assertSame('Book now', $this->db()->table('website_published_booking_cta_contents')->where('publication_id', $this->uuid(850))->value('button_label'));
+        self::assertSame(9, $this->db()->table('website_published_section_contents')->where('publication_id', $this->uuid(850))->where('renderable', true)->count());
         self::assertSame(1, $this->db()->table('website_publication_history')->where('website_id', $website->id->value)->count());
         $loaded = $this->repository()->findByTenant(new TenantId($this->uuid(1)));
         self::assertNotNull($loaded);
         self::assertSame(1, $loaded->publishedVersion());
         self::assertSame($this->uuid(900), $loaded->lastPublishedBy());
         self::assertCount(1, $loaded->publicationHistory());
+        self::assertCount(9, $loaded->publishedSnapshot()?->sectionContents ?? []);
+        self::assertSame('hello@clinic.test', $loaded->publishedSnapshot()?->sectionContents[7]->contactProjection?->email);
+        self::assertInstanceOf(GallerySectionContent::class, $loaded->publishedSnapshot()?->sectionContents[5]->content);
     }
 
     public function test_public_reader_uses_snapshot_only_and_ignores_later_draft_mutation(): void
@@ -243,7 +267,7 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $reader = new PostgresWebsitePublishedSnapshotReadAdapter($this->db());
         self::assertNull($reader->latest($website->id->value));
         $website->readyForReview($this->at('+1 hour'));
-        $website->publish($this->publicationEvidence(), $this->readiness(), new PublicationId($this->uuid(851)), $this->uuid(900), $this->at('+2 hours'));
+        $website->publish($this->publicationEvidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(851)), $this->uuid(900), $this->at('+2 hours'));
         $this->repository()->save($website);
         self::assertSame('Klinik Syifa', $reader->latest($website->id->value)?->clinicName);
 
@@ -258,16 +282,18 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $website = $this->website();
         $this->repository()->save($website);
         $website->readyForReview($this->at('+1 hour'));
-        $website->publish($this->publicationEvidence(), $this->readiness(), new PublicationId($this->uuid(853)), $this->uuid(900), $this->at('+2 hours'));
+        $website->publish($this->publicationEvidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(853)), $this->uuid(900), $this->at('+2 hours'));
         $this->repository()->save($website);
         $website->updateBranding($this->branding('Second Draft'), $this->at('+3 hours'));
-        $website->publish($this->publicationEvidence(), $this->readiness(), new PublicationId($this->uuid(854)), $this->uuid(901), $this->at('+4 hours'));
+        $website->publish($this->publicationEvidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(854)), $this->uuid(901), $this->at('+4 hours'));
         $this->repository()->save($website);
 
         self::assertSame(2, $this->db()->table('website_published_snapshots')->where('website_id', $website->id->value)->count());
         self::assertSame('Klinik Syifa', $this->db()->table('website_published_snapshots')->where('publication_id', $this->uuid(853))->value('clinic_name'));
         self::assertSame('Second Draft', $this->db()->table('website_published_snapshots')->where('publication_id', $this->uuid(854))->value('clinic_name'));
         self::assertSame(2, $this->db()->table('website_publication_history')->where('website_id', $website->id->value)->count());
+        self::assertSame(18, $this->db()->table('website_published_section_contents')->where('website_id', $website->id->value)->count());
+        self::assertSame('Klinik Syifa', $this->db()->table('website_published_contact_contents')->where('website_published_contact_contents.publication_id', $this->uuid(853))->join('website_published_snapshots', 'website_published_contact_contents.publication_id', '=', 'website_published_snapshots.publication_id')->value('clinic_name'));
         $loaded = $this->repository()->findByTenant(new TenantId($this->uuid(1)));
         self::assertNotNull($loaded);
         self::assertSame(2, $loaded->publishedVersion());
@@ -283,13 +309,14 @@ final class PostgresWebsiteRepositoryTest extends TestCase
             'published_at' => $this->at(), 'published_by' => $this->uuid(900), 'result' => 'published', 'created_at' => $this->at(),
         ]);
         $website->readyForReview($this->at('+1 hour'));
-        $website->publish($this->publicationEvidence(), $this->readiness(), new PublicationId($this->uuid(852)), $this->uuid(900), $this->at('+2 hours'));
+        $website->publish($this->publicationEvidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(852)), $this->uuid(900), $this->at('+2 hours'));
 
         try {
             $this->repository()->save($website);
             self::fail('Expected publication history version conflict.');
         } catch (QueryException) {
             self::assertSame(0, $this->db()->table('website_published_snapshots')->where('publication_id', $this->uuid(852))->count());
+            self::assertSame(0, $this->db()->table('website_published_section_contents')->where('publication_id', $this->uuid(852))->count());
             self::assertSame('draft', $this->db()->table('websites')->where('id', $website->id->value)->value('lifecycle'));
         }
     }
@@ -311,6 +338,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
 
     public function test_migration_backfills_all_sections_for_an_existing_website(): void
     {
+        $contentMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $contentMigration);
+        $contentMigration->down();
         $publishingMigration = array_pop($this->migrations);
         self::assertInstanceOf(Migration::class, $publishingMigration);
         $publishingMigration->down();
@@ -340,6 +370,8 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $this->migrations[] = $assetMigration;
         $publishingMigration->up();
         $this->migrations[] = $publishingMigration;
+        $contentMigration->up();
+        $this->migrations[] = $contentMigration;
         $rows = $this->db()->table('website_sections')->where('website_id', $this->uuid(30))->orderBy('display_order')->get();
         self::assertCount(9, $rows);
         self::assertSame(['HERO', 'ABOUT', 'SERVICES', 'DOCTORS', 'TESTIMONIALS', 'GALLERY', 'FAQ', 'CONTACT', 'BOOKING_CTA'], $rows->pluck('section_type')->all());
@@ -349,6 +381,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
     public function test_seo_migration_backfills_existing_website_with_safe_defaults(): void
     {
         $this->repository()->save($this->website());
+        $contentMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $contentMigration);
+        $contentMigration->down();
         $publishingMigration = array_pop($this->migrations);
         self::assertInstanceOf(Migration::class, $publishingMigration);
         $publishingMigration->down();
@@ -365,6 +400,8 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $this->migrations[] = $assetMigration;
         $publishingMigration->up();
         $this->migrations[] = $publishingMigration;
+        $contentMigration->up();
+        $this->migrations[] = $contentMigration;
         $row = $this->db()->table('website_seo_configurations')->where('website_id', $this->uuid(3))->first();
         self::assertNotNull($row);
         self::assertSame('Klinik Syifa', $row->meta_title);

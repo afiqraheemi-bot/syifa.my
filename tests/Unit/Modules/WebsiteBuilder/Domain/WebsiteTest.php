@@ -24,6 +24,7 @@ use DateTimeImmutable;
 use Error;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\WebsitePublicationContentFactory;
 
 final class WebsiteTest extends TestCase
 {
@@ -121,7 +122,7 @@ final class WebsiteTest extends TestCase
     {
         $website = $this->website();
         $website->readyForReview($this->at('+1 hour'));
-        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
+        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
         $website->archive($this->at('+3 hours'));
 
         $this->expectException(InvalidWebsiteValueException::class);
@@ -132,7 +133,7 @@ final class WebsiteTest extends TestCase
     {
         $website = $this->website();
         $website->readyForReview($this->at('+1 hour'));
-        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), new PublicationId($this->uuid(81)), $this->uuid(90), $this->at('+2 hours'));
+        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(81)), $this->uuid(90), $this->at('+2 hours'));
         $website->archive($this->at('+3 hours'));
         self::assertSame(WebsiteLifecycle::Archived, $website->lifecycle());
     }
@@ -148,7 +149,7 @@ final class WebsiteTest extends TestCase
         $website = $this->website();
         $website->selectTemplate(TemplateId::SyifaCare, $this->at('+1 hour'));
         $website->readyForReview($this->at('+2 hours'));
-        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), new PublicationId($this->uuid(82)), $this->uuid(90), $this->at('+3 hours'));
+        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(82)), $this->uuid(90), $this->at('+3 hours'));
         self::assertSame(TemplateId::SyifaCare, $website->templateId());
         $this->expectException(InvalidWebsiteValueException::class);
         $website->selectTemplate(TemplateId::SyifaDental, $this->at('+4 hours'));

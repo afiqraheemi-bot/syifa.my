@@ -51,7 +51,7 @@ final readonly class PostgresWebsiteReadAdapter implements WebsiteReadInterface
             throw new InvalidWebsiteStorageStateException('Stored Website read data is invalid.');
         }
 
-return $value;
+        return $value;
     }
 
     private function nullableString(stdClass $row, string $field): ?string

@@ -18,16 +18,18 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationEvidence;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationReadiness;
 use App\Modules\WebsiteBuilder\Domain\Website;
 use App\Modules\WebsiteBuilder\Domain\WebsiteAsset;
+use App\Modules\WebsiteBuilder\Domain\WebsitePublicationContent;
 use DateTimeImmutable;
 use Error;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\WebsitePublicationContentFactory;
 
 final class WebsitePublishingTest extends TestCase
 {
     public function test_publish_creates_immutable_snapshot_history_and_metadata(): void
     {
         $website = $this->readyWebsite();
-        $website->publish($this->evidence(), $this->readiness(), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
+        $website->publish($this->evidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
 
         self::assertSame(WebsiteLifecycle::Published, $website->lifecycle());
         self::assertSame(1, $website->publishedVersion());
@@ -36,20 +38,55 @@ final class WebsitePublishingTest extends TestCase
         self::assertCount(1, $website->publicationHistory());
         self::assertSame(str_repeat('a', 64), $website->publishedSnapshot()?->contentFingerprint);
         self::assertCount(9, $website->publishedSnapshot()?->sections ?? []);
+        self::assertCount(9, $website->publishedSnapshot()?->sectionContents ?? []);
+        self::assertNotSame(str_repeat('a', 64), $website->publishedSnapshot()?->sectionContents[0]->contentFingerprint);
+        self::assertTrue($website->publishedSnapshot()?->sectionContents[0]->renderable);
+        self::assertSame('hello@clinic.test', $website->publishedSnapshot()?->sectionContents[7]->contactProjection?->email);
 
         $this->expectException(Error::class);
         $website->publishedSnapshot()->clinicName = 'Mutation';
     }
 
+    public function test_enabled_section_without_positive_renderability_evidence_rejects_publication_atomically(): void
+    {
+        $website = $this->readyWebsite();
+        $content = WebsitePublicationContentFactory::complete($website);
+        $renderability = $content->renderabilityBySectionId;
+        $renderability[$website->sections()->sections()[0]->id->value] = false;
+
+        try {
+            $website->publish($this->evidence(), $this->readiness(), new WebsitePublicationContent($content->contents, $renderability), new PublicationId($this->uuid(82)), $this->uuid(90), $this->at('+2 hours'));
+            self::fail('Expected renderability rejection.');
+        } catch (InvalidWebsiteValueException) {
+            self::assertNull($website->publishedSnapshot());
+            self::assertSame([], $website->publicationHistory());
+        }
+    }
+
+    public function test_published_content_is_detached_from_later_publication_input(): void
+    {
+        $website = $this->readyWebsite();
+        $content = WebsitePublicationContentFactory::complete($website);
+        $website->publish($this->evidence(), $this->readiness(), $content, new PublicationId($this->uuid(83)), $this->uuid(90), $this->at('+2 hours'));
+        $snapshot = $website->publishedSnapshot();
+        self::assertNotNull($snapshot);
+        $fingerprints = array_map(static fn ($item): string => $item->contentFingerprint, $snapshot->sectionContents);
+
+        $website->updateBranding($this->branding('Later Draft'), $this->at('+3 hours'));
+
+        self::assertSame($fingerprints, array_map(static fn ($item): string => $item->contentFingerprint, $snapshot->sectionContents));
+        self::assertSame('hello@clinic.test', $snapshot->sectionContents[7]->contactProjection?->email);
+    }
+
     public function test_future_publish_creates_new_snapshot_without_mutating_previous_snapshot(): void
     {
         $website = $this->readyWebsite();
-        $website->publish($this->evidence(), $this->readiness(), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
+        $website->publish($this->evidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
         $first = $website->publishedSnapshot();
         self::assertNotNull($first);
         $website->updateBranding($this->branding('Draft Change'), $this->at('+3 hours'));
         self::assertSame('Klinik Syifa', $first->clinicName);
-        $website->publish($this->evidence(), $this->readiness('b'), new PublicationId($this->uuid(81)), $this->uuid(91), $this->at('+4 hours'));
+        $website->publish($this->evidence(), $this->readiness('b'), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(81)), $this->uuid(91), $this->at('+4 hours'));
 
         self::assertSame(2, $website->publishedVersion());
         self::assertCount(2, $website->publicationHistory());
@@ -63,7 +100,7 @@ final class WebsitePublishingTest extends TestCase
         $website = $this->readyWebsite();
         try {
             $readiness = new WebsitePublicationReadiness(true, true, false, true, true, true, str_repeat('a', 64));
-            $website->publish($this->evidence(), $readiness, new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
+            $website->publish($this->evidence(), $readiness, WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
             self::fail('Expected readiness failure.');
         } catch (InvalidWebsiteValueException) {
             self::assertSame(WebsiteLifecycle::ReadyForReview, $website->lifecycle());
@@ -82,7 +119,7 @@ final class WebsitePublishingTest extends TestCase
         $website->readyForReview($this->at('+1 hour'));
 
         try {
-            $website->publish($this->evidence(), $this->readiness(), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
+            $website->publish($this->evidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
             self::fail('Expected unavailable Asset rejection.');
         } catch (InvalidWebsiteValueException) {
             self::assertNull($website->publishedSnapshot());
