@@ -6,6 +6,7 @@ namespace Tests\Unit\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\PublicationId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionType;
@@ -15,6 +16,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteBranding;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteLifecycle;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationEvidence;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationReadiness;
 use App\Modules\WebsiteBuilder\Domain\Website;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSection;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSectionCollection;
@@ -32,7 +34,7 @@ final class WebsiteTest extends TestCase
         self::assertSame($this->uuid(2), $website->tenantId->value);
         self::assertSame(TemplateId::SyifaEssential, $website->templateId());
         self::assertSame('Klinik Syifa', $website->branding()->clinicName);
-        self::assertSame($this->uuid(4), $website->branding()->logoReference?->value);
+        self::assertNull($website->branding()->logoReference);
         self::assertSame(WebsiteLifecycle::Draft, $website->lifecycle());
         self::assertSame($website->id->value, $website->seo()->websiteId->value);
         self::assertSame('Klinik Syifa', $website->seo()->metaTitle());
@@ -119,7 +121,7 @@ final class WebsiteTest extends TestCase
     {
         $website = $this->website();
         $website->readyForReview($this->at('+1 hour'));
-        $website->publish(new WebsitePublicationEvidence(true, true), $this->at('+2 hours'));
+        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
         $website->archive($this->at('+3 hours'));
 
         $this->expectException(InvalidWebsiteValueException::class);
@@ -130,7 +132,7 @@ final class WebsiteTest extends TestCase
     {
         $website = $this->website();
         $website->readyForReview($this->at('+1 hour'));
-        $website->publish(new WebsitePublicationEvidence(true, true), $this->at('+2 hours'));
+        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), new PublicationId($this->uuid(81)), $this->uuid(90), $this->at('+2 hours'));
         $website->archive($this->at('+3 hours'));
         self::assertSame(WebsiteLifecycle::Archived, $website->lifecycle());
     }
@@ -146,7 +148,7 @@ final class WebsiteTest extends TestCase
         $website = $this->website();
         $website->selectTemplate(TemplateId::SyifaCare, $this->at('+1 hour'));
         $website->readyForReview($this->at('+2 hours'));
-        $website->publish(new WebsitePublicationEvidence(true, true), $this->at('+3 hours'));
+        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), new PublicationId($this->uuid(82)), $this->uuid(90), $this->at('+3 hours'));
         self::assertSame(TemplateId::SyifaCare, $website->templateId());
         $this->expectException(InvalidWebsiteValueException::class);
         $website->selectTemplate(TemplateId::SyifaDental, $this->at('+4 hours'));
@@ -203,7 +205,7 @@ final class WebsiteTest extends TestCase
 
     private function branding(array $overrides = []): WebsiteBranding
     {
-        $values = array_merge(['clinicName' => 'Klinik Syifa', 'tagline' => 'Care with confidence', 'primaryColor' => '#112233', 'secondaryColor' => '#AABBCC', 'logoReference' => new AssetId($this->uuid(4)), 'faviconReference' => null, 'contactEmail' => 'hello@clinic.test', 'contactPhone' => '+60123456789', 'address' => 'Kuala Lumpur', 'socialLinks' => ['facebook' => 'https://facebook.com/clinic']], $overrides);
+        $values = array_merge(['clinicName' => 'Klinik Syifa', 'tagline' => 'Care with confidence', 'primaryColor' => '#112233', 'secondaryColor' => '#AABBCC', 'logoReference' => null, 'faviconReference' => null, 'contactEmail' => 'hello@clinic.test', 'contactPhone' => '+60123456789', 'address' => 'Kuala Lumpur', 'socialLinks' => ['facebook' => 'https://facebook.com/clinic']], $overrides);
 
         return new WebsiteBranding(...$values);
     }
@@ -213,6 +215,11 @@ final class WebsiteTest extends TestCase
         $at = new DateTimeImmutable('2026-08-07T00:00:00Z');
 
         return $modify === '' ? $at : $at->modify($modify);
+    }
+
+    private function readiness(): WebsitePublicationReadiness
+    {
+        return new WebsitePublicationReadiness(true, true, true, true, true, true, str_repeat('a', 64));
     }
 
     private function uuid(int $suffix): string

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Infrastructure;
 
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeReaderInterface;
+use App\Modules\WebsiteBuilder\Contracts\Queries\WebsitePublishedSnapshotReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
@@ -16,6 +17,7 @@ use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConf
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresClinicRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsiteRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\BookingClinicOperationalTimeAdapter;
+use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsitePublishedSnapshotReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteReadAdapter;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
@@ -49,6 +51,10 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
         $this->app->singleton(
             WebsiteReadInterface::class,
             static fn (Application $application): PostgresWebsiteReadAdapter => new PostgresWebsiteReadAdapter($application->make('db')->connection()),
+        );
+        $this->app->singleton(
+            WebsitePublishedSnapshotReadInterface::class,
+            static fn (Application $application): PostgresWebsitePublishedSnapshotReadAdapter => new PostgresWebsitePublishedSnapshotReadAdapter($application->make('db')->connection()),
         );
         $this->app->singleton(
             ClinicOperationalTimeReaderInterface::class,

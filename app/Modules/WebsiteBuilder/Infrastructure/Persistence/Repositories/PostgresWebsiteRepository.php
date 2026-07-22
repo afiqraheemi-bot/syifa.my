@@ -7,11 +7,23 @@ namespace App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
+use App\Modules\WebsiteBuilder\Domain\PublishedAssetSnapshot;
+use App\Modules\WebsiteBuilder\Domain\PublishedSectionSnapshot;
+use App\Modules\WebsiteBuilder\Domain\PublishedWebsiteSnapshot;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetMimeType;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\PublicationId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\PublicationResult;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionType;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
 use App\Modules\WebsiteBuilder\Domain\Website;
 use App\Modules\WebsiteBuilder\Domain\WebsiteAsset;
 use App\Modules\WebsiteBuilder\Domain\WebsiteAssetCollection;
+use App\Modules\WebsiteBuilder\Domain\WebsitePublicationHistoryEntry;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSection;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSectionCollection;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSeoConfiguration;
@@ -61,6 +73,7 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
             foreach ($website->assets()->assets() as $asset) {
                 $assetVersions[] = [$asset, $this->saveAsset($record->id, $asset)];
             }
+            $this->savePublications($website);
             foreach ($sectionVersions as [$section, $sectionVersion]) {
                 $section->synchronizeVersion($sectionVersion);
             }
@@ -126,6 +139,9 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
             }
             $assetRows = $this->connection->table('website_assets')->where('website_id', $this->string($row, 'id'))->orderBy('created_at')->orderBy('id')->get()->all();
             $assets = array_values(array_map(fn (stdClass $asset): WebsiteAsset => $this->assetDomain($asset), $assetRows));
+            $snapshot = $this->publishedSnapshot($this->string($row, 'id'));
+            $historyRows = $this->connection->table('website_publication_history')->where('website_id', $this->string($row, 'id'))->orderBy('published_version')->get()->all();
+            $history = array_values(array_map(fn (stdClass $entry): WebsitePublicationHistoryEntry => $this->historyDomain($entry), $historyRows));
 
             return $this->mapper->toDomain(new WebsiteStorageRecord(
                 $this->string($row, 'id'), $this->string($row, 'tenant_id'), $this->string($row, 'template_id'), $this->string($row, 'lifecycle'),
@@ -133,7 +149,7 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
                 $this->nullableString($row, 'logo_reference'), $this->nullableString($row, 'favicon_reference'), $this->string($row, 'contact_email'),
                 $this->string($row, 'contact_phone'), $this->string($row, 'address'), $links, $this->dateTime($row->domain_created_at ?? null),
                 $this->dateTime($row->domain_updated_at ?? null), $this->integer($row, 'version'),
-            ), new WebsiteSectionCollection($sections), $this->seoDomain($seoRow), new WebsiteAssetCollection($assets));
+            ), new WebsiteSectionCollection($sections), $this->seoDomain($seoRow), new WebsiteAssetCollection($assets), $snapshot, $history);
         } catch (InvalidWebsiteValueException $exception) {
             throw new InvalidWebsiteStorageStateException('Stored Website failed Domain validation.', 0, $exception);
         }
@@ -245,6 +261,104 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
             $this->string($row, 'checksum'), $this->string($row, 'status'), $this->dateTime($row->domain_created_at ?? null),
             $this->dateTime($row->domain_updated_at ?? null), $this->integer($row, 'version'),
         ));
+    }
+
+    private function savePublications(Website $website): void
+    {
+        $snapshot = $website->publishedSnapshot();
+        if ($snapshot === null || $this->connection->table('website_published_snapshots')->where('publication_id', $snapshot->publicationId->value)->exists()) {
+            return;
+        }
+        $this->connection->table('website_published_snapshots')->insert($this->snapshotPayload($snapshot));
+        foreach ($snapshot->sections as $section) {
+            $this->connection->table('website_published_snapshot_sections')->insert([
+                'publication_id' => $snapshot->publicationId->value, 'section_id' => $section->sectionId->value,
+                'section_type' => $section->type->value, 'display_order' => $section->displayOrder, 'enabled' => $section->enabled,
+            ]);
+        }
+        foreach ($snapshot->assets as $asset) {
+            $this->connection->table('website_published_snapshot_assets')->insert([
+                'publication_id' => $snapshot->publicationId->value, 'asset_id' => $asset->assetId->value, 'storage_key' => $asset->storageKey,
+                'mime_type' => $asset->mimeType->value, 'file_size_bytes' => $asset->fileSizeBytes, 'width' => $asset->width,
+                'height' => $asset->height, 'checksum' => $asset->checksum,
+            ]);
+        }
+        $historyEntries = $website->publicationHistory();
+        $history = end($historyEntries);
+        if (! $history instanceof WebsitePublicationHistoryEntry) {
+            throw new InvalidWebsiteStorageStateException('Website publication history is missing.');
+        }
+        $this->connection->table('website_publication_history')->insert([
+            'publication_id' => $history->publicationId->value, 'website_id' => $history->websiteId->value,
+            'published_version' => $history->publishedVersion, 'published_at' => $this->timestamp($history->publishedAt),
+            'published_by' => $history->publishedBy, 'result' => $history->result->value, 'created_at' => $this->timestamp(new DateTimeImmutable),
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function snapshotPayload(PublishedWebsiteSnapshot $snapshot): array
+    {
+        return [
+            'publication_id' => $snapshot->publicationId->value, 'website_id' => $snapshot->websiteId->value,
+            'published_version' => $snapshot->publishedVersion, 'source_website_version' => $snapshot->sourceWebsiteVersion,
+            'published_at' => $this->timestamp($snapshot->publishedAt), 'published_by' => $snapshot->publishedBy,
+            'template_id' => $snapshot->templateId->value, 'clinic_name' => $snapshot->clinicName, 'tagline' => $snapshot->tagline,
+            'primary_color' => $snapshot->primaryColor, 'secondary_color' => $snapshot->secondaryColor,
+            'logo_asset_id' => $snapshot->logoAssetId?->value, 'favicon_asset_id' => $snapshot->faviconAssetId?->value,
+            'contact_email' => $snapshot->contactEmail, 'contact_phone' => $snapshot->contactPhone, 'address' => $snapshot->address,
+            'facebook_url' => $snapshot->socialLinks['facebook'] ?? null, 'instagram_url' => $snapshot->socialLinks['instagram'] ?? null,
+            'youtube_url' => $snapshot->socialLinks['youtube'] ?? null, 'tiktok_url' => $snapshot->socialLinks['tiktok'] ?? null,
+            'linkedin_url' => $snapshot->socialLinks['linkedin'] ?? null, 'meta_title' => $snapshot->metaTitle,
+            'meta_description' => $snapshot->metaDescription, 'meta_keywords' => $snapshot->metaKeywords,
+            'canonical_url' => $snapshot->canonicalUrl, 'robots_directive' => $snapshot->robotsDirective->value,
+            'open_graph_title' => $snapshot->openGraphTitle, 'open_graph_description' => $snapshot->openGraphDescription,
+            'open_graph_image_asset_id' => $snapshot->openGraphImageAssetId?->value, 'indexing_enabled' => $snapshot->indexingEnabled,
+            'content_fingerprint' => $snapshot->contentFingerprint, 'created_at' => $this->timestamp(new DateTimeImmutable),
+        ];
+    }
+
+    private function publishedSnapshot(string $websiteId): ?PublishedWebsiteSnapshot
+    {
+        $row = $this->connection->table('website_published_snapshots')->where('website_id', $websiteId)->orderByDesc('published_version')->first();
+        if (! $row instanceof stdClass) {
+            return null;
+        }
+        $publicationId = $this->string($row, 'publication_id');
+        $sectionRows = $this->connection->table('website_published_snapshot_sections')->where('publication_id', $publicationId)->orderBy('display_order')->get()->all();
+        $sections = array_values(array_map(fn (stdClass $section): PublishedSectionSnapshot => new PublishedSectionSnapshot(new SectionId($this->string($section, 'section_id')), SectionType::fromStored($this->string($section, 'section_type')), $this->integer($section, 'display_order'), $this->boolean($section, 'enabled')), $sectionRows));
+        $assetRows = $this->connection->table('website_published_snapshot_assets')->where('publication_id', $publicationId)->orderBy('asset_id')->get()->all();
+        $assets = array_values(array_map(fn (stdClass $asset): PublishedAssetSnapshot => new PublishedAssetSnapshot(new AssetId($this->string($asset, 'asset_id')), $this->string($asset, 'storage_key'), AssetMimeType::fromStored($this->string($asset, 'mime_type')), $this->integer($asset, 'file_size_bytes'), $this->nullableInteger($asset, 'width'), $this->nullableInteger($asset, 'height'), $this->string($asset, 'checksum')), $assetRows));
+        $links = [];
+        foreach (['facebook', 'instagram', 'youtube', 'tiktok', 'linkedin'] as $channel) {
+            $value = $this->nullableString($row, $channel.'_url');
+            if ($value !== null) {
+                $links[$channel] = $value;
+            }
+        }
+
+        return new PublishedWebsiteSnapshot(
+            new PublicationId($publicationId), new WebsiteId($websiteId), $this->integer($row, 'published_version'), $this->integer($row, 'source_website_version'),
+            $this->dateTime($row->published_at ?? null), $this->string($row, 'published_by'), TemplateId::fromStored($this->string($row, 'template_id')),
+            $this->string($row, 'clinic_name'), $this->nullableString($row, 'tagline'), $this->string($row, 'primary_color'), $this->string($row, 'secondary_color'),
+            $this->assetId($row, 'logo_asset_id'), $this->assetId($row, 'favicon_asset_id'), $this->string($row, 'contact_email'),
+            $this->string($row, 'contact_phone'), $this->string($row, 'address'), $links, $this->string($row, 'meta_title'),
+            $this->string($row, 'meta_description'), $this->nullableString($row, 'meta_keywords'), $this->nullableString($row, 'canonical_url'),
+            RobotsDirective::fromStored($this->string($row, 'robots_directive')), $this->string($row, 'open_graph_title'),
+            $this->string($row, 'open_graph_description'), $this->assetId($row, 'open_graph_image_asset_id'), $this->boolean($row, 'indexing_enabled'),
+            $this->string($row, 'content_fingerprint'), $sections, $assets,
+        );
+    }
+
+    private function historyDomain(stdClass $row): WebsitePublicationHistoryEntry
+    {
+        return new WebsitePublicationHistoryEntry(new PublicationId($this->string($row, 'publication_id')), new WebsiteId($this->string($row, 'website_id')), $this->integer($row, 'published_version'), $this->dateTime($row->published_at ?? null), $this->string($row, 'published_by'), PublicationResult::fromStored($this->string($row, 'result')));
+    }
+
+    private function assetId(stdClass $row, string $field): ?AssetId
+    {
+        $value = $this->nullableString($row, $field);
+
+        return $value === null ? null : new AssetId($value);
     }
 
     private function boolean(stdClass $row, string $field): bool

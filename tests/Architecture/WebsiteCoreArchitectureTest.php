@@ -116,6 +116,30 @@ final class WebsiteCoreArchitectureTest extends TestCase
         self::assertStringNotContainsString('provider', $migration);
     }
 
+    public function test_publishing_is_internal_normalized_and_public_reads_are_snapshot_only(): void
+    {
+        foreach (['PublishedWebsiteSnapshot.php', 'PublishedSectionSnapshot.php', 'PublishedAssetSnapshot.php', 'WebsitePublicationHistoryEntry.php'] as $name) {
+            $source = (string) file_get_contents($this->root().'/app/Modules/WebsiteBuilder/Domain/'.$name);
+            foreach (['App\\Modules\\Booking\\', 'App\\Modules\\SubscriptionBilling\\', 'Tracking\\', 'Analytics\\', 'Deployment\\', 'Illuminate\\'] as $forbidden) {
+                self::assertStringNotContainsString($forbidden, $source);
+            }
+        }
+        self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Domain/Publishing.php');
+        self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Contracts/Repositories/WebsitePublicationRepositoryInterface.php');
+        $migration = (string) file_get_contents($this->root().'/database/migrations/website_builder/2026_08_12_000001_create_website_publishing_tables.php');
+        foreach (['website_published_snapshots', 'website_published_snapshot_sections', 'website_published_snapshot_assets', 'website_publication_history'] as $table) {
+            self::assertStringContainsString("Schema::create('{$table}'", $migration);
+        }
+        self::assertStringNotContainsString("json('", $migration);
+        self::assertStringNotContainsString("jsonb('", $migration);
+
+        $publicReader = (string) file_get_contents($this->root().'/app/Modules/WebsiteBuilder/Infrastructure/Queries/PostgresWebsitePublishedSnapshotReadAdapter.php');
+        self::assertStringContainsString("table('website_published_snapshots')", $publicReader);
+        foreach (["table('websites')", "table('website_sections')", "table('website_assets')", "table('website_seo_configurations')"] as $draftTable) {
+            self::assertStringNotContainsString($draftTable, $publicReader);
+        }
+    }
+
     /** @return list<string> */
     private function phpFiles(string ...$directories): array
     {
