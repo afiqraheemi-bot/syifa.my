@@ -77,7 +77,10 @@ final class WebsiteCoreArchitectureTest extends TestCase
             }
         }
 
-        self::assertSame([], $this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Presentation'));
+        self::assertSame([
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicLegalDocumentController.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicWebsiteController.php',
+        ], $this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Presentation'));
         self::assertFileDoesNotExist($this->root().'/database/migrations/website_builder/2026_08_09_000001_create_website_section_content_tables.php');
     }
 
@@ -179,7 +182,10 @@ final class WebsiteCoreArchitectureTest extends TestCase
         }
         self::assertFileDoesNotExist($this->root().'/database/migrations/website_builder/2026_08_14_000001_create_public_rendering_tables.php');
         self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Contracts/Repositories/PublicWebsiteRenderingRepositoryInterface.php');
-        self::assertSame([], $this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Presentation'));
+        self::assertSame([
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicLegalDocumentController.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicWebsiteController.php',
+        ], $this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Presentation'));
     }
 
     /** @return list<string> */

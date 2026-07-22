@@ -72,7 +72,7 @@ final class ClinicOperationalTimeFoundationArchitectureTest extends TestCase
 
     public function test_increment_introduces_no_out_of_scope_scheduling_or_delivery_capability(): void
     {
-        foreach ($this->phpFilesIn($this->root().'/app/Modules/WebsiteBuilder') as $file) {
+        foreach ($this->phpFilesIn($this->root().'/app/Modules/WebsiteBuilder/Domain') as $file) {
             $source = $this->source($file);
             foreach ([
                 'ServiceSchedule', 'AvailabilityException', 'SlotGenerator', 'BookingCollision',

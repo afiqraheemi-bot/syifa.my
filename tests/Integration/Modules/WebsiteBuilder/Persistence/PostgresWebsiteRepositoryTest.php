@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Modules\WebsiteBuilder\Persistence;
 
+use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContext;
+use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\ServicesSectionRenderModel;
+use App\Modules\WebsiteBuilder\Application\Rendering\PublicWebsiteRenderProjector;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\GallerySectionContent;
@@ -23,6 +26,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationEvidence;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationReadiness;
 use App\Modules\WebsiteBuilder\Domain\Website;
 use App\Modules\WebsiteBuilder\Domain\WebsiteAsset;
+use App\Modules\WebsiteBuilder\Infrastructure\Delivery\PostgresPublicWebsiteRenderModelProvider;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteAssetPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSectionPersistenceMapper;
@@ -384,6 +388,25 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $this->repository()->save($website);
         self::assertSame('Mutable Draft', $this->db()->table('websites')->where('id', $website->id->value)->value('clinic_name'));
         self::assertSame('Klinik Syifa', $reader->latest($website->id->value)?->clinicName);
+    }
+
+    public function test_public_delivery_provider_projects_only_the_latest_immutable_snapshot(): void
+    {
+        $website = $this->website();
+        $repository = $this->repository();
+        $repository->save($website);
+        $website->readyForReview($this->at('+1 hour'));
+        $website->publish($this->publicationEvidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(852)), $this->uuid(900), $this->at('+2 hours'));
+        $repository->save($website);
+        $provider = new PostgresPublicWebsiteRenderModelProvider($repository, new PublicWebsiteRenderProjector);
+
+        $render = $provider->find(new PublicSiteContext('https', 'clinic.example', websiteId: $website->id->value));
+
+        self::assertNotNull($render);
+        self::assertSame('Klinik Syifa', $render->branding->clinicName);
+        self::assertInstanceOf(ServicesSectionRenderModel::class, $render->sections[2]);
+        self::assertSame('Rawatan Kesihatan Am', $render->sections[2]->services[0]->displayName);
+        self::assertNull($provider->find(new PublicSiteContext('https', 'missing.example', websiteId: $this->uuid(999))));
     }
 
     public function test_republish_inserts_new_version_and_preserves_previous_snapshot(): void
