@@ -6,7 +6,6 @@ namespace Tests\Integration\Modules\Booking\Persistence;
 
 use App\Modules\Booking\Domain\Exceptions\StaleServiceWriteException;
 use App\Modules\Booking\Domain\Service;
-use App\Modules\Booking\Domain\ValueObjects\DurationMinutes;
 use App\Modules\Booking\Domain\ValueObjects\ServiceDescription;
 use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceName;
@@ -30,7 +29,8 @@ final class PostgresServiceRepositoryTest extends TestCase
 
     private ?PostgresServiceRepository $repository = null;
 
-    private ?Migration $migration = null;
+    /** @var list<Migration> */
+    private array $migrations = [];
 
     protected function setUp(): void
     {
@@ -59,16 +59,19 @@ final class PostgresServiceRepositoryTest extends TestCase
 
         $migration = require base_path('database/migrations/booking/2026_07_31_000001_create_services_table.php');
         self::assertInstanceOf(Migration::class, $migration);
-        $this->migration = $migration;
-        $this->migration->up();
+        $migration->up();
+        $removeDuration = require base_path('database/migrations/booking/2026_08_05_000003_remove_service_duration.php');
+        self::assertInstanceOf(Migration::class, $removeDuration);
+        $removeDuration->up();
+        $this->migrations = [$removeDuration, $migration];
 
         $this->repository = new PostgresServiceRepository($this->connection, new ServicePersistenceMapper);
     }
 
     protected function tearDown(): void
     {
-        if ($this->migration !== null) {
-            $this->migration->down();
+        foreach ($this->migrations as $migration) {
+            $migration->down();
         }
 
         DB::purge(self::CONNECTION_NAME);
@@ -87,23 +90,21 @@ final class PostgresServiceRepositoryTest extends TestCase
         self::assertSame($service->tenantId->value, $reloaded->tenantId->value);
         self::assertSame($service->name->value, $reloaded->name->value);
         self::assertSame($service->description?->value, $reloaded->description?->value);
-        self::assertSame($service->durationMinutes?->value, $reloaded->durationMinutes?->value);
         self::assertSame($service->sortOrder->value, $reloaded->sortOrder->value);
         self::assertSame('active', $reloaded->status()->value);
         self::assertSame($service->createdAt->format(DATE_ATOM), $reloaded->createdAt->format(DATE_ATOM));
         self::assertSame($service->updatedAt()->format(DATE_ATOM), $reloaded->updatedAt()->format(DATE_ATOM));
     }
 
-    public function test_service_without_description_or_duration_round_trips_as_null(): void
+    public function test_service_without_description_round_trips_as_null(): void
     {
-        $service = $this->service(description: null, durationMinutes: null);
+        $service = $this->service(description: null);
         $this->repository()->save($service);
 
         $reloaded = $this->repository()->findById($service->tenantId, $service->id);
 
         self::assertNotNull($reloaded);
         self::assertNull($reloaded->description);
-        self::assertNull($reloaded->durationMinutes);
     }
 
     public function test_find_by_id_does_not_cross_the_tenant_boundary(): void
@@ -203,7 +204,6 @@ final class PostgresServiceRepositoryTest extends TestCase
         int $tenantId = 2,
         string $name = 'Dental Cleaning',
         ?string $description = 'Routine cleaning and checkup',
-        ?int $durationMinutes = 30,
         int $sortOrder = 1,
     ): Service {
         return Service::register(
@@ -211,7 +211,6 @@ final class PostgresServiceRepositoryTest extends TestCase
             new TenantId($this->uuid($tenantId)),
             new ServiceName($name),
             $description === null ? null : new ServiceDescription($description),
-            $durationMinutes === null ? null : new DurationMinutes($durationMinutes),
             new SortOrder($sortOrder),
             $this->time(),
         );

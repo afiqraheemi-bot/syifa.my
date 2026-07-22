@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Booking\Infrastructure\Persistence\Mappers;
 
 use App\Modules\Booking\Domain\Service;
-use App\Modules\Booking\Domain\ValueObjects\DurationMinutes;
 use App\Modules\Booking\Domain\ValueObjects\ServiceDescription;
 use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceName;
@@ -23,7 +22,6 @@ final class ServicePersistenceMapper
             $service->tenantId->value,
             $service->name->value,
             $service->description?->value,
-            $service->durationMinutes?->value,
             $service->sortOrder->value,
             $service->status()->value,
             $service->createdAt,
@@ -39,7 +37,6 @@ final class ServicePersistenceMapper
             tenantId: new TenantId($record->tenantId),
             name: new ServiceName($record->name),
             description: $record->description === null ? null : new ServiceDescription($record->description),
-            durationMinutes: $record->durationMinutes === null ? null : new DurationMinutes($record->durationMinutes),
             sortOrder: new SortOrder($record->sortOrder),
             status: ServiceStatus::from($record->status),
             createdAt: $record->domainCreatedAt,

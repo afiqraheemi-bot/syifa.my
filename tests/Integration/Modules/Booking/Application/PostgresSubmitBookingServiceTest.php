@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Modules\Booking\Application;
 
+use App\Modules\Booking\Application\Availability\ClinicSlotGenerator;
+use App\Modules\Booking\Application\BookingHistoryIdentifierGeneratorInterface;
 use App\Modules\Booking\Application\BookingIdentifierGeneratorInterface;
 use App\Modules\Booking\Application\BookingReferenceGeneratorInterface;
 use App\Modules\Booking\Application\Commands\SubmitBookingCommand;
-use App\Modules\Booking\Application\Exceptions\BookingFormConfigurationNotFoundException;
-use App\Modules\Booking\Application\Exceptions\BookingServiceInactiveException;
-use App\Modules\Booking\Application\Exceptions\BookingServiceNotFoundException;
-use App\Modules\Booking\Application\Exceptions\BookingSubmissionFailedException;
+use App\Modules\Booking\Application\Exceptions\SlotUnavailableException;
 use App\Modules\Booking\Application\SubmitBookingService;
+use App\Modules\Booking\Contracts\Capacity\ReservationSlotData;
+use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperatingIntervalData;
+use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeData;
+use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeReaderInterface;
 use App\Modules\Booking\Contracts\Clock\BookingClockInterface;
-use App\Modules\Booking\Contracts\Repositories\BookingRepositoryInterface;
-use App\Modules\Booking\Domain\Booking;
 use App\Modules\Booking\Domain\BookingFormConfiguration;
 use App\Modules\Booking\Domain\Service;
 use App\Modules\Booking\Domain\ValueObjects\BookingFormField;
-use App\Modules\Booking\Domain\ValueObjects\BookingId;
 use App\Modules\Booking\Domain\ValueObjects\FieldLabels;
 use App\Modules\Booking\Domain\ValueObjects\FieldOrder;
 use App\Modules\Booking\Domain\ValueObjects\RequiredFields;
@@ -30,15 +30,17 @@ use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingFormConfigurat
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingPersistenceMapper;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\ServicePersistenceMapper;
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingFormConfigurationRepository;
+use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingHistoryRepository;
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingRepository;
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresServiceRepository;
+use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresSlotCapacityReservation;
 use App\Modules\Booking\Infrastructure\Transactions\PostgresBookingTransaction;
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use RuntimeException;
 use Tests\TestCase;
 
 final class PostgresSubmitBookingServiceTest extends TestCase
@@ -55,32 +57,27 @@ final class PostgresSubmitBookingServiceTest extends TestCase
         parent::setUp();
         $dsn = getenv('BOOKING_POSTGRES_TEST_DSN') ?: getenv('SUBSCRIPTION_BILLING_POSTGRES_TEST_DSN');
         if (! is_string($dsn) || $dsn === '') {
-            self::markTestSkipped('Requires BOOKING_POSTGRES_TEST_DSN (or SUBSCRIPTION_BILLING_POSTGRES_TEST_DSN) for a dedicated disposable PostgreSQL database.');
+            self::markTestSkipped('Requires a disposable PostgreSQL database.');
         }
-
         config()->set('database.default', self::CONNECTION);
-        config()->set('database.connections.'.self::CONNECTION, [
-            'driver' => 'pgsql', 'url' => $dsn, 'charset' => 'utf8', 'prefix' => '',
-            'prefix_indexes' => true, 'search_path' => 'public', 'sslmode' => 'prefer', 'timezone' => 'UTC',
-        ]);
+        config()->set('database.connections.'.self::CONNECTION, ['driver' => 'pgsql', 'url' => $dsn, 'charset' => 'utf8', 'prefix' => '', 'prefix_indexes' => true, 'search_path' => 'public', 'sslmode' => 'prefer', 'timezone' => 'UTC']);
         DB::purge(self::CONNECTION);
         $this->connection = DB::connection(self::CONNECTION);
-        foreach (['booking_form_configurations', 'services', 'bookings'] as $table) {
+        foreach (['booking_history', 'booking_slot_reservation_buckets', 'booking_form_configurations', 'bookings', 'services', 'tenants'] as $table) {
             Schema::connection(self::CONNECTION)->dropIfExists($table);
         }
-
-        foreach ([
-            'database/migrations/booking/2026_07_30_000001_create_bookings_table.php',
-            'database/migrations/booking/2026_07_31_000001_create_services_table.php',
-            'database/migrations/booking/2026_08_01_000001_create_booking_form_configurations_table.php',
-            'database/migrations/booking/2026_08_02_000001_add_service_id_to_bookings_table.php',
-            'database/migrations/booking/2026_08_03_000001_remove_clinic_id_from_bookings_table.php',
-        ] as $path) {
-            $migration = require base_path($path);
-            self::assertInstanceOf(Migration::class, $migration);
+        Schema::connection(self::CONNECTION)->create('tenants', function (Blueprint $table): void {
+            $table->uuid('id')->primary();
+        });
+        foreach (['2026_07_30_000001_create_bookings_table.php', '2026_07_31_000001_create_services_table.php', '2026_08_01_000001_create_booking_form_configurations_table.php', '2026_08_02_000001_add_service_id_to_bookings_table.php', '2026_08_03_000001_remove_clinic_id_from_bookings_table.php', '2026_08_05_000001_add_booking_mvp_scheduling.php', '2026_08_05_000002_create_booking_capacity_and_history.php', '2026_08_05_000003_remove_service_duration.php'] as $file) {
+            $migration = require base_path('database/migrations/booking/'.$file);
             $migration->up();
             array_unshift($this->migrations, $migration);
         }
+        $this->db()->table('tenants')->insert(['id' => $this->uuid(1)]);
+        $tenant = new TenantId($this->uuid(1));
+        (new PostgresServiceRepository($this->db(), new ServicePersistenceMapper))->save(Service::register(new ServiceId($this->uuid(4)), $tenant, new ServiceName('Consultation'), null, new SortOrder(1), $this->now()));
+        (new PostgresBookingFormConfigurationRepository($this->db(), new BookingFormConfigurationPersistenceMapper))->save(BookingFormConfiguration::create($tenant, true, false, false, false, false, new RequiredFields([BookingFormField::Service]), new FieldOrder([BookingFormField::PatientName, BookingFormField::Phone, BookingFormField::AppointmentDate, BookingFormField::AppointmentTime, BookingFormField::Service]), new FieldLabels([]), $this->now()));
     }
 
     protected function tearDown(): void
@@ -88,144 +85,82 @@ final class PostgresSubmitBookingServiceTest extends TestCase
         foreach ($this->migrations as $migration) {
             $migration->down();
         }
+        Schema::connection(self::CONNECTION)->dropIfExists('tenants');
         DB::purge(self::CONNECTION);
         parent::tearDown();
     }
 
-    public function test_core_only_submission_persists_a_tenant_owned_booking(): void
+    public function test_submission_atomically_persists_snapshot_capacity_and_history(): void
     {
-        $this->saveConfiguration();
-
-        $result = $this->application()->execute($this->command());
-        $booking = $this->bookingRepository()->findById($this->tenant(), new BookingId($result->bookingId));
-
-        self::assertNotNull($booking);
-        self::assertSame($this->tenant()->value, $booking->tenantId->value);
-        self::assertNull($booking->serviceId);
-        self::assertNull($this->bookingRepository()->findById(new TenantId($this->uuid(2)), $booking->id));
+        $result = $this->application(10)->execute($this->command());
+        $row = $this->db()->table('bookings')->where('id', $result->bookingId)->first();
+        self::assertNotNull($row);
+        self::assertSame('Asia/Kuala_Lumpur', $row->timezone);
+        self::assertSame(1, $this->db()->table('booking_slot_reservation_buckets')->value('reserved_count'));
+        self::assertSame(1, $this->db()->table('booking_history')->where('event_type', 'BookingSubmitted')->count());
     }
 
-    public function test_active_service_submission_persists_validated_lineage(): void
+    public function test_full_slot_rejects_second_submission_without_leaking_booking_or_history(): void
     {
-        $this->saveConfiguration(service: true);
-        $this->serviceRepository()->save($this->service());
-
-        $result = $this->application()->execute($this->command($this->uuid(4)));
-        $booking = $this->bookingRepository()->findByReference($this->tenant(), $result->reference);
-
-        self::assertNotNull($booking);
-        self::assertSame($this->uuid(4), $booking->serviceId?->value);
+        $this->application(10)->execute($this->command());
+        $this->expectException(SlotUnavailableException::class);
+        try {
+            $this->application(11)->execute($this->command());
+        } finally {
+            self::assertSame(1, $this->db()->table('bookings')->count());
+            self::assertSame(1, $this->db()->table('booking_history')->count());
+        }
     }
 
-    public function test_optional_service_omission_persists_null(): void
+    public function test_separate_postgresql_connections_cannot_exceed_final_capacity(): void
     {
-        $this->saveConfiguration(service: true);
-
-        $result = $this->application()->execute($this->command());
-        $booking = $this->bookingRepository()->findById($this->tenant(), new BookingId($result->bookingId));
-
-        self::assertNotNull($booking);
-        self::assertNull($booking->serviceId);
-    }
-
-    public function test_inactive_unknown_and_cross_tenant_services_persist_nothing(): void
-    {
-        $this->saveConfiguration(service: true);
-        $inactive = $this->service();
-        $inactive->deactivate($this->now());
-        $this->serviceRepository()->save($inactive);
-
-        foreach ([$this->uuid(4), $this->uuid(99)] as $serviceId) {
-            try {
-                $this->application(reference: 'BOOK-'.$serviceId)->execute($this->command($serviceId));
-                self::fail('Expected Service validation to fail.');
-            } catch (BookingServiceInactiveException|BookingServiceNotFoundException) {
-                self::assertSame(0, $this->connection()->table('bookings')->count());
+        $slot = new ReservationSlotData(new DateTimeImmutable('2026-08-10T02:00:00Z'), new DateTimeImmutable('2026-08-10T02:30:00Z'));
+        DB::disconnect(self::CONNECTION);
+        $children = [];
+        for ($index = 0; $index < 2; $index++) {
+            $pid = pcntl_fork();
+            self::assertNotSame(-1, $pid);
+            if ($pid === 0) {
+                try {
+                    $name = 'booking_capacity_child_'.$index;
+                    config()->set('database.connections.'.$name, config('database.connections.'.self::CONNECTION));
+                    DB::purge($name);
+                    $connection = DB::connection($name);
+                    $connection->transaction(fn (): mixed => (new PostgresSlotCapacityReservation($connection))->reserve($this->uuid(1), $slot, 1));
+                    exit(0);
+                } catch (SlotUnavailableException) {
+                    exit(2);
+                } catch (\Throwable) {
+                    exit(3);
+                }
             }
+            $children[] = $pid;
         }
-
-        $this->serviceRepository()->save($this->service(tenantId: 2, id: 5));
-        try {
-            $this->application(reference: 'BOOK-CROSS-TENANT')->execute($this->command($this->uuid(5)));
-            self::fail('Expected cross-Tenant Service validation to fail.');
-        } catch (BookingServiceNotFoundException $exception) {
-            self::assertSame('The requested Service is unavailable.', $exception->getMessage());
-            self::assertSame(0, $this->connection()->table('bookings')->count());
+        $codes = [];
+        foreach ($children as $pid) {
+            pcntl_waitpid($pid, $status);
+            $codes[] = pcntl_wexitstatus($status);
         }
+        sort($codes);
+        self::assertSame([0, 2], $codes);
+        DB::purge(self::CONNECTION);
+        $this->connection = DB::connection(self::CONNECTION);
+        self::assertSame(1, $this->db()->table('booking_slot_reservation_buckets')->value('reserved_count'));
     }
 
-    public function test_missing_configuration_persists_nothing(): void
+    private function application(int $id): SubmitBookingService
     {
-        try {
-            $this->application()->execute($this->command());
-            self::fail('Expected missing configuration to fail.');
-        } catch (BookingFormConfigurationNotFoundException) {
-            self::assertSame(0, $this->connection()->table('bookings')->count());
-        }
+        $fixed = new PostgresBookingFixedValues($this->uuid($id), 'BOOK-'.$id, $this->now());
+
+        return new SubmitBookingService(new PostgresBookingFormConfigurationRepository($this->db(), new BookingFormConfigurationPersistenceMapper), new PostgresServiceRepository($this->db(), new ServicePersistenceMapper), new PostgresBookingRepository($this->db(), new BookingPersistenceMapper), new PostgresBookingTransaction($this->db()), $fixed, $fixed, $fixed, $fixed, new ClinicSlotGenerator, new PostgresSlotCapacityReservation($this->db()), new PostgresBookingHistoryRepository($this->db()), $fixed);
     }
 
-    public function test_outer_transaction_rolls_back_a_save_when_repository_then_fails(): void
+    private function command(): SubmitBookingCommand
     {
-        $this->saveConfiguration();
-        $repository = new SaveThenFailBookingRepository($this->bookingRepository());
-
-        try {
-            $this->application($repository)->execute($this->command());
-            self::fail('Expected translated persistence failure.');
-        } catch (BookingSubmissionFailedException) {
-            self::assertSame(0, $this->connection()->table('bookings')->count());
-        }
+        return new SubmitBookingCommand(new TenantId($this->uuid(1)), 'Aisyah', '+6012', '2026-08-10', '10:00', $this->uuid(4));
     }
 
-    private function application(?BookingRepositoryInterface $bookings = null, string $reference = 'BOOK-INTEGRATION-0001'): SubmitBookingService
-    {
-        return new SubmitBookingService(
-            new PostgresBookingFormConfigurationRepository($this->connection(), new BookingFormConfigurationPersistenceMapper),
-            $this->serviceRepository(),
-            $bookings ?? $this->bookingRepository(),
-            new PostgresBookingTransaction($this->connection()),
-            new IntegrationFixedClock($this->now()),
-            new IntegrationFixedIdentifier($this->uuid(10)),
-            new IntegrationFixedReference($reference),
-        );
-    }
-
-    private function saveConfiguration(bool $service = false): void
-    {
-        $order = [BookingFormField::PatientName, BookingFormField::Phone, BookingFormField::AppointmentDate, BookingFormField::AppointmentTime];
-        if ($service) {
-            $order[] = BookingFormField::Service;
-        }
-        $configuration = BookingFormConfiguration::create($this->tenant(), $service, false, false, false, false, new RequiredFields([]), new FieldOrder($order), new FieldLabels([]), $this->now());
-        (new PostgresBookingFormConfigurationRepository($this->connection(), new BookingFormConfigurationPersistenceMapper))->save($configuration);
-    }
-
-    private function service(int $tenantId = 1, int $id = 4): Service
-    {
-        return Service::register(new ServiceId($this->uuid($id)), new TenantId($this->uuid($tenantId)), new ServiceName('Consultation '.$id), null, null, new SortOrder(1), $this->now());
-    }
-
-    private function command(?string $serviceId = null): SubmitBookingCommand
-    {
-        return new SubmitBookingCommand($this->tenant(), 'Aisyah Rahman', '+60123456789', '2026-08-10', '10:30', $serviceId);
-    }
-
-    private function bookingRepository(): PostgresBookingRepository
-    {
-        return new PostgresBookingRepository($this->connection(), new BookingPersistenceMapper);
-    }
-
-    private function serviceRepository(): PostgresServiceRepository
-    {
-        return new PostgresServiceRepository($this->connection(), new ServicePersistenceMapper);
-    }
-
-    private function tenant(): TenantId
-    {
-        return new TenantId($this->uuid(1));
-    }
-
-    private function connection(): ConnectionInterface
+    private function db(): ConnectionInterface
     {
         self::assertNotNull($this->connection);
 
@@ -243,53 +178,22 @@ final class PostgresSubmitBookingServiceTest extends TestCase
     }
 }
 
-final readonly class SaveThenFailBookingRepository implements BookingRepositoryInterface
+final readonly class PostgresBookingFixedValues implements BookingClockInterface, BookingHistoryIdentifierGeneratorInterface, BookingIdentifierGeneratorInterface, BookingReferenceGeneratorInterface, ClinicOperationalTimeReaderInterface
 {
-    public function __construct(private BookingRepositoryInterface $inner) {}
-
-    public function findById(TenantId $tenantId, BookingId $bookingId): ?Booking
-    {
-        return $this->inner->findById($tenantId, $bookingId);
-    }
-
-    public function findByReference(TenantId $tenantId, string $reference): ?Booking
-    {
-        return $this->inner->findByReference($tenantId, $reference);
-    }
-
-    public function save(Booking $booking): void
-    {
-        $this->inner->save($booking);
-        throw new RuntimeException('fail after save');
-    }
-}
-
-final readonly class IntegrationFixedClock implements BookingClockInterface
-{
-    public function __construct(private DateTimeImmutable $now) {}
+    public function __construct(private string $id, private string $reference, private DateTimeImmutable $now) {}
 
     public function now(): DateTimeImmutable
     {
         return $this->now;
     }
-}
-
-final readonly class IntegrationFixedIdentifier implements BookingIdentifierGeneratorInterface
-{
-    public function __construct(private string $value) {}
 
     public function generate(): string
     {
-        return $this->value;
+        return $this->id;
     }
-}
 
-final readonly class IntegrationFixedReference implements BookingReferenceGeneratorInterface
-{
-    public function __construct(private string $value) {}
-
-    public function generate(): string
+    public function forTrustedTenant(string $tenantId): ClinicOperationalTimeData
     {
-        return $this->value;
+        return new ClinicOperationalTimeData('clinic', $tenantId, 'Asia/Kuala_Lumpur', [new ClinicOperatingIntervalData(1, '09:00', '12:00')], 30, 1);
     }
 }

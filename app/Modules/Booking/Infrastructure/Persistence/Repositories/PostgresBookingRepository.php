@@ -102,6 +102,11 @@ final class PostgresBookingRepository implements BookingRepositoryInterface
             'patient_email' => $record->patientEmail,
             'appointment_on' => $record->appointmentOn,
             'appointment_time' => $record->appointmentTime,
+            'local_end_time' => $record->localEndTime,
+            'timezone' => $record->timezone,
+            'starts_at_utc' => $record->startsAtUtc === null ? null : $this->databaseTimestamp($record->startsAtUtc),
+            'ends_at_utc' => $record->endsAtUtc === null ? null : $this->databaseTimestamp($record->endsAtUtc),
+            'appointment_duration_minutes' => $record->durationMinutes,
             'notes' => $record->notes,
             'domain_created_at' => $this->databaseTimestamp($record->domainCreatedAt),
             'domain_updated_at' => $this->databaseTimestamp($record->domainUpdatedAt),
@@ -126,6 +131,11 @@ final class PostgresBookingRepository implements BookingRepositoryInterface
             $this->dateTimeValue($row->domain_created_at ?? null, 'domain_created_at'),
             $this->dateTimeValue($row->domain_updated_at ?? null, 'domain_updated_at'),
             $this->integerValue($row, 'version'),
+            $this->nullableTimeOnlyValue($row, 'local_end_time'),
+            $this->nullableStringValue($row, 'timezone'),
+            $this->nullableDateTimeValue($row->starts_at_utc ?? null),
+            $this->nullableDateTimeValue($row->ends_at_utc ?? null),
+            $this->nullableIntegerValue($row, 'appointment_duration_minutes'),
         );
 
         try {
@@ -179,6 +189,23 @@ final class PostgresBookingRepository implements BookingRepositoryInterface
         return substr($value, 0, 5);
     }
 
+    private function nullableTimeOnlyValue(stdClass $row, string $field): ?string
+    {
+        $value = $row->{$field} ?? null;
+
+        return $value === null ? null : substr($this->stringValue($row, $field), 0, 5);
+    }
+
+    private function nullableIntegerValue(stdClass $row, string $field): ?int
+    {
+        $value = $row->{$field} ?? null;
+        if ($value === null) {
+            return null;
+        }
+
+        return $this->integerValue($row, $field);
+    }
+
     private function dateTimeValue(mixed $value, string $field): DateTimeImmutable
     {
         if ($value instanceof DateTimeInterface) {
@@ -190,6 +217,20 @@ final class PostgresBookingRepository implements BookingRepositoryInterface
         }
 
         throw new InvalidBookingStorageStateException(sprintf('Storage field %s must be a timestamp.', $field));
+    }
+
+    private function nullableDateTimeValue(mixed $value): ?DateTimeImmutable
+    {
+        if ($value === null) {
+            return null;
+        }
+        if ($value instanceof DateTimeInterface) {
+            return DateTimeImmutable::createFromInterface($value);
+        }
+        if (is_string($value)) {
+            return new DateTimeImmutable($value);
+        }
+        throw new InvalidBookingStorageStateException('Stored scheduling instant must be a timestamp or null.');
     }
 
     private function databaseTimestamp(DateTimeInterface $dateTime): string

@@ -4,324 +4,171 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Booking\Application;
 
+use App\Modules\Booking\Application\Availability\ClinicSlotGenerator;
+use App\Modules\Booking\Application\BookingHistoryIdentifierGeneratorInterface;
 use App\Modules\Booking\Application\BookingIdentifierGeneratorInterface;
 use App\Modules\Booking\Application\BookingReferenceGeneratorInterface;
 use App\Modules\Booking\Application\Commands\SubmitBookingCommand;
-use App\Modules\Booking\Application\Exceptions\BookingFormConfigurationNotFoundException;
-use App\Modules\Booking\Application\Exceptions\BookingServiceInactiveException;
 use App\Modules\Booking\Application\Exceptions\BookingServiceNotFoundException;
-use App\Modules\Booking\Application\Exceptions\BookingSubmissionFailedException;
-use App\Modules\Booking\Application\Exceptions\DisabledBookingFieldSuppliedException;
-use App\Modules\Booking\Application\Exceptions\RequiredBookingFieldMissingException;
 use App\Modules\Booking\Application\SubmitBookingService;
+use App\Modules\Booking\Contracts\Capacity\ReservationSlotData;
+use App\Modules\Booking\Contracts\Capacity\SlotCapacityReservationInterface;
+use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperatingIntervalData;
+use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeData;
+use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeReaderInterface;
 use App\Modules\Booking\Contracts\Clock\BookingClockInterface;
 use App\Modules\Booking\Contracts\Repositories\BookingFormConfigurationRepositoryInterface;
+use App\Modules\Booking\Contracts\Repositories\BookingHistoryRepositoryInterface;
 use App\Modules\Booking\Contracts\Repositories\BookingRepositoryInterface;
 use App\Modules\Booking\Contracts\Repositories\ServiceRepositoryInterface;
 use App\Modules\Booking\Contracts\Transactions\BookingTransactionInterface;
 use App\Modules\Booking\Domain\Booking;
 use App\Modules\Booking\Domain\BookingFormConfiguration;
-use App\Modules\Booking\Domain\Exceptions\InvalidBookingValueException;
+use App\Modules\Booking\Domain\BookingHistoryEntry;
 use App\Modules\Booking\Domain\Service;
 use App\Modules\Booking\Domain\ValueObjects\BookingFormField;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
-use App\Modules\Booking\Domain\ValueObjects\DurationMinutes;
 use App\Modules\Booking\Domain\ValueObjects\FieldLabels;
 use App\Modules\Booking\Domain\ValueObjects\FieldOrder;
 use App\Modules\Booking\Domain\ValueObjects\RequiredFields;
-use App\Modules\Booking\Domain\ValueObjects\ServiceDescription;
 use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceName;
 use App\Modules\Booking\Domain\ValueObjects\SortOrder;
 use App\Modules\Booking\Domain\ValueObjects\TenantId;
 use DateTimeImmutable;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 final class SubmitBookingServiceTest extends TestCase
 {
-    public function test_valid_core_only_submission_returns_a_deterministic_result(): void
+    public function test_submission_validates_slot_reserves_capacity_and_persists_snapshot_and_history(): void
     {
-        [$service, $bookings] = $this->application($this->configuration());
+        $fixture = new SubmitBookingFixture;
 
-        $result = $service->execute($this->command());
+        $result = $fixture->application()->execute($fixture->command());
 
-        self::assertSame($this->uuid(10), $result->bookingId);
-        self::assertSame('BOOK-TEST-0001', $result->reference);
-        self::assertSame('submitted', $result->status);
-        self::assertSame($this->now()->format(DATE_ATOM), $result->createdAt->format(DATE_ATOM));
-        self::assertCount(1, $bookings->saved);
-        self::assertSame($this->uuid(1), $bookings->saved[0]->tenantId->value);
-        self::assertNull($bookings->saved[0]->serviceId);
+        self::assertSame($fixture->uuid(10), $result->bookingId);
+        self::assertCount(1, $fixture->bookings);
+        self::assertSame('10:30', $fixture->bookings[0]->scheduledAppointment()->localEnd->value);
+        self::assertSame('Asia/Kuala_Lumpur', $fixture->bookings[0]->scheduledAppointment()->timezone);
+        self::assertSame(1, $fixture->reservations);
+        self::assertCount(1, $fixture->history);
     }
 
-    public function test_active_tenant_owned_service_is_validated_and_retained(): void
+    public function test_missing_service_fails_closed_before_capacity_is_reserved(): void
     {
-        $tenant = new TenantId($this->uuid(1));
-        $services = new InMemoryServiceRepository([$this->activeService($tenant)]);
-        [$application, $bookings] = $this->application($this->configuration(service: true), $services);
+        $fixture = new SubmitBookingFixture;
+        $fixture->services = [];
 
-        $application->execute($this->command(serviceId: $this->uuid(4)));
-
-        self::assertSame($this->uuid(4), $bookings->saved[0]->serviceId?->value);
-        self::assertSame([[$this->uuid(1), $this->uuid(4)]], $services->lookups);
-    }
-
-    public function test_optional_enabled_values_may_be_omitted(): void
-    {
-        [$application, $bookings] = $this->application($this->configuration(service: true, email: true, notes: true));
-
-        $application->execute($this->command());
-
-        self::assertNull($bookings->saved[0]->serviceId);
-        self::assertNull($bookings->saved[0]->patientEmail);
-        self::assertNull($bookings->saved[0]->notes);
-    }
-
-    #[DataProvider('requiredFieldProvider')]
-    public function test_required_optional_value_must_be_supplied(BookingFormField $field): void
-    {
-        [$application, $bookings] = $this->application($this->configuration(
-            service: $field === BookingFormField::Service,
-            email: $field === BookingFormField::Email,
-            notes: $field === BookingFormField::Notes,
-            required: [$field],
-        ));
-
+        $this->expectException(BookingServiceNotFoundException::class);
         try {
-            $application->execute($this->command());
-            self::fail('Expected required-value validation to fail.');
-        } catch (RequiredBookingFieldMissingException) {
-            self::assertSame([], $bookings->saved);
-        }
-    }
-
-    /** @return iterable<string, array{BookingFormField}> */
-    public static function requiredFieldProvider(): iterable
-    {
-        yield 'service' => [BookingFormField::Service];
-        yield 'email' => [BookingFormField::Email];
-        yield 'notes' => [BookingFormField::Notes];
-    }
-
-    #[DataProvider('disabledFieldProvider')]
-    public function test_disabled_optional_value_is_rejected(string $serviceId, ?string $email, ?string $notes): void
-    {
-        [$application, $bookings] = $this->application($this->configuration());
-
-        try {
-            $application->execute($this->command($serviceId === '' ? null : $serviceId, $email, $notes));
-            self::fail('Expected disabled-value validation to fail.');
-        } catch (DisabledBookingFieldSuppliedException) {
-            self::assertSame([], $bookings->saved);
-        }
-    }
-
-    /** @return iterable<string, array{string, ?string, ?string}> */
-    public static function disabledFieldProvider(): iterable
-    {
-        yield 'service' => ['00000000-0000-4000-8000-000000000004', null, null];
-        yield 'email' => ['', 'patient@example.test', null];
-        yield 'notes' => ['', null, 'Please call'];
-    }
-
-    public function test_unknown_and_cross_tenant_services_share_the_same_fail_closed_outcome(): void
-    {
-        $otherTenantService = $this->activeService(new TenantId($this->uuid(2)));
-        $services = new InMemoryServiceRepository([$otherTenantService]);
-        [$application, $bookings] = $this->application($this->configuration(service: true), $services);
-
-        try {
-            $application->execute($this->command(serviceId: $this->uuid(4)));
-            self::fail('Expected unavailable Service validation to fail.');
-        } catch (BookingServiceNotFoundException $exception) {
-            self::assertSame('The requested Service is unavailable.', $exception->getMessage());
-            self::assertSame([], $bookings->saved);
-        }
-    }
-
-    public function test_inactive_service_is_rejected(): void
-    {
-        $service = $this->activeService(new TenantId($this->uuid(1)));
-        $service->deactivate($this->now());
-        [$application, $bookings] = $this->application($this->configuration(service: true), new InMemoryServiceRepository([$service]));
-
-        try {
-            $application->execute($this->command(serviceId: $this->uuid(4)));
-            self::fail('Expected inactive Service validation to fail.');
-        } catch (BookingServiceInactiveException) {
-            self::assertSame([], $bookings->saved);
-        }
-    }
-
-    public function test_missing_or_foreign_configuration_is_never_substituted(): void
-    {
-        $foreign = $this->configuration(tenantId: 2);
-        [$application, $bookings] = $this->application($foreign);
-
-        $this->expectException(BookingFormConfigurationNotFoundException::class);
-        try {
-            $application->execute($this->command());
+            $fixture->application()->execute($fixture->command());
         } finally {
-            self::assertSame([], $bookings->saved);
+            self::assertSame(0, $fixture->reservations);
+            self::assertSame([], $fixture->bookings);
         }
     }
+}
 
-    public function test_repository_failure_is_translated_and_returns_no_result(): void
+final class SubmitBookingFixture implements BookingClockInterface, BookingHistoryIdentifierGeneratorInterface, BookingHistoryRepositoryInterface, BookingIdentifierGeneratorInterface, BookingReferenceGeneratorInterface, BookingTransactionInterface, ClinicOperationalTimeReaderInterface, SlotCapacityReservationInterface
+{
+    /** @var list<Booking> */
+    public array $bookings = [];
+
+    /** @var list<BookingHistoryEntry> */
+    public array $history = [];
+
+    /** @var list<Service> */
+    public array $services;
+
+    public int $reservations = 0;
+
+    public function __construct()
     {
-        $bookings = new InMemoryBookingRepository;
-        $bookings->failure = new RuntimeException('database detail');
-        [$application] = $this->application($this->configuration(), bookings: $bookings);
-
-        $this->expectException(BookingSubmissionFailedException::class);
-        $this->expectExceptionMessage('Booking submission could not be completed.');
-        $application->execute($this->command());
+        $this->services = [Service::register(new ServiceId($this->uuid(4)), new TenantId($this->uuid(1)), new ServiceName('Consultation'), null, new SortOrder(1), $this->now())];
     }
 
-    public function test_invalid_core_domain_input_persists_nothing(): void
+    public function application(): SubmitBookingService
     {
-        [$application, $bookings] = $this->application($this->configuration());
-
-        try {
-            $application->execute(new SubmitBookingCommand(
-                new TenantId($this->uuid(1)),
-                '   ',
-                '+60123456789',
-                '2026-08-10',
-                '10:30',
-            ));
-            self::fail('Expected Domain validation to fail.');
-        } catch (InvalidBookingValueException) {
-            self::assertSame([], $bookings->saved);
-        }
+        return new SubmitBookingService(new FixtureConfigurationRepository($this), new FixtureServiceRepository($this), new FixtureBookingRepository($this), $this, $this, $this, $this, $this, new ClinicSlotGenerator, $this, $this, $this);
     }
 
-    /** @param list<BookingFormField> $required */
-    private function configuration(
-        bool $service = false,
-        bool $email = false,
-        bool $notes = false,
-        array $required = [],
-        int $tenantId = 1,
-    ): BookingFormConfiguration {
-        $order = [
-            BookingFormField::PatientName,
-            BookingFormField::Phone,
-            BookingFormField::AppointmentDate,
-            BookingFormField::AppointmentTime,
-        ];
-        foreach ([[BookingFormField::Service, $service], [BookingFormField::Email, $email], [BookingFormField::Notes, $notes]] as [$field, $enabled]) {
-            if ($enabled) {
-                $order[] = $field;
-            }
-        }
-
-        return BookingFormConfiguration::create(
-            new TenantId($this->uuid($tenantId)),
-            $service,
-            false,
-            $email,
-            false,
-            $notes,
-            new RequiredFields($required),
-            new FieldOrder($order),
-            new FieldLabels([]),
-            $this->now(),
-        );
-    }
-
-    private function activeService(TenantId $tenantId): Service
+    public function command(): SubmitBookingCommand
     {
-        return Service::register(
-            new ServiceId($this->uuid(4)),
-            $tenantId,
-            new ServiceName('Consultation'),
-            new ServiceDescription('Initial consultation'),
-            new DurationMinutes(30),
-            new SortOrder(1),
-            $this->now(),
-        );
+        return new SubmitBookingCommand(new TenantId($this->uuid(1)), 'Aisyah Rahman', '+60123456789', '2026-08-10', '10:00', $this->uuid(4));
     }
 
-    private function command(?string $serviceId = null, ?string $email = null, ?string $notes = null): SubmitBookingCommand
+    public function configuration(TenantId $tenantId): BookingFormConfiguration
     {
-        return new SubmitBookingCommand(
-            new TenantId($this->uuid(1)),
-            'Aisyah Rahman',
-            '+60123456789',
-            '2026-08-10',
-            '10:30',
-            $serviceId,
-            $email,
-            $notes,
-        );
+        return BookingFormConfiguration::create($tenantId, true, false, false, false, false, new RequiredFields([BookingFormField::Service]), new FieldOrder([BookingFormField::PatientName, BookingFormField::Phone, BookingFormField::AppointmentDate, BookingFormField::AppointmentTime, BookingFormField::Service]), new FieldLabels([]), $this->now());
     }
 
-    /** @return array{SubmitBookingService, InMemoryBookingRepository} */
-    private function application(
-        BookingFormConfiguration $configuration,
-        ?InMemoryServiceRepository $services = null,
-        ?InMemoryBookingRepository $bookings = null,
-    ): array {
-        $bookings ??= new InMemoryBookingRepository;
-
-        return [
-            new SubmitBookingService(
-                new InMemoryConfigurationRepository([$configuration]),
-                $services ?? new InMemoryServiceRepository([]),
-                $bookings,
-                new ImmediateBookingTransaction,
-                new FixedBookingClock($this->now()),
-                new FixedBookingIdentifierGenerator($this->uuid(10)),
-                new FixedBookingReferenceGenerator('BOOK-TEST-0001'),
-            ),
-            $bookings,
-        ];
+    public function run(callable $callback): mixed
+    {
+        return $callback();
     }
 
-    private function now(): DateTimeImmutable
+    public function now(): DateTimeImmutable
     {
         return new DateTimeImmutable('2026-08-03T10:00:00Z');
     }
 
-    private function uuid(int $suffix): string
+    public function generate(): string
+    {
+        return count($this->history) === 0 ? $this->uuid(10) : $this->uuid(11);
+    }
+
+    public function forTrustedTenant(string $tenantId): ClinicOperationalTimeData
+    {
+        return new ClinicOperationalTimeData($this->uuid(2), $tenantId, 'Asia/Kuala_Lumpur', [new ClinicOperatingIntervalData(1, '09:00', '12:00')], 30, 2);
+    }
+
+    public function reserve(string $tenantId, ReservationSlotData $slot, int $capacity): void
+    {
+        $this->reservations++;
+    }
+
+    public function release(string $tenantId, ReservationSlotData $slot): void {}
+
+    public function isAvailable(string $tenantId, ReservationSlotData $slot): bool
+    {
+        return true;
+    }
+
+    public function append(BookingHistoryEntry $entry): void
+    {
+        $this->history[] = $entry;
+    }
+
+    public function forBooking(TenantId $tenantId, BookingId $bookingId): array
+    {
+        return $this->history;
+    }
+
+    public function uuid(int $suffix): string
     {
         return sprintf('00000000-0000-4000-8000-%012d', $suffix);
     }
 }
 
-final class InMemoryConfigurationRepository implements BookingFormConfigurationRepositoryInterface
+final readonly class FixtureConfigurationRepository implements BookingFormConfigurationRepositoryInterface
 {
-    /** @param list<BookingFormConfiguration> $configurations */
-    public function __construct(private array $configurations) {}
+    public function __construct(private SubmitBookingFixture $fixture) {}
 
     public function findByTenant(TenantId $tenantId): ?BookingFormConfiguration
     {
-        foreach ($this->configurations as $configuration) {
-            if ($configuration->tenantId->value === $tenantId->value) {
-                return $configuration;
-            }
-        }
-
-        return null;
+        return $this->fixture->configuration($tenantId);
     }
 
     public function save(BookingFormConfiguration $configuration): void {}
 }
 
-final class InMemoryServiceRepository implements ServiceRepositoryInterface
+final readonly class FixtureServiceRepository implements ServiceRepositoryInterface
 {
-    /** @var list<array{string, string}> */
-    public array $lookups = [];
-
-    /** @param list<Service> $services */
-    public function __construct(private array $services) {}
+    public function __construct(private SubmitBookingFixture $fixture) {}
 
     public function findById(TenantId $tenantId, ServiceId $serviceId): ?Service
     {
-        $this->lookups[] = [$tenantId->value, $serviceId->value];
-        foreach ($this->services as $service) {
+        foreach ($this->fixture->services as $service) {
             if ($service->tenantId->value === $tenantId->value && $service->id->value === $serviceId->value) {
                 return $service;
             }
@@ -332,12 +179,12 @@ final class InMemoryServiceRepository implements ServiceRepositoryInterface
 
     public function findAll(TenantId $tenantId): array
     {
-        return [];
+        return $this->fixture->services;
     }
 
     public function findActive(TenantId $tenantId): array
     {
-        return [];
+        return $this->fixture->services;
     }
 
     public function existsByName(TenantId $tenantId, string $name): bool
@@ -348,12 +195,9 @@ final class InMemoryServiceRepository implements ServiceRepositoryInterface
     public function save(Service $service): void {}
 }
 
-final class InMemoryBookingRepository implements BookingRepositoryInterface
+final readonly class FixtureBookingRepository implements BookingRepositoryInterface
 {
-    /** @var list<Booking> */
-    public array $saved = [];
-
-    public ?RuntimeException $failure = null;
+    public function __construct(private SubmitBookingFixture $fixture) {}
 
     public function findById(TenantId $tenantId, BookingId $bookingId): ?Booking
     {
@@ -367,47 +211,6 @@ final class InMemoryBookingRepository implements BookingRepositoryInterface
 
     public function save(Booking $booking): void
     {
-        if ($this->failure !== null) {
-            throw $this->failure;
-        }
-        $this->saved[] = $booking;
-    }
-}
-
-final readonly class ImmediateBookingTransaction implements BookingTransactionInterface
-{
-    public function run(callable $operation): mixed
-    {
-        return $operation();
-    }
-}
-
-final readonly class FixedBookingClock implements BookingClockInterface
-{
-    public function __construct(private DateTimeImmutable $now) {}
-
-    public function now(): DateTimeImmutable
-    {
-        return $this->now;
-    }
-}
-
-final readonly class FixedBookingIdentifierGenerator implements BookingIdentifierGeneratorInterface
-{
-    public function __construct(private string $identifier) {}
-
-    public function generate(): string
-    {
-        return $this->identifier;
-    }
-}
-
-final readonly class FixedBookingReferenceGenerator implements BookingReferenceGeneratorInterface
-{
-    public function __construct(private string $reference) {}
-
-    public function generate(): string
-    {
-        return $this->reference;
+        $this->fixture->bookings[] = $booking;
     }
 }

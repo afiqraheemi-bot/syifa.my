@@ -4,21 +4,30 @@ declare(strict_types=1);
 
 namespace App\Modules\Booking\Application;
 
+use App\Modules\Booking\Application\Availability\ClinicSlotGenerator;
 use App\Modules\Booking\Application\Commands\SubmitBookingCommand;
 use App\Modules\Booking\Application\Exceptions\BookingFormConfigurationNotFoundException;
 use App\Modules\Booking\Application\Exceptions\BookingServiceInactiveException;
 use App\Modules\Booking\Application\Exceptions\BookingServiceNotFoundException;
 use App\Modules\Booking\Application\Exceptions\BookingSubmissionFailedException;
 use App\Modules\Booking\Application\Exceptions\DisabledBookingFieldSuppliedException;
+use App\Modules\Booking\Application\Exceptions\InvalidClinicBookingConfigurationException;
 use App\Modules\Booking\Application\Exceptions\RequiredBookingFieldMissingException;
+use App\Modules\Booking\Application\Exceptions\SlotUnavailableException;
 use App\Modules\Booking\Application\Results\BookingSubmissionResult;
+use App\Modules\Booking\Contracts\Capacity\ReservationSlotData;
+use App\Modules\Booking\Contracts\Capacity\SlotCapacityReservationInterface;
+use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeNotFoundException;
+use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeReaderInterface;
 use App\Modules\Booking\Contracts\Clock\BookingClockInterface;
 use App\Modules\Booking\Contracts\Repositories\BookingFormConfigurationRepositoryInterface;
+use App\Modules\Booking\Contracts\Repositories\BookingHistoryRepositoryInterface;
 use App\Modules\Booking\Contracts\Repositories\BookingRepositoryInterface;
 use App\Modules\Booking\Contracts\Repositories\ServiceRepositoryInterface;
 use App\Modules\Booking\Contracts\Transactions\BookingTransactionInterface;
 use App\Modules\Booking\Domain\Booking;
 use App\Modules\Booking\Domain\BookingFormConfiguration;
+use App\Modules\Booking\Domain\BookingHistoryEntry;
 use App\Modules\Booking\Domain\Exceptions\InvalidBookingValueException;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentDate;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
@@ -28,6 +37,7 @@ use App\Modules\Booking\Domain\ValueObjects\BookingReference;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
 use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
+use App\Modules\Booking\Domain\ValueObjects\ScheduledAppointment;
 use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceStatus;
 use Throwable;
@@ -42,6 +52,11 @@ final readonly class SubmitBookingService
         private BookingClockInterface $clock,
         private BookingIdentifierGeneratorInterface $identifiers,
         private BookingReferenceGeneratorInterface $references,
+        private ClinicOperationalTimeReaderInterface $clinicOperationalTime,
+        private ClinicSlotGenerator $slots,
+        private SlotCapacityReservationInterface $capacity,
+        private BookingHistoryRepositoryInterface $history,
+        private BookingHistoryIdentifierGeneratorInterface $historyIdentifiers,
     ) {}
 
     public function execute(SubmitBookingCommand $command): BookingSubmissionResult
@@ -58,6 +73,19 @@ final readonly class SubmitBookingService
                 $this->validateOptionalField($configuration, BookingFormField::Email, $command->email);
                 $this->validateOptionalField($configuration, BookingFormField::Notes, $command->notes);
                 $occurredAt = $this->clock->now();
+                $clinic = $this->clinicOperationalTime->forTrustedTenant($command->tenantId->value);
+                $slot = $this->slots->exact($clinic, $command->appointmentDate, $command->appointmentTime);
+                $scheduled = new ScheduledAppointment(
+                    new AppointmentDate($slot->localDate),
+                    new AppointmentTime($slot->localStart),
+                    new AppointmentTime($slot->localEnd),
+                    $slot->timezone,
+                    $slot->startsAtUtc,
+                    $slot->endsAtUtc,
+                    $slot->durationMinutes,
+                );
+                $reservation = new ReservationSlotData($slot->startsAtUtc, $slot->endsAtUtc);
+                $this->capacity->reserve($command->tenantId->value, $reservation, (int) $clinic->bookingCapacityPerSlot);
 
                 $booking = Booking::submit(
                     new BookingId($this->identifiers->generate()),
@@ -71,9 +99,11 @@ final readonly class SubmitBookingService
                     new AppointmentTime($command->appointmentTime),
                     $command->notes,
                     $occurredAt,
+                    $scheduled,
                 );
 
                 $this->bookings->save($booking);
+                $this->history->append(BookingHistoryEntry::submitted($this->historyIdentifiers->generate(), $booking, $occurredAt));
 
                 return new BookingSubmissionResult(
                     $booking->id->value,
@@ -82,7 +112,7 @@ final readonly class SubmitBookingService
                     $booking->createdAt,
                 );
             });
-        } catch (BookingFormConfigurationNotFoundException|RequiredBookingFieldMissingException|DisabledBookingFieldSuppliedException|BookingServiceNotFoundException|BookingServiceInactiveException|InvalidBookingValueException $exception) {
+        } catch (BookingFormConfigurationNotFoundException|RequiredBookingFieldMissingException|DisabledBookingFieldSuppliedException|BookingServiceNotFoundException|BookingServiceInactiveException|InvalidBookingValueException|InvalidClinicBookingConfigurationException|ClinicOperationalTimeNotFoundException|SlotUnavailableException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
             throw new BookingSubmissionFailedException('Booking submission could not be completed.', 0, $exception);
@@ -92,11 +122,11 @@ final readonly class SubmitBookingService
     private function validatedServiceId(
         SubmitBookingCommand $command,
         BookingFormConfiguration $configuration,
-    ): ?ServiceId {
+    ): ServiceId {
         $this->validateOptionalField($configuration, BookingFormField::Service, $command->serviceId);
 
-        if ($command->serviceId === null) {
-            return null;
+        if ($command->serviceId === null || trim($command->serviceId) === '') {
+            throw new RequiredBookingFieldMissingException('The required field "service" must be supplied.');
         }
 
         $serviceId = new ServiceId($command->serviceId);

@@ -130,7 +130,7 @@ final class BookingFoundationArchitectureTest extends TestCase
         self::assertStringNotContainsString('ClinicId', $submission.$command);
         self::assertStringNotContainsString('array $', $command);
 
-        foreach (['Doctor', 'Branch', 'Room', 'Availability', 'Notification'] as $unapproved) {
+        foreach (['Doctor', 'Branch', 'Room', 'Notification'] as $unapproved) {
             self::assertStringNotContainsString($unapproved, $submission.$command);
         }
 
@@ -156,14 +156,12 @@ final class BookingFoundationArchitectureTest extends TestCase
         self::assertStringNotContainsString('BookingFormConfiguration', $bookingSource);
     }
 
-    public function test_foundation_introduces_no_scheduling_or_notification_artifact(): void
+    public function test_mvp_scheduling_introduces_no_unapproved_resource_or_delivery_artifact(): void
     {
         foreach ($this->phpFilesIn($this->root().'/app/Modules/Booking') as $file) {
             $source = $this->source($file);
 
             foreach ([
-                'SlotGenerator',
-                'AvailabilityCalculator',
                 'ConflictDetection',
                 'Notification',
                 'Reminder',
@@ -236,6 +234,9 @@ final class BookingFoundationArchitectureTest extends TestCase
                 $this->root().'/database/migrations/booking/2026_08_01_000001_create_booking_form_configurations_table.php',
                 $this->root().'/database/migrations/booking/2026_08_02_000001_add_service_id_to_bookings_table.php',
                 $this->root().'/database/migrations/booking/2026_08_03_000001_remove_clinic_id_from_bookings_table.php',
+                $this->root().'/database/migrations/booking/2026_08_05_000001_add_booking_mvp_scheduling.php',
+                $this->root().'/database/migrations/booking/2026_08_05_000002_create_booking_capacity_and_history.php',
+                $this->root().'/database/migrations/booking/2026_08_05_000003_remove_service_duration.php',
             ],
             glob($this->root().'/database/migrations/booking/*.php') ?: [],
         );

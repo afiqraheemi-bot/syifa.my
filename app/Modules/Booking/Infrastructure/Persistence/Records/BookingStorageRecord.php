@@ -23,5 +23,10 @@ final readonly class BookingStorageRecord
         public DateTimeImmutable $domainCreatedAt,
         public DateTimeImmutable $domainUpdatedAt,
         public int $version,
+        public ?string $localEndTime,
+        public ?string $timezone,
+        public ?DateTimeImmutable $startsAtUtc,
+        public ?DateTimeImmutable $endsAtUtc,
+        public ?int $durationMinutes,
     ) {}
 }

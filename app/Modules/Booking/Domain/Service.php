@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Booking\Domain;
 
-use App\Modules\Booking\Domain\ValueObjects\DurationMinutes;
 use App\Modules\Booking\Domain\ValueObjects\ServiceDescription;
 use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceName;
@@ -20,7 +19,6 @@ final class Service
         public readonly TenantId $tenantId,
         public ServiceName $name,
         public ?ServiceDescription $description,
-        public ?DurationMinutes $durationMinutes,
         public SortOrder $sortOrder,
         private ServiceStatus $status,
         public readonly DateTimeImmutable $createdAt,
@@ -33,7 +31,6 @@ final class Service
         TenantId $tenantId,
         ServiceName $name,
         ?ServiceDescription $description,
-        ?DurationMinutes $durationMinutes,
         SortOrder $sortOrder,
         DateTimeImmutable $occurredAt,
     ): self {
@@ -42,7 +39,6 @@ final class Service
             tenantId: $tenantId,
             name: $name,
             description: $description,
-            durationMinutes: $durationMinutes,
             sortOrder: $sortOrder,
             status: ServiceStatus::Active,
             createdAt: $occurredAt,

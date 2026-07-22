@@ -123,7 +123,6 @@ final class PostgresServiceRepository implements ServiceRepositoryInterface
             'tenant_id' => $record->tenantId,
             'name' => $record->name,
             'description' => $record->description,
-            'duration_minutes' => $record->durationMinutes,
             'sort_order' => $record->sortOrder,
             'status' => $record->status,
             'domain_created_at' => $this->databaseTimestamp($record->domainCreatedAt),
@@ -139,7 +138,6 @@ final class PostgresServiceRepository implements ServiceRepositoryInterface
             $this->stringValue($row, 'tenant_id'),
             $this->stringValue($row, 'name'),
             $this->nullableStringValue($row, 'description'),
-            $this->nullableIntegerValue($row, 'duration_minutes'),
             $this->integerValue($row, 'sort_order'),
             $this->stringValue($row, 'status'),
             $this->dateTimeValue($row->domain_created_at ?? null, 'domain_created_at'),
@@ -189,25 +187,6 @@ final class PostgresServiceRepository implements ServiceRepositoryInterface
         }
 
         throw new InvalidServiceStorageStateException(sprintf('Storage field %s must be an integer.', $field));
-    }
-
-    private function nullableIntegerValue(stdClass $row, string $field): ?int
-    {
-        $value = $row->{$field} ?? null;
-
-        if ($value === null) {
-            return null;
-        }
-
-        if (is_int($value)) {
-            return $value;
-        }
-
-        if (is_string($value) && ctype_digit($value)) {
-            return (int) $value;
-        }
-
-        throw new InvalidServiceStorageStateException(sprintf('Storage field %s must be an integer or null.', $field));
     }
 
     private function dateTimeValue(mixed $value, string $field): DateTimeImmutable

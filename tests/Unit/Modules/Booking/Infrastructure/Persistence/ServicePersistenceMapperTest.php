@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Booking\Infrastructure\Persistence;
 
 use App\Modules\Booking\Domain\Service;
-use App\Modules\Booking\Domain\ValueObjects\DurationMinutes;
 use App\Modules\Booking\Domain\ValueObjects\ServiceDescription;
 use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceName;
@@ -29,7 +28,6 @@ final class ServicePersistenceMapperTest extends TestCase
         self::assertSame($this->uuid(2), $record->tenantId);
         self::assertSame('Dental Cleaning', $record->name);
         self::assertSame('Routine cleaning and checkup', $record->description);
-        self::assertSame(30, $record->durationMinutes);
         self::assertSame(1, $record->sortOrder);
         self::assertSame('active', $record->status);
         self::assertSame(0, $record->version);
@@ -43,7 +41,6 @@ final class ServicePersistenceMapperTest extends TestCase
             $this->uuid(2),
             'Dental Cleaning',
             'Routine cleaning and checkup',
-            30,
             1,
             'inactive',
             $this->occurredAt(),
@@ -58,14 +55,13 @@ final class ServicePersistenceMapperTest extends TestCase
         self::assertSame(9, $service->version());
     }
 
-    public function test_reconstitutes_a_service_without_description_or_duration(): void
+    public function test_reconstitutes_a_service_without_description(): void
     {
         $mapper = new ServicePersistenceMapper;
         $record = new ServiceStorageRecord(
             $this->uuid(1),
             $this->uuid(2),
             'Dental Cleaning',
-            null,
             null,
             1,
             'active',
@@ -77,7 +73,6 @@ final class ServicePersistenceMapperTest extends TestCase
         $service = $mapper->toDomain($record);
 
         self::assertNull($service->description);
-        self::assertNull($service->durationMinutes);
     }
 
     private function service(): Service
@@ -87,7 +82,6 @@ final class ServicePersistenceMapperTest extends TestCase
             new TenantId($this->uuid(2)),
             new ServiceName('Dental Cleaning'),
             new ServiceDescription('Routine cleaning and checkup'),
-            new DurationMinutes(30),
             new SortOrder(1),
             $this->occurredAt(),
         );

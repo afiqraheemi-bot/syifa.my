@@ -7,7 +7,6 @@ namespace Tests\Unit\Modules\Booking\Domain;
 use App\Modules\Booking\Contracts\Repositories\ServiceRepositoryInterface;
 use App\Modules\Booking\Domain\Exceptions\InvalidServiceValueException;
 use App\Modules\Booking\Domain\Service;
-use App\Modules\Booking\Domain\ValueObjects\DurationMinutes;
 use App\Modules\Booking\Domain\ValueObjects\ServiceDescription;
 use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceName;
@@ -29,17 +28,15 @@ final class ServiceTest extends TestCase
         self::assertSame($this->uuid(2), $service->tenantId->value);
         self::assertSame('Dental Cleaning', $service->name->value);
         self::assertSame('Routine cleaning and checkup', $service->description?->value);
-        self::assertSame(30, $service->durationMinutes?->value);
         self::assertSame(1, $service->sortOrder->value);
         self::assertSame(0, $service->version());
     }
 
-    public function test_description_and_duration_are_optional(): void
+    public function test_description_is_optional(): void
     {
-        $service = $this->service(description: null, durationMinutes: null);
+        $service = $this->service(description: null);
 
         self::assertNull($service->description);
-        self::assertNull($service->durationMinutes);
     }
 
     public function test_created_at_and_updated_at_start_equal_at_registration(): void
@@ -119,20 +116,6 @@ final class ServiceTest extends TestCase
         new ServiceDescription('');
     }
 
-    public function test_duration_minutes_rejects_a_non_positive_value(): void
-    {
-        $this->expectException(InvalidServiceValueException::class);
-
-        new DurationMinutes(0);
-    }
-
-    public function test_duration_minutes_rejects_more_than_one_day(): void
-    {
-        $this->expectException(InvalidServiceValueException::class);
-
-        new DurationMinutes(1441);
-    }
-
     public function test_sort_order_rejects_a_negative_value(): void
     {
         $this->expectException(InvalidServiceValueException::class);
@@ -157,14 +140,12 @@ final class ServiceTest extends TestCase
         int $tenantId = 2,
         string $name = 'Dental Cleaning',
         ?string $description = 'Routine cleaning and checkup',
-        ?int $durationMinutes = 30,
     ): Service {
         return Service::register(
             new ServiceId($this->uuid($id)),
             new TenantId($this->uuid($tenantId)),
             new ServiceName($name),
             $description === null ? null : new ServiceDescription($description),
-            $durationMinutes === null ? null : new DurationMinutes($durationMinutes),
             new SortOrder(1),
             $this->occurredAt(),
         );

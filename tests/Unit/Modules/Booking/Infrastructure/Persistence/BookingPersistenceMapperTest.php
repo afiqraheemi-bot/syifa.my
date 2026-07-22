@@ -60,6 +60,11 @@ final class BookingPersistenceMapperTest extends TestCase
             $this->occurredAt(),
             $this->occurredAt(),
             7,
+            null,
+            null,
+            null,
+            null,
+            null,
         );
 
         $booking = $mapper->toDomain($record);
@@ -90,6 +95,11 @@ final class BookingPersistenceMapperTest extends TestCase
             $this->occurredAt(),
             $this->occurredAt(),
             1,
+            null,
+            null,
+            null,
+            null,
+            null,
         );
 
         $booking = $mapper->toDomain($record);

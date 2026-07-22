@@ -7,4 +7,7 @@ namespace App\Modules\Booking\Domain\ValueObjects;
 enum BookingStatus: string
 {
     case Submitted = 'submitted';
+    case Confirmed = 'confirmed';
+    case Cancelled = 'cancelled';
+    case Completed = 'completed';
 }

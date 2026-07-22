@@ -71,7 +71,10 @@ final class PostgresBookingRepositoryTest extends TestCase
         $clinicLineageMigration = require base_path('database/migrations/booking/2026_08_03_000001_remove_clinic_id_from_bookings_table.php');
         self::assertInstanceOf(Migration::class, $clinicLineageMigration);
         $clinicLineageMigration->up();
-        $this->migrations = [$clinicLineageMigration, $serviceMigration, $migration];
+        $schedulingMigration = require base_path('database/migrations/booking/2026_08_05_000001_add_booking_mvp_scheduling.php');
+        self::assertInstanceOf(Migration::class, $schedulingMigration);
+        $schedulingMigration->up();
+        $this->migrations = [$schedulingMigration, $clinicLineageMigration, $serviceMigration, $migration];
 
         $this->repository = new PostgresBookingRepository($this->connection, new BookingPersistenceMapper);
     }
@@ -152,7 +155,7 @@ final class PostgresBookingRepositoryTest extends TestCase
 
     public function test_additive_migration_keeps_an_existing_booking_compatible(): void
     {
-        $this->migrations[1]->down();
+        $this->migrations[2]->down();
         $now = $this->time()->format('Y-m-d H:i:s.uP');
         $this->connection()->table('bookings')->insert([
             'id' => $this->uuid(1),
@@ -172,7 +175,7 @@ final class PostgresBookingRepositoryTest extends TestCase
             'updated_at' => $now,
         ]);
 
-        $this->migrations[1]->up();
+        $this->migrations[2]->up();
 
         $reloaded = $this->repository()->findById(new TenantId($this->uuid(2)), new BookingId($this->uuid(1)));
         self::assertNotNull($reloaded);
@@ -183,10 +186,10 @@ final class PostgresBookingRepositoryTest extends TestCase
     {
         self::assertFalse(Schema::connection(self::CONNECTION_NAME)->hasColumn('bookings', 'clinic_id'));
 
-        $this->migrations[0]->down();
+        $this->migrations[1]->down();
         self::assertTrue(Schema::connection(self::CONNECTION_NAME)->hasColumn('bookings', 'clinic_id'));
 
-        $this->migrations[0]->up();
+        $this->migrations[1]->up();
         self::assertFalse(Schema::connection(self::CONNECTION_NAME)->hasColumn('bookings', 'clinic_id'));
     }
 

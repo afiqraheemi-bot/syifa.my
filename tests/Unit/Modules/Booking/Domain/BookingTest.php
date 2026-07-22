@@ -48,11 +48,6 @@ final class BookingTest extends TestCase
         self::assertNull($booking->notes);
     }
 
-    public function test_service_is_optional(): void
-    {
-        self::assertNull($this->booking(serviceId: null)->serviceId);
-    }
-
     public function test_created_at_and_updated_at_start_equal_at_submission(): void
     {
         $booking = $this->booking();
@@ -150,12 +145,12 @@ final class BookingTest extends TestCase
         new AppointmentTime('09:30:00');
     }
 
-    private function booking(?string $patientEmail = 'aisyah@example.test', ?string $notes = 'First visit', ?int $serviceId = 4): Booking
+    private function booking(?string $patientEmail = 'aisyah@example.test', ?string $notes = 'First visit'): Booking
     {
         return Booking::submit(
             new BookingId($this->uuid(1)),
             new TenantId($this->uuid(2)),
-            $serviceId === null ? null : new ServiceId($this->uuid($serviceId)),
+            new ServiceId($this->uuid(4)),
             new BookingReference('BOOK-0001'),
             new PatientName('Aisyah Rahman'),
             new PatientPhone('+60123456789'),

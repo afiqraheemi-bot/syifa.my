@@ -13,7 +13,6 @@ final readonly class ServiceStorageRecord
         public string $tenantId,
         public string $name,
         public ?string $description,
-        public ?int $durationMinutes,
         public int $sortOrder,
         public string $status,
         public DateTimeImmutable $domainCreatedAt,
