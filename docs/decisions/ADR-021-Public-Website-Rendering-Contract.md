@@ -7,13 +7,17 @@
 
 Public Website rendering is a deterministic, transient Application projection of one immutable `PublishedWebsiteSnapshot`. It is not an Aggregate, Repository, bounded context, persistence model, or delivery technology. The projector accepts a complete Snapshot value directly and produces a strongly typed immutable render tree without performing reads or writes.
 
-The render tree contains Website identity, Branding, SEO, Header, Footer, ordered Section contracts, published Asset projections, and Publication metadata. It omits publication actors, source and optimistic versions, fingerprints, validation evidence, editing metadata, storage keys, checksums, byte sizes, and draft lifecycle state. Asset references remain opaque identifiers; rendering does not resolve storage or construct URLs.
+The render tree contains Website identity, Branding, SEO, Header, Footer, ordered Section contracts, published Asset projections, and Publication metadata. Services expose immutable public names, short descriptions, Website-owned order, and featured state. Gallery items expose immutable accessibility and caption presentation. Contact and Footer expose the immutable public Contact projection, including business hours, WhatsApp number, and coordinates. It omits publication actors, source and optimistic versions, fingerprints, validation evidence, editing metadata, storage keys, checksums, byte sizes, and draft lifecycle state. Asset references remain opaque identifiers; rendering does not resolve storage or construct URLs.
 
 Exactly the published Section order is preserved. A Section is projected only when its immutable metadata says `enabled` and its matching immutable content evidence says `renderable`. All other Sections are absent. No placeholder, empty-state, or fallback Section is produced. Doctor projections include only visible profiles and Testimonial projections include only featured testimonials; their control flags do not escape into render contracts.
 
 ## Contract
 
-Each of the nine governed Section types has an explicit readonly render contract. Scalar content remains typed, ordered child values remain ordered, and Service and Asset references remain opaque. Header and Footer are deterministic projections of published Branding. SEO is copied as published without validation or generation. Publication metadata exposes only public provenance required to identify the rendered Snapshot version.
+Each of the nine governed Section types has an explicit readonly render contract. Scalar content remains typed and ordered child values preserve published order. Header is projected from published Branding; Footer contact data comes from the immutable published Clinic Contact projection. SEO is copied as published without validation or generation. Publication metadata exposes only public provenance required to identify the rendered Snapshot version. Validation occurs during publication, never in the renderer.
+
+## Completion note
+
+As of 2026-08-19, the contract is fully Snapshot-driven for the approved Syifa Essential V1 presentation. The projector accepts a `PublishedWebsiteSnapshot` value directly and has no repository, Aggregate, storage, provider, or mutable Clinic/Service dependency.
 
 ## Boundaries
 
