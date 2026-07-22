@@ -1,5 +1,7 @@
 # ADR-016: Website Section Content Models
 
+> **Website Service Presentation Authority amendment (2026-08-18):** Services content now owns ordered `ServicePresentationItem` values containing only `ServiceId`, explicit display order, and presentation-only `IsFeatured`. References and orders are unique, at most one item is featured, and new or migrated items default to not featured. Service remains the operational master-data owner; Website presentation state cannot affect Service status, booking eligibility, scheduling, pricing, or identity.
+
 **Status:** Accepted  
 **Date:** 2026-08-09
 

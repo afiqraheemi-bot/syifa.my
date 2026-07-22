@@ -1,5 +1,7 @@
 # Aggregate Design
 
+> **Website Service Presentation Authority amendment (2026-08-18):** Website owns normalized Services Section presentation items as internal content values. Cohesive Website behavior validates same-Tenant publication-eligible Service evidence, unique references/orders, and at most one featured item; moving or clearing emphasis is atomic and idempotent. No Service Presentation Aggregate, repository, bounded context, or Booking dependency is introduced.
+
 > **Clinic Contact Profile implementation amendment (2026-08-17):** ADR-023's ClinicContactProfile is implemented as an immutable internal Clinic value object and normalized one-to-one child record. Clinic's cohesive update operation rejects partial coordinates, treats idempotent changes as no-ops, and preserves the existing optimistic aggregate version and transaction boundary. No Contact repository, Aggregate Root, or bounded context exists. Legacy Website Branding columns remain temporarily for compatibility; publication migration is deferred.
 
 > **Website Publishing Pipeline Foundation amendment (2026-08-12):** Publishing is an atomic Website operation. Valid readiness produces one immutable Snapshot and matching successful History entry at the next version; failure mutates neither publication state nor history. Republish creates a new Snapshot and never modifies an earlier one. Website remains the Aggregate Root and no Publishing context is added.

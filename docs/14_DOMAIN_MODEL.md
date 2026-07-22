@@ -1,5 +1,7 @@
 # Syifa.my Phase 1 Domain Model
 
+> **Website Service Presentation Authority amendment (2026-08-18):** Website Services Section content owns selected Service references, deterministic display order, and at most one presentation-only featured emphasis. Service continues to own name, description, status, and booking eligibility. Website stores no duplicate Service master data, and featured emphasis has no Booking or Service lifecycle meaning.
+
 > **Clinic Contact Profile implementation amendment (2026-08-17):** ADR-023's governed `ClinicContactProfile` is implemented inside Clinic with normalized optional operational phone, email, postal address, distinct WhatsApp number, and paired coordinates. Updates occur cohesively through Clinic, use optimistic persistence, enforce Tenant-scoped loading and authorization, and emit redacted audit evidence only for actual changes. Legacy Website Branding contact columns remain read-compatible; public publication still reads its existing source pending the separately governed projection increment.
 
 > **Public Website Rendering Contract note (2026-08-14):** Rendering adds no Domain object or Aggregate. It is a readonly Application projection of immutable `PublishedWebsiteSnapshot` values and never reads mutable Website state.

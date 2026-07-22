@@ -1,7 +1,7 @@
 # Master Architecture Progress
 
-**Updated:** 2026-08-17
-**Current documented baseline:** `e8e99cdd1c054ae39a3ddb91058ad618469bfd75`
+**Updated:** 2026-08-18
+**Current documented baseline:** `43af75c49b9eef2ac790f06ba6bdd290419263a3`
 
 This record summarizes accepted architecture increments. It does not supersede Product Vision, MVP Scope, ADRs, the Architecture Freeze, or implementation history.
 
@@ -19,6 +19,7 @@ This record summarizes accepted architecture increments. It does not supersede P
 | ADR-021 | Public Website Rendering Contract | Complete | Transient typed snapshot-only render tree with adaptive omission and published ordering. | HTML, routes, controllers, CSS, JavaScript. |
 | ADR-022 | Public Website Experience and Design System V1 | Complete | Experience north star, tokens, responsive rules, components, Sections, templates, accessibility, performance, quality gate, and governance. | All production frontend implementation. |
 | ADR-023 | Clinic Public Contact Authority V1 | Implemented | Clinic-owned immutable Contact Profile value semantics, normalized Tenant-safe persistence, guarded legacy migration, authorized transactional update, and redacted actual-change audit. | Publication read migration, legacy-column removal, snapshot/render-contract extension, and frontend delivery. |
+| ADR-016 amendment | Website Service Presentation Authority V1 | Implemented | Website-owned ordered Service references and presentation-only featured state with one-featured invariant, normalized persistence, same-Tenant eligibility evidence, and deterministic compatibility backfill. | Immutable Service master projection, complete public render-contract projection, and frontend presentation. |
 
 ## Reference template specifications
 
@@ -47,7 +48,7 @@ Website Aggregate
                     -> future delivery implementation (not yet authorized)
 ```
 
-The public experience can now be implemented without inventing product hierarchy or presentation rules. ADR-023 resolves Contact ownership at the authority level: future immutable Contact publication data comes from ClinicContactProfile plus Clinic operating time, never mutable Website Branding compatibility fields. Implementation must still close the ADR-021 projection gaps through approved increments: public Service display names/descriptions, meaningful Gallery alternative text/captions, and the now-authorized immutable Contact values are not yet present in published snapshots or render contracts.
+The public experience can now be implemented without inventing product hierarchy or presentation rules. ADR-023 resolves Contact ownership and the ADR-016 amendment resolves Service featured-presentation ownership. Future immutable Service publication combines Service-owned public display values with Website-owned ordering and featured emphasis. Implementation must still close the ADR-021 projection gaps: Service display projection, Gallery accessibility metadata, and authorized Clinic Contact values are not yet complete in published snapshots or render contracts.
 
 ## Next governed decisions
 
