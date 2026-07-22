@@ -80,7 +80,7 @@ final class PostgresServiceRepositoryTest extends TestCase
         $service = $this->service();
         $this->repository()->save($service);
 
-        $reloaded = $this->repository()->findById($service->id);
+        $reloaded = $this->repository()->findById($service->tenantId, $service->id);
 
         self::assertNotNull($reloaded);
         self::assertSame(1, $reloaded->version());
@@ -99,11 +99,19 @@ final class PostgresServiceRepositoryTest extends TestCase
         $service = $this->service(description: null, durationMinutes: null);
         $this->repository()->save($service);
 
-        $reloaded = $this->repository()->findById($service->id);
+        $reloaded = $this->repository()->findById($service->tenantId, $service->id);
 
         self::assertNotNull($reloaded);
         self::assertNull($reloaded->description);
         self::assertNull($reloaded->durationMinutes);
+    }
+
+    public function test_find_by_id_does_not_cross_the_tenant_boundary(): void
+    {
+        $service = $this->service();
+        $this->repository()->save($service);
+
+        self::assertNull($this->repository()->findById(new TenantId($this->uuid(3)), $service->id));
     }
 
     public function test_find_active_returns_only_active_services_for_the_tenant_in_sort_order(): void
@@ -175,8 +183,8 @@ final class PostgresServiceRepositoryTest extends TestCase
         $service = $this->service();
         $this->repository()->save($service);
 
-        $firstCopy = $this->repository()->findById($service->id);
-        $staleCopy = $this->repository()->findById($service->id);
+        $firstCopy = $this->repository()->findById($service->tenantId, $service->id);
+        $staleCopy = $this->repository()->findById($service->tenantId, $service->id);
         self::assertNotNull($firstCopy);
         self::assertNotNull($staleCopy);
 

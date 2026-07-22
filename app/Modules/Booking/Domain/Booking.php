@@ -13,6 +13,7 @@ use App\Modules\Booking\Domain\ValueObjects\ClinicId;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
 use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
+use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\TenantId;
 use DateTimeImmutable;
 
@@ -22,6 +23,7 @@ final class Booking
         public readonly BookingId $id,
         public readonly TenantId $tenantId,
         public readonly ClinicId $clinicId,
+        public readonly ?ServiceId $serviceId,
         public readonly BookingReference $reference,
         private BookingStatus $status,
         public PatientName $patientName,
@@ -39,6 +41,7 @@ final class Booking
         BookingId $id,
         TenantId $tenantId,
         ClinicId $clinicId,
+        ?ServiceId $serviceId,
         BookingReference $reference,
         PatientName $patientName,
         PatientPhone $patientPhone,
@@ -52,6 +55,7 @@ final class Booking
             id: $id,
             tenantId: $tenantId,
             clinicId: $clinicId,
+            serviceId: $serviceId,
             reference: $reference,
             status: BookingStatus::Submitted,
             patientName: $patientName,

@@ -9,6 +9,7 @@ use App\Modules\Booking\Domain\Booking;
 use App\Modules\Booking\Domain\Exceptions\InvalidBookingValueException;
 use App\Modules\Booking\Domain\Exceptions\StaleBookingWriteException;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
+use App\Modules\Booking\Domain\ValueObjects\TenantId;
 use App\Modules\Booking\Infrastructure\Persistence\Exceptions\InvalidBookingStorageStateException;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingPersistenceMapper;
 use App\Modules\Booking\Infrastructure\Persistence\Records\BookingStorageRecord;
@@ -24,19 +25,21 @@ final class PostgresBookingRepository implements BookingRepositoryInterface
         private readonly BookingPersistenceMapper $mapper,
     ) {}
 
-    public function findById(BookingId $bookingId): ?Booking
+    public function findById(TenantId $tenantId, BookingId $bookingId): ?Booking
     {
         $row = $this->connection->table('bookings')
             ->where('id', $bookingId->value)
+            ->where('tenant_id', $tenantId->value)
             ->first();
 
         return $row === null ? null : $this->bookingFromRow($row);
     }
 
-    public function findByReference(string $reference): ?Booking
+    public function findByReference(TenantId $tenantId, string $reference): ?Booking
     {
         $row = $this->connection->table('bookings')
             ->where('booking_reference', $reference)
+            ->where('tenant_id', $tenantId->value)
             ->first();
 
         return $row === null ? null : $this->bookingFromRow($row);
@@ -92,6 +95,7 @@ final class PostgresBookingRepository implements BookingRepositoryInterface
             'id' => $record->id,
             'tenant_id' => $record->tenantId,
             'clinic_id' => $record->clinicId,
+            'service_id' => $record->serviceId,
             'booking_reference' => $record->bookingReference,
             'status' => $record->status,
             'patient_name' => $record->patientName,
@@ -112,6 +116,7 @@ final class PostgresBookingRepository implements BookingRepositoryInterface
             $this->stringValue($row, 'id'),
             $this->stringValue($row, 'tenant_id'),
             $this->stringValue($row, 'clinic_id'),
+            $this->nullableStringValue($row, 'service_id'),
             $this->stringValue($row, 'booking_reference'),
             $this->stringValue($row, 'status'),
             $this->stringValue($row, 'patient_name'),

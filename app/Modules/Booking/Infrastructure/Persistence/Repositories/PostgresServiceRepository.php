@@ -25,10 +25,11 @@ final class PostgresServiceRepository implements ServiceRepositoryInterface
         private readonly ServicePersistenceMapper $mapper,
     ) {}
 
-    public function findById(ServiceId $serviceId): ?Service
+    public function findById(TenantId $tenantId, ServiceId $serviceId): ?Service
     {
         $row = $this->connection->table('services')
             ->where('id', $serviceId->value)
+            ->where('tenant_id', $tenantId->value)
             ->first();
 
         return $row === null ? null : $this->serviceFromRow($row);

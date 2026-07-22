@@ -186,7 +186,7 @@ final class InMemoryServiceRepository implements ServiceRepositoryInterface
     /** @var array<string, Service> */
     private array $services = [];
 
-    public function findById(ServiceId $serviceId): ?Service
+    public function findById(TenantId $tenantId, ServiceId $serviceId): ?Service
     {
         return $this->services[$serviceId->value] ?? null;
     }

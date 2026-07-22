@@ -12,6 +12,7 @@ final readonly class BookingStorageRecord
         public string $id,
         public string $tenantId,
         public string $clinicId,
+        public ?string $serviceId,
         public string $bookingReference,
         public string $status,
         public string $patientName,

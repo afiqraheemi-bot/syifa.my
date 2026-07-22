@@ -10,7 +10,7 @@ use App\Modules\Booking\Domain\ValueObjects\TenantId;
 
 interface ServiceRepositoryInterface
 {
-    public function findById(ServiceId $serviceId): ?Service;
+    public function findById(TenantId $tenantId, ServiceId $serviceId): ?Service;
 
     /** @return list<Service> */
     public function findAll(TenantId $tenantId): array;

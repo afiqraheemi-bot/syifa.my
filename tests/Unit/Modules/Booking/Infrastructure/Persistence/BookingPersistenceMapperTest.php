@@ -13,6 +13,7 @@ use App\Modules\Booking\Domain\ValueObjects\ClinicId;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
 use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
+use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\TenantId;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingPersistenceMapper;
 use App\Modules\Booking\Infrastructure\Persistence\Records\BookingStorageRecord;
@@ -31,6 +32,7 @@ final class BookingPersistenceMapperTest extends TestCase
         self::assertSame($this->uuid(1), $record->id);
         self::assertSame($this->uuid(2), $record->tenantId);
         self::assertSame($this->uuid(3), $record->clinicId);
+        self::assertSame($this->uuid(4), $record->serviceId);
         self::assertSame('BOOK-0001', $record->bookingReference);
         self::assertSame('submitted', $record->status);
         self::assertSame('Aisyah Rahman', $record->patientName);
@@ -49,6 +51,7 @@ final class BookingPersistenceMapperTest extends TestCase
             $this->uuid(1),
             $this->uuid(2),
             $this->uuid(3),
+            $this->uuid(4),
             'BOOK-0001',
             'submitted',
             'Aisyah Rahman',
@@ -65,6 +68,7 @@ final class BookingPersistenceMapperTest extends TestCase
         $booking = $mapper->toDomain($record);
 
         self::assertSame($this->uuid(1), $booking->id->value);
+        self::assertSame($this->uuid(4), $booking->serviceId?->value);
         self::assertSame('submitted', $booking->status()->value);
         self::assertSame(7, $booking->version());
         self::assertSame('2026-08-01', $booking->appointmentDate->value);
@@ -78,6 +82,7 @@ final class BookingPersistenceMapperTest extends TestCase
             $this->uuid(1),
             $this->uuid(2),
             $this->uuid(3),
+            null,
             'BOOK-0001',
             'submitted',
             'Aisyah Rahman',
@@ -95,6 +100,7 @@ final class BookingPersistenceMapperTest extends TestCase
 
         self::assertNull($booking->patientEmail);
         self::assertNull($booking->notes);
+        self::assertNull($booking->serviceId);
     }
 
     private function booking(): Booking
@@ -103,6 +109,7 @@ final class BookingPersistenceMapperTest extends TestCase
             new BookingId($this->uuid(1)),
             new TenantId($this->uuid(2)),
             new ClinicId($this->uuid(3)),
+            new ServiceId($this->uuid(4)),
             new BookingReference('BOOK-0001'),
             new PatientName('Aisyah Rahman'),
             new PatientPhone('+60123456789'),

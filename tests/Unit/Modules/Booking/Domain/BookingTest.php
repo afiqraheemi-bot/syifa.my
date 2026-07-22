@@ -15,6 +15,7 @@ use App\Modules\Booking\Domain\ValueObjects\ClinicId;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
 use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
+use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\TenantId;
 use DateTimeImmutable;
 use Error;
@@ -30,6 +31,7 @@ final class BookingTest extends TestCase
         self::assertSame($this->uuid(1), $booking->id->value);
         self::assertSame($this->uuid(2), $booking->tenantId->value);
         self::assertSame($this->uuid(3), $booking->clinicId->value);
+        self::assertSame($this->uuid(4), $booking->serviceId?->value);
         self::assertSame('BOOK-0001', $booking->reference->value);
         self::assertSame('Aisyah Rahman', $booking->patientName->value);
         self::assertSame('+60123456789', $booking->patientPhone->value);
@@ -46,6 +48,11 @@ final class BookingTest extends TestCase
 
         self::assertNull($booking->patientEmail);
         self::assertNull($booking->notes);
+    }
+
+    public function test_service_is_optional(): void
+    {
+        self::assertNull($this->booking(serviceId: null)->serviceId);
     }
 
     public function test_created_at_and_updated_at_start_equal_at_submission(): void
@@ -152,12 +159,13 @@ final class BookingTest extends TestCase
         new AppointmentTime('09:30:00');
     }
 
-    private function booking(?string $patientEmail = 'aisyah@example.test', ?string $notes = 'First visit'): Booking
+    private function booking(?string $patientEmail = 'aisyah@example.test', ?string $notes = 'First visit', ?int $serviceId = 4): Booking
     {
         return Booking::submit(
             new BookingId($this->uuid(1)),
             new TenantId($this->uuid(2)),
             new ClinicId($this->uuid(3)),
+            $serviceId === null ? null : new ServiceId($this->uuid($serviceId)),
             new BookingReference('BOOK-0001'),
             new PatientName('Aisyah Rahman'),
             new PatientPhone('+60123456789'),

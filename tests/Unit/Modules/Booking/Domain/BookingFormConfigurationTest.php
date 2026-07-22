@@ -341,6 +341,29 @@ final class BookingFormConfigurationTest extends TestCase
         $configuration->setFieldEnabled(BookingFormField::Doctor, true, $this->occurredAt());
     }
 
+    public function test_branch_cannot_be_enabled_for_the_current_mvp(): void
+    {
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+
+        $this->configuration()->setFieldEnabled(BookingFormField::Branch, true, $this->occurredAt());
+    }
+
+    public function test_unsupported_field_cannot_appear_in_the_active_order(): void
+    {
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+
+        $this->configuration()->updateFieldOrder(new FieldOrder([
+            BookingFormField::PatientName,
+            BookingFormField::Phone,
+            BookingFormField::AppointmentDate,
+            BookingFormField::AppointmentTime,
+            BookingFormField::Service,
+            BookingFormField::Email,
+            BookingFormField::Notes,
+            BookingFormField::Doctor,
+        ]), $this->occurredAt());
+    }
+
     public function test_disabling_a_field_still_present_in_the_field_order_fails(): void
     {
         $configuration = $this->configuration();
@@ -352,34 +375,33 @@ final class BookingFormConfigurationTest extends TestCase
 
     // -- Increment 3B: atomic configuration mutation ------------------------
 
-    public function test_reconfigure_enables_an_optional_field_atomically(): void
+    public function test_reconfigure_reorders_supported_fields_atomically(): void
     {
         $configuration = $this->configuration();
         $later = $this->occurredAt()->modify('+1 day');
 
         $configuration->reconfigure(
             true,
-            true, // Doctor now enabled ...
+            false,
             true,
             false,
             true,
             $configuration->requiredFields(),
             new FieldOrder([
+                BookingFormField::Service,
                 BookingFormField::PatientName,
                 BookingFormField::Phone,
                 BookingFormField::AppointmentDate,
                 BookingFormField::AppointmentTime,
-                BookingFormField::Service,
                 BookingFormField::Email,
                 BookingFormField::Notes,
-                BookingFormField::Doctor, // ... and simultaneously orderable.
             ]),
             $configuration->fieldLabels(),
             $later,
         );
 
-        self::assertTrue($configuration->isEnabled(BookingFormField::Doctor));
-        self::assertContains('doctor', $configuration->fieldOrder()->values());
+        self::assertTrue($configuration->isEnabled(BookingFormField::Service));
+        self::assertSame('service', $configuration->fieldOrder()->values()[0]);
         self::assertSame($later->format(DATE_ATOM), $configuration->updatedAt()->format(DATE_ATOM));
     }
 
@@ -596,7 +618,7 @@ final class BookingFormConfigurationTest extends TestCase
         $later = $this->occurredAt()->modify('+2 days');
         $configuration->reconfigure(
             true,
-            true,
+            false,
             true,
             false,
             true,
@@ -609,7 +631,6 @@ final class BookingFormConfigurationTest extends TestCase
                 BookingFormField::Service,
                 BookingFormField::Email,
                 BookingFormField::Notes,
-                BookingFormField::Doctor,
             ]),
             $configuration->fieldLabels(),
             $later,
@@ -624,7 +645,7 @@ final class BookingFormConfigurationTest extends TestCase
 
         $configuration->reconfigure(
             true,
-            true,
+            false,
             true,
             false,
             true,
@@ -637,7 +658,6 @@ final class BookingFormConfigurationTest extends TestCase
                 BookingFormField::Service,
                 BookingFormField::Email,
                 BookingFormField::Notes,
-                BookingFormField::Doctor,
             ]),
             $configuration->fieldLabels(),
             $this->occurredAt()->modify('+1 day'),

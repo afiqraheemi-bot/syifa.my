@@ -255,6 +255,30 @@ final class BookingFormConfiguration
         RequiredFields $requiredFields,
         FieldOrder $fieldOrder,
     ): void {
+        if ($enableDoctorSelection) {
+            throw new InvalidBookingFormConfigurationValueException('Doctor selection is not supported by the current Booking Submission capability.');
+        }
+
+        if ($enableBranch) {
+            throw new InvalidBookingFormConfigurationValueException('Branch selection is not supported by the current Booking Submission capability.');
+        }
+
+        foreach ($requiredFields->fields as $field) {
+            if (in_array($field, [BookingFormField::Doctor, BookingFormField::Branch], true)) {
+                throw new InvalidBookingFormConfigurationValueException(
+                    sprintf('The unsupported field "%s" cannot be required.', $field->value),
+                );
+            }
+        }
+
+        foreach ($fieldOrder->fields as $field) {
+            if (in_array($field, [BookingFormField::Doctor, BookingFormField::Branch], true)) {
+                throw new InvalidBookingFormConfigurationValueException(
+                    sprintf('The unsupported field "%s" cannot appear in the active field order.', $field->value),
+                );
+            }
+        }
+
         $enabledByField = [
             BookingFormField::Service->value => $enableServiceSelection,
             BookingFormField::Doctor->value => $enableDoctorSelection,

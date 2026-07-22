@@ -92,6 +92,16 @@ final class BookingFoundationArchitectureTest extends TestCase
         }
     }
 
+    public function test_tenant_owned_id_and_reference_lookups_require_tenant_context(): void
+    {
+        $bookingContract = $this->source($this->root().'/app/Modules/Booking/Contracts/Repositories/BookingRepositoryInterface.php');
+        $serviceContract = $this->source($this->root().'/app/Modules/Booking/Contracts/Repositories/ServiceRepositoryInterface.php');
+
+        self::assertStringContainsString('findById(TenantId $tenantId, BookingId $bookingId)', $bookingContract);
+        self::assertStringContainsString('findByReference(TenantId $tenantId, string $reference)', $bookingContract);
+        self::assertStringContainsString('findById(TenantId $tenantId, ServiceId $serviceId)', $serviceContract);
+    }
+
     public function test_booking_form_configuration_is_isolated_from_the_booking_aggregate(): void
     {
         self::assertFileExists($this->root().'/app/Modules/Booking/Domain/BookingFormConfiguration.php');
@@ -184,6 +194,7 @@ final class BookingFoundationArchitectureTest extends TestCase
                 $this->root().'/database/migrations/booking/2026_07_30_000001_create_bookings_table.php',
                 $this->root().'/database/migrations/booking/2026_07_31_000001_create_services_table.php',
                 $this->root().'/database/migrations/booking/2026_08_01_000001_create_booking_form_configurations_table.php',
+                $this->root().'/database/migrations/booking/2026_08_02_000001_add_service_id_to_bookings_table.php',
             ],
             glob($this->root().'/database/migrations/booking/*.php') ?: [],
         );

@@ -138,23 +138,21 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
         $this->repository()->save($configuration);
 
         $configuration->reconfigure(
-            true,
-            true, // Doctor enabled ...
+            false,
+            false,
             true,
             false,
             true,
-            new RequiredFields([BookingFormField::Doctor]), // ... required ...
+            new RequiredFields([]),
             new FieldOrder([
-                BookingFormField::Doctor, // ... ordered first ...
                 BookingFormField::PatientName,
                 BookingFormField::Phone,
                 BookingFormField::AppointmentDate,
                 BookingFormField::AppointmentTime,
-                BookingFormField::Service,
                 BookingFormField::Email,
                 BookingFormField::Notes,
             ]),
-            new FieldLabels(['doctor' => 'Preferred Doctor']), // ... and labelled, together.
+            new FieldLabels(['notes' => 'Additional information']),
             $this->time()->modify('+1 day'),
         );
         $this->repository()->save($configuration);
@@ -163,10 +161,10 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
 
         self::assertNotNull($reloaded);
         self::assertSame(2, $reloaded->version());
-        self::assertTrue($reloaded->isEnabled(BookingFormField::Doctor));
-        self::assertSame(['doctor'], $reloaded->requiredFields()->values());
-        self::assertSame('doctor', $reloaded->fieldOrder()->values()[0]);
-        self::assertSame('Preferred Doctor', $reloaded->fieldLabels()->labelFor(BookingFormField::Doctor));
+        self::assertFalse($reloaded->isEnabled(BookingFormField::Service));
+        self::assertSame([], $reloaded->requiredFields()->values());
+        self::assertNotContains('service', $reloaded->fieldOrder()->values());
+        self::assertSame('Additional information', $reloaded->fieldLabels()->labelFor(BookingFormField::Notes));
     }
 
     public function test_database_enforces_exactly_one_configuration_per_tenant(): void
@@ -209,21 +207,19 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
         self::assertNotNull($staleCopy);
 
         $firstCopy->reconfigure(
-            true,
-            true,
+            false,
+            false,
             true,
             false,
             true,
-            new RequiredFields([BookingFormField::Doctor]),
+            new RequiredFields([]),
             new FieldOrder([
                 BookingFormField::PatientName,
                 BookingFormField::Phone,
                 BookingFormField::AppointmentDate,
                 BookingFormField::AppointmentTime,
-                BookingFormField::Service,
                 BookingFormField::Email,
                 BookingFormField::Notes,
-                BookingFormField::Doctor,
             ]),
             $firstCopy->fieldLabels(),
             $this->time(),
@@ -233,8 +229,8 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
         $staleCopy->reconfigure(
             true,
             false,
-            true,
-            true, // Branch enabled instead ...
+            false,
+            false,
             true,
             $staleCopy->requiredFields(),
             new FieldOrder([
@@ -243,9 +239,7 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
                 BookingFormField::AppointmentDate,
                 BookingFormField::AppointmentTime,
                 BookingFormField::Service,
-                BookingFormField::Email,
                 BookingFormField::Notes,
-                BookingFormField::Branch, // ... and ordered, together.
             ]),
             $staleCopy->fieldLabels(),
             $this->time(),
