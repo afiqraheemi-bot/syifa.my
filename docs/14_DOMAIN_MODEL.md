@@ -1,5 +1,7 @@
 # Syifa.my Phase 1 Domain Model
 
+> **Clinic Public Contact Authority amendment (2026-08-16):** ADR-023 assigns operational phone, operational email, postal address, a distinct optional WhatsApp number, and optional paired coordinates to a governed `ClinicContactProfile` inside the existing Clinic Aggregate. Clinic continues to own IANA timezone and weekly operating hours. Website Branding contact fields are legacy compatibility data pending a governed migration; Website continues to own visual branding, Section configuration, and immutable publication.
+
 > **Public Website Rendering Contract note (2026-08-14):** Rendering adds no Domain object or Aggregate. It is a readonly Application projection of immutable `PublishedWebsiteSnapshot` values and never reads mutable Website state.
 
 > **Website Published Section Content Snapshot amendment (2026-08-13):** Published Section Content is an immutable internal child of `PublishedWebsiteSnapshot`. Exactly one typed content snapshot exists for every governed Section and owns its captured renderability evidence, deterministic fingerprint, opaque Service and Asset references, and normalized ordered child values.
@@ -259,7 +261,7 @@ Platform Identity, Activity Log, Audit Log, Platform Setting, and any retained S
 
 **Purpose.** Represents the clinic business presented and operated through Syifa.my.
 
-**Responsibilities.** Holds the authoritative clinic identity, business description, contact details, operating information, locations, practitioners, and approved public claims supplied by the clinic.
+**Responsibilities.** Holds the authoritative clinic identity, business description, `ClinicContactProfile`, operating information, locations, practitioners, and approved public claims supplied by the clinic. The profile owns operational phone, operational email, postal address, dedicated WhatsApp number, and optional paired coordinates; timezone and weekly operating hours remain Clinic-owned operational values.
 
 **Ownership.** Tenant-owned. Phase 1 associates one Clinic with one Tenant, while keeping their meanings distinct.
 
@@ -267,7 +269,7 @@ Platform Identity, Activity Log, Audit Log, Platform Setting, and any retained S
 
 **Lifecycle.** Proposed through Registration, verified for onboarding, active, corrected, suspended from presentation, offboarding, and retained or removed under approved policy.
 
-**Business Rules.** Clinic information must be approved by the Clinic Owner. Changes to Clinic details cannot change the Tenant security boundary. Syifa.my does not assume responsibility for clinical claim accuracy.
+**Business Rules.** Clinic information must be approved by the Clinic Owner. WhatsApp availability is explicit and never inferred from operational phone. Coordinates are present as a valid latitude/longitude pair or absent together. Changes to Clinic details cannot change the Tenant security boundary. Syifa.my does not assume responsibility for clinical claim accuracy.
 
 **Who can modify it.** Clinic Owner and assigned Website Designer within approved responsibilities; Super Admin only through explicit support or lifecycle authority.
 

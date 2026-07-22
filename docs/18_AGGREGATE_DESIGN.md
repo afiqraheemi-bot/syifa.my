@@ -1,5 +1,7 @@
 # Aggregate Design
 
+> **Clinic Public Contact Authority amendment (2026-08-16):** Under ADR-023, Clinic owns one internal `ClinicContactProfile` containing optional normalized operational phone, operational email, postal address, dedicated WhatsApp number, and optional latitude/longitude pair. It remains the existing Clinic Aggregate Root and transaction boundary; no Contact or Location Aggregate is introduced. Clinic also retains IANA timezone and weekly operating hours. Website Branding contact fields are legacy compatibility fields pending staged migration, while Website retains visual branding and immutable publication ownership.
+
 > **Website Publishing Pipeline Foundation amendment (2026-08-12):** Publishing is an atomic Website operation. Valid readiness produces one immutable Snapshot and matching successful History entry at the next version; failure mutates neither publication state nor history. Republish creates a new Snapshot and never modifies an earlier one. Website remains the Aggregate Root and no Publishing context is added.
 
 > **Website Asset Management Foundation amendment (2026-08-11):** Website owns its Asset Collection and governs Asset registration and lifecycle. Assets cannot exist independently and do not add an Aggregate Root. Typed references identify Assets without transferring ownership; SVG Assets are eligible only for logo use. The Aggregate Root registry is unchanged.
@@ -192,13 +194,13 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Internal Entities.** Clinic Location (one or many), Practitioner Profile (one or many).
 
-**Value Objects.** Clinic Name, Public Clinic Description, Contact Details, Operating Hours, Booking Appointment Duration, Booking Capacity Per Slot.
+**Value Objects.** Clinic Name, Public Clinic Description, ClinicContactProfile, IANA Timezone, Weekly Operating Hours, Booking Appointment Duration, Booking Capacity Per Slot.
 
-**Business Invariants.** A Clinic is accountable to exactly one Tenant. Its Booking Configuration requires a controlled 15/20/30/45/60-minute duration and capacity from one to ten; all Services share it. Changes never rewrite existing Booking or reservation-bucket snapshots.
+**Business Invariants.** A Clinic is accountable to exactly one Tenant. ClinicContactProfile channels are optional and normalized; WhatsApp is distinct from operational phone; coordinates are a valid pair or both absent. Its Booking Configuration requires a controlled 15/20/30/45/60-minute duration and capacity from one to ten; all Services share it. Changes never rewrite existing Booking, reservation-bucket, or Published Website snapshots.
 
 **Lifecycle.** Proposed (through Registration) → verified for onboarding → active → corrected → suspended from presentation → offboarding → retained or removed.
 
-**Transaction Boundary.** Updating Clinic identity fields, adding or retiring a Location, and adding or retiring a Practitioner Profile each complete as one atomic action.
+**Transaction Boundary.** Updating Clinic identity fields or ClinicContactProfile, reconfiguring operational time, adding or retiring a Location, and adding or retiring a Practitioner Profile each complete through the Clinic transaction boundary.
 
 **Consistency Boundary.** Clinic identity, its Locations, and its Practitioner Profiles are strongly consistent with each other. Clinic Service catalogue meaning, Website presentation state, and Booking activity all live in other aggregates and are reached only by reference.
 

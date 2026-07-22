@@ -33,6 +33,7 @@ This document is the governance index for architecture decisions and architectur
 | [ADR-020](./decisions/ADR-020-Website-Published-Section-Content-Snapshot.md) | Website Published Section Content Snapshot | Active | Completes immutable Published Snapshots with normalized typed Section content and captured renderability evidence. |
 | [ADR-021](./decisions/ADR-021-Public-Website-Rendering-Contract.md) | Public Website Rendering Contract | Active | Defines a transient typed snapshot-only render tree with deterministic ordering and adaptive Section omission. |
 | [ADR-022](./decisions/ADR-022-Public-Website-Experience-and-Design-System-V1.md) | Public Website Experience and Design System V1 | Active | Governs booking-first public experience, tokens, responsive components, five template personalities, accessibility, performance, quality review, and change control. |
+| [ADR-023](./decisions/ADR-023-Clinic-Public-Contact-Authority-V1.md) | Clinic Public Contact Authority V1 | Active | Assigns operational contact, operating time, and semantic location to Clinic; defines the internal ClinicContactProfile, explicit WhatsApp semantics, provider-neutral directions evidence, and the staged Website Branding compatibility transition. |
 
 ## Superseded ADRs
 
@@ -79,7 +80,7 @@ No ADR is deprecated as of SYIFA-085A.
 | [32_PAYMENT_PROVIDER_EVALUATION.md](./32_PAYMENT_PROVIDER_EVALUATION.md) | Current, time-sensitive | Official-source provider comparison and 2026-07-21 pricing snapshot supporting ADR-008. |
 | [33_MULTI_PROVIDER_PAYMENT_ARCHITECTURE.md](./33_MULTI_PROVIDER_PAYMENT_ARCHITECTURE.md) | Current | Provider contract, registry, readiness lifecycle, immutable attempt binding and Stripe/ToyyibPay Infrastructure placement. |
 | [34_SUBSCRIPTION_ACTIVATION_ARCHITECTURE.md](./34_SUBSCRIPTION_ACTIVATION_ARCHITECTURE.md) | Current | Initial Subscription Activation detailed design refined by ADR-011: activation-application lifecycle, eligibility/outcome policy, annual-term algorithm, reconciliation boundary, outbox contract, and database design. |
-| [37_MASTER_ARCHITECTURE_PROGRESS.md](./37_MASTER_ARCHITECTURE_PROGRESS.md) | Current | Tracks accepted Website architecture increments through ADR-022 and records unresolved public-projection prerequisites without authorizing implementation. |
+| [37_MASTER_ARCHITECTURE_PROGRESS.md](./37_MASTER_ARCHITECTURE_PROGRESS.md) | Current | Tracks accepted Website architecture increments through ADR-023 and records unresolved public-projection implementation prerequisites without authorizing implementation. |
 
 ## Governance Notes
 
