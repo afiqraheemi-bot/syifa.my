@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Application\Delivery;
 
 use App\Modules\WebsiteBuilder\Application\Delivery\Exceptions\InvalidPublicDeliveryValueException;
+use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\BusinessHourRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRenderModel;
+use DateTimeImmutable;
 
 final readonly class PublicWebsiteDocumentFactory
 {
@@ -50,6 +52,23 @@ final readonly class PublicWebsiteDocumentFactory
             (new ContactActionFactory)->make($model->footer),
             $booking,
             $sitemap,
+            $this->todayHoursLabel($model->footer->businessHours),
         );
+    }
+
+    /** @param list<BusinessHourRenderModel> $businessHours */
+    private function todayHoursLabel(array $businessHours): ?string
+    {
+        if ($businessHours === []) {
+            return null;
+        }
+        $today = (int) (new DateTimeImmutable)->format('N');
+        foreach ($businessHours as $hour) {
+            if ($hour->dayOfWeek === $today) {
+                return sprintf('Open today · %s–%s', $hour->opensAt, $hour->closesAt);
+            }
+        }
+
+        return 'Closed today';
     }
 }

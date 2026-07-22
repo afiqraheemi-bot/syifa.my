@@ -11,9 +11,9 @@
         @endif
         @if ($document->website->footer->contactPhone !== null || $document->website->footer->contactEmail !== null || $document->website->footer->address !== null)
             <div><h2>Contact</h2><address>
-                @if ($document->website->footer->address !== null)<p>{{ $document->website->footer->address }}</p>@endif
-                @if ($document->contactActions->telephone !== null)<a href="{{ $document->contactActions->telephone }}">{{ $document->website->footer->contactPhone }}</a>@endif
-                @if ($document->contactActions->email !== null)<a href="{{ $document->contactActions->email }}">{{ $document->website->footer->contactEmail }}</a>@endif
+                @if ($document->website->footer->address !== null)<p class="footer-line"><x-public.icon name="location" />{{ $document->website->footer->address }}</p>@endif
+                @if ($document->contactActions->telephone !== null)<a class="footer-line" href="{{ $document->contactActions->telephone }}"><x-public.icon name="phone" />{{ $document->website->footer->contactPhone }}</a>@endif
+                @if ($document->contactActions->email !== null)<a class="footer-line" href="{{ $document->contactActions->email }}"><x-public.icon name="mail" />{{ $document->website->footer->contactEmail }}</a>@endif
             </address></div>
         @endif
         @if ($document->website->footer->businessHours !== [])

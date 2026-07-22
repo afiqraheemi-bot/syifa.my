@@ -3,6 +3,9 @@
     $imageDimensions = $section->heroImageAssetId === null ? [null, null] : ($document->assetDimensions[$section->heroImageAssetId] ?? [null, null]);
     $services = collect($document->navigation)->first(fn ($item) => $item->route === \App\Modules\WebsiteBuilder\Application\Delivery\PublicRoute::Services);
     $secondaryUrl = $services?->url;
+    $phone = $document->website->footer->contactPhone;
+    $address = $document->website->footer->address;
+    $todayHours = $document->todayHoursLabel;
 @endphp
 <section class="hero" id="home" aria-labelledby="hero-title">
     <div class="public-container hero__layout {{ $imageUrl === null ? 'hero__layout--text' : '' }}">
@@ -16,10 +19,13 @@
                     <a class="button button--secondary" href="{{ $secondaryUrl->value }}">{{ $section->secondaryCtaLabel }}</a>
                 @endif
             </div>
-            <div class="hero__trust">
-                @if ($document->website->footer->contactPhone !== null)<span>Direct clinic contact</span>@endif
-                @if ($document->website->footer->address !== null)<span>{{ $document->website->footer->address }}</span>@endif
-            </div>
+            @if ($phone !== null || $todayHours !== null || $address !== null)
+                <ul class="hero__trust" aria-label="Clinic information">
+                    @if ($phone !== null)<li><x-public.icon name="phone" /><span>{{ $phone }}</span></li>@endif
+                    @if ($todayHours !== null)<li><x-public.icon name="clock" /><span>{{ $todayHours }}</span></li>@endif
+                    @if ($address !== null)<li><x-public.icon name="location" /><span>{{ $address }}</span></li>@endif
+                </ul>
+            @endif
         </div>
         @if ($imageUrl !== null)
             <div class="hero__media">

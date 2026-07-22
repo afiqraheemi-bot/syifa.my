@@ -1,7 +1,7 @@
 <section class="public-section public-section--subtle anchor-section" id="gallery" aria-labelledby="gallery-title">
     <div class="public-container public-container--wide">
         <x-public.section-heading eyebrow="Our environment" title="A space designed for care" />
-        <div class="gallery-grid">
+        <div class="gallery-grid gallery-grid--count-{{ min(count($section->images), 4) }}">
             @foreach ($section->images as $image)
                 @php
                     $imageUrl = $assetUrls[$image->assetId];

@@ -5,18 +5,18 @@
             <h2 id="contact-title">Contact the clinic</h2>
             @if ($section->address !== null)<p class="prose-lead">{{ $section->address }}</p>@endif
             <div class="contact-actions" aria-label="Clinic contact options">
-                @if ($actions->telephone !== null)<a class="contact-action" href="{{ $actions->telephone }}"><span>Call the clinic</span><strong>{{ $section->contactPhone }}</strong></a>@endif
-                @if ($actions->email !== null)<a class="contact-action" href="{{ $actions->email }}"><span>Email the clinic</span><strong>{{ $section->contactEmail }}</strong></a>@endif
-                @if ($actions->whatsApp !== null)<a class="contact-action" href="{{ $actions->whatsApp->value }}"><span>WhatsApp</span><strong>{{ $section->whatsAppNumber }}</strong></a>@endif
-                @if ($actions->directions !== null)<a class="button button--secondary" href="{{ $actions->directions->value }}" rel="noopener noreferrer">Get directions</a>@endif
+                @if ($actions->telephone !== null)<a class="contact-action" href="{{ $actions->telephone }}"><x-public.icon name="phone" /><span class="contact-action__copy"><span>Call the clinic</span><strong>{{ $section->contactPhone }}</strong></span></a>@endif
+                @if ($actions->email !== null)<a class="contact-action" href="{{ $actions->email }}"><x-public.icon name="mail" /><span class="contact-action__copy"><span>Email the clinic</span><strong>{{ $section->contactEmail }}</strong></span></a>@endif
+                @if ($actions->whatsApp !== null)<a class="contact-action" href="{{ $actions->whatsApp->value }}"><x-public.icon name="message" /><span class="contact-action__copy"><span>WhatsApp</span><strong>{{ $section->whatsAppNumber }}</strong></span></a>@endif
+                @if ($actions->directions !== null)<a class="button button--secondary" href="{{ $actions->directions->value }}" rel="noopener noreferrer">Get directions <x-public.icon name="external" /></a>@endif
             </div>
-            <a class="text-action" href="{{ $bookingUrl->value }}">Book an appointment <span aria-hidden="true">→</span></a>
+            <a class="button button--secondary" href="{{ $bookingUrl->value }}">Book an appointment</a>
         </div>
         <div class="contact-layout__details">
             <x-public.business-hours :hours="$section->businessHours" />
             @if ($section->socialLinks !== [])
                 <div class="social-links"><h3>Follow the clinic</h3><ul>
-                    @foreach ($section->socialLinks as $channel => $url)<li><a href="{{ $url }}" rel="noopener noreferrer">{{ ucfirst($channel) }}</a></li>@endforeach
+                    @foreach ($section->socialLinks as $channel => $url)<li><a href="{{ $url }}" rel="noopener noreferrer">{{ ucfirst($channel) }} <x-public.icon name="external" /></a></li>@endforeach
                 </ul></div>
             @endif
         </div>

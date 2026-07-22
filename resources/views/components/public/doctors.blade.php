@@ -1,7 +1,7 @@
 <section class="public-section public-section--subtle anchor-section" id="doctors" aria-labelledby="doctors-title">
     <div class="public-container">
         <x-public.section-heading eyebrow="Your care team" title="Meet our doctors" />
-        <div class="card-grid card-grid--doctors" role="list">
+        <div class="card-grid card-grid--doctors card-grid--count-{{ min(count($section->doctors), 4) }}" role="list">
             @foreach ($section->doctors as $doctor)
                 @php
                     $photoUrl = $doctor->photoAssetId === null ? null : ($assetUrls[$doctor->photoAssetId] ?? null);
