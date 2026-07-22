@@ -10,6 +10,7 @@ use App\Modules\Booking\Domain\ValueObjects\AppointmentDate;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
 use App\Modules\Booking\Domain\ValueObjects\BookingReference;
+use App\Modules\Booking\Domain\ValueObjects\BookingSource;
 use App\Modules\Booking\Domain\ValueObjects\BookingStatus;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
@@ -64,6 +65,14 @@ final class BookingTest extends TestCase
 
         // @phpstan-ignore-next-line - proving readonly identity is language-enforced.
         $booking->id = new BookingId($this->uuid(9));
+    }
+
+    public function test_booking_source_is_immutable(): void
+    {
+        $booking = $this->booking();
+        $this->expectException(Error::class);
+        // @phpstan-ignore-next-line proving source immutability is language-enforced.
+        $booking->source = BookingSource::Phone;
     }
 
     public function test_version_can_be_synchronized_for_optimistic_concurrency(): void
@@ -152,6 +161,7 @@ final class BookingTest extends TestCase
             new TenantId($this->uuid(2)),
             new ServiceId($this->uuid(4)),
             new BookingReference('BOOK-0001'),
+            BookingSource::Website,
             new PatientName('Aisyah Rahman'),
             new PatientPhone('+60123456789'),
             $patientEmail === null ? null : new PatientEmail($patientEmail),

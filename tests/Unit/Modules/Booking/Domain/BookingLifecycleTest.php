@@ -9,8 +9,10 @@ use App\Modules\Booking\Domain\BookingHistoryEntry;
 use App\Modules\Booking\Domain\Exceptions\InvalidBookingValueException;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentDate;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
+use App\Modules\Booking\Domain\ValueObjects\BookingActorType;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
 use App\Modules\Booking\Domain\ValueObjects\BookingReference;
+use App\Modules\Booking\Domain\ValueObjects\BookingSource;
 use App\Modules\Booking\Domain\ValueObjects\BookingStatus;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
 use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
@@ -47,7 +49,7 @@ final class BookingLifecycleTest extends TestCase
 
     public function test_history_reconstitution_accepts_jsonb_key_order_but_rejects_unknown_fields(): void
     {
-        $entry = BookingHistoryEntry::submitted($this->uuid(9), $this->booking(), $this->at());
+        $entry = BookingHistoryEntry::submitted($this->uuid(9), $this->booking(), BookingActorType::PublicVisitor, null, $this->at());
         $reordered = array_reverse($entry->payload, true);
         self::assertEquals($entry->payload, BookingHistoryEntry::reconstitute($entry->id, $entry->tenantId, $entry->bookingId, $entry->eventType->value, $entry->actorType->value, null, $entry->occurredAt, $reordered)->payload);
 
@@ -57,7 +59,7 @@ final class BookingLifecycleTest extends TestCase
 
     private function booking(): Booking
     {
-        return Booking::submit(new BookingId($this->uuid(1)), new TenantId($this->uuid(2)), new ServiceId($this->uuid(3)), new BookingReference('BOOK-1'), new PatientName('Patient'), new PatientPhone('+6012'), null, new AppointmentDate('2026-08-10'), new AppointmentTime('10:00'), null, $this->at(), $this->scheduled('10:00'));
+        return Booking::submit(new BookingId($this->uuid(1)), new TenantId($this->uuid(2)), new ServiceId($this->uuid(3)), new BookingReference('BOOK-1'), BookingSource::Website, new PatientName('Patient'), new PatientPhone('+6012'), null, new AppointmentDate('2026-08-10'), new AppointmentTime('10:00'), null, $this->at(), $this->scheduled('10:00'));
     }
 
     private function scheduled(string $start): ScheduledAppointment

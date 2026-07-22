@@ -7,9 +7,15 @@ namespace Tests\Unit\Modules\Booking\Application;
 use App\Modules\Booking\Application\Availability\ClinicSlotGenerator;
 use App\Modules\Booking\Application\BookingHistoryIdentifierGeneratorInterface;
 use App\Modules\Booking\Application\BookingIdentifierGeneratorInterface;
+use App\Modules\Booking\Application\BookingOwnerAuthorization;
 use App\Modules\Booking\Application\BookingReferenceGeneratorInterface;
+use App\Modules\Booking\Application\Commands\CreateManualBookingCommand;
 use App\Modules\Booking\Application\Commands\SubmitBookingCommand;
+use App\Modules\Booking\Application\CreateBookingWorkflow;
+use App\Modules\Booking\Application\CreateManualBookingService;
+use App\Modules\Booking\Application\Exceptions\BookingOperationForbiddenException;
 use App\Modules\Booking\Application\Exceptions\BookingServiceNotFoundException;
+use App\Modules\Booking\Application\Exceptions\UnsupportedManualBookingSourceException;
 use App\Modules\Booking\Application\SubmitBookingService;
 use App\Modules\Booking\Contracts\Capacity\ReservationSlotData;
 use App\Modules\Booking\Contracts\Capacity\SlotCapacityReservationInterface;
@@ -52,6 +58,51 @@ final class SubmitBookingServiceTest extends TestCase
         self::assertSame('Asia/Kuala_Lumpur', $fixture->bookings[0]->scheduledAppointment()->timezone);
         self::assertSame(1, $fixture->reservations);
         self::assertCount(1, $fixture->history);
+        self::assertSame('WEBSITE', $fixture->bookings[0]->source->value);
+        self::assertSame('public_visitor', $fixture->history[0]->actorType->value);
+        self::assertSame('WEBSITE', $fixture->history[0]->payload['source']);
+    }
+
+    public function test_all_governed_manual_sources_use_the_shared_workflow_and_record_owner_actor(): void
+    {
+        foreach (['WHATSAPP', 'PHONE', 'WALK_IN', 'STAFF'] as $index => $source) {
+            $fixture = new SubmitBookingFixture;
+            $service = new CreateManualBookingService($fixture->workflow(), new BookingOwnerAuthorization);
+            $service->execute($fixture->manualCommand($source));
+
+            self::assertSame($source, $fixture->bookings[0]->source->value, (string) $index);
+            self::assertSame('clinic_owner', $fixture->history[0]->actorType->value);
+            self::assertSame($fixture->uuid(20), $fixture->history[0]->actorId);
+            self::assertSame($source, $fixture->history[0]->payload['source']);
+        }
+    }
+
+    public function test_manual_website_source_is_rejected_before_reservation(): void
+    {
+        $fixture = new SubmitBookingFixture;
+        $service = new CreateManualBookingService($fixture->workflow(), new BookingOwnerAuthorization);
+        $this->expectException(UnsupportedManualBookingSourceException::class);
+        try {
+            $service->execute($fixture->manualCommand('WEBSITE'));
+        } finally {
+            self::assertSame(0, $fixture->reservations);
+        }
+    }
+
+    public function test_website_designer_and_cross_tenant_owner_are_denied_without_leaking_data(): void
+    {
+        $actor = '00000000-0000-4000-8000-000000000020';
+        foreach ([['website_designer', 1, $actor], ['clinic_owner', 2, $actor], ['clinic_owner', 1, '']] as [$role, $actorTenant, $actorId]) {
+            $fixture = new SubmitBookingFixture;
+            $service = new CreateManualBookingService($fixture->workflow(), new BookingOwnerAuthorization);
+            try {
+                $service->execute($fixture->manualCommand('PHONE', $role, $actorTenant, $actorId));
+                self::fail('Expected authorization failure.');
+            } catch (BookingOperationForbiddenException $exception) {
+                self::assertSame('Booking operation is not authorized.', $exception->getMessage());
+                self::assertSame([], $fixture->bookings);
+            }
+        }
     }
 
     public function test_missing_service_fails_closed_before_capacity_is_reserved(): void
@@ -89,12 +140,22 @@ final class SubmitBookingFixture implements BookingClockInterface, BookingHistor
 
     public function application(): SubmitBookingService
     {
-        return new SubmitBookingService(new FixtureConfigurationRepository($this), new FixtureServiceRepository($this), new FixtureBookingRepository($this), $this, $this, $this, $this, $this, new ClinicSlotGenerator, $this, $this, $this);
+        return new SubmitBookingService($this->workflow());
+    }
+
+    public function workflow(): CreateBookingWorkflow
+    {
+        return new CreateBookingWorkflow(new FixtureConfigurationRepository($this), new FixtureServiceRepository($this), new FixtureBookingRepository($this), $this, $this, $this, $this, $this, new ClinicSlotGenerator, $this, $this, $this);
     }
 
     public function command(): SubmitBookingCommand
     {
         return new SubmitBookingCommand(new TenantId($this->uuid(1)), 'Aisyah Rahman', '+60123456789', '2026-08-10', '10:00', $this->uuid(4));
+    }
+
+    public function manualCommand(string $source, string $role = 'clinic_owner', int $actorTenant = 1, ?string $actorId = null): CreateManualBookingCommand
+    {
+        return new CreateManualBookingCommand(new TenantId($this->uuid(1)), new TenantId($this->uuid($actorTenant)), $actorId ?? $this->uuid(20), $role, $source, 'Aisyah Rahman', '+60123456789', '2026-08-10', '10:00', $this->uuid(4));
     }
 
     public function configuration(TenantId $tenantId): BookingFormConfiguration

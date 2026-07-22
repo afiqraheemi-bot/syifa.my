@@ -7,11 +7,14 @@ namespace Tests\Integration\Modules\Booking\Application;
 use App\Modules\Booking\Application\Availability\ClinicSlotGenerator;
 use App\Modules\Booking\Application\BookingHistoryIdentifierGeneratorInterface;
 use App\Modules\Booking\Application\BookingIdentifierGeneratorInterface;
+use App\Modules\Booking\Application\BookingOwnerAuthorization;
 use App\Modules\Booking\Application\BookingReferenceGeneratorInterface;
+use App\Modules\Booking\Application\Commands\CreateManualBookingCommand;
 use App\Modules\Booking\Application\Commands\SubmitBookingCommand;
+use App\Modules\Booking\Application\CreateBookingWorkflow;
+use App\Modules\Booking\Application\CreateManualBookingService;
 use App\Modules\Booking\Application\Exceptions\SlotUnavailableException;
 use App\Modules\Booking\Application\SubmitBookingService;
-use App\Modules\Booking\Contracts\Capacity\ReservationSlotData;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperatingIntervalData;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeData;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeReaderInterface;
@@ -29,6 +32,7 @@ use App\Modules\Booking\Domain\ValueObjects\TenantId;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingFormConfigurationPersistenceMapper;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingPersistenceMapper;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\ServicePersistenceMapper;
+use App\Modules\Booking\Infrastructure\Persistence\Queries\PostgresClinicOwnerBookingReadAdapter;
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingFormConfigurationRepository;
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingHistoryRepository;
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingRepository;
@@ -69,7 +73,7 @@ final class PostgresSubmitBookingServiceTest extends TestCase
         Schema::connection(self::CONNECTION)->create('tenants', function (Blueprint $table): void {
             $table->uuid('id')->primary();
         });
-        foreach (['2026_07_30_000001_create_bookings_table.php', '2026_07_31_000001_create_services_table.php', '2026_08_01_000001_create_booking_form_configurations_table.php', '2026_08_02_000001_add_service_id_to_bookings_table.php', '2026_08_03_000001_remove_clinic_id_from_bookings_table.php', '2026_08_05_000001_add_booking_mvp_scheduling.php', '2026_08_05_000002_create_booking_capacity_and_history.php', '2026_08_05_000003_remove_service_duration.php'] as $file) {
+        foreach (['2026_07_30_000001_create_bookings_table.php', '2026_07_31_000001_create_services_table.php', '2026_08_01_000001_create_booking_form_configurations_table.php', '2026_08_02_000001_add_service_id_to_bookings_table.php', '2026_08_03_000001_remove_clinic_id_from_bookings_table.php', '2026_08_05_000001_add_booking_mvp_scheduling.php', '2026_08_05_000002_create_booking_capacity_and_history.php', '2026_08_05_000003_remove_service_duration.php', '2026_08_06_000001_add_booking_source.php'] as $file) {
             $migration = require base_path('database/migrations/booking/'.$file);
             $migration->up();
             array_unshift($this->migrations, $migration);
@@ -112,9 +116,33 @@ final class PostgresSubmitBookingServiceTest extends TestCase
         }
     }
 
+    public function test_public_and_manual_paths_compete_for_the_same_capacity_bucket(): void
+    {
+        $this->application(10)->execute($this->command());
+        $this->expectException(SlotUnavailableException::class);
+        try {
+            $this->manualApplication(11)->execute($this->manualCommand());
+        } finally {
+            self::assertSame(1, $this->db()->table('bookings')->count());
+            self::assertSame(1, $this->db()->table('booking_slot_reservation_buckets')->value('reserved_count'));
+        }
+    }
+
+    public function test_manual_booking_persists_source_and_clinic_owner_history_actor(): void
+    {
+        $result = $this->manualApplication(12)->execute($this->manualCommand('WHATSAPP'));
+
+        self::assertSame('WHATSAPP', $this->db()->table('bookings')->where('id', $result->bookingId)->value('booking_source'));
+        $history = $this->db()->table('booking_history')->where('booking_id', $result->bookingId)->first();
+        self::assertNotNull($history);
+        self::assertSame('clinic_owner', $history->actor_type);
+        self::assertSame($this->uuid(20), $history->actor_id);
+        self::assertStringContainsString('WHATSAPP', (string) $history->payload);
+        self::assertSame('WHATSAPP', (new PostgresClinicOwnerBookingReadAdapter($this->db()))->detail($this->uuid(1), $result->bookingId)?->source);
+    }
+
     public function test_separate_postgresql_connections_cannot_exceed_final_capacity(): void
     {
-        $slot = new ReservationSlotData(new DateTimeImmutable('2026-08-10T02:00:00Z'), new DateTimeImmutable('2026-08-10T02:30:00Z'));
         DB::disconnect(self::CONNECTION);
         $children = [];
         for ($index = 0; $index < 2; $index++) {
@@ -126,7 +154,11 @@ final class PostgresSubmitBookingServiceTest extends TestCase
                     config()->set('database.connections.'.$name, config('database.connections.'.self::CONNECTION));
                     DB::purge($name);
                     $connection = DB::connection($name);
-                    $connection->transaction(fn (): mixed => (new PostgresSlotCapacityReservation($connection))->reserve($this->uuid(1), $slot, 1));
+                    if ($index === 0) {
+                        $this->application(30, $connection)->execute($this->command());
+                    } else {
+                        $this->manualApplication(31, $connection)->execute($this->manualCommand());
+                    }
                     exit(0);
                 } catch (SlotUnavailableException) {
                     exit(2);
@@ -146,18 +178,41 @@ final class PostgresSubmitBookingServiceTest extends TestCase
         DB::purge(self::CONNECTION);
         $this->connection = DB::connection(self::CONNECTION);
         self::assertSame(1, $this->db()->table('booking_slot_reservation_buckets')->value('reserved_count'));
+        self::assertSame(1, $this->db()->table('bookings')->count());
+        self::assertSame(1, $this->db()->table('booking_history')->count());
     }
 
-    private function application(int $id): SubmitBookingService
+    private function application(int $id, ?ConnectionInterface $connection = null): SubmitBookingService
     {
+        $connection ??= $this->db();
         $fixed = new PostgresBookingFixedValues($this->uuid($id), 'BOOK-'.$id, $this->now());
 
-        return new SubmitBookingService(new PostgresBookingFormConfigurationRepository($this->db(), new BookingFormConfigurationPersistenceMapper), new PostgresServiceRepository($this->db(), new ServicePersistenceMapper), new PostgresBookingRepository($this->db(), new BookingPersistenceMapper), new PostgresBookingTransaction($this->db()), $fixed, $fixed, $fixed, $fixed, new ClinicSlotGenerator, new PostgresSlotCapacityReservation($this->db()), new PostgresBookingHistoryRepository($this->db()), $fixed);
+        return new SubmitBookingService($this->workflow($connection, $fixed));
+    }
+
+    private function manualApplication(int $id, ?ConnectionInterface $connection = null): CreateManualBookingService
+    {
+        $connection ??= $this->db();
+        $fixed = new PostgresBookingFixedValues($this->uuid($id), 'BOOK-'.$id, $this->now());
+
+        return new CreateManualBookingService($this->workflow($connection, $fixed), new BookingOwnerAuthorization);
+    }
+
+    private function workflow(ConnectionInterface $connection, PostgresBookingFixedValues $fixed): CreateBookingWorkflow
+    {
+        return new CreateBookingWorkflow(new PostgresBookingFormConfigurationRepository($connection, new BookingFormConfigurationPersistenceMapper), new PostgresServiceRepository($connection, new ServicePersistenceMapper), new PostgresBookingRepository($connection, new BookingPersistenceMapper), new PostgresBookingTransaction($connection), $fixed, $fixed, $fixed, $fixed, new ClinicSlotGenerator, new PostgresSlotCapacityReservation($connection), new PostgresBookingHistoryRepository($connection), $fixed);
     }
 
     private function command(): SubmitBookingCommand
     {
         return new SubmitBookingCommand(new TenantId($this->uuid(1)), 'Aisyah', '+6012', '2026-08-10', '10:00', $this->uuid(4));
+    }
+
+    private function manualCommand(string $source = 'PHONE'): CreateManualBookingCommand
+    {
+        $tenant = new TenantId($this->uuid(1));
+
+        return new CreateManualBookingCommand($tenant, $tenant, $this->uuid(20), 'clinic_owner', $source, 'Aisyah', '+6012', '2026-08-10', '10:00', $this->uuid(4));
     }
 
     private function db(): ConnectionInterface

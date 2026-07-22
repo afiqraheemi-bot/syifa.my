@@ -121,12 +121,18 @@ final class BookingFoundationArchitectureTest extends TestCase
     public function test_booking_submission_is_application_orchestration_without_unapproved_dependencies(): void
     {
         $submission = $this->source($this->root().'/app/Modules/Booking/Application/SubmitBookingService.php');
+        $workflow = $this->source($this->root().'/app/Modules/Booking/Application/CreateBookingWorkflow.php');
+        $manual = $this->source($this->root().'/app/Modules/Booking/Application/CreateManualBookingService.php');
         $command = $this->source($this->root().'/app/Modules/Booking/Application/Commands/SubmitBookingCommand.php');
 
-        self::assertStringContainsString('BookingFormConfigurationRepositoryInterface', $submission);
-        self::assertStringContainsString('ServiceRepositoryInterface', $submission);
-        self::assertStringContainsString('BookingRepositoryInterface', $submission);
-        self::assertStringContainsString('BookingTransactionInterface', $submission);
+        self::assertStringContainsString('CreateBookingWorkflow $workflow', $submission);
+        self::assertStringContainsString('CreateBookingWorkflow $workflow', $manual);
+        self::assertStringContainsString('BookingFormConfigurationRepositoryInterface', $workflow);
+        self::assertStringContainsString('ServiceRepositoryInterface', $workflow);
+        self::assertStringContainsString('BookingRepositoryInterface', $workflow);
+        self::assertStringContainsString('BookingTransactionInterface', $workflow);
+        self::assertStringContainsString('BookingSource::Website', $submission);
+        self::assertStringNotContainsString('BookingSource', $command);
         self::assertStringNotContainsString('ClinicId', $submission.$command);
         self::assertStringNotContainsString('array $', $command);
 
@@ -140,6 +146,17 @@ final class BookingFoundationArchitectureTest extends TestCase
 
         self::assertStringNotContainsString('RepositoryInterface', $this->source($this->root().'/app/Modules/Booking/Domain/Booking.php'));
         self::assertDoesNotMatchRegularExpression('/use App\\\\Modules\\\\(?!Booking\\\\)/', $submission);
+    }
+
+    public function test_manual_booking_has_no_parallel_aggregate_or_persistence_bypass(): void
+    {
+        self::assertFileDoesNotExist($this->root().'/app/Modules/Booking/Domain/ManualBooking.php');
+        self::assertFileDoesNotExist($this->root().'/app/Modules/Booking/Application/ManualBookingReservationService.php');
+        $manual = $this->source($this->root().'/app/Modules/Booking/Application/CreateManualBookingService.php');
+        self::assertStringContainsString('CreateBookingWorkflow', $manual);
+        self::assertStringNotContainsString('BookingRepositoryInterface', $manual);
+        self::assertStringNotContainsString('SlotCapacityReservationInterface', $manual);
+        self::assertStringNotContainsString('clinic_staff', strtolower($manual));
     }
 
     public function test_booking_form_configuration_is_isolated_from_the_booking_aggregate(): void
@@ -237,6 +254,7 @@ final class BookingFoundationArchitectureTest extends TestCase
                 $this->root().'/database/migrations/booking/2026_08_05_000001_add_booking_mvp_scheduling.php',
                 $this->root().'/database/migrations/booking/2026_08_05_000002_create_booking_capacity_and_history.php',
                 $this->root().'/database/migrations/booking/2026_08_05_000003_remove_service_duration.php',
+                $this->root().'/database/migrations/booking/2026_08_06_000001_add_booking_source.php',
             ],
             glob($this->root().'/database/migrations/booking/*.php') ?: [],
         );

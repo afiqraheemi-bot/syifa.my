@@ -10,6 +10,7 @@ use App\Modules\Booking\Domain\ValueObjects\AppointmentDate;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
 use App\Modules\Booking\Domain\ValueObjects\BookingReference;
+use App\Modules\Booking\Domain\ValueObjects\BookingSource;
 use App\Modules\Booking\Domain\ValueObjects\BookingStatus;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
@@ -34,6 +35,7 @@ final class BookingPersistenceMapper
             $booking->tenantId->value,
             $booking->serviceId?->value,
             $booking->reference->value,
+            $booking->source->value,
             $booking->status()->value,
             $booking->patientName->value,
             $booking->patientPhone->value,
@@ -72,6 +74,7 @@ final class BookingPersistenceMapper
             tenantId: new TenantId($record->tenantId),
             serviceId: $record->serviceId === null ? null : new ServiceId($record->serviceId),
             reference: new BookingReference($record->bookingReference),
+            source: BookingSource::fromStored($record->bookingSource),
             status: BookingStatus::from($record->status),
             patientName: new PatientName($record->patientName),
             patientPhone: new PatientPhone($record->patientPhone),

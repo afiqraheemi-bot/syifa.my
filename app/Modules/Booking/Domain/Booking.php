@@ -9,6 +9,7 @@ use App\Modules\Booking\Domain\ValueObjects\AppointmentDate;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
 use App\Modules\Booking\Domain\ValueObjects\BookingReference;
+use App\Modules\Booking\Domain\ValueObjects\BookingSource;
 use App\Modules\Booking\Domain\ValueObjects\BookingStatus;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
@@ -25,6 +26,7 @@ final class Booking
         public readonly TenantId $tenantId,
         public readonly ?ServiceId $serviceId,
         public readonly BookingReference $reference,
+        public readonly BookingSource $source,
         private BookingStatus $status,
         public PatientName $patientName,
         public PatientPhone $patientPhone,
@@ -43,6 +45,7 @@ final class Booking
         TenantId $tenantId,
         ?ServiceId $serviceId,
         BookingReference $reference,
+        BookingSource $source,
         PatientName $patientName,
         PatientPhone $patientPhone,
         ?PatientEmail $patientEmail,
@@ -57,6 +60,7 @@ final class Booking
             tenantId: $tenantId,
             serviceId: $serviceId,
             reference: $reference,
+            source: $source,
             status: BookingStatus::Submitted,
             patientName: $patientName,
             patientPhone: $patientPhone,

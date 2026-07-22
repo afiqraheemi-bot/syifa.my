@@ -11,6 +11,7 @@ final readonly class BookingDetailData
         public string $tenantId,
         public string $serviceId,
         public string $reference,
+        public string $source,
         public string $status,
         public string $localDate,
         public string $localStart,

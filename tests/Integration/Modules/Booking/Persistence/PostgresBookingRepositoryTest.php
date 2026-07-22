@@ -10,11 +10,13 @@ use App\Modules\Booking\Domain\ValueObjects\AppointmentDate;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
 use App\Modules\Booking\Domain\ValueObjects\BookingReference;
+use App\Modules\Booking\Domain\ValueObjects\BookingSource;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
 use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
 use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\TenantId;
+use App\Modules\Booking\Infrastructure\Persistence\Exceptions\InvalidBookingStorageStateException;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingPersistenceMapper;
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingRepository;
 use DateTimeImmutable;
@@ -74,7 +76,10 @@ final class PostgresBookingRepositoryTest extends TestCase
         $schedulingMigration = require base_path('database/migrations/booking/2026_08_05_000001_add_booking_mvp_scheduling.php');
         self::assertInstanceOf(Migration::class, $schedulingMigration);
         $schedulingMigration->up();
-        $this->migrations = [$schedulingMigration, $clinicLineageMigration, $serviceMigration, $migration];
+        $sourceMigration = require base_path('database/migrations/booking/2026_08_06_000001_add_booking_source.php');
+        self::assertInstanceOf(Migration::class, $sourceMigration);
+        $sourceMigration->up();
+        $this->migrations = [$sourceMigration, $schedulingMigration, $clinicLineageMigration, $serviceMigration, $migration];
 
         $this->repository = new PostgresBookingRepository($this->connection, new BookingPersistenceMapper);
     }
@@ -101,6 +106,7 @@ final class PostgresBookingRepositoryTest extends TestCase
         self::assertSame($booking->tenantId->value, $reloaded->tenantId->value);
         self::assertSame($booking->serviceId?->value, $reloaded->serviceId?->value);
         self::assertSame($booking->reference->value, $reloaded->reference->value);
+        self::assertSame(BookingSource::Website, $reloaded->source);
         self::assertSame('submitted', $reloaded->status()->value);
         self::assertSame($booking->patientName->value, $reloaded->patientName->value);
         self::assertSame($booking->patientPhone->value, $reloaded->patientPhone->value);
@@ -155,12 +161,13 @@ final class PostgresBookingRepositoryTest extends TestCase
 
     public function test_additive_migration_keeps_an_existing_booking_compatible(): void
     {
-        $this->migrations[2]->down();
+        $this->migrations[3]->down();
         $now = $this->time()->format('Y-m-d H:i:s.uP');
         $this->connection()->table('bookings')->insert([
             'id' => $this->uuid(1),
             'tenant_id' => $this->uuid(2),
             'booking_reference' => 'BOOK-0001',
+            'booking_source' => 'WEBSITE',
             'status' => 'submitted',
             'patient_name' => 'Aisyah Rahman',
             'patient_phone' => '+60123456789',
@@ -175,21 +182,39 @@ final class PostgresBookingRepositoryTest extends TestCase
             'updated_at' => $now,
         ]);
 
-        $this->migrations[2]->up();
+        $this->migrations[3]->up();
 
         $reloaded = $this->repository()->findById(new TenantId($this->uuid(2)), new BookingId($this->uuid(1)));
         self::assertNotNull($reloaded);
         self::assertNull($reloaded->serviceId);
     }
 
+    public function test_source_migration_classifies_pre_increment_public_rows_and_removes_default(): void
+    {
+        $this->migrations[0]->down();
+        $now = $this->time()->format('Y-m-d H:i:s.uP');
+        $this->connection()->table('bookings')->insert([
+            'id' => $this->uuid(8), 'tenant_id' => $this->uuid(2), 'service_id' => null,
+            'booking_reference' => 'BOOK-HISTORICAL', 'status' => 'submitted', 'patient_name' => 'Historical Public',
+            'patient_phone' => '+6012', 'appointment_on' => '2026-08-01', 'appointment_time' => '09:30',
+            'domain_created_at' => $now, 'domain_updated_at' => $now, 'version' => 1, 'created_at' => $now, 'updated_at' => $now,
+        ]);
+        $this->migrations[0]->up();
+
+        self::assertSame('WEBSITE', $this->connection()->table('bookings')->where('id', $this->uuid(8))->value('booking_source'));
+        $default = $this->connection()->selectOne("select column_default from information_schema.columns where table_name = 'bookings' and column_name = 'booking_source'");
+        self::assertNotNull($default);
+        self::assertNull($default->column_default);
+    }
+
     public function test_clinic_lineage_migration_removes_and_reversibly_restores_the_column(): void
     {
         self::assertFalse(Schema::connection(self::CONNECTION_NAME)->hasColumn('bookings', 'clinic_id'));
 
-        $this->migrations[1]->down();
+        $this->migrations[2]->down();
         self::assertTrue(Schema::connection(self::CONNECTION_NAME)->hasColumn('bookings', 'clinic_id'));
 
-        $this->migrations[1]->up();
+        $this->migrations[2]->up();
         self::assertFalse(Schema::connection(self::CONNECTION_NAME)->hasColumn('bookings', 'clinic_id'));
     }
 
@@ -200,6 +225,23 @@ final class PostgresBookingRepositoryTest extends TestCase
         $this->expectException(QueryException::class);
 
         $this->repository()->save($this->booking(id: 9, reference: $this->booking()->reference->value));
+    }
+
+    public function test_database_rejects_null_source_and_invalid_stored_source_fails_closed(): void
+    {
+        $booking = $this->booking();
+        $this->repository()->save($booking);
+        try {
+            $this->connection()->table('bookings')->where('id', $booking->id->value)->update(['booking_source' => null]);
+            self::fail('Expected non-null source constraint.');
+        } catch (QueryException) {
+            self::assertSame('WEBSITE', $this->connection()->table('bookings')->where('id', $booking->id->value)->value('booking_source'));
+        }
+
+        $this->connection()->statement('ALTER TABLE bookings DROP CONSTRAINT bookings_source_check');
+        $this->connection()->table('bookings')->where('id', $booking->id->value)->update(['booking_source' => 'UNKNOWN']);
+        $this->expectException(InvalidBookingStorageStateException::class);
+        $this->repository()->findById($booking->tenantId, $booking->id);
     }
 
     public function test_optimistic_locking_rejects_a_stale_write(): void
@@ -243,6 +285,7 @@ final class PostgresBookingRepositoryTest extends TestCase
             new TenantId($this->uuid(2)),
             $serviceId === null ? null : new ServiceId($this->uuid($serviceId)),
             new BookingReference($reference ?? 'BOOK-'.str_pad((string) $id, 4, '0', STR_PAD_LEFT)),
+            BookingSource::Website,
             new PatientName('Aisyah Rahman'),
             new PatientPhone('+60123456789'),
             $patientEmail === null ? null : new PatientEmail($patientEmail),

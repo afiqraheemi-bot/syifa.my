@@ -58,12 +58,12 @@ final readonly class PostgresClinicOwnerBookingReadAdapter implements ClinicOwne
 
     private function detailData(stdClass $row): BookingDetailData
     {
-        foreach (['id', 'tenant_id', 'service_id', 'booking_reference', 'status', 'appointment_on', 'appointment_time', 'local_end_time', 'timezone', 'starts_at_utc', 'ends_at_utc', 'appointment_duration_minutes'] as $field) {
+        foreach (['id', 'tenant_id', 'service_id', 'booking_reference', 'booking_source', 'status', 'appointment_on', 'appointment_time', 'local_end_time', 'timezone', 'starts_at_utc', 'ends_at_utc', 'appointment_duration_minutes'] as $field) {
             if (! isset($row->{$field})) {
                 throw new InvalidBookingStorageStateException(sprintf('Booking read field %s is missing.', $field));
             }
         }
 
-        return new BookingDetailData((string) $row->id, (string) $row->tenant_id, (string) $row->service_id, (string) $row->booking_reference, (string) $row->status, substr((string) $row->appointment_on, 0, 10), substr((string) $row->appointment_time, 0, 5), substr((string) $row->local_end_time, 0, 5), (string) $row->timezone, (string) $row->starts_at_utc, (string) $row->ends_at_utc, (int) $row->appointment_duration_minutes);
+        return new BookingDetailData((string) $row->id, (string) $row->tenant_id, (string) $row->service_id, (string) $row->booking_reference, (string) $row->booking_source, (string) $row->status, substr((string) $row->appointment_on, 0, 10), substr((string) $row->appointment_time, 0, 5), substr((string) $row->local_end_time, 0, 5), (string) $row->timezone, (string) $row->starts_at_utc, (string) $row->ends_at_utc, (int) $row->appointment_duration_minutes);
     }
 }

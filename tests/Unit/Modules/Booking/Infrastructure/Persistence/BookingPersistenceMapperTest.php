@@ -9,6 +9,7 @@ use App\Modules\Booking\Domain\ValueObjects\AppointmentDate;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
 use App\Modules\Booking\Domain\ValueObjects\BookingReference;
+use App\Modules\Booking\Domain\ValueObjects\BookingSource;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
 use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
@@ -50,6 +51,7 @@ final class BookingPersistenceMapperTest extends TestCase
             $this->uuid(2),
             $this->uuid(4),
             'BOOK-0001',
+            'WEBSITE',
             'submitted',
             'Aisyah Rahman',
             '+60123456789',
@@ -85,6 +87,7 @@ final class BookingPersistenceMapperTest extends TestCase
             $this->uuid(2),
             null,
             'BOOK-0001',
+            'WEBSITE',
             'submitted',
             'Aisyah Rahman',
             '+60123456789',
@@ -116,6 +119,7 @@ final class BookingPersistenceMapperTest extends TestCase
             new TenantId($this->uuid(2)),
             new ServiceId($this->uuid(4)),
             new BookingReference('BOOK-0001'),
+            BookingSource::Website,
             new PatientName('Aisyah Rahman'),
             new PatientPhone('+60123456789'),
             new PatientEmail('aisyah@example.test'),
