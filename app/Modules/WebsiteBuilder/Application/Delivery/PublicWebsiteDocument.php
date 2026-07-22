@@ -11,6 +11,8 @@ final readonly class PublicWebsiteDocument
     /**
      * @param  list<NavigationItem>  $navigation
      * @param  array<string, PublicUrl>  $assetUrls
+     * @param  array<string, array{?int, ?int}>  $assetDimensions
+     * @param  array<string, PublicUrl>  $legalUrls
      * @param  list<PublicUrl>  $sitemapUrls
      */
     public function __construct(
@@ -19,6 +21,8 @@ final readonly class PublicWebsiteDocument
         public SeoDocumentHead $head,
         public array $navigation,
         public array $assetUrls,
+        public array $assetDimensions,
+        public array $legalUrls,
         public ContactActionSet $contactActions,
         public PublicUrl $bookingDestination,
         public array $sitemapUrls,

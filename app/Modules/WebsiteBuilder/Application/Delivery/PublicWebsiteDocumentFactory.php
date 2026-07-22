@@ -9,7 +9,7 @@ use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRend
 
 final readonly class PublicWebsiteDocumentFactory
 {
-    public function __construct(private PublicAssetUrlResolverInterface $assets) {}
+    public function __construct(private PublicAssetUrlResolverInterface $assets, private PlatformLegalContentProviderInterface $legal) {}
 
     public function make(PublicWebsiteRenderModel $model, PublicSiteContext $context): PublicWebsiteDocument
     {
@@ -22,12 +22,20 @@ final readonly class PublicWebsiteDocumentFactory
             throw new InvalidPublicDeliveryValueException('Published Website does not expose Booking.');
         }
         $assetUrls = [];
+        $assetDimensions = [];
         foreach ($model->assets as $asset) {
             $assetUrls[$asset->assetId] = $this->assets->resolve($asset->assetId, PublicAssetPurpose::Content);
+            $assetDimensions[$asset->assetId] = [$asset->width, $asset->height];
+        }
+        $legalUrls = [];
+        foreach ([PublicRoute::Privacy, PublicRoute::Terms] as $legalRoute) {
+            if ($this->legal->find($legalRoute) !== null) {
+                $legalUrls[$legalRoute->value] = $routes[$legalRoute->value];
+            }
         }
         $sitemap = array_values(array_filter(
             $routes,
-            static fn (PublicUrl $url, string $name): bool => ! in_array($name, [PublicRoute::Privacy->value, PublicRoute::Terms->value], true) && ! str_contains($url->value, '#'),
+            static fn (PublicUrl $url, string $name): bool => (! in_array($name, [PublicRoute::Privacy->value, PublicRoute::Terms->value], true) || isset($legalUrls[$name])) && ! str_contains($url->value, '#'),
             ARRAY_FILTER_USE_BOTH,
         ));
 
@@ -37,6 +45,8 @@ final readonly class PublicWebsiteDocumentFactory
             (new SeoDocumentHeadFactory)->make($model, $context, $context->url()),
             (new NavigationFactory)->make($model, $context),
             $assetUrls,
+            $assetDimensions,
+            $legalUrls,
             (new ContactActionFactory)->make($model->footer),
             $booking,
             $sitemap,
