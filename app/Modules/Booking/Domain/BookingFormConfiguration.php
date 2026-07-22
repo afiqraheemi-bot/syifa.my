@@ -14,6 +14,13 @@ use DateTimeImmutable;
 
 final class BookingFormConfiguration
 {
+    private const array CORE_FIELDS = [
+        BookingFormField::PatientName,
+        BookingFormField::Phone,
+        BookingFormField::AppointmentDate,
+        BookingFormField::AppointmentTime,
+    ];
+
     private const array OPTIONAL_FIELDS = [
         BookingFormField::Service,
         BookingFormField::Doctor,
@@ -35,7 +42,17 @@ final class BookingFormConfiguration
         public readonly DateTimeImmutable $createdAt,
         private DateTimeImmutable $updatedAt,
         private int $version = 0,
-    ) {}
+    ) {
+        self::assertConsistent(
+            $this->enableServiceSelection,
+            $this->enableDoctorSelection,
+            $this->enableEmail,
+            $this->enableBranch,
+            $this->enableNotes,
+            $this->requiredFields,
+            $this->fieldOrder,
+        );
+    }
 
     public static function create(
         TenantId $tenantId,
@@ -86,14 +103,15 @@ final class BookingFormConfiguration
             throw new InvalidBookingFormConfigurationValueException('Only optional fields may be enabled or disabled; core fields are always available.');
         }
 
-        match ($field) {
-            BookingFormField::Service => $this->enableServiceSelection = $enabled,
-            BookingFormField::Doctor => $this->enableDoctorSelection = $enabled,
-            BookingFormField::Email => $this->enableEmail = $enabled,
-            BookingFormField::Branch => $this->enableBranch = $enabled,
-            BookingFormField::Notes => $this->enableNotes = $enabled,
-        };
+        [$service, $doctor, $email, $branch, $notes] = $this->candidateEnabledFlags($field, $enabled);
 
+        self::assertConsistent($service, $doctor, $email, $branch, $notes, $this->requiredFields, $this->fieldOrder);
+
+        $this->enableServiceSelection = $service;
+        $this->enableDoctorSelection = $doctor;
+        $this->enableEmail = $email;
+        $this->enableBranch = $branch;
+        $this->enableNotes = $notes;
         $this->updatedAt = $occurredAt;
     }
 
@@ -104,6 +122,16 @@ final class BookingFormConfiguration
 
     public function updateRequiredFields(RequiredFields $requiredFields, DateTimeImmutable $occurredAt): void
     {
+        self::assertConsistent(
+            $this->enableServiceSelection,
+            $this->enableDoctorSelection,
+            $this->enableEmail,
+            $this->enableBranch,
+            $this->enableNotes,
+            $requiredFields,
+            $this->fieldOrder,
+        );
+
         $this->requiredFields = $requiredFields;
         $this->updatedAt = $occurredAt;
     }
@@ -115,6 +143,16 @@ final class BookingFormConfiguration
 
     public function updateFieldOrder(FieldOrder $fieldOrder, DateTimeImmutable $occurredAt): void
     {
+        self::assertConsistent(
+            $this->enableServiceSelection,
+            $this->enableDoctorSelection,
+            $this->enableEmail,
+            $this->enableBranch,
+            $this->enableNotes,
+            $this->requiredFields,
+            $fieldOrder,
+        );
+
         $this->fieldOrder = $fieldOrder;
         $this->updatedAt = $occurredAt;
     }
@@ -143,5 +181,77 @@ final class BookingFormConfiguration
     public function synchronizeVersion(int $version): void
     {
         $this->version = $version;
+    }
+
+    /** @return array{bool, bool, bool, bool, bool} */
+    private function candidateEnabledFlags(BookingFormField $changedField, bool $changedValue): array
+    {
+        return [
+            $changedField === BookingFormField::Service ? $changedValue : $this->enableServiceSelection,
+            $changedField === BookingFormField::Doctor ? $changedValue : $this->enableDoctorSelection,
+            $changedField === BookingFormField::Email ? $changedValue : $this->enableEmail,
+            $changedField === BookingFormField::Branch ? $changedValue : $this->enableBranch,
+            $changedField === BookingFormField::Notes ? $changedValue : $this->enableNotes,
+        ];
+    }
+
+    /**
+     * Enforces every cross-field consistency rule this aggregate guarantees:
+     * a disabled optional field may never be required or orderable, every
+     * core field must be orderable, and every enabled optional field must be
+     * orderable. Called from the constructor (covering both create() and
+     * persistence reconstitution) and from every mutator, so no instance can
+     * ever exist in an inconsistent state.
+     */
+    private static function assertConsistent(
+        bool $enableServiceSelection,
+        bool $enableDoctorSelection,
+        bool $enableEmail,
+        bool $enableBranch,
+        bool $enableNotes,
+        RequiredFields $requiredFields,
+        FieldOrder $fieldOrder,
+    ): void {
+        $enabledByField = [
+            BookingFormField::Service->value => $enableServiceSelection,
+            BookingFormField::Doctor->value => $enableDoctorSelection,
+            BookingFormField::Email->value => $enableEmail,
+            BookingFormField::Branch->value => $enableBranch,
+            BookingFormField::Notes->value => $enableNotes,
+        ];
+
+        foreach ($requiredFields->fields as $field) {
+            if (array_key_exists($field->value, $enabledByField) && ! $enabledByField[$field->value]) {
+                throw new InvalidBookingFormConfigurationValueException(
+                    sprintf('"%s" cannot be required while it is disabled.', $field->value),
+                );
+            }
+        }
+
+        $orderedValues = $fieldOrder->values();
+
+        foreach (self::CORE_FIELDS as $coreField) {
+            if (! in_array($coreField->value, $orderedValues, true)) {
+                throw new InvalidBookingFormConfigurationValueException(
+                    sprintf('Field order must include the core field "%s".', $coreField->value),
+                );
+            }
+        }
+
+        foreach ($enabledByField as $fieldValue => $enabled) {
+            $isOrdered = in_array($fieldValue, $orderedValues, true);
+
+            if ($enabled && ! $isOrdered) {
+                throw new InvalidBookingFormConfigurationValueException(
+                    sprintf('Field order must include the enabled optional field "%s".', $fieldValue),
+                );
+            }
+
+            if (! $enabled && $isOrdered) {
+                throw new InvalidBookingFormConfigurationValueException(
+                    sprintf('Field order must not include the disabled optional field "%s".', $fieldValue),
+                );
+            }
+        }
     }
 }

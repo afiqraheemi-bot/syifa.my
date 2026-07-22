@@ -131,6 +131,36 @@ final class BookingFoundationArchitectureTest extends TestCase
         }
     }
 
+    public function test_invariant_validation_remains_inside_the_configuration_aggregate(): void
+    {
+        $configurationSource = $this->source($this->root().'/app/Modules/Booking/Domain/BookingFormConfiguration.php');
+
+        self::assertStringContainsString('assertConsistent', $configurationSource);
+        self::assertStringContainsString('InvalidBookingFormConfigurationValueException', $configurationSource);
+    }
+
+    public function test_repository_does_not_own_business_validation(): void
+    {
+        $repositorySource = $this->source($this->root().'/app/Modules/Booking/Infrastructure/Persistence/Repositories/PostgresBookingFormConfigurationRepository.php');
+
+        foreach ([
+            'assertConsistent',
+            'RequiredFields',
+            'FieldOrder',
+            'BookingFormField',
+            'cannot be required',
+            'must include the',
+            'must not include the',
+        ] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $repositorySource);
+        }
+
+        // The repository is only permitted to translate a Domain validation
+        // failure encountered during reconstitution into a storage-state
+        // exception — never to decide the invariant itself.
+        self::assertStringContainsString('catch (InvalidBookingFormConfigurationValueException $exception)', $repositorySource);
+    }
+
     public function test_only_the_approved_additive_migrations_exist_for_booking(): void
     {
         self::assertSame(

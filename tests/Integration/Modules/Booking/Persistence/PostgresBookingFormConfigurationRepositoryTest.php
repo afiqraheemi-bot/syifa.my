@@ -11,6 +11,7 @@ use App\Modules\Booking\Domain\ValueObjects\FieldLabels;
 use App\Modules\Booking\Domain\ValueObjects\FieldOrder;
 use App\Modules\Booking\Domain\ValueObjects\RequiredFields;
 use App\Modules\Booking\Domain\ValueObjects\TenantId;
+use App\Modules\Booking\Infrastructure\Persistence\Exceptions\InvalidBookingFormConfigurationStorageStateException;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingFormConfigurationPersistenceMapper;
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingFormConfigurationRepository;
 use DateTimeImmutable;
@@ -90,7 +91,7 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
         self::assertTrue($reloaded->isEnabled(BookingFormField::Notes));
         self::assertSame(['patient_name', 'phone'], $reloaded->requiredFields()->values());
         self::assertSame(
-            ['patient_name', 'phone', 'appointment_date', 'appointment_time'],
+            ['patient_name', 'phone', 'appointment_date', 'appointment_time', 'service', 'email', 'notes'],
             $reloaded->fieldOrder()->values(),
         );
         self::assertSame('Additional Notes', $reloaded->fieldLabels()->labelFor(BookingFormField::Notes));
@@ -103,29 +104,32 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
         self::assertNull($this->repository()->findByTenant(new TenantId($this->uuid(99))));
     }
 
-    public function test_update_persists_a_toggled_field_and_a_new_field_order(): void
+    public function test_update_persists_a_reordering_and_a_required_fields_change(): void
     {
         $configuration = $this->configuration();
         $this->repository()->save($configuration);
 
-        $configuration->setFieldEnabled(BookingFormField::Doctor, true, $this->time()->modify('+1 day'));
         $configuration->updateFieldOrder(new FieldOrder([
-            BookingFormField::AppointmentDate,
-            BookingFormField::AppointmentTime,
+            BookingFormField::Service,
+            BookingFormField::Email,
+            BookingFormField::Notes,
             BookingFormField::PatientName,
             BookingFormField::Phone,
+            BookingFormField::AppointmentDate,
+            BookingFormField::AppointmentTime,
         ]), $this->time()->modify('+1 day'));
+        $configuration->updateRequiredFields(new RequiredFields([BookingFormField::Service]), $this->time()->modify('+1 day'));
         $this->repository()->save($configuration);
 
         $reloaded = $this->repository()->findByTenant($configuration->tenantId);
 
         self::assertNotNull($reloaded);
         self::assertSame(2, $reloaded->version());
-        self::assertTrue($reloaded->isEnabled(BookingFormField::Doctor));
         self::assertSame(
-            ['appointment_date', 'appointment_time', 'patient_name', 'phone'],
+            ['service', 'email', 'notes', 'patient_name', 'phone', 'appointment_date', 'appointment_time'],
             $reloaded->fieldOrder()->values(),
         );
+        self::assertSame(['service'], $reloaded->requiredFields()->values());
     }
 
     public function test_database_enforces_exactly_one_configuration_per_tenant(): void
@@ -147,14 +151,38 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
         self::assertNotNull($firstCopy);
         self::assertNotNull($staleCopy);
 
-        $firstCopy->setFieldEnabled(BookingFormField::Doctor, true, $this->time());
+        $firstCopy->updateRequiredFields(new RequiredFields([BookingFormField::Service]), $this->time());
         $this->repository()->save($firstCopy);
 
-        $staleCopy->setFieldEnabled(BookingFormField::Branch, true, $this->time());
+        $staleCopy->updateRequiredFields(new RequiredFields([BookingFormField::Email]), $this->time());
 
         $this->expectException(StaleBookingFormConfigurationWriteException::class);
 
         $this->repository()->save($staleCopy);
+    }
+
+    public function test_reconstitution_rejects_a_corrupted_stored_configuration(): void
+    {
+        $this->connection()->table('booking_form_configurations')->insert([
+            'tenant_id' => $this->uuid(1),
+            'enable_service_selection' => false,
+            'enable_doctor_selection' => false,
+            'enable_email' => false,
+            'enable_branch' => false,
+            'enable_notes' => false,
+            'required_fields' => json_encode(['email'], JSON_THROW_ON_ERROR), // required while disabled — corrupted
+            'field_order' => json_encode(['patient_name', 'phone', 'appointment_date', 'appointment_time'], JSON_THROW_ON_ERROR),
+            'field_labels' => json_encode([], JSON_THROW_ON_ERROR),
+            'domain_created_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+            'domain_updated_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+            'version' => 1,
+            'created_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+            'updated_at' => $this->time()->format('Y-m-d H:i:s.uP'),
+        ]);
+
+        $this->expectException(InvalidBookingFormConfigurationStorageStateException::class);
+
+        $this->repository()->findByTenant(new TenantId($this->uuid(1)));
     }
 
     private function configuration(): BookingFormConfiguration
@@ -172,6 +200,9 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
                 BookingFormField::Phone,
                 BookingFormField::AppointmentDate,
                 BookingFormField::AppointmentTime,
+                BookingFormField::Service,
+                BookingFormField::Email,
+                BookingFormField::Notes,
             ]),
             new FieldLabels(['notes' => 'Additional Notes']),
             $this->time(),
@@ -183,6 +214,13 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
         self::assertNotNull($this->repository);
 
         return $this->repository;
+    }
+
+    private function connection(): ConnectionInterface
+    {
+        self::assertNotNull($this->connection);
+
+        return $this->connection;
     }
 
     private function time(): DateTimeImmutable

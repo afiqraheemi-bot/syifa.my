@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Booking\Infrastructure\Persistence;
 
 use App\Modules\Booking\Domain\BookingFormConfiguration;
+use App\Modules\Booking\Domain\Exceptions\InvalidBookingFormConfigurationValueException;
 use App\Modules\Booking\Domain\ValueObjects\BookingFormField;
 use App\Modules\Booking\Domain\ValueObjects\FieldLabels;
 use App\Modules\Booking\Domain\ValueObjects\FieldOrder;
@@ -28,7 +29,10 @@ final class BookingFormConfigurationPersistenceMapperTest extends TestCase
         self::assertTrue($record->enableServiceSelection);
         self::assertFalse($record->enableDoctorSelection);
         self::assertSame(['patient_name', 'phone'], $record->requiredFields);
-        self::assertSame(['patient_name', 'phone', 'appointment_date', 'appointment_time'], $record->fieldOrder);
+        self::assertSame(
+            ['patient_name', 'phone', 'appointment_date', 'appointment_time', 'service', 'email', 'notes'],
+            $record->fieldOrder,
+        );
         self::assertSame(['notes' => 'Additional Notes'], $record->fieldLabels);
         self::assertSame(0, $record->version);
     }
@@ -44,7 +48,7 @@ final class BookingFormConfigurationPersistenceMapperTest extends TestCase
             false,
             true,
             ['patient_name'],
-            ['patient_name', 'phone', 'appointment_date', 'appointment_time'],
+            ['patient_name', 'phone', 'appointment_date', 'appointment_time', 'service', 'email', 'notes'],
             ['notes' => 'Additional Notes'],
             $this->occurredAt(),
             $this->occurredAt(),
@@ -57,6 +61,29 @@ final class BookingFormConfigurationPersistenceMapperTest extends TestCase
         self::assertSame(4, $configuration->version());
         self::assertSame(['patient_name'], $configuration->requiredFields()->values());
         self::assertSame('Additional Notes', $configuration->fieldLabels()->labelFor(BookingFormField::Notes));
+    }
+
+    public function test_reconstitution_rejects_a_corrupted_record(): void
+    {
+        $mapper = new BookingFormConfigurationPersistenceMapper;
+        $corruptRecord = new BookingFormConfigurationStorageRecord(
+            $this->uuid(1),
+            false,
+            false,
+            false,
+            false,
+            false,
+            ['email'], // required while disabled — corrupted
+            ['patient_name', 'phone', 'appointment_date', 'appointment_time'],
+            [],
+            $this->occurredAt(),
+            $this->occurredAt(),
+            1,
+        );
+
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+
+        $mapper->toDomain($corruptRecord);
     }
 
     private function configuration(): BookingFormConfiguration
@@ -74,6 +101,9 @@ final class BookingFormConfigurationPersistenceMapperTest extends TestCase
                 BookingFormField::Phone,
                 BookingFormField::AppointmentDate,
                 BookingFormField::AppointmentTime,
+                BookingFormField::Service,
+                BookingFormField::Email,
+                BookingFormField::Notes,
             ]),
             new FieldLabels(['notes' => 'Additional Notes']),
             $this->occurredAt(),

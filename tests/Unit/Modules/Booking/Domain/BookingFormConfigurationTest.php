@@ -58,23 +58,6 @@ final class BookingFormConfigurationTest extends TestCase
         $configuration->tenantId = new TenantId($this->uuid(9));
     }
 
-    public function test_optional_fields_can_be_enabled_and_disabled(): void
-    {
-        $configuration = $this->configuration();
-        $later = $this->occurredAt()->modify('+1 day');
-
-        $configuration->setFieldEnabled(BookingFormField::Doctor, true, $later);
-
-        self::assertTrue($configuration->isEnabled(BookingFormField::Doctor));
-        self::assertSame($later->format(DATE_ATOM), $configuration->updatedAt()->format(DATE_ATOM));
-
-        $evenLater = $later->modify('+1 day');
-        $configuration->setFieldEnabled(BookingFormField::Doctor, false, $evenLater);
-
-        self::assertFalse($configuration->isEnabled(BookingFormField::Doctor));
-        self::assertSame($evenLater->format(DATE_ATOM), $configuration->updatedAt()->format(DATE_ATOM));
-    }
-
     public function test_core_fields_cannot_be_toggled(): void
     {
         $configuration = $this->configuration();
@@ -111,9 +94,16 @@ final class BookingFormConfigurationTest extends TestCase
             BookingFormField::AppointmentDate,
             BookingFormField::AppointmentTime,
             BookingFormField::PatientName,
+            BookingFormField::Phone,
+            BookingFormField::Service,
+            BookingFormField::Email,
+            BookingFormField::Notes,
         ]), $later);
 
-        self::assertSame(['appointment_date', 'appointment_time', 'patient_name'], $configuration->fieldOrder()->values());
+        self::assertSame(
+            ['appointment_date', 'appointment_time', 'patient_name', 'phone', 'service', 'email', 'notes'],
+            $configuration->fieldOrder()->values(),
+        );
     }
 
     public function test_field_order_rejects_an_empty_list(): void
@@ -163,6 +153,203 @@ final class BookingFormConfigurationTest extends TestCase
         self::assertSame(3, $configuration->version());
     }
 
+    // -- Increment 3A: aggregate-level consistency invariants --------------
+
+    public function test_disabled_optional_field_cannot_become_required(): void
+    {
+        $configuration = $this->configuration();
+
+        self::assertFalse($configuration->isEnabled(BookingFormField::Doctor));
+
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+
+        $configuration->updateRequiredFields(new RequiredFields([BookingFormField::Doctor]), $this->occurredAt());
+    }
+
+    public function test_disabling_required_optional_field_fails(): void
+    {
+        $configuration = BookingFormConfiguration::create(
+            new TenantId($this->uuid(1)),
+            true,
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields([BookingFormField::Service]),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                BookingFormField::Service,
+            ]),
+            new FieldLabels([]),
+            $this->occurredAt(),
+        );
+
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+
+        $configuration->setFieldEnabled(BookingFormField::Service, false, $this->occurredAt());
+    }
+
+    public function test_field_order_must_contain_every_core_field(): void
+    {
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+
+        BookingFormConfiguration::create(
+            new TenantId($this->uuid(1)),
+            false,
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields([]),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                // AppointmentTime intentionally omitted.
+            ]),
+            new FieldLabels([]),
+            $this->occurredAt(),
+        );
+    }
+
+    public function test_field_order_must_contain_every_enabled_optional_field(): void
+    {
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+
+        BookingFormConfiguration::create(
+            new TenantId($this->uuid(1)),
+            true, // Service enabled ...
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields([]),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                // ... but Service is missing from the order.
+            ]),
+            new FieldLabels([]),
+            $this->occurredAt(),
+        );
+    }
+
+    public function test_disabled_field_rejected_from_ordering(): void
+    {
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+
+        BookingFormConfiguration::create(
+            new TenantId($this->uuid(1)),
+            false, // Service disabled ...
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields([]),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                BookingFormField::Service, // ... but still present in the order.
+            ]),
+            new FieldLabels([]),
+            $this->occurredAt(),
+        );
+    }
+
+    public function test_create_rejects_inconsistent_configuration(): void
+    {
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+
+        BookingFormConfiguration::create(
+            new TenantId($this->uuid(1)),
+            false,
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields([BookingFormField::Email]), // required while disabled
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+            ]),
+            new FieldLabels([]),
+            $this->occurredAt(),
+        );
+    }
+
+    public function test_update_required_fields_preserves_invariants(): void
+    {
+        $configuration = $this->configuration();
+
+        // Valid: Service and Notes are both enabled.
+        $configuration->updateRequiredFields(new RequiredFields([BookingFormField::Service, BookingFormField::Notes]), $this->occurredAt());
+        self::assertSame(['service', 'notes'], $configuration->requiredFields()->values());
+
+        // Invalid: Branch is disabled.
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+        $configuration->updateRequiredFields(new RequiredFields([BookingFormField::Branch]), $this->occurredAt());
+    }
+
+    public function test_update_field_order_preserves_invariants(): void
+    {
+        $configuration = $this->configuration();
+
+        // Valid: still every core field plus every enabled optional field.
+        $configuration->updateFieldOrder(new FieldOrder([
+            BookingFormField::Service,
+            BookingFormField::Email,
+            BookingFormField::Notes,
+            BookingFormField::PatientName,
+            BookingFormField::Phone,
+            BookingFormField::AppointmentDate,
+            BookingFormField::AppointmentTime,
+        ]), $this->occurredAt());
+        self::assertSame('service', $configuration->fieldOrder()->values()[0]);
+
+        // Invalid: omits the now-required core field Phone.
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+        $configuration->updateFieldOrder(new FieldOrder([
+            BookingFormField::PatientName,
+            BookingFormField::AppointmentDate,
+            BookingFormField::AppointmentTime,
+            BookingFormField::Service,
+            BookingFormField::Email,
+            BookingFormField::Notes,
+        ]), $this->occurredAt());
+    }
+
+    public function test_set_field_enabled_preserves_invariants(): void
+    {
+        $configuration = $this->configuration();
+
+        // Valid: re-affirming the current (already-ordered) enabled state is a safe no-op.
+        $configuration->setFieldEnabled(BookingFormField::Service, true, $this->occurredAt());
+        self::assertTrue($configuration->isEnabled(BookingFormField::Service));
+
+        // Invalid: Doctor is not present in the field order, so enabling it would leave
+        // an enabled field unrenderable.
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+        $configuration->setFieldEnabled(BookingFormField::Doctor, true, $this->occurredAt());
+    }
+
+    public function test_disabling_a_field_still_present_in_the_field_order_fails(): void
+    {
+        $configuration = $this->configuration();
+
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+
+        $configuration->setFieldEnabled(BookingFormField::Service, false, $this->occurredAt());
+    }
+
     private function configuration(): BookingFormConfiguration
     {
         return BookingFormConfiguration::create(
@@ -178,6 +365,9 @@ final class BookingFormConfigurationTest extends TestCase
                 BookingFormField::Phone,
                 BookingFormField::AppointmentDate,
                 BookingFormField::AppointmentTime,
+                BookingFormField::Service,
+                BookingFormField::Email,
+                BookingFormField::Notes,
             ]),
             new FieldLabels(['notes' => 'Additional Notes']),
             $this->occurredAt(),
