@@ -23,6 +23,8 @@ As of 2026-08-19, the contract is fully Snapshot-driven for the approved Syifa E
 
 The projector may depend on immutable Website Domain snapshot values and PHP primitives only. It must not depend on Infrastructure, persistence queries, Booking, Billing, Tracking, Analytics, storage providers, publishing orchestration, HTML, Blade, Vue, Livewire, Inertia, routing, controllers, APIs, cache, or external services.
 
+ADR-024 adds a subsequent delivery boundary; it does not relax this prohibition. After projection completes, delivery may combine the immutable render model with trusted host context and governed URL/document resolvers. Those values never enter this contract or the Published Snapshot.
+
 ## Compliance
 
 This decision consumes the complete Snapshot authorized by ADR-019 and ADR-020, preserves ADR-016's `enabled && renderable` and no-placeholder rules, and introduces no Aggregate Root or bounded context. Rendering never dereferences mutable Website configuration.

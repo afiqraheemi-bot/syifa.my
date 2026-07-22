@@ -36,7 +36,7 @@ Sticky header behavior is approved per template and compact viewport evidence. I
 
 ## Footer rules
 
-Footer information follows: clinic identity; contact/location; controlled navigation; available legal links; social links; copyright; then Syifa attribution if product policy requires it. Operating information appears only when an approved immutable public contract later supplies it; this V1 contract must not fetch mutable Clinic hours.
+Footer information follows: clinic identity; contact/location; controlled navigation; available legal links; social links; copyright; then Syifa attribution if product policy requires it. Operating information appears only from the approved immutable Contact projection; delivery must not fetch mutable Clinic hours.
 
 Syifa attribution is platform-governed, consistent, modest, and never tenant-editable. Its final commercial policy requires Product approval before implementation. Footer content must not restate full About, Services, FAQ, or testimonial content.
 
