@@ -1,5 +1,7 @@
 # Syifa.my Phase 1 Domain Model
 
+> **Website Core Foundation amendment (2026-08-07):** The initial Website aggregate persists only identity, Tenant ownership, one governed Template reference, constrained Branding, lifecycle, version, and audit timestamps. Future Navigation, SEO, Tracking, Sections, content, rendering, domains, and publication delivery attach by reference or separately governed increments; they are not embedded in Website Core.
+
 > **Booking source amendment (2026-08-06):** Every Booking owns one immutable governed source: `WEBSITE`, `WHATSAPP`, `PHONE`, `WALK_IN`, or `STAFF`. Source records origin and is not the actor. Public and Clinic Owner-recorded manual submissions use the same Booking aggregate and creation invariants.
 
 ## Table of Contents

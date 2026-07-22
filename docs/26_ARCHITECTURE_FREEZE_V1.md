@@ -1,5 +1,7 @@
 # Architecture Freeze v1
 
+> **Website Core Foundation amendment (2026-08-07):** Website is the tenant-owned root for future website capabilities. Core is limited to Website identity, Tenant lineage, one governed Template reference, constrained Branding, lifecycle, optimistic version, and timestamps. It imports no Booking, Payment, Subscription, Clinic, rendering, CMS, domain, analytics, or file implementation.
+
 > **Governed Booking source amendment (2026-08-06):** The frozen Booking design uses one aggregate and one transactional creation workflow for all five approved origins. BookingSource and BookingActor remain separate. Channel-specific aggregates, direct manual persistence, bypass reservation paths, Clinic Staff, and messaging integrations are prohibited.
 
 ## Table of Contents
