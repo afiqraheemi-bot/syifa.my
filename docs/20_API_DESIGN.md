@@ -1,5 +1,7 @@
 # API Design
 
+> **Website Sections Foundation amendment (2026-08-08):** This increment adds no HTTP surface. Future Section delivery must operate through the Website resource and aggregate boundary; Section is not an independently owned top-level resource.
+
 > **Website Core Foundation amendment (2026-08-07):** This increment supplies tenant-scoped Website summary/detail read contracts and application/domain foundations only. It adds no HTTP controller, public endpoint, renderer, publishing endpoint, or UI. Public access remains unavailable.
 
 > **Booking source boundary amendment (2026-08-06):** Public Booking input cannot select source and always maps internally to `WEBSITE` with a Public actor. The internal Clinic Owner boundary accepts only `WHATSAPP`, `PHONE`, `WALK_IN`, or `STAFF`, derives actor and Tenant context from trusted authentication, and invokes the same creation workflow. Tenant-authorized owner reads may expose source; reporting is not approved.

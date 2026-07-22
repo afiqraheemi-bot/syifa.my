@@ -1,5 +1,7 @@
 # Aggregate Design
 
+> **Website Sections Foundation amendment (2026-08-08):** Section Collection and Website Section are internal to the Website aggregate. Creation explicitly initializes all nine built-in types in governed order. Types and display orders are unique; enable, disable, and reorder operations execute through Website. Built-in sections cannot be deleted. The aggregate-root registry is unchanged.
+
 > **Website Core Foundation amendment (2026-08-07):** Website Core establishes the Website root with immutable WebsiteId/TenantId, constrained Branding, one governed Template reference, lifecycle, version, and timestamps. Template is changeable only before `published`. Lifecycle is `draft → ready_for_review → published → archived`; the state transition to `published` requires explicit approval and entitlement evidence supplied through an infrastructure-neutral application boundary, but this increment performs no rendering, deployment, or public publishing. Exactly one Website per Tenant is enforced by persistence.
 
 > **Booking source amendment (2026-08-06):** Booking owns an immutable source distinct from its history actor. Public `WEBSITE` and Clinic Owner-recorded `WHATSAPP`, `PHONE`, `WALK_IN`, and `STAFF` submissions use one aggregate and one creation transaction, begin `submitted`, and share Service eligibility, slot, capacity, snapshot, and history invariants. Website Designers have no operational Booking authority.

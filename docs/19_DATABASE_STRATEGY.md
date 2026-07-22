@@ -1,5 +1,7 @@
 # Database Strategy — Engineering Principles
 
+> **Website Sections Foundation amendment (2026-08-08):** `website_sections` stores one normalized row per internal Section with non-null Website ownership, governed type, unique `(website_id, section_type)` and `(website_id, display_order)` constraints, enablement, optimistic version, and timestamps. No content or JSON payload is stored. Existing Websites receive the same explicit default collection during the additive migration.
+
 > **Website Core Foundation amendment (2026-08-07):** `websites` stores normalized identity, Tenant ownership, governed Template/lifecycle values, constrained Branding columns, optimistic version, and domain timestamps. Fixed social-link channels use explicit nullable columns rather than an ungoverned JSON blob. Tenant ownership is non-null and unique; no Clinic identifier is duplicated.
 
 > **Booking source persistence amendment (2026-08-06):** `bookings.booking_source` is constrained and non-null with no permanent default. The additive migration classifies pre-amendment rows as `WEBSITE` because the only previously implemented creation boundary was public submission, then removes the transitional default so future writes must supply source explicitly.

@@ -1,5 +1,7 @@
 # Permission Matrix
 
+> **Website Sections Foundation amendment (2026-08-08):** Clinic Owner may manage Sections for the owned Tenant Website; an assigned Website Designer may configure Sections; Super Admin support requires explicit support authority; Public Visitor has no configuration access. The existing Website authorization boundary applies unchanged.
+
 > **Website Core Foundation amendment (2026-08-07):** Clinic Owner may update the Website for the Tenant represented by trusted authority; Website Designer may set up only an assigned Tenant Website; Super Admin support requires explicit support authorization. Public Visitor has no Website Core access. Authorization context never changes Website Tenant ownership.
 
 > **Booking source permission amendment (2026-08-06):** Public Visitors may submit only `WEBSITE` Bookings. Authenticated Clinic Owners may create manual `WHATSAPP`, `PHONE`, `WALK_IN`, and `STAFF` Bookings for their resolved Tenant. Website Designers cannot create or operate Bookings.
