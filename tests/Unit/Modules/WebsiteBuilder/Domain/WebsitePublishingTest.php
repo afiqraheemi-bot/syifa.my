@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
+use App\Modules\WebsiteBuilder\Domain\PublishedBusinessHour;
+use App\Modules\WebsiteBuilder\Domain\PublishedContactProjection;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetMimeType;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\PublicationId;
@@ -36,7 +38,7 @@ final class WebsitePublishingTest extends TestCase
         self::assertEquals($this->at('+2 hours'), $website->lastPublishedAt());
         self::assertSame($this->uuid(90), $website->lastPublishedBy());
         self::assertCount(1, $website->publicationHistory());
-        self::assertSame(str_repeat('a', 64), $website->publishedSnapshot()?->contentFingerprint);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $website->publishedSnapshot()?->contentFingerprint ?? '');
         self::assertCount(9, $website->publishedSnapshot()?->sections ?? []);
         self::assertCount(9, $website->publishedSnapshot()?->sectionContents ?? []);
         self::assertNotSame(str_repeat('a', 64), $website->publishedSnapshot()?->sectionContents[0]->contentFingerprint);
@@ -55,7 +57,7 @@ final class WebsitePublishingTest extends TestCase
         $renderability[$website->sections()->sections()[0]->id->value] = false;
 
         try {
-            $website->publish($this->evidence(), $this->readiness(), new WebsitePublicationContent($content->contents, $renderability), new PublicationId($this->uuid(82)), $this->uuid(90), $this->at('+2 hours'));
+            $website->publish($this->evidence(), $this->readiness(), new WebsitePublicationContent($content->contents, $renderability, $content->serviceProjections, $content->contactProjection), new PublicationId($this->uuid(82)), $this->uuid(90), $this->at('+2 hours'));
             self::fail('Expected renderability rejection.');
         } catch (InvalidWebsiteValueException) {
             self::assertNull($website->publishedSnapshot());
@@ -93,6 +95,44 @@ final class WebsitePublishingTest extends TestCase
         self::assertSame('Draft Change', $website->publishedSnapshot()?->clinicName);
         self::assertSame('Klinik Syifa', $first->clinicName);
         self::assertSame(1, $first->publishedVersion);
+    }
+
+    public function test_republish_captures_latest_service_and_contact_without_mutating_previous_snapshot(): void
+    {
+        $website = $this->readyWebsite();
+        $website->publish($this->evidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
+        $first = $website->publishedSnapshot();
+        self::assertNotNull($first);
+        $firstFingerprint = $first->contentFingerprint;
+
+        $contact = new PublishedContactProjection('latest@clinic.test', '+60129999999', 'Petaling Jaya', [], [new PublishedBusinessHour(2, '10:00', '18:00')], '+60128888888', 3.1073, 101.6067);
+        $website->publish($this->evidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website, 'Rawatan Terkini', $contact, serviceFeatured: true), new PublicationId($this->uuid(81)), $this->uuid(91), $this->at('+4 hours'));
+
+        self::assertSame('Rawatan Kesihatan Am', $first->sectionContents[2]->publishedServices[0]->displayName);
+        self::assertFalse($first->sectionContents[2]->publishedServices[0]->isFeatured);
+        self::assertSame('hello@clinic.test', $first->sectionContents[7]->contactProjection?->email);
+        self::assertSame('Rawatan Terkini', $website->publishedSnapshot()?->sectionContents[2]->publishedServices[0]->displayName);
+        self::assertTrue($website->publishedSnapshot()?->sectionContents[2]->publishedServices[0]->isFeatured);
+        self::assertSame('latest@clinic.test', $website->publishedSnapshot()?->sectionContents[7]->contactProjection?->email);
+        self::assertNotSame($firstFingerprint, $website->publishedSnapshot()?->contentFingerprint);
+    }
+
+    public function test_enabled_informative_gallery_without_alt_text_rejects_publication(): void
+    {
+        $website = $this->readyWebsite();
+
+        $this->expectException(InvalidWebsiteValueException::class);
+        $website->publish($this->evidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website, galleryAltText: null), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
+    }
+
+    public function test_identical_public_presentation_produces_stable_fingerprint(): void
+    {
+        $website = $this->readyWebsite();
+        $website->publish($this->evidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
+        $firstFingerprint = $website->publishedSnapshot()?->contentFingerprint;
+        $website->publish($this->evidence(), $this->readiness('b'), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(81)), $this->uuid(91), $this->at('+4 hours'));
+
+        self::assertSame($firstFingerprint, $website->publishedSnapshot()?->contentFingerprint);
     }
 
     public function test_failed_readiness_produces_no_publication_mutation(): void

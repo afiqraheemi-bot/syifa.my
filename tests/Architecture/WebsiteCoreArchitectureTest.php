@@ -163,7 +163,7 @@ final class WebsiteCoreArchitectureTest extends TestCase
         $directory = $this->root().'/app/Modules/WebsiteBuilder/Application/Rendering';
         foreach ($this->phpFiles($directory) as $file) {
             $source = (string) file_get_contents($file);
-            foreach (['App\\Modules\\Booking\\', 'App\\Modules\\SubscriptionBilling\\', 'Tracking\\', 'Analytics\\', 'Infrastructure\\', 'Illuminate\\', 'DB::', 'Schema::', 'Storage::', 'WebsiteRepository', 'WebsitePublicationContent', 'Blade', 'Inertia', 'Livewire'] as $forbidden) {
+            foreach (['App\\Modules\\Booking\\', 'App\\Modules\\SubscriptionBilling\\', 'Tracking\\', 'Analytics\\', 'Infrastructure\\', 'Illuminate\\', 'DB::', 'Schema::', 'Storage::', 'WebsiteRepository', 'ClinicRepository', 'ServiceRepository', 'AssetRepository', 'WebsitePublicationContent', 'Domain\\Website;', 'Domain\\Clinic;', 'Domain\\Service;', 'Domain\\WebsiteAsset;', 'Blade', 'Inertia', 'Livewire'] as $forbidden) {
                 self::assertStringNotContainsString($forbidden, $source, $file);
             }
         }
@@ -174,7 +174,7 @@ final class WebsiteCoreArchitectureTest extends TestCase
         self::assertStringNotContainsString('usort(', $projector);
 
         $contracts = implode("\n", array_map(static fn (string $file): string => (string) file_get_contents($file), $this->phpFiles($directory.'/Contracts')));
-        foreach (['storageKey', 'checksum', 'fileSizeBytes', 'contentFingerprint', 'publishedBy', 'sourceWebsiteVersion', 'renderable', 'enabled', 'displayOrder'] as $forbidden) {
+        foreach (['storageKey', 'checksum', 'fileSizeBytes', 'contentFingerprint', 'publishedBy', 'sourceWebsiteVersion', 'renderable', 'enabled'] as $forbidden) {
             self::assertStringNotContainsString($forbidden, $contracts);
         }
         self::assertFileDoesNotExist($this->root().'/database/migrations/website_builder/2026_08_14_000001_create_public_rendering_tables.php');

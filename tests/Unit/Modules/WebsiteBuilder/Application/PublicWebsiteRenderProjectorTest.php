@@ -59,11 +59,21 @@ final class PublicWebsiteRenderProjectorTest extends TestCase
         self::assertInstanceOf(ContactSectionRenderModel::class, $render->sections[7]);
         self::assertInstanceOf(BookingCtaSectionRenderModel::class, $render->sections[8]);
         self::assertSame('Trusted healthcare', $render->sections[0]->headline);
-        self::assertSame([$this->uuid(702)], $render->sections[2]->serviceIds);
+        self::assertSame($this->uuid(702), $render->sections[2]->services[0]->serviceId);
+        self::assertSame('Rawatan Kesihatan Am', $render->sections[2]->services[0]->displayName);
+        self::assertSame('Penilaian kesihatan untuk seisi keluarga.', $render->sections[2]->services[0]->shortDescription);
+        self::assertSame(1, $render->sections[2]->services[0]->displayOrder);
+        self::assertFalse($render->sections[2]->services[0]->featured);
         self::assertSame('Dr Syifa', $render->sections[3]->doctors[0]->name);
         self::assertSame($this->uuid(9990), $render->sections[5]->images[0]->assetId);
+        self::assertSame('Ruang menunggu klinik yang selesa', $render->sections[5]->images[0]->altText);
+        self::assertSame('Ruang menunggu utama', $render->sections[5]->images[0]->caption);
+        self::assertSame(1, $render->sections[5]->images[0]->displayOrder);
         self::assertSame('When are you open?', $render->sections[6]->entries[0]->question);
         self::assertSame('hello@clinic.test', $render->sections[7]->contactEmail);
+        self::assertSame('+60123456789', $render->sections[7]->whatsAppNumber);
+        self::assertSame(3.139, $render->sections[7]->latitude);
+        self::assertSame('09:00', $render->sections[7]->businessHours[0]->opensAt);
         self::assertSame('Book now', $render->sections[8]->buttonLabel);
         self::assertCount(1, $render->assets);
         self::assertSame($this->uuid(9990), $render->assets[0]->assetId);
@@ -81,7 +91,7 @@ final class PublicWebsiteRenderProjectorTest extends TestCase
         $content = WebsitePublicationContentFactory::complete($website);
         $renderability = $content->renderabilityBySectionId;
         $renderability[$hero->id->value] = false;
-        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), new WebsitePublicationContent($content->contents, $renderability), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
+        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), new WebsitePublicationContent($content->contents, $renderability, $content->serviceProjections, $content->contactProjection), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));
         $snapshot = $website->publishedSnapshot();
         self::assertNotNull($snapshot);
 
