@@ -22,6 +22,7 @@ This document is the governance index for architecture decisions and architectur
 | [ADR-009](./decisions/ADR-009-Multi-Provider-Payment-Infrastructure.md) | Multi-Provider Payment Infrastructure | Active | Adds Stripe/ToyyibPay coexistence, immutable attempt binding, operational activation gates and no automatic failover without changing ADR-008. |
 | [ADR-010](./decisions/ADR-010-Payment-Verification-Application.md) | Payment Verification Application and Reconciliation | Active | Defines the durable `PaymentVerificationApplication` lifecycle, atomic system-audit/outbox/reconciliation-case creation, and the transactional-outbox delivery pattern. Explicitly excludes Subscription activation from its own scope. |
 | [ADR-011](./decisions/ADR-011-Initial-Subscription-Activation.md) | Initial Subscription Activation | Active | Defines Subscription's first `Pending → Active` activation from one verified Payment outcome via a durable `SubscriptionActivationApplication`, the reserved-`TenantId` ownership chain, and the annual-term calendar-anniversary date algorithm. Adds a narrow, non-superseding addendum to ADR-007 on tenant-identity reservation timing. |
+| [ADR-012](./decisions/ADR-012-Phase-1-Tenant-Clinic-Lineage.md) | Phase 1 Tenant–Clinic Lineage | Active | Locks Clinic as the owner of the 1:1 relationship through `TenantId`; Tenant and Booking do not store `ClinicId`, and public Booking Submission cannot accept it. |
 
 ## Superseded ADRs
 

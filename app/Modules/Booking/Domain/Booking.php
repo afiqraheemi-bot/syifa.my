@@ -9,7 +9,6 @@ use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
 use App\Modules\Booking\Domain\ValueObjects\BookingReference;
 use App\Modules\Booking\Domain\ValueObjects\BookingStatus;
-use App\Modules\Booking\Domain\ValueObjects\ClinicId;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
 use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
@@ -22,7 +21,6 @@ final class Booking
     public function __construct(
         public readonly BookingId $id,
         public readonly TenantId $tenantId,
-        public readonly ClinicId $clinicId,
         public readonly ?ServiceId $serviceId,
         public readonly BookingReference $reference,
         private BookingStatus $status,
@@ -40,7 +38,6 @@ final class Booking
     public static function submit(
         BookingId $id,
         TenantId $tenantId,
-        ClinicId $clinicId,
         ?ServiceId $serviceId,
         BookingReference $reference,
         PatientName $patientName,
@@ -54,7 +51,6 @@ final class Booking
         return new self(
             id: $id,
             tenantId: $tenantId,
-            clinicId: $clinicId,
             serviceId: $serviceId,
             reference: $reference,
             status: BookingStatus::Submitted,

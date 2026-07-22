@@ -11,7 +11,6 @@ use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
 use App\Modules\Booking\Domain\ValueObjects\BookingReference;
 use App\Modules\Booking\Domain\ValueObjects\BookingStatus;
-use App\Modules\Booking\Domain\ValueObjects\ClinicId;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
 use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
@@ -30,7 +29,6 @@ final class BookingTest extends TestCase
         self::assertSame(BookingStatus::Submitted, $booking->status());
         self::assertSame($this->uuid(1), $booking->id->value);
         self::assertSame($this->uuid(2), $booking->tenantId->value);
-        self::assertSame($this->uuid(3), $booking->clinicId->value);
         self::assertSame($this->uuid(4), $booking->serviceId?->value);
         self::assertSame('BOOK-0001', $booking->reference->value);
         self::assertSame('Aisyah Rahman', $booking->patientName->value);
@@ -96,13 +94,6 @@ final class BookingTest extends TestCase
         new TenantId('not-a-uuid');
     }
 
-    public function test_clinic_id_rejects_a_non_uuid_value(): void
-    {
-        $this->expectException(InvalidBookingValueException::class);
-
-        new ClinicId('not-a-uuid');
-    }
-
     public function test_booking_reference_rejects_a_blank_value(): void
     {
         $this->expectException(InvalidBookingValueException::class);
@@ -164,7 +155,6 @@ final class BookingTest extends TestCase
         return Booking::submit(
             new BookingId($this->uuid(1)),
             new TenantId($this->uuid(2)),
-            new ClinicId($this->uuid(3)),
             $serviceId === null ? null : new ServiceId($this->uuid($serviceId)),
             new BookingReference('BOOK-0001'),
             new PatientName('Aisyah Rahman'),

@@ -102,6 +102,22 @@ final class BookingFoundationArchitectureTest extends TestCase
         self::assertStringContainsString('findById(TenantId $tenantId, ServiceId $serviceId)', $serviceContract);
     }
 
+    public function test_booking_uses_tenant_lineage_without_a_direct_clinic_dependency(): void
+    {
+        $booking = $this->source($this->root().'/app/Modules/Booking/Domain/Booking.php');
+        $bookingRepository = $this->source($this->root().'/app/Modules/Booking/Infrastructure/Persistence/Repositories/PostgresBookingRepository.php');
+        $tenant = $this->source($this->root().'/app/Modules/TenantManagement/Domain/Aggregates/Tenant/Tenant.php');
+
+        self::assertStringContainsString('TenantId $tenantId', $booking);
+        self::assertStringNotContainsString('ClinicId', $booking);
+        self::assertStringNotContainsString('clinic_id', $bookingRepository);
+        self::assertStringNotContainsString('ClinicId', $tenant);
+        self::assertFileDoesNotExist($this->root().'/app/Modules/Booking/Domain/ValueObjects/ClinicId.php');
+        self::assertFileDoesNotExist($this->root().'/app/Modules/Booking/Contracts/Repositories/ClinicRepositoryInterface.php');
+        self::assertFileDoesNotExist($this->root().'/app/Modules/Booking/Domain/Clinic.php');
+        self::assertFileDoesNotExist($this->root().'/database/migrations/booking/create_clinics_table.php');
+    }
+
     public function test_booking_form_configuration_is_isolated_from_the_booking_aggregate(): void
     {
         self::assertFileExists($this->root().'/app/Modules/Booking/Domain/BookingFormConfiguration.php');
@@ -195,6 +211,7 @@ final class BookingFoundationArchitectureTest extends TestCase
                 $this->root().'/database/migrations/booking/2026_07_31_000001_create_services_table.php',
                 $this->root().'/database/migrations/booking/2026_08_01_000001_create_booking_form_configurations_table.php',
                 $this->root().'/database/migrations/booking/2026_08_02_000001_add_service_id_to_bookings_table.php',
+                $this->root().'/database/migrations/booking/2026_08_03_000001_remove_clinic_id_from_bookings_table.php',
             ],
             glob($this->root().'/database/migrations/booking/*.php') ?: [],
         );

@@ -94,7 +94,6 @@ final class PostgresBookingRepository implements BookingRepositoryInterface
         return [
             'id' => $record->id,
             'tenant_id' => $record->tenantId,
-            'clinic_id' => $record->clinicId,
             'service_id' => $record->serviceId,
             'booking_reference' => $record->bookingReference,
             'status' => $record->status,
@@ -115,7 +114,6 @@ final class PostgresBookingRepository implements BookingRepositoryInterface
         $record = new BookingStorageRecord(
             $this->stringValue($row, 'id'),
             $this->stringValue($row, 'tenant_id'),
-            $this->stringValue($row, 'clinic_id'),
             $this->nullableStringValue($row, 'service_id'),
             $this->stringValue($row, 'booking_reference'),
             $this->stringValue($row, 'status'),

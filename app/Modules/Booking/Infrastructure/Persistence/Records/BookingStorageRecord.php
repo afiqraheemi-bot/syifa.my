@@ -11,7 +11,6 @@ final readonly class BookingStorageRecord
     public function __construct(
         public string $id,
         public string $tenantId,
-        public string $clinicId,
         public ?string $serviceId,
         public string $bookingReference,
         public string $status,

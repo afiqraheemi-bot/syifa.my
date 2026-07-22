@@ -10,7 +10,6 @@ use App\Modules\Booking\Domain\ValueObjects\AppointmentDate;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
 use App\Modules\Booking\Domain\ValueObjects\BookingReference;
-use App\Modules\Booking\Domain\ValueObjects\ClinicId;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
 use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
@@ -69,7 +68,10 @@ final class PostgresBookingRepositoryTest extends TestCase
         $serviceMigration = require base_path('database/migrations/booking/2026_08_02_000001_add_service_id_to_bookings_table.php');
         self::assertInstanceOf(Migration::class, $serviceMigration);
         $serviceMigration->up();
-        $this->migrations = [$serviceMigration, $migration];
+        $clinicLineageMigration = require base_path('database/migrations/booking/2026_08_03_000001_remove_clinic_id_from_bookings_table.php');
+        self::assertInstanceOf(Migration::class, $clinicLineageMigration);
+        $clinicLineageMigration->up();
+        $this->migrations = [$clinicLineageMigration, $serviceMigration, $migration];
 
         $this->repository = new PostgresBookingRepository($this->connection, new BookingPersistenceMapper);
     }
@@ -94,7 +96,6 @@ final class PostgresBookingRepositoryTest extends TestCase
         self::assertNotNull($reloaded);
         self::assertSame(1, $reloaded->version());
         self::assertSame($booking->tenantId->value, $reloaded->tenantId->value);
-        self::assertSame($booking->clinicId->value, $reloaded->clinicId->value);
         self::assertSame($booking->serviceId?->value, $reloaded->serviceId?->value);
         self::assertSame($booking->reference->value, $reloaded->reference->value);
         self::assertSame('submitted', $reloaded->status()->value);
@@ -151,12 +152,11 @@ final class PostgresBookingRepositoryTest extends TestCase
 
     public function test_additive_migration_keeps_an_existing_booking_compatible(): void
     {
-        $this->migrations[0]->down();
+        $this->migrations[1]->down();
         $now = $this->time()->format('Y-m-d H:i:s.uP');
         $this->connection()->table('bookings')->insert([
             'id' => $this->uuid(1),
             'tenant_id' => $this->uuid(2),
-            'clinic_id' => $this->uuid(3),
             'booking_reference' => 'BOOK-0001',
             'status' => 'submitted',
             'patient_name' => 'Aisyah Rahman',
@@ -172,11 +172,22 @@ final class PostgresBookingRepositoryTest extends TestCase
             'updated_at' => $now,
         ]);
 
-        $this->migrations[0]->up();
+        $this->migrations[1]->up();
 
         $reloaded = $this->repository()->findById(new TenantId($this->uuid(2)), new BookingId($this->uuid(1)));
         self::assertNotNull($reloaded);
         self::assertNull($reloaded->serviceId);
+    }
+
+    public function test_clinic_lineage_migration_removes_and_reversibly_restores_the_column(): void
+    {
+        self::assertFalse(Schema::connection(self::CONNECTION_NAME)->hasColumn('bookings', 'clinic_id'));
+
+        $this->migrations[0]->down();
+        self::assertTrue(Schema::connection(self::CONNECTION_NAME)->hasColumn('bookings', 'clinic_id'));
+
+        $this->migrations[0]->up();
+        self::assertFalse(Schema::connection(self::CONNECTION_NAME)->hasColumn('bookings', 'clinic_id'));
     }
 
     public function test_database_rejects_a_duplicate_booking_reference(): void
@@ -227,7 +238,6 @@ final class PostgresBookingRepositoryTest extends TestCase
         return Booking::submit(
             new BookingId($this->uuid($id)),
             new TenantId($this->uuid(2)),
-            new ClinicId($this->uuid(3)),
             $serviceId === null ? null : new ServiceId($this->uuid($serviceId)),
             new BookingReference($reference ?? 'BOOK-'.str_pad((string) $id, 4, '0', STR_PAD_LEFT)),
             new PatientName('Aisyah Rahman'),

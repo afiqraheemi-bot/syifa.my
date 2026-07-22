@@ -148,7 +148,7 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Business Rules.** Suspension denies new tenant-changing and public booking activity by default and must never silently delete data. Reactivation must revalidate Subscription, domain, owner, assignments, and pending work rather than blindly restoring prior state.
 
-**External References.** References its current Subscription by identifier (does not compose it). References its one Clinic by identifier in Phase 1's locked 1:1 relationship (does not compose it — Clinic is its own aggregate).
+**External References.** References its current Subscription by identifier (does not compose it). Per [ADR-012](./decisions/ADR-012-Phase-1-Tenant-Clinic-Lineage.md), Tenant does not store `ClinicId`: Phase 1's locked 1:1 Tenant–Clinic relationship is stored authoritatively by Clinic through its `TenantId`, and Tenant-to-Clinic navigation is a derived, tenant-scoped lookup.
 
 **Events Produced.** Tenant Provisioned; Tenant Activated; Tenant Suspended; Tenant Reactivated; Tenant Offboarding Started; Tenant Deleted or Anonymized; Clinic Owner Authority Established; Clinic Owner Authority Transferred; Clinic Owner Authority Revoked.
 

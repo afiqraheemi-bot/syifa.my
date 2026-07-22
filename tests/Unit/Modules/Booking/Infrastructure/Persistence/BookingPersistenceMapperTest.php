@@ -9,7 +9,6 @@ use App\Modules\Booking\Domain\ValueObjects\AppointmentDate;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
 use App\Modules\Booking\Domain\ValueObjects\BookingId;
 use App\Modules\Booking\Domain\ValueObjects\BookingReference;
-use App\Modules\Booking\Domain\ValueObjects\ClinicId;
 use App\Modules\Booking\Domain\ValueObjects\PatientEmail;
 use App\Modules\Booking\Domain\ValueObjects\PatientName;
 use App\Modules\Booking\Domain\ValueObjects\PatientPhone;
@@ -31,7 +30,6 @@ final class BookingPersistenceMapperTest extends TestCase
 
         self::assertSame($this->uuid(1), $record->id);
         self::assertSame($this->uuid(2), $record->tenantId);
-        self::assertSame($this->uuid(3), $record->clinicId);
         self::assertSame($this->uuid(4), $record->serviceId);
         self::assertSame('BOOK-0001', $record->bookingReference);
         self::assertSame('submitted', $record->status);
@@ -50,7 +48,6 @@ final class BookingPersistenceMapperTest extends TestCase
         $record = new BookingStorageRecord(
             $this->uuid(1),
             $this->uuid(2),
-            $this->uuid(3),
             $this->uuid(4),
             'BOOK-0001',
             'submitted',
@@ -81,7 +78,6 @@ final class BookingPersistenceMapperTest extends TestCase
         $record = new BookingStorageRecord(
             $this->uuid(1),
             $this->uuid(2),
-            $this->uuid(3),
             null,
             'BOOK-0001',
             'submitted',
@@ -108,7 +104,6 @@ final class BookingPersistenceMapperTest extends TestCase
         return Booking::submit(
             new BookingId($this->uuid(1)),
             new TenantId($this->uuid(2)),
-            new ClinicId($this->uuid(3)),
             new ServiceId($this->uuid(4)),
             new BookingReference('BOOK-0001'),
             new PatientName('Aisyah Rahman'),
