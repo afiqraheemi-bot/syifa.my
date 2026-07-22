@@ -2,6 +2,8 @@
 
 All components consume the ADR-021 rendering contract and governed semantic tokens. “States” below are presentation states only; absent or non-renderable Domain content never produces an empty component.
 
+> **Implementation status:** Syifa Essential V1 now provides the reference server-rendered implementations for the governed Header, navigation, actions, Section headings, responsive images, Service/Doctor/Testimonial/Gallery/FAQ/Contact/Business Hours/Booking CTA components, Footer, Legal Document, and Error Document. Future templates reuse these ownership and accessibility boundaries while selecting approved presentation variants.
+
 ## Catalogue
 
 | Component | Purpose and allowed content | Interaction and mobile behavior | Accessibility requirements | Prohibited behavior | Conversion role |
