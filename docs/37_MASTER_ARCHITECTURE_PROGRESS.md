@@ -1,0 +1,45 @@
+# Master Architecture Progress
+
+**Updated:** 2026-08-15
+**Current Website foundation parent:** `765089d4de111557cf2425dfb019a65baf19b447`
+
+This record summarizes accepted architecture increments. It does not supersede Product Vision, MVP Scope, ADRs, the Architecture Freeze, or implementation history.
+
+## Website-as-a-Service progression
+
+| ADR | Increment | Status | Capability established | Explicitly deferred |
+|---|---|---|---|---|
+| ADR-014 | Website Core Foundation | Complete | Tenant-owned Website root, governed Template and Branding, lifecycle and persistence. | Sections, content, SEO, assets, publication, rendering, delivery. |
+| ADR-015 | Website Sections Foundation | Complete | Nine governed ordered internal Sections. | Content and presentation. |
+| ADR-016 | Website Section Content Models | Complete | Typed content and minimum renderability rules. | Persistence and delivery. |
+| ADR-017 | Website SEO Configuration | Complete | Immutable-ready governed SEO configuration and persistence. | SEO output and delivery. |
+| ADR-018 | Website Asset Management Foundation | Complete | Website-owned image metadata and typed references. | Upload, storage provider, URL resolution, CDN. |
+| ADR-019 | Website Publishing Pipeline Foundation | Complete | Atomic immutable versioned Published Snapshot and snapshot-only public read boundary. | Delivery technology and deployment. |
+| ADR-020 | Published Section Content Snapshot | Complete | Normalized immutable typed Section content, Asset/Service references, and renderability evidence. | Presentation. |
+| ADR-021 | Public Website Rendering Contract | Complete | Transient typed snapshot-only render tree with adaptive omission and published ordering. | HTML, routes, controllers, CSS, JavaScript. |
+| ADR-022 | Public Website Experience and Design System V1 | Complete | Experience north star, tokens, responsive rules, components, Sections, templates, accessibility, performance, quality gate, and governance. | All production frontend implementation. |
+
+## Current architecture state
+
+```text
+Website Aggregate
+    -> atomic immutable Published Snapshot
+        -> typed Public Rendering Contract
+            -> governed Experience & Design System V1
+                -> future delivery implementation (not yet authorized)
+```
+
+The public experience can now be implemented without inventing product hierarchy or presentation rules. Implementation must still resolve explicitly recorded contract gaps through approved increments rather than mutable reads: public Service display names/descriptions, meaningful Gallery alternative text/captions, and immutable Contact operating-hours/location-coordinate/directions data are not present in ADR-021.
+
+## Next governed decisions
+
+No next increment is authorized by this progress record. Likely future decisions must remain separately scoped:
+
+1. Resolve required immutable public projection gaps without cross-context Domain imports.
+2. Select and implement public delivery composition using the existing server-rendered architecture authority.
+3. Define public host routing and Custom Domain delivery.
+4. Define Asset URL resolution and delivery without leaking providers into rendering contracts.
+5. Implement booking entry presentation against the existing Booking boundary.
+6. Add provider-neutral tracking only after privacy, consent, and event-contract approval.
+
+No item above authorizes HTML, Blade, controllers, APIs, storage providers, caching, CDN, analytics, or dependencies in ADR-022.

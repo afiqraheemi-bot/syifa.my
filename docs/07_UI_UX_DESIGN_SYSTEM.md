@@ -1,5 +1,7 @@
 # UI/UX Design System
 
+> **Public Website Experience and Design System V1 amendment (2026-08-15):** ADR-022 and the [Public Website Experience specification](./public-website/README.md) are the normative public-site extension of this cross-product standard. They define the booking-first hierarchy, semantic token taxonomy, responsive system, public component and Section rules, five controlled template personalities, WCAG 2.2 AA target, performance budget, Ferrari Experience Quality Gate, and governance without implementing frontend code.
+
 ## Table of Contents
 
 - [Document Authority](#document-authority)

@@ -1,5 +1,7 @@
 # Architecture Freeze v1
 
+> **Public Website Experience and Design System V1 governance note (2026-08-15):** ADR-022 specifies one governed public experience system shared by the five official templates. It adds no Aggregate Root, bounded context, rendering-contract change, persistence, delivery code, frontend framework, or tenant extension mechanism.
+
 > **Public Website Rendering Contract governance note (2026-08-14):** ADR-021 authorizes a transient strongly typed Application render tree projected only from immutable Published Snapshots. It adds no Aggregate Root, bounded context, repository, persistence, delivery surface, or rendering technology.
 
 > **Website Published Section Content Snapshot governance note (2026-08-13):** ADR-020 completes the existing Website-owned Published Snapshot with immutable normalized typed Section content and captured renderability evidence. It adds no Aggregate Root, bounded context, repository abstraction, rendering capability, endpoint, or deployment integration.
