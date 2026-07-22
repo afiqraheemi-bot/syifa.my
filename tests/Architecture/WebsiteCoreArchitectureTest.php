@@ -158,6 +158,30 @@ final class WebsiteCoreArchitectureTest extends TestCase
         }
     }
 
+    public function test_public_rendering_is_a_transient_snapshot_only_application_projection(): void
+    {
+        $directory = $this->root().'/app/Modules/WebsiteBuilder/Application/Rendering';
+        foreach ($this->phpFiles($directory) as $file) {
+            $source = (string) file_get_contents($file);
+            foreach (['App\\Modules\\Booking\\', 'App\\Modules\\SubscriptionBilling\\', 'Tracking\\', 'Analytics\\', 'Infrastructure\\', 'Illuminate\\', 'DB::', 'Schema::', 'Storage::', 'WebsiteRepository', 'WebsitePublicationContent', 'Blade', 'Inertia', 'Livewire'] as $forbidden) {
+                self::assertStringNotContainsString($forbidden, $source, $file);
+            }
+        }
+        $projector = (string) file_get_contents($directory.'/PublicWebsiteRenderProjector.php');
+        self::assertStringContainsString('project(PublishedWebsiteSnapshot $snapshot)', $projector);
+        self::assertStringContainsString('! $metadata->enabled || ! $content->renderable', $projector);
+        self::assertStringNotContainsString('sort(', $projector);
+        self::assertStringNotContainsString('usort(', $projector);
+
+        $contracts = implode("\n", array_map(static fn (string $file): string => (string) file_get_contents($file), $this->phpFiles($directory.'/Contracts')));
+        foreach (['storageKey', 'checksum', 'fileSizeBytes', 'contentFingerprint', 'publishedBy', 'sourceWebsiteVersion', 'renderable', 'enabled', 'displayOrder'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $contracts);
+        }
+        self::assertFileDoesNotExist($this->root().'/database/migrations/website_builder/2026_08_14_000001_create_public_rendering_tables.php');
+        self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Contracts/Repositories/PublicWebsiteRenderingRepositoryInterface.php');
+        self::assertSame([], $this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Presentation'));
+    }
+
     /** @return list<string> */
     private function phpFiles(string ...$directories): array
     {
