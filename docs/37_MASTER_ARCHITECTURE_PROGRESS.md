@@ -1,7 +1,7 @@
 # Master Architecture Progress
 
 **Updated:** 2026-08-15
-**Current Website foundation parent:** `765089d4de111557cf2425dfb019a65baf19b447`
+**Current documented baseline:** `8ad6288f88c4f629cb5127ff28aec9124e3dbae1`
 
 This record summarizes accepted architecture increments. It does not supersede Product Vision, MVP Scope, ADRs, the Architecture Freeze, or implementation history.
 
@@ -18,6 +18,16 @@ This record summarizes accepted architecture increments. It does not supersede P
 | ADR-020 | Published Section Content Snapshot | Complete | Normalized immutable typed Section content, Asset/Service references, and renderability evidence. | Presentation. |
 | ADR-021 | Public Website Rendering Contract | Complete | Transient typed snapshot-only render tree with adaptive omission and published ordering. | HTML, routes, controllers, CSS, JavaScript. |
 | ADR-022 | Public Website Experience and Design System V1 | Complete | Experience north star, tokens, responsive rules, components, Sections, templates, accessibility, performance, quality gate, and governance. | All production frontend implementation. |
+
+## Reference template specifications
+
+| Template | Status | Canonical reference |
+|---|---|---|
+| Syifa Essential | Complete | [Reference Template Specification — Syifa Essential](./public-website/templates/SYIFA_ESSENTIAL_REFERENCE.md) establishes the default page flow, Section blueprints, mobile/desktop behavior, conversion hierarchy, adaptive journey, and personality-specific quality baseline. |
+| Syifa Care | Not specified | Requires a future governed reference increment. |
+| Syifa Dental | Not specified | Requires a future governed reference increment. |
+| Syifa Aesthetic | Not specified | Requires a future governed reference increment. |
+| Syifa Specialist | Not specified | Requires a future governed reference increment. |
 
 ## Current architecture state
 

@@ -92,3 +92,4 @@ Presentation consumes ADR-021 output only. If a Section is absent, layout remove
 - [Performance Budget](./07_PERFORMANCE_BUDGET.md)
 - [Ferrari Experience Quality Gate](./08_FERRARI_EXPERIENCE_QUALITY_GATE.md)
 - [Design System Governance](./09_DESIGN_SYSTEM_GOVERNANCE.md)
+- [Syifa Essential Reference Template](./templates/SYIFA_ESSENTIAL_REFERENCE.md)
