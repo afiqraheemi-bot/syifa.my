@@ -139,6 +139,22 @@ final class BookingFoundationArchitectureTest extends TestCase
         self::assertStringContainsString('InvalidBookingFormConfigurationValueException', $configurationSource);
     }
 
+    public function test_reconfigure_reuses_the_single_invariant_validator_without_duplicating_it(): void
+    {
+        $configurationSource = $this->source($this->root().'/app/Modules/Booking/Domain/BookingFormConfiguration.php');
+
+        self::assertSame(
+            1,
+            substr_count($configurationSource, 'private static function assertConsistent'),
+            'Exactly one invariant validator method must exist; the atomic mutation must reuse it, not duplicate it.',
+        );
+        self::assertSame(
+            5,
+            substr_count($configurationSource, 'self::assertConsistent('),
+            'The constructor and every mutator (setFieldEnabled, updateRequiredFields, updateFieldOrder, reconfigure) must call the single shared validator.',
+        );
+    }
+
     public function test_repository_does_not_own_business_validation(): void
     {
         $repositorySource = $this->source($this->root().'/app/Modules/Booking/Infrastructure/Persistence/Repositories/PostgresBookingFormConfigurationRepository.php');

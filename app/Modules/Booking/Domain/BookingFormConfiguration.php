@@ -82,6 +82,49 @@ final class BookingFormConfiguration
         );
     }
 
+    /**
+     * Applies a complete candidate configuration atomically: the full
+     * proposed state is validated exactly once via the same invariant
+     * validator the constructor and every other mutator use, and every field
+     * is only assigned once that validation has passed. If the candidate is
+     * inconsistent, this throws before touching any property, so a caller
+     * transitioning several dimensions together (for example, enabling an
+     * optional field while simultaneously adding it to the field order,
+     * marking it required, and giving it a label) never leaves the aggregate
+     * in a partially-mutated or invalid state.
+     */
+    public function reconfigure(
+        bool $enableServiceSelection,
+        bool $enableDoctorSelection,
+        bool $enableEmail,
+        bool $enableBranch,
+        bool $enableNotes,
+        RequiredFields $requiredFields,
+        FieldOrder $fieldOrder,
+        FieldLabels $fieldLabels,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        self::assertConsistent(
+            $enableServiceSelection,
+            $enableDoctorSelection,
+            $enableEmail,
+            $enableBranch,
+            $enableNotes,
+            $requiredFields,
+            $fieldOrder,
+        );
+
+        $this->enableServiceSelection = $enableServiceSelection;
+        $this->enableDoctorSelection = $enableDoctorSelection;
+        $this->enableEmail = $enableEmail;
+        $this->enableBranch = $enableBranch;
+        $this->enableNotes = $enableNotes;
+        $this->requiredFields = $requiredFields;
+        $this->fieldOrder = $fieldOrder;
+        $this->fieldLabels = $fieldLabels;
+        $this->updatedAt = $occurredAt;
+    }
+
     public function isEnabled(BookingFormField $field): bool
     {
         return match ($field) {

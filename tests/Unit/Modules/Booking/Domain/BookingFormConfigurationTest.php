@@ -350,6 +350,303 @@ final class BookingFormConfigurationTest extends TestCase
         $configuration->setFieldEnabled(BookingFormField::Service, false, $this->occurredAt());
     }
 
+    // -- Increment 3B: atomic configuration mutation ------------------------
+
+    public function test_reconfigure_enables_an_optional_field_atomically(): void
+    {
+        $configuration = $this->configuration();
+        $later = $this->occurredAt()->modify('+1 day');
+
+        $configuration->reconfigure(
+            true,
+            true, // Doctor now enabled ...
+            true,
+            false,
+            true,
+            $configuration->requiredFields(),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                BookingFormField::Service,
+                BookingFormField::Email,
+                BookingFormField::Notes,
+                BookingFormField::Doctor, // ... and simultaneously orderable.
+            ]),
+            $configuration->fieldLabels(),
+            $later,
+        );
+
+        self::assertTrue($configuration->isEnabled(BookingFormField::Doctor));
+        self::assertContains('doctor', $configuration->fieldOrder()->values());
+        self::assertSame($later->format(DATE_ATOM), $configuration->updatedAt()->format(DATE_ATOM));
+    }
+
+    public function test_reconfigure_disables_an_optional_field_atomically(): void
+    {
+        $configuration = $this->configuration();
+        $later = $this->occurredAt()->modify('+1 day');
+
+        $configuration->reconfigure(
+            false, // Service now disabled ...
+            false,
+            true,
+            false,
+            true,
+            $configuration->requiredFields(),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                BookingFormField::Email,
+                BookingFormField::Notes,
+                // ... and simultaneously removed from the order.
+            ]),
+            $configuration->fieldLabels(),
+            $later,
+        );
+
+        self::assertFalse($configuration->isEnabled(BookingFormField::Service));
+        self::assertNotContains('service', $configuration->fieldOrder()->values());
+    }
+
+    public function test_reconfigure_enables_requires_and_orders_a_field_together(): void
+    {
+        $configuration = BookingFormConfiguration::create(
+            new TenantId($this->uuid(1)),
+            false, // Service starts disabled ...
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields([]),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+            ]),
+            new FieldLabels([]),
+            $this->occurredAt(),
+        );
+        $later = $this->occurredAt()->modify('+1 day');
+
+        $configuration->reconfigure(
+            true, // ... enabled ...
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields([BookingFormField::Service]), // ... required ...
+            new FieldOrder([
+                BookingFormField::Service,
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+            ]), // ... reordered ...
+            new FieldLabels(['service' => 'Choose a Service']), // ... and labelled, together.
+            $later,
+        );
+
+        self::assertTrue($configuration->isEnabled(BookingFormField::Service));
+        self::assertSame(['service'], $configuration->requiredFields()->values());
+        self::assertSame('service', $configuration->fieldOrder()->values()[0]);
+        self::assertSame('Choose a Service', $configuration->fieldLabels()->labelFor(BookingFormField::Service));
+        self::assertSame($later->format(DATE_ATOM), $configuration->updatedAt()->format(DATE_ATOM));
+    }
+
+    public function test_reconfigure_disables_and_removes_a_field_from_order_and_required_fields_together(): void
+    {
+        $configuration = BookingFormConfiguration::create(
+            new TenantId($this->uuid(1)),
+            true, // Service starts enabled, required, and ordered ...
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields([BookingFormField::Service]),
+            new FieldOrder([
+                BookingFormField::Service,
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+            ]),
+            new FieldLabels(['service' => 'Choose a Service']),
+            $this->occurredAt(),
+        );
+        $later = $this->occurredAt()->modify('+1 day');
+
+        $configuration->reconfigure(
+            false, // ... disabled ...
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields([]), // ... no longer required ...
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+            ]), // ... and removed from the order, together.
+            $configuration->fieldLabels(),
+            $later,
+        );
+
+        self::assertFalse($configuration->isEnabled(BookingFormField::Service));
+        self::assertSame([], $configuration->requiredFields()->values());
+        self::assertNotContains('service', $configuration->fieldOrder()->values());
+    }
+
+    public function test_reconfigure_rejects_the_whole_mutation_when_the_candidate_is_inconsistent(): void
+    {
+        $configuration = $this->configuration();
+
+        $this->expectException(InvalidBookingFormConfigurationValueException::class);
+
+        $configuration->reconfigure(
+            true,
+            true, // Doctor enabled ...
+            true,
+            false,
+            true,
+            $configuration->requiredFields(),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                BookingFormField::Service,
+                BookingFormField::Email,
+                BookingFormField::Notes,
+                // ... but Doctor is not added to the order: inconsistent candidate.
+            ]),
+            $configuration->fieldLabels(),
+            $this->occurredAt()->modify('+1 day'),
+        );
+    }
+
+    public function test_reconfigure_leaves_no_partial_mutation_when_rejected(): void
+    {
+        $configuration = $this->configuration();
+        $enabledBefore = $configuration->isEnabled(BookingFormField::Doctor);
+        $requiredBefore = $configuration->requiredFields()->values();
+        $orderBefore = $configuration->fieldOrder()->values();
+        $labelsBefore = $configuration->fieldLabels()->labels;
+
+        try {
+            $configuration->reconfigure(
+                true,
+                true,
+                true,
+                false,
+                true,
+                new RequiredFields([BookingFormField::Branch]), // Branch stays disabled: inconsistent.
+                new FieldOrder([
+                    BookingFormField::PatientName,
+                    BookingFormField::Phone,
+                    BookingFormField::AppointmentDate,
+                    BookingFormField::AppointmentTime,
+                    BookingFormField::Service,
+                    BookingFormField::Email,
+                    BookingFormField::Notes,
+                ]),
+                new FieldLabels(['service' => 'Renamed']),
+                $this->occurredAt()->modify('+1 day'),
+            );
+            self::fail('Expected an inconsistent reconfigure() call to throw.');
+        } catch (InvalidBookingFormConfigurationValueException) {
+            // expected
+        }
+
+        self::assertSame($enabledBefore, $configuration->isEnabled(BookingFormField::Doctor));
+        self::assertSame($requiredBefore, $configuration->requiredFields()->values());
+        self::assertSame($orderBefore, $configuration->fieldOrder()->values());
+        self::assertSame($labelsBefore, $configuration->fieldLabels()->labels);
+    }
+
+    public function test_updated_at_changes_only_after_a_successful_reconfigure(): void
+    {
+        $configuration = $this->configuration();
+        $updatedAtBefore = $configuration->updatedAt();
+
+        try {
+            $configuration->reconfigure(
+                true,
+                true,
+                true,
+                false,
+                true,
+                new RequiredFields([BookingFormField::Branch]), // inconsistent: Branch stays disabled.
+                $configuration->fieldOrder(),
+                $configuration->fieldLabels(),
+                $this->occurredAt()->modify('+1 day'),
+            );
+            self::fail('Expected an inconsistent reconfigure() call to throw.');
+        } catch (InvalidBookingFormConfigurationValueException) {
+            // expected
+        }
+
+        self::assertSame($updatedAtBefore->format(DATE_ATOM), $configuration->updatedAt()->format(DATE_ATOM));
+
+        $later = $this->occurredAt()->modify('+2 days');
+        $configuration->reconfigure(
+            true,
+            true,
+            true,
+            false,
+            true,
+            $configuration->requiredFields(),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                BookingFormField::Service,
+                BookingFormField::Email,
+                BookingFormField::Notes,
+                BookingFormField::Doctor,
+            ]),
+            $configuration->fieldLabels(),
+            $later,
+        );
+
+        self::assertSame($later->format(DATE_ATOM), $configuration->updatedAt()->format(DATE_ATOM));
+    }
+
+    public function test_version_synchronization_remains_correct_after_reconfigure(): void
+    {
+        $configuration = $this->configuration();
+
+        $configuration->reconfigure(
+            true,
+            true,
+            true,
+            false,
+            true,
+            $configuration->requiredFields(),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                BookingFormField::Service,
+                BookingFormField::Email,
+                BookingFormField::Notes,
+                BookingFormField::Doctor,
+            ]),
+            $configuration->fieldLabels(),
+            $this->occurredAt()->modify('+1 day'),
+        );
+        $configuration->synchronizeVersion(6);
+
+        self::assertSame(6, $configuration->version());
+    }
+
     private function configuration(): BookingFormConfiguration
     {
         return BookingFormConfiguration::create(

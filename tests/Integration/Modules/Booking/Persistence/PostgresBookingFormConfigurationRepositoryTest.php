@@ -132,6 +132,43 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
         self::assertSame(['service'], $reloaded->requiredFields()->values());
     }
 
+    public function test_persistence_round_trip_after_an_atomic_reconfigure(): void
+    {
+        $configuration = $this->configuration();
+        $this->repository()->save($configuration);
+
+        $configuration->reconfigure(
+            true,
+            true, // Doctor enabled ...
+            true,
+            false,
+            true,
+            new RequiredFields([BookingFormField::Doctor]), // ... required ...
+            new FieldOrder([
+                BookingFormField::Doctor, // ... ordered first ...
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                BookingFormField::Service,
+                BookingFormField::Email,
+                BookingFormField::Notes,
+            ]),
+            new FieldLabels(['doctor' => 'Preferred Doctor']), // ... and labelled, together.
+            $this->time()->modify('+1 day'),
+        );
+        $this->repository()->save($configuration);
+
+        $reloaded = $this->repository()->findByTenant($configuration->tenantId);
+
+        self::assertNotNull($reloaded);
+        self::assertSame(2, $reloaded->version());
+        self::assertTrue($reloaded->isEnabled(BookingFormField::Doctor));
+        self::assertSame(['doctor'], $reloaded->requiredFields()->values());
+        self::assertSame('doctor', $reloaded->fieldOrder()->values()[0]);
+        self::assertSame('Preferred Doctor', $reloaded->fieldLabels()->labelFor(BookingFormField::Doctor));
+    }
+
     public function test_database_enforces_exactly_one_configuration_per_tenant(): void
     {
         $this->repository()->save($this->configuration());
@@ -155,6 +192,64 @@ final class PostgresBookingFormConfigurationRepositoryTest extends TestCase
         $this->repository()->save($firstCopy);
 
         $staleCopy->updateRequiredFields(new RequiredFields([BookingFormField::Email]), $this->time());
+
+        $this->expectException(StaleBookingFormConfigurationWriteException::class);
+
+        $this->repository()->save($staleCopy);
+    }
+
+    public function test_optimistic_locking_remains_correct_for_atomic_reconfigure(): void
+    {
+        $configuration = $this->configuration();
+        $this->repository()->save($configuration);
+
+        $firstCopy = $this->repository()->findByTenant($configuration->tenantId);
+        $staleCopy = $this->repository()->findByTenant($configuration->tenantId);
+        self::assertNotNull($firstCopy);
+        self::assertNotNull($staleCopy);
+
+        $firstCopy->reconfigure(
+            true,
+            true,
+            true,
+            false,
+            true,
+            new RequiredFields([BookingFormField::Doctor]),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                BookingFormField::Service,
+                BookingFormField::Email,
+                BookingFormField::Notes,
+                BookingFormField::Doctor,
+            ]),
+            $firstCopy->fieldLabels(),
+            $this->time(),
+        );
+        $this->repository()->save($firstCopy);
+
+        $staleCopy->reconfigure(
+            true,
+            false,
+            true,
+            true, // Branch enabled instead ...
+            true,
+            $staleCopy->requiredFields(),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                BookingFormField::Service,
+                BookingFormField::Email,
+                BookingFormField::Notes,
+                BookingFormField::Branch, // ... and ordered, together.
+            ]),
+            $staleCopy->fieldLabels(),
+            $this->time(),
+        );
 
         $this->expectException(StaleBookingFormConfigurationWriteException::class);
 
