@@ -40,7 +40,7 @@ Collapsing these three into a single "no" would hide exactly the distinction a s
 
 Syifa.my recognizes exactly four Phase 1 roles, per 02_MVP_SCOPE.md. No fifth role, and no resource-specific sub-role, is introduced anywhere in this document.
 
-- **Public Visitor (PV).** Unauthenticated. Accesses only published content (outside this API's JSON surface, per 20_API_DESIGN.md's note on server-rendered public pages) and the narrow, genuinely interactive public actions: Clinic Registration submission, live Clinic Service availability, and Booking submission/own-Booking management via a confirmation reference. Never holds a session, a Tenant relationship, or any standing authority.
+- **Public Visitor (PV).** Unauthenticated. Accesses only published content and the narrow public actions: Clinic Registration submission, live Clinic Service availability, future Booking submission, and own-Booking view via a confirmation reference. ADR-013 approves no public cancellation or other Booking management policy. A Public Visitor never holds a session, Tenant relationship, or standing authority.
 - **Clinic Owner (CO).** The accountable customer role for exactly one Tenant at a time per authority relationship (a person may hold separate Clinic Owner Authority for more than one Tenant, but each is independent and non-transferable between Tenants). Full authority within their own Tenant's boundary, subject to platform-governed constraints; no authority over any other Tenant or over platform-owned resources.
 - **Website Designer (WD).** An internal Syifa.my role whose tenant access exists **only** through an active Website Designer Assignment to a specific Onboarding Job. No assignment means no access — this is not a default-deny-with-exceptions model, it is a default-zero-access model that an assignment specifically and narrowly grants.
 - **Super Admin (SA).** An internal Syifa.my role with platform-wide administrative capability, exercised only through explicit, purpose-limited, audited privileged pathways. Never an implicit member of every Tenant; never permitted to reuse a Clinic-Owner-facing pathway to reach the same outcome a privileged pathway is meant to gate.
@@ -364,8 +364,8 @@ Nineteen resources, matching 20_API_DESIGN.md's Resource Catalogue exactly. Colu
 | Approve | N/A [R7] — Confirm is the analogous action for Booking | same | same | same |
 | Publish | N/A [R2] | N/A [R2] | N/A [R2] | N/A [R2] |
 | Assign | N/A [R3] | N/A [R3] | N/A [R3] | N/A [R3] |
-| Cancel | 🔒 Own | ✅ Own | ❌ | 🔒 Privileged (support correction only) |
-| Confirm | ❌ | 🔒 Own (if manual-confirmation policy applies; otherwise system-triggered) | ❌ | ❌ — not an ordinary Super Admin action |
+| Cancel | ❌ — no public policy approved | ✅ Own (submitted/confirmed, reason required) | ❌ | 🔒 Privileged (support correction only, atomic audit required) |
+| Confirm | ❌ | ✅ Own (submitted only) | ❌ | ❌ — not an ordinary Super Admin action |
 | Complete | ❌ | ✅ Own | ❌ | ❌ |
 | Archive | ❌ | ❌ | ❌ | 🔒 Privileged (old completed/cancelled Bookings) |
 | Restore | N/A [R9] | N/A [R9] | N/A [R9] | N/A [R9] |
@@ -609,7 +609,7 @@ The same data as Section 1, pivoted by role rather than by resource — useful f
 | Template | None | No standing |
 | Media | None | Public media reaches the visitor only through the rendered page, never this resource |
 | Clinic Services | Live availability read only | The one genuinely interactive public catalogue read |
-| Booking | Submit, view own, cancel own | Via confirmation reference only; never a list, never another visitor's Booking |
+| Booking | Submit and view own | Via confirmation reference only; never a list, never another visitor's Booking; no public cancellation policy approved |
 | Subscription | None | No standing |
 | Invoices | None | No standing |
 | Payments | None | No standing |
@@ -793,7 +793,7 @@ Every action marked 🔒 Privileged, 🔒 Category, or explicitly called out as 
 
 1. **Approve this document as the binding Phase 1 authorization matrix before any Policy, Gate, or middleware implementation begins.** Every access-control decision in code should trace to a specific cell in Section 1, not be independently re-derived by whoever implements it.
 2. **Confirm the four non-negotiable rules from the brief are each individually testable and release-blocking**, exactly as ADR-002 already treats tenant-isolation tests: Website-Designer-assignment-boundedness, Super-Admin-audit-completeness, Clinic-Owner-platform-resource-exclusion, and Public-Visitor-tenant-existence-non-inference should each have dedicated negative test suites before general availability.
-3. **Resolve the still-open booking-semantics and commercial-model questions this document inherited from 18_AGGREGATE_DESIGN.md and 20_API_DESIGN.md** (manual vs. automatic Booking confirmation, Public Visitor self-cancellation scope, Invoice's provisional status) before their corresponding permission cells are treated as final rather than provisional.
+3. **Apply ADR-013 before exposing Booking delivery.** Clinic Owner confirmation is manual, System does not confirm or complete, and no Public Visitor self-cancellation policy is approved. Invoice's provisional status remains a separate commercial-model question.
 4. **Commission the Super Admin category-authorization model as its own follow-up decision** — this document assumes Platform Setting and Template categories exist and are individually assignable, but the exact category taxonomy and who is authorized for each is not itself defined here and should not be improvised at implementation time.
 5. **Require this document to be updated in the same change as 20_API_DESIGN.md whenever a resource or action is added, removed, or re-scoped** — the two documents are companion artifacts, and letting them drift apart would silently reintroduce exactly the kind of undocumented authorization surface this document exists to prevent.
 6. **Do not treat any `❌` cell as a future feature backlog item by default.** Several denials in Section 1 (Website Designer on Booking, Clinic Owner on Template authoring, Public Visitor everywhere except four resources) are deliberate security boundaries reflecting the locked role model in 02_MVP_SCOPE.md, not gaps awaiting a convenient relaxation.

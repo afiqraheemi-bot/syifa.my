@@ -821,14 +821,14 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 
 **Bounded Context:** Booking Context.
 
-**Supported Operations:** `POST` (submit) ✓ · `GET` ✓ · action-style `POST` for confirmation, change, cancellation, completion ✓ · `PUT` ✗ · `PATCH` ✗ · `DELETE` ✗ — **intentionally, and by design**: 18_AGGREGATE_DESIGN.md's own invariant states a Booking that reached an accepted state is never deleted; cancellation is a business outcome, not a removal, per 19_DATABASE_STRATEGY.md's explicit direction that "Booking must not use generic soft deletion."
+**Supported Operations:** Future public `POST` (submit) ✓ · `GET` ✓ · action-style `POST` for confirmation, cancellation, and completion ✓ · `PUT` ✗ · `PATCH` ✗ · `DELETE` ✗ — **intentionally, and by design**: a Booking is never deleted; cancellation is a business outcome. Public delivery remains guarded by ADR-013 and is not authorized merely by this API catalogue.
 
 **`POST /bookings`**
 - Purpose: Submit a new Booking.
-- Business Rules: Must never conflict with another accepted Booking for the same service and time under the approved single-capacity rule (18_AGGREGATE_DESIGN.md's core invariant); requires explicit consent that submission is not for emergencies and does not create medical advice (02_MVP_SCOPE.md); captures a snapshot of the service name, duration, and location at the moment of booking, independent of any later Clinic Service change.
+- Business Rules: Requires a mandatory active tenant-owned Service and a generated slot from effective Clinic-local availability. Acceptance transactionally reserves capacity one and creates `submitted`; PostgreSQL exclusion enforcement is authoritative over overlaps for the same Tenant and Service. It also requires explicit consent that submission is not for emergencies and does not create medical advice, and captures the ADR-013 temporal and Service snapshots. This endpoint must not be exposed until ADR-013's public guardrail is satisfied.
 - Authorization: Public Visitor.
 - Request Summary: Clinic Service reference, selected slot, minimum Booking Contact information, required consent acknowledgment.
-- Response Summary: `201 Created` on acceptance, with a confirmation reference the Public Visitor can use for subsequent lookups; `409` if the slot is no longer available.
+- Response Summary: `201 Created` with a reserved `submitted` Booking awaiting Clinic Owner confirmation and a confirmation reference; `409` if the slot is no longer available.
 - Possible Errors: `409` slot conflict; `422` missing required consent or contact information; `404` if the Clinic Service is not currently bookable; `429` under public rate limiting.
 - Idempotency: **Required** — this is the platform's highest-stakes idempotency requirement given the cost of a duplicate booking to both the Public Visitor and the Clinic; a retried submission with the same idempotency key returns the original outcome, never a second Booking.
 - Audit Requirements: None (not a privileged action), but the acceptance/conflict outcome is business-event-tracked for the Notification this triggers.
@@ -855,8 +855,8 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 
 **`POST /bookings/{id}/confirmation`**
 - Purpose: Move a Booking from `submitted` to `confirmed`.
-- Business Rules: Whether confirmation is automatic on submission or requires an explicit confirmation step remains a provisional, not-yet-locked booking-semantics question (14_DOMAIN_MODEL.md's own open question); this endpoint exists to support either outcome without a future contract change.
-- Authorization: System-triggered (if automatic) or Clinic Owner (if manual confirmation is the approved policy).
+- Business Rules: Clinic Owner confirmation is required; System does not automatically confirm.
+- Authorization: Clinic Owner (own Tenant).
 - Request Summary: No body beyond confirmation.
 - Response Summary: Updated Booking with `confirmed` status.
 - Possible Errors: `409` if not currently in `submitted` state.
@@ -865,9 +865,9 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 
 **`POST /bookings/{id}/cancellation`**
 - Purpose: Cancel a Booking.
-- Business Rules: Cancellation is a recorded business outcome, never a deletion (19_DATABASE_STRATEGY.md); the exact scope of approved Public Visitor self-service cancellation remains provisional per 14_DOMAIN_MODEL.md's open questions.
-- Authorization: Public Visitor (via confirmation reference, own Booking, within approved rules) · Clinic Owner (own Tenant, permitted management) · Super Admin (privileged support correction only).
-- Request Summary: A stated reason (optional for the Public Visitor, expected for Clinic-Owner-initiated cancellation).
+- Business Rules: Cancellation is a recorded terminal outcome, never deletion. It is valid only from `submitted` or `confirmed` and releases capacity. No public cancellation policy is approved by ADR-013.
+- Authorization: Clinic Owner (own Tenant) · Super Admin (purpose-limited support correction only).
+- Request Summary: Required accountable reason.
 - Response Summary: Updated Booking with `cancelled` status.
 - Possible Errors: `409` if not currently cancellable (e.g., already completed).
 - Idempotency: Naturally idempotent.
@@ -1368,9 +1368,9 @@ Role codes: **PV** = Public Visitor · **CO** = Clinic Owner · **WD** = Website
 | Booking | `POST /bookings` | Submit | **PV** |
 | Booking | `GET /bookings` | List | CO (own), SA |
 | Booking | `GET /bookings/{id}` | View | **PV** (own, via reference), CO (own), SA |
-| Booking | `POST /bookings/{id}/confirmation` | Confirm | SYS or CO (per policy) |
-| Booking | `POST /bookings/{id}/cancellation` | Cancel | **PV** (own), CO (own), SA (privileged) |
-| Booking | `POST /bookings/{id}/completion` | Complete | CO (own), SYS |
+| Booking | `POST /bookings/{id}/confirmation` | Confirm | CO (own) |
+| Booking | `POST /bookings/{id}/cancellation` | Cancel | CO (own), SA (privileged correction) |
+| Booking | `POST /bookings/{id}/completion` | Complete | CO (own) |
 | Subscription | `GET /subscriptions`, `GET /subscriptions/{id}` | List/view | CO (own), SA |
 | Subscription | `POST /subscriptions` | Create | CO (own) |
 | Subscription | `POST .../plan-changes`, `.../cancellation`, `.../reactivation` | Commercial actions | CO (own), SA |
@@ -1417,7 +1417,7 @@ Role codes: **PV** = Public Visitor · **CO** = Clinic Owner · **WD** = Website
 | Template | — | Read-only (selection context) | Read + selection | Full authoring, privileged |
 | Media | — | Own Tenant assets | Assigned Tenant + private onboarding assets | Full, platform assets |
 | Clinic Services | Live availability read only | Full, own Tenant | Full, assigned onboarding | Full, privileged |
-| Booking | Submit, view own (via reference), cancel own | View/manage own Tenant's Bookings | — | Privileged support correction |
+| Booking | Submit, view own (via reference); no public cancellation policy approved | View/manage own Tenant's Bookings | — | Privileged support correction |
 | Subscription | — | Full, own Tenant | — | Controlled administrative actions |
 | Invoices | — | Read-only, own | — | Read-only, any |
 | Payments | — | View own Phase 1 records only; no self-service initiation/retry in Phase 1 | Authorized platform-assigned initiation only where explicitly approved | View any; authorized platform-assisted initiation where category-scoped |
@@ -1488,7 +1488,7 @@ No resource in this document's Version 1 catalogue is deprecated as of this writ
 
 1. **Approve this document as the binding Version 1 resource catalogue before any route, controller, or OpenAPI work begins.** Implementation that starts from a different resource set than the nineteen defined here will re-litigate decisions this document, 18_AGGREGATE_DESIGN.md, and 19_DATABASE_STRATEGY.md have already made together.
 2. **Confirm the two additions (Clinic Registration, Tenant) and the exclusion (Audit Entry) explicitly.** These are the three places this document diverged from a literal reading of the brief's candidate list, and each is load-bearing for the API actually covering the locked MVP journey.
-3. **Resolve the booking-semantics open questions before Booking's endpoints are implemented** — specifically, whether confirmation is automatic or manual, and the exact scope of Public Visitor self-service cancellation — both are flagged as provisional in the Booking resource definition and directly affect its endpoint behavior, not just its documentation.
+3. **Implement Booking only through ADR-013's sequence and guardrail** — confirmation is manual by the Clinic Owner and no Public Visitor self-service cancellation policy is approved. Public submission remains unavailable until its operational-time, availability, snapshot, and database-collision prerequisites are complete.
 4. **Commission the OpenAPI/Swagger contract as the very next artifact once this document is accepted**, generated from — not designed independently of — the resource and operation definitions here.
 5. **Require the Authorization Matrix as a mandatory input to the authorization-policy implementation** (ADR-003, Decision 7's framework-native, aggregate-scoped policy classes) so the two artifacts cannot silently drift apart.
 6. **Treat every "Mandatory Audit Entry" flag in this document as a release-blocking implementation requirement**, verified in the same way ADR-002's tenant-isolation tests are release-blocking.

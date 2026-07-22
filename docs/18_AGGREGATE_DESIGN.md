@@ -342,7 +342,7 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Value Objects.** Service Duration, Service Description, booking status flag, applicable location/delivery context.
 
-**Business Invariants.** A Clinic Service cannot be marked bookable without complete and valid configuration (duration, applicable location or delivery context, and at least one availability basis) — being published for presentation does not by itself make a service bookable. Retiring a Clinic Service stops new booking activity without rewriting historical Bookings that already referenced it. An Availability Exception can never silently invalidate an already-accepted Booking.
+**Business Invariants.** A Clinic Service cannot be marked bookable without complete and valid configuration, including mandatory duration and at least one availability basis — being published for presentation does not by itself make a service bookable. Its schedules may only narrow the Clinic's weekly operating hours; explicit closures win, explicit openings cannot exceed that boundary, and contradictory or overlapping exceptions are rejected. Retiring a Clinic Service stops new booking activity without rewriting historical Bookings that already referenced it. An Availability Exception can never silently invalidate an already-accepted Booking. See ADR-013.
 
 **Lifecycle.** Draft → active for presentation → configured → bookable → temporarily unavailable → unbookable but visible → retired → historically referenced.
 
@@ -352,7 +352,7 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Allowed State Changes.** Publish/Retire Service; Configure/Revise Booking Setup; Add/Revise/Remove Availability Schedule; Apply/Cancel Availability Exception — all by the Clinic Owner, or the assigned Website Designer within approved onboarding responsibility.
 
-**Business Rules.** Conflicting Exceptions require deterministic business precedence, a rule the source domain model leaves explicitly open for future policy. Resource, capacity, practitioner, and recurrence semantics beyond single-capacity booking remain unapproved and must not be assumed by implementation.
+**Business Rules.** ADR-013 resolves exception precedence: closures win fail-closed and contradictory or overlapping exceptions are rejected during configuration. Service duration is both slot duration and start interval; there is no buffer or separate interval. Resource, practitioner, recurrence, and capacity beyond one remain unapproved.
 
 **External References.** References Tenant (owner) and Clinic (which clinic's catalogue), Clinic Location(s) and Practitioner Profile(s) — all by identifier.
 
@@ -380,21 +380,21 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Value Objects.** Booking Contact (the minimum person and communication information for this Booking — converted from Entity to Value Object per 15_DOMAIN_CLASSIFICATION.md, since it has no lifecycle beyond this Booking); a captured snapshot of the service name, duration, and location at the moment of booking (protecting historical meaning even if Clinic Service later changes, per 14_DOMAIN_MODEL.md's explicit rule that "Bookings refer to the Service meaning that applied when booked").
 
-**Business Invariants.** A Booking must never conflict with another accepted Booking for the same service and time slot under the approved single-capacity rule. A Booking Opportunity (computed, not stored) must never combine one Tenant's Service with another Tenant's availability. A Booking is not a clinical record, diagnosis, emergency communication, or patient account.
+**Business Invariants.** A Booking must never conflict with another `submitted`, `confirmed`, or `completed` Booking with the same Tenant and Service over a half-open interval; authoritative PostgreSQL exclusion enforcement protects capacity one. A successful submission transaction reserves a generated active slot and creates `submitted`, never an unreserved contact request. A Booking Opportunity (computed, not stored) must never combine one Tenant's Service with another Tenant's availability. A Booking is not a clinical record, diagnosis, emergency communication, or patient account.
 
-**Lifecycle.** Submitted → pending confirmation (if policy requires) → confirmed → changed → cancelled → completed or closed.
+**Lifecycle.** `submitted → confirmed`, `submitted → cancelled`, `confirmed → cancelled`, or `confirmed → completed`. Clinic Owner confirmation is required. `cancelled` and `completed` are terminal.
 
-**Transaction Boundary.** Accepting a Booking (checking for conflict and committing the accepted slot) is one atomic action that must not be split across two operations, since the conflict check and the commit are the invariant this aggregate exists to protect. Confirming, changing, cancelling, and completing a Booking are each separate atomic actions.
+**Transaction Boundary.** Accepting a Booking (validating an offered slot and committing its reservation) is one atomic action. Application checks improve feedback but cannot replace the PostgreSQL exclusion invariant. Confirming, cancelling, and completing a Booking are separate atomic actions with optimistic locking and transition history.
 
 **Consistency Boundary.** The Booking's own status, contact, and captured service snapshot are strongly consistent. The live state of the Clinic Service aggregate is read at acceptance time but not owned afterward — later Service changes never retroactively alter an already-accepted Booking's captured meaning.
 
-**Allowed State Changes.** Submit Booking (Public Visitor); Confirm/Change/Cancel (Public Visitor within approved rules, or Clinic Owner within permitted management); Complete/Close (Clinic Owner, or system on schedule); Correct (Super Admin, privileged support only).
+**Allowed State Changes.** Submit Booking (Public Visitor); Confirm submitted, cancel submitted or confirmed with reason, and complete confirmed (Clinic Owner); Correct (Super Admin, purpose-limited support only with atomic Platform Audit Entry). No public cancellation policy is approved; System does not automatically confirm or complete.
 
 **Business Rules.** Explicit consent that submission is not for emergencies and does not create medical advice is required before acceptance. Booking Contact information is collected at the minimum necessary and never reused across clinics or for marketing.
 
 **External References.** References Tenant (owner), Clinic Service (by identifier, captured as a snapshot at booking time), Clinic Location and Practitioner Profile (by identifier, snapshot).
 
-**Events Produced.** Booking Submitted; Booking Confirmed; Booking Changed; Booking Cancelled; Booking Completed.
+**Events Produced.** Booking Submitted; Booking Confirmed; Booking Cancelled; Booking Completed. Every transition carries the business-history evidence required by ADR-013.
 
 **Events Consumed.** Tenant Activated / Tenant Suspended (gates whether new Bookings may be accepted); Entitlement Changed (gates Booking System access); Clinic Service Published / Clinic Service Retired (informs whether a booking attempt is currently valid, evaluated at submission time).
 
@@ -600,7 +600,7 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Events Produced.** Notification Queued; Notification Sent; Notification Delivered; Notification Delayed; Notification Failed; Notification Suppressed.
 
-**Events Consumed.** Clinic Registration Approved/Rejected, Tenant Suspended (Tenant); Website Approval Requested/Granted, Onboarding Job Completed (Onboarding Job); Subscription Activated, Payment Failed, Payment Action Required (Subscription, Payment); Booking Submitted/Confirmed/Changed/Cancelled (Booking); Website Published (Website). This aggregate originates no business truth of its own — it is intentionally downstream of every other aggregate that can trigger a transactional event.
+**Events Consumed.** Clinic Registration Approved/Rejected, Tenant Suspended (Tenant); Website Approval Requested/Granted, Onboarding Job Completed (Onboarding Job); Subscription Activated, Payment Failed, Payment Action Required (Subscription, Payment); Booking Submitted/Confirmed/Cancelled/Completed (Booking); Website Published (Website). This aggregate originates no business truth of its own — it is intentionally downstream of every other aggregate that can trigger a transactional event.
 
 **Security Considerations.** Repeated Delivery Attempts must never change the originating business event. Content must never mix Tenant context or recipients across Tenants (ADR-002).
 

@@ -639,19 +639,19 @@ Platform Identity, Activity Log, Audit Log, Platform Setting, and any retained S
 
 ### Booking
 
-**Purpose.** Represents a Public Visitor's accepted or tracked request for a specific Clinic Service and booking opportunity.
+**Purpose.** Represents a Public Visitor's collision-safe reserved appointment for a specific Clinic Service and generated booking opportunity, per [ADR-013](./decisions/ADR-013-Booking-Availability-Reservation-Lifecycle-Strategy.md).
 
-**Responsibilities.** Preserves the service, clinic, location or delivery context, scheduled time, Booking Contact, consent evidence, current status, cancellation or change outcome, and communication state.
+**Responsibilities.** Preserves the mandatory Service identity, local appointment date and time, UTC start and end, Clinic IANA timezone and Service-duration snapshots, Booking Contact, consent evidence, current status, cancellation outcome, and communication state.
 
 **Ownership.** Tenant-owned and associated with exactly one Tenant.
 
 **Relationships.** Refers to one Clinic Service, one Service Setup context, one Booking Opportunity, one Booking Contact, and relevant Notifications. It may be viewed and managed by the Clinic Owner under approved rules.
 
-**Lifecycle.** Submitted, pending confirmation if policy requires, confirmed, changed, cancelled, completed or closed, and retained or removed under approved policy.
+**Lifecycle.** `submitted`, `confirmed`, `cancelled`, or `completed`. `submitted` is already reserved and awaits Clinic Owner confirmation; `cancelled` and `completed` are terminal. No-show, a separate rejected status, rescheduling, and automatic completion are outside Phase 1.
 
-**Business Rules.** It must not conflict with another accepted Booking under the approved capacity rule. It is not a clinical record, diagnosis, emergency communication, or patient account. Historical meaning must survive later Service or Schedule changes.
+**Business Rules.** Service is mandatory, active, tenant-owned, durationally configured, and must offer the selected generated slot. Capacity is one for overlapping `[start, end)` intervals scoped by Tenant and Service. PostgreSQL exclusion enforcement is authoritative; an Application check alone is insufficient. It is not a clinical record, diagnosis, emergency communication, or patient account. Historical meaning must survive later Service or Schedule changes.
 
-**Who can modify it.** Public Visitor may submit and perform approved cancellation or change behavior; Clinic Owner may perform permitted management; Super Admin only through explicit support authority.
+**Who can modify it.** Public Visitor may submit; no public cancellation policy is approved. Clinic Owner may confirm, cancel with reason, or complete according to the approved transitions. Super Admin may perform purpose-limited, atomically audited support correction only. Website Designer has no operational Booking access.
 
 **Who owns it.** The Tenant owns the booking business relationship; the Public Visitor owns supplied personal-detail accuracy; Syifa.my governs booking integrity.
 
@@ -1310,7 +1310,7 @@ Booking Contact, Invoice, Payment, Audit, domain, and onboarding evidence may ha
 ## Recommendations for CTO
 
 1. **Approve the domain vocabulary before technical modeling.** Require teams to use Tenant, Clinic, Customer, Public Visitor, Template, Theme, Service, Service Setup, Subscription, Entitlement, Activity, and Audit consistently.
-2. **Resolve booking semantics next.** Service resource, location, practitioner, capacity, confirmation, conflict, cancellation, and rescheduling rules affect the highest-risk relationships.
+2. **Implement the approved Booking sequence.** ADR-013 resolves Phase 1 Service, capacity, confirmation, conflict, cancellation, and rescheduling boundaries; implementation must proceed through its separate Increment 5C–5H sequence without adding excluded resource models.
 3. **Confirm cardinality decisions.** Approve Phase 1 rules for Website per Tenant, active Clinic Owners, Customer-to-Tenant, active Subscription, Custom Domains, and Website Designer collaboration.
 4. **Decide the commercial minimum.** Confirm whether Invoice is an active Phase 1 concept or only future-compatible vocabulary. Add-On is resolved by 28_COMMERCIAL_CATALOGUE_SPECIFICATION.md (deferred pending an approved recurring entitlement-supplement use case); Plan, Billing Option, Plan Offering, and Capability Catalogue are formalized as governed reference data by that same specification.
 5. **Validate Template and Theme boundaries.** Use all five premium designs to prove which differences are shared structure, Template behavior, and permitted Theme configuration.

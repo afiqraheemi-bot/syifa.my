@@ -23,6 +23,7 @@ This document is the governance index for architecture decisions and architectur
 | [ADR-010](./decisions/ADR-010-Payment-Verification-Application.md) | Payment Verification Application and Reconciliation | Active | Defines the durable `PaymentVerificationApplication` lifecycle, atomic system-audit/outbox/reconciliation-case creation, and the transactional-outbox delivery pattern. Explicitly excludes Subscription activation from its own scope. |
 | [ADR-011](./decisions/ADR-011-Initial-Subscription-Activation.md) | Initial Subscription Activation | Active | Defines Subscription's first `Pending → Active` activation from one verified Payment outcome via a durable `SubscriptionActivationApplication`, the reserved-`TenantId` ownership chain, and the annual-term calendar-anniversary date algorithm. Adds a narrow, non-superseding addendum to ADR-007 on tenant-identity reservation timing. |
 | [ADR-012](./decisions/ADR-012-Phase-1-Tenant-Clinic-Lineage.md) | Phase 1 Tenant–Clinic Lineage | Active | Locks Clinic as the owner of the 1:1 relationship through `TenantId`; Tenant and Booking do not store `ClinicId`, and public Booking Submission cannot accept it. |
+| [ADR-013](./decisions/ADR-013-Booking-Availability-Reservation-Lifecycle-Strategy.md) | Booking Availability, Reservation and Lifecycle Strategy | Active | Locks collision-safe public reservation, Service and time requirements, PostgreSQL collision authority, lifecycle, authorization, audit, and the Increment 5C–5H sequence. |
 
 ## Superseded ADRs
 
