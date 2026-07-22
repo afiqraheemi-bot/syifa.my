@@ -79,6 +79,7 @@ final class BookingFoundationArchitectureTest extends TestCase
     {
         self::assertFileExists($this->root().'/app/Modules/Booking/Infrastructure/Persistence/Repositories/PostgresBookingRepository.php');
         self::assertFileExists($this->root().'/app/Modules/Booking/Infrastructure/Persistence/Repositories/PostgresServiceRepository.php');
+        self::assertFileExists($this->root().'/app/Modules/Booking/Infrastructure/Persistence/Repositories/PostgresBookingFormConfigurationRepository.php');
 
         foreach ($this->phpFilesIn(
             $this->root().'/app/Modules/Booking/Domain',
@@ -87,7 +88,22 @@ final class BookingFoundationArchitectureTest extends TestCase
         ) as $file) {
             self::assertStringNotContainsString('implements BookingRepositoryInterface', $this->source($file), $file);
             self::assertStringNotContainsString('implements ServiceRepositoryInterface', $this->source($file), $file);
+            self::assertStringNotContainsString('implements BookingFormConfigurationRepositoryInterface', $this->source($file), $file);
         }
+    }
+
+    public function test_booking_form_configuration_is_isolated_from_the_booking_aggregate(): void
+    {
+        self::assertFileExists($this->root().'/app/Modules/Booking/Domain/BookingFormConfiguration.php');
+
+        $configurationSource = $this->source($this->root().'/app/Modules/Booking/Domain/BookingFormConfiguration.php');
+        self::assertStringNotContainsString('Booking $', $configurationSource);
+        self::assertStringNotContainsString('use App\\Modules\\Booking\\Domain\\Booking;', $configurationSource);
+        self::assertStringNotContainsString('BookingId', $configurationSource);
+        self::assertStringNotContainsString('BookingReference', $configurationSource);
+
+        $bookingSource = $this->source($this->root().'/app/Modules/Booking/Domain/Booking.php');
+        self::assertStringNotContainsString('BookingFormConfiguration', $bookingSource);
     }
 
     public function test_foundation_introduces_no_scheduling_or_notification_artifact(): void
@@ -104,7 +120,9 @@ final class BookingFoundationArchitectureTest extends TestCase
                 'WebsiteBuilder',
                 'Pricing',
                 'ServiceCategory',
-                'Doctor',
+                'DoctorSchedule',
+                'DoctorAssignment',
+                'class Doctor',
                 'Room',
                 'Controller',
             ] as $forbidden) {
@@ -119,6 +137,7 @@ final class BookingFoundationArchitectureTest extends TestCase
             [
                 $this->root().'/database/migrations/booking/2026_07_30_000001_create_bookings_table.php',
                 $this->root().'/database/migrations/booking/2026_07_31_000001_create_services_table.php',
+                $this->root().'/database/migrations/booking/2026_08_01_000001_create_booking_form_configurations_table.php',
             ],
             glob($this->root().'/database/migrations/booking/*.php') ?: [],
         );

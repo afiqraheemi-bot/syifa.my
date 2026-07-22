@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Booking\Infrastructure;
 
+use App\Modules\Booking\Contracts\Repositories\BookingFormConfigurationRepositoryInterface;
 use App\Modules\Booking\Contracts\Repositories\BookingRepositoryInterface;
 use App\Modules\Booking\Contracts\Repositories\ServiceRepositoryInterface;
+use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingFormConfigurationPersistenceMapper;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingPersistenceMapper;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\ServicePersistenceMapper;
+use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingFormConfigurationRepository;
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingRepository;
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresServiceRepository;
 use Illuminate\Contracts\Foundation\Application;
@@ -31,6 +34,14 @@ final class BookingServiceProvider extends ServiceProvider
             static fn (Application $application): PostgresServiceRepository => new PostgresServiceRepository(
                 $application->make('db')->connection(),
                 $application->make(ServicePersistenceMapper::class),
+            ),
+        );
+        $this->app->singleton(BookingFormConfigurationPersistenceMapper::class);
+        $this->app->singleton(
+            BookingFormConfigurationRepositoryInterface::class,
+            static fn (Application $application): PostgresBookingFormConfigurationRepository => new PostgresBookingFormConfigurationRepository(
+                $application->make('db')->connection(),
+                $application->make(BookingFormConfigurationPersistenceMapper::class),
             ),
         );
     }
