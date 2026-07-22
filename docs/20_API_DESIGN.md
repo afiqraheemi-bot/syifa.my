@@ -1,5 +1,7 @@
 # API Design
 
+> **Website SEO Configuration amendment (2026-08-10):** No SEO HTTP surface is introduced. SEO management remains protected by the existing Website authorization boundary; controllers, APIs, public reads, and generated SEO artifacts require later approval.
+
 > **Website Section Content Models amendment (2026-08-09):** No Website content API is introduced. The typed content and renderability models are Domain-only preparation; controllers, requests, responses, and public delivery require a later approved increment.
 
 > **Website Sections Foundation amendment (2026-08-08):** This increment adds no HTTP surface. Future Section delivery must operate through the Website resource and aggregate boundary; Section is not an independently owned top-level resource.

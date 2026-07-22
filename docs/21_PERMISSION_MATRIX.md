@@ -1,5 +1,7 @@
 # Permission Matrix
 
+> **Website SEO Configuration amendment (2026-08-10):** Clinic Owners manage Website SEO, assigned Website Designers configure it within the existing Website authorization boundary, and Super Admins provide support. Public actors have no SEO-management access. No new role or endpoint is introduced.
+
 > **Website Section Content Models amendment (2026-08-09):** Clinic Owners manage Website Section content, assigned Website Designers configure it within the existing Website authorization boundary, and Super Admins provide support. Public actors have no content-management access. No new role or public endpoint is introduced.
 
 > **Website Sections Foundation amendment (2026-08-08):** Clinic Owner may manage Sections for the owned Tenant Website; an assigned Website Designer may configure Sections; Super Admin support requires explicit support authority; Public Visitor has no configuration access. The existing Website authorization boundary applies unchanged.

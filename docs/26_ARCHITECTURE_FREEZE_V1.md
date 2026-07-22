@@ -1,5 +1,7 @@
 # Architecture Freeze v1
 
+> **Website SEO Configuration governance note (2026-08-10):** ADR-017 authorizes one internal SEO Configuration per Website with normalized persistence. It adds no Aggregate Root, bounded context, renderer, API, structured-data capability, tracking, or external search integration.
+
 > **Website Section Content Models governance note (2026-08-09):** ADR-016 authorizes typed internal content models for the nine governed Website Sections without adding an Aggregate Root, cross-context Domain dependency, persistence schema, API, or rendering capability.
 
 > **Website Sections Foundation amendment (2026-08-08):** Section Collection and Website Section are internal Website entities. They do not add an Aggregate Root, bounded context, module, public surface, or rendering capability. The sixteen-root registry remains unchanged.

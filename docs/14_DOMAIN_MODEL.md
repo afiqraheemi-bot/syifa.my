@@ -1,5 +1,7 @@
 # Syifa.my Phase 1 Domain Model
 
+> **Website SEO Configuration amendment (2026-08-10):** SEO Configuration is a one-to-one internal Website entity keyed by Website identity. It owns validated meta, canonical, robots, Open Graph, indexing, version, and timestamps. It is not independently owned and is not an Aggregate Root.
+
 > **Website Section Content Models amendment (2026-08-09):** Each built-in Website Section has an explicit content model identified by its owning `SectionId`. Content models validate only approved fields and expose their minimum renderability decision. Services and booking availability remain external facts supplied as opaque evaluation inputs; Contact reads Website Branding without copying contact data.
 
 > **Website Sections Foundation amendment (2026-08-08):** Website owns one Section Collection as an internal entity boundary. Website Sections are internal entities, never Aggregate Roots or independently owned records. They contain identity, governed type, unique display order, enablement, version, and timestamps only. Future content attaches through separately governed increments.

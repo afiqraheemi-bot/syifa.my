@@ -1,5 +1,7 @@
 # Aggregate Design
 
+> **Website SEO Configuration amendment (2026-08-10):** Website owns exactly one internal SEO Configuration and governs all changes through the Website aggregate. SEO cannot exist independently. The Aggregate Root registry is unchanged.
+
 > **Website Section Content Models amendment (2026-08-09):** Built-in content models remain internal Website configuration identified by the owning Section. Manual Doctor profiles, manual Testimonials, Gallery images, and FAQ entries are typed child values, not Aggregate Roots. External active-Service and booking-enabled facts are inputs to renderability evaluation, never cross-context Domain imports. The Aggregate Root registry remains unchanged.
 
 > **Website Sections Foundation amendment (2026-08-08):** Section Collection and Website Section are internal to the Website aggregate. Creation explicitly initializes all nine built-in types in governed order. Types and display orders are unique; enable, disable, and reorder operations execute through Website. Built-in sections cannot be deleted. The aggregate-root registry is unchanged.

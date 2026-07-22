@@ -1,5 +1,7 @@
 # MVP Scope
 
+> **Website SEO Configuration amendment (2026-08-10):** Every Website owns one validated SEO configuration with governed robots policy and SEO-ready defaults. This increment adds Domain configuration and normalized persistence only; it adds no meta-tag rendering, sitemap, robots.txt, structured data, webmaster integration, API, or UI.
+
 > **Website Section Content Models amendment (2026-08-09):** The nine built-in Sections have explicit, strongly typed Domain content models and minimum renderability rules. This remains governed configuration only: rendering, delivery, controllers, APIs, and content persistence are not introduced.
 
 > **Website Sections Foundation amendment (2026-08-08):** Website remains the Aggregate Root and owns exactly one internal Section Collection. The collection contains the nine governed, ordered, content-free Section entities (`HERO`, `ABOUT`, `SERVICES`, `DOCTORS`, `TESTIMONIALS`, `GALLERY`, `FAQ`, `CONTACT`, `BOOKING_CTA`). This foundation configures enablement and order only; it adds no content, rendering, page-builder, API, or UI capability.
