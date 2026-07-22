@@ -19,5 +19,11 @@ final readonly class ClinicStorageRecord
         public int $version,
         public ?int $appointmentDurationMinutes,
         public ?int $bookingCapacityPerSlot,
+        public ?string $operationalPhone,
+        public ?string $operationalEmail,
+        public ?string $postalAddress,
+        public ?string $whatsAppNumber,
+        public ?float $latitude,
+        public ?float $longitude,
     ) {}
 }

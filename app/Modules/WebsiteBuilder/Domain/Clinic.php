@@ -6,6 +6,7 @@ namespace App\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidClinicOperationalTimeException;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicBookingConfiguration;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicContactProfile;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\IanaTimezone;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
@@ -23,6 +24,7 @@ final class Clinic
         private DateTimeImmutable $updatedAt,
         private int $version,
         private ?ClinicBookingConfiguration $bookingConfiguration,
+        private ClinicContactProfile $contactProfile,
     ) {}
 
     public static function create(
@@ -33,7 +35,7 @@ final class Clinic
         DateTimeImmutable $occurredAt,
         ?ClinicBookingConfiguration $bookingConfiguration = null,
     ): self {
-        return new self($id, $tenantId, $timezone, $weeklyOperatingHours, $occurredAt, $occurredAt, 0, $bookingConfiguration);
+        return new self($id, $tenantId, $timezone, $weeklyOperatingHours, $occurredAt, $occurredAt, 0, $bookingConfiguration, new ClinicContactProfile);
     }
 
     public static function reconstitute(
@@ -45,6 +47,7 @@ final class Clinic
         DateTimeImmutable $updatedAt,
         int $version,
         ?ClinicBookingConfiguration $bookingConfiguration = null,
+        ?ClinicContactProfile $contactProfile = null,
     ): self {
         if ($version < 1) {
             throw new InvalidClinicOperationalTimeException('A persisted Clinic requires a positive version.');
@@ -53,7 +56,7 @@ final class Clinic
             throw new InvalidClinicOperationalTimeException('A persisted Clinic cannot be updated before creation.');
         }
 
-        return new self($id, $tenantId, $timezone, $weeklyOperatingHours, $createdAt, $updatedAt, $version, $bookingConfiguration);
+        return new self($id, $tenantId, $timezone, $weeklyOperatingHours, $createdAt, $updatedAt, $version, $bookingConfiguration, $contactProfile ?? new ClinicContactProfile);
     }
 
     public function reconfigureOperationalTime(
@@ -92,6 +95,26 @@ final class Clinic
     public function bookingConfigurationOrNull(): ?ClinicBookingConfiguration
     {
         return $this->bookingConfiguration;
+    }
+
+    public function contactProfile(): ClinicContactProfile
+    {
+        return $this->contactProfile;
+    }
+
+    public function updateContactProfile(ClinicContactProfile $profile, DateTimeImmutable $occurredAt): bool
+    {
+        if ($occurredAt < $this->updatedAt) {
+            throw new InvalidClinicOperationalTimeException('Clinic Contact Profile cannot be changed in the past.');
+        }
+        if ($this->contactProfile->equals($profile)) {
+            return false;
+        }
+
+        $this->contactProfile = $profile;
+        $this->updatedAt = $occurredAt;
+
+        return true;
     }
 
     public function configureBooking(

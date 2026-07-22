@@ -8,6 +8,7 @@ use App\Modules\WebsiteBuilder\Domain\Clinic;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\BookingAppointmentDuration;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\BookingCapacityPerSlot;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicBookingConfiguration;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicContactProfile;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\IanaTimezone;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\LocalTime;
@@ -44,6 +45,12 @@ final class ClinicPersistenceMapper
             $clinic->version(),
             $configuration?->appointmentDuration->minutes,
             $configuration?->capacityPerSlot->value,
+            $clinic->contactProfile()->operationalPhone,
+            $clinic->contactProfile()->operationalEmail,
+            $clinic->contactProfile()->postalAddress,
+            $clinic->contactProfile()->whatsAppNumber,
+            $clinic->contactProfile()->latitude,
+            $clinic->contactProfile()->longitude,
         );
     }
 
@@ -71,6 +78,14 @@ final class ClinicPersistenceMapper
                     new BookingAppointmentDuration($record->appointmentDurationMinutes),
                     new BookingCapacityPerSlot($record->bookingCapacityPerSlot),
                 ),
+            new ClinicContactProfile(
+                $record->operationalPhone,
+                $record->operationalEmail,
+                $record->postalAddress,
+                $record->whatsAppNumber,
+                $record->latitude,
+                $record->longitude,
+            ),
         );
     }
 }

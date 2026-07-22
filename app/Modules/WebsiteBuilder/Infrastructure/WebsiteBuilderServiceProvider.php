@@ -9,6 +9,7 @@ use App\Modules\WebsiteBuilder\Contracts\Queries\WebsitePublishedSnapshotReadInt
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\ClinicPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteAssetPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersistenceMapper;
@@ -19,6 +20,7 @@ use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresW
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\BookingClinicOperationalTimeAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsitePublishedSnapshotReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteReadAdapter;
+use App\Modules\WebsiteBuilder\Infrastructure\Transactions\PostgresClinicTransaction;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 
@@ -37,6 +39,10 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
                 $application->make('db')->connection(),
                 $application->make(ClinicPersistenceMapper::class),
             ),
+        );
+        $this->app->singleton(
+            ClinicTransactionInterface::class,
+            static fn (Application $application): PostgresClinicTransaction => new PostgresClinicTransaction($application->make('db')->connection()),
         );
         $this->app->singleton(
             WebsiteRepositoryInterface::class,

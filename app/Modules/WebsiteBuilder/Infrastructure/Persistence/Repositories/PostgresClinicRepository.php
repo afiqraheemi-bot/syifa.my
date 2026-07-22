@@ -71,6 +71,7 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
             }
 
             $this->insertIntervals($record);
+            $this->saveContactProfile($record);
 
             return $newVersion;
         });
@@ -112,6 +113,32 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
         ));
     }
 
+    private function saveContactProfile(ClinicStorageRecord $record): void
+    {
+        $now = $this->timestamp(new DateTimeImmutable);
+        $values = [
+            'tenant_id' => $record->tenantId,
+            'operational_phone' => $record->operationalPhone,
+            'operational_email' => $record->operationalEmail,
+            'postal_address' => $record->postalAddress,
+            'whatsapp_number' => $record->whatsAppNumber,
+            'latitude' => $record->latitude,
+            'longitude' => $record->longitude,
+            'updated_at' => $now,
+        ];
+        $query = $this->connection->table('clinic_contact_profiles')->where('clinic_id', $record->id);
+        if ($query->exists()) {
+            $query->update($values);
+
+            return;
+        }
+        $this->connection->table('clinic_contact_profiles')->insert([
+            'clinic_id' => $record->id,
+            ...$values,
+            'created_at' => $now,
+        ]);
+    }
+
     private function toDomain(stdClass $row): Clinic
     {
         $id = $this->string($row, 'id');
@@ -127,6 +154,14 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
             $this->time($interval, 'closes_at'),
         ), $intervalRows->all()));
 
+        $profile = $this->connection->table('clinic_contact_profiles')
+            ->where('clinic_id', $id)
+            ->where('tenant_id', $this->string($row, 'tenant_id'))
+            ->first();
+        if ($profile === null) {
+            throw new InvalidClinicStorageStateException('Stored Clinic is missing its Contact Profile.');
+        }
+
         $record = new ClinicStorageRecord(
             $id,
             $this->string($row, 'tenant_id'),
@@ -137,6 +172,12 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
             $this->integer($row, 'version'),
             $this->nullableInteger($row, 'appointment_duration_minutes'),
             $this->nullableInteger($row, 'booking_capacity_per_slot'),
+            $this->nullableString($profile, 'operational_phone'),
+            $this->nullableString($profile, 'operational_email'),
+            $this->nullableString($profile, 'postal_address'),
+            $this->nullableString($profile, 'whatsapp_number'),
+            $this->nullableFloat($profile, 'latitude'),
+            $this->nullableFloat($profile, 'longitude'),
         );
 
         try {
@@ -181,6 +222,27 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
             return (int) $value;
         }
         throw new InvalidClinicStorageStateException(sprintf('Storage field %s must be an integer or null.', $field));
+    }
+
+    private function nullableString(stdClass $row, string $field): ?string
+    {
+        $value = $row->{$field} ?? null;
+        if ($value === null || is_string($value)) {
+            return $value;
+        }
+        throw new InvalidClinicStorageStateException(sprintf('Storage field %s must be a string or null.', $field));
+    }
+
+    private function nullableFloat(stdClass $row, string $field): ?float
+    {
+        $value = $row->{$field} ?? null;
+        if ($value === null) {
+            return null;
+        }
+        if (is_float($value) || is_int($value) || is_numeric($value)) {
+            return (float) $value;
+        }
+        throw new InvalidClinicStorageStateException(sprintf('Storage field %s must be numeric or null.', $field));
     }
 
     private function time(stdClass $row, string $field): string
