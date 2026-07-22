@@ -1,5 +1,7 @@
 # Architecture Freeze v1
 
+> **Website Asset Management Foundation governance note (2026-08-11):** ADR-018 authorizes Website Asset as an internal Website entity with normalized persistence and typed references. It adds no Aggregate Root, file/media bounded context, upload, provider, CDN, API, or rendering capability.
+
 > **Website SEO Configuration governance note (2026-08-10):** ADR-017 authorizes one internal SEO Configuration per Website with normalized persistence. It adds no Aggregate Root, bounded context, renderer, API, structured-data capability, tracking, or external search integration.
 
 > **Website Section Content Models governance note (2026-08-09):** ADR-016 authorizes typed internal content models for the nine governed Website Sections without adding an Aggregate Root, cross-context Domain dependency, persistence schema, API, or rendering capability.

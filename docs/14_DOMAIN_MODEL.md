@@ -1,5 +1,7 @@
 # Syifa.my Phase 1 Domain Model
 
+> **Website Asset Management Foundation amendment (2026-08-11):** Website Asset is an internal Website entity with immutable Asset/Tenant identity, storage key, governed image MIME type, byte size, optional dimensions, checksum, lifecycle, version, and timestamps. Website owns the collection and validates Tenant lineage. Branding, Section content, doctor photos, and SEO use typed `AssetId` references.
+
 > **Website SEO Configuration amendment (2026-08-10):** SEO Configuration is a one-to-one internal Website entity keyed by Website identity. It owns validated meta, canonical, robots, Open Graph, indexing, version, and timestamps. It is not independently owned and is not an Aggregate Root.
 
 > **Website Section Content Models amendment (2026-08-09):** Each built-in Website Section has an explicit content model identified by its owning `SectionId`. Content models validate only approved fields and expose their minimum renderability decision. Services and booking availability remain external facts supplied as opaque evaluation inputs; Contact reads Website Branding without copying contact data.
