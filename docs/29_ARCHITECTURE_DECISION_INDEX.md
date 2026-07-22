@@ -30,6 +30,7 @@ This document is the governance index for architecture decisions and architectur
 | [ADR-017](./decisions/ADR-017-Website-SEO-Configuration-Domain.md) | Website SEO Configuration Domain | Active | Defines one validated, normalized internal SEO Configuration per Website without rendering, generated artifacts, or external search integration. |
 | [ADR-018](./decisions/ADR-018-Website-Asset-Management-Foundation.md) | Website Asset Management Foundation | Active | Defines Website-owned image Assets, typed references, lifecycle, normalized persistence, and logo-only SVG eligibility without upload, storage providers, or rendering. |
 | [ADR-019](./decisions/ADR-019-Website-Publishing-Pipeline-Foundation.md) | Website Publishing Pipeline Foundation | Active | Defines atomic Website publication, immutable normalized Snapshots, versioned History, and snapshot-only public reads without rendering or deployment. |
+| [ADR-020](./decisions/ADR-020-Website-Published-Section-Content-Snapshot.md) | Website Published Section Content Snapshot | Active | Completes immutable Published Snapshots with normalized typed Section content and captured renderability evidence. |
 
 ## Superseded ADRs
 

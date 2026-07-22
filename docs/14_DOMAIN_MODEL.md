@@ -1,5 +1,7 @@
 # Syifa.my Phase 1 Domain Model
 
+> **Website Published Section Content Snapshot amendment (2026-08-13):** Published Section Content is an immutable internal child of `PublishedWebsiteSnapshot`. Exactly one typed content snapshot exists for every governed Section and owns its captured renderability evidence, deterministic fingerprint, opaque Service and Asset references, and normalized ordered child values.
+
 > **Website Publishing Pipeline Foundation amendment (2026-08-12):** Published Snapshot and Publication History are immutable internal Website entities. Website owns the current Snapshot, monotonically increasing published version, last-published metadata, and history. Draft configuration remains independently mutable and cannot be a public read source.
 
 > **Website Asset Management Foundation amendment (2026-08-11):** Website Asset is an internal Website entity with immutable Asset/Tenant identity, storage key, governed image MIME type, byte size, optional dimensions, checksum, lifecycle, version, and timestamps. Website owns the collection and validates Tenant lineage. Branding, Section content, doctor photos, and SEO use typed `AssetId` references.

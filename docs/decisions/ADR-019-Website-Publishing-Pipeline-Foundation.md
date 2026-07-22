@@ -9,7 +9,7 @@ Publishing is an internal atomic operation of the Website Aggregate Root. Websit
 
 Publication requires existing approval and active-entitlement evidence plus explicit readiness evidence that required Website configuration, every enabled Section's typed content, referenced Assets, SEO, and ownership have been validated. Invalid readiness throws before any Domain mutation: no Snapshot, History, version, or last-published metadata changes.
 
-The Snapshot is a self-contained immutable manifest of Website, Branding, SEO, governed Section state, and available Asset metadata at publication time. Section-content values are not yet persisted by the current architecture; readiness therefore supplies a SHA-256 content fingerprint that is captured immutably. A later normalized content-persistence increment must materialize those typed values into Snapshot child tables before public rendering is introduced. Public delivery may never dereference mutable draft tables.
+The Snapshot is a self-contained immutable manifest of Website, Branding, SEO, governed Section state, and available Asset metadata at publication time. ADR-020 completes this decision by materializing typed Section content and renderability evidence in normalized immutable Snapshot child tables before public rendering is introduced. Public delivery may never dereference mutable draft tables.
 
 Preview and public consumption are separate contracts. Preview is future protected behavior over draft state. Public reads use only Published Snapshot persistence and do not join `websites`, `website_sections`, `website_assets`, or `website_seo_configurations`.
 

@@ -1,5 +1,7 @@
 # Architecture Freeze v1
 
+> **Website Published Section Content Snapshot governance note (2026-08-13):** ADR-020 completes the existing Website-owned Published Snapshot with immutable normalized typed Section content and captured renderability evidence. It adds no Aggregate Root, bounded context, repository abstraction, rendering capability, endpoint, or deployment integration.
+
 > **Website Publishing Pipeline Foundation governance note (2026-08-12):** ADR-019 authorizes immutable Website-owned Published Snapshots, Publication History, and a snapshot-only public-read contract. It adds no Aggregate Root, Publishing bounded context, renderer, deployment integration, endpoint, scheduler, or rollback executor.
 
 > **Website Asset Management Foundation governance note (2026-08-11):** ADR-018 authorizes Website Asset as an internal Website entity with normalized persistence and typed references. It adds no Aggregate Root, file/media bounded context, upload, provider, CDN, API, or rendering capability.

@@ -1,5 +1,7 @@
 # Database Strategy — Engineering Principles
 
+> **Website Published Section Content Snapshot amendment (2026-08-13):** `website_published_section_contents` and explicit typed child tables persist immutable content for every governed Section. Scalar fields use explicit columns and ordered collections use normalized child rows. Publication inserts them atomically with the Published Snapshot and history; no JSON, serialization, draft joins, storage URLs, or generic content table is permitted.
+
 > **Website Publishing Pipeline Foundation amendment (2026-08-12):** Immutable `website_published_snapshots` and normalized Section/Asset snapshot children are stored separately from mutable draft tables. `website_publication_history` records publication identity, version, actor, time, and result. Unique versions, insert-only snapshots, optimistic Website writes, and one transaction prevent partial publication. Public snapshot queries never join mutable draft tables.
 
 > **Website Asset Management Foundation amendment (2026-08-11):** `website_assets` stores one normalized row per Website-owned Asset with explicit Website and Tenant lineage, storage metadata, governed MIME/status, checksum, optional dimensions, optimistic version, and timestamps. No generic file table, JSON metadata, binary payload, or storage-provider configuration is introduced. Existing image-reference columns remain opaque Asset identifiers.
