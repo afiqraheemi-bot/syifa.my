@@ -31,6 +31,7 @@ This document is the governance index for architecture decisions and architectur
 | [ADR-018](./decisions/ADR-018-Website-Asset-Management-Foundation.md) | Website Asset Management Foundation | Active | Defines Website-owned image Assets, typed references, lifecycle, normalized persistence, and logo-only SVG eligibility without upload, storage providers, or rendering. |
 | [ADR-019](./decisions/ADR-019-Website-Publishing-Pipeline-Foundation.md) | Website Publishing Pipeline Foundation | Active | Defines atomic Website publication, immutable normalized Snapshots, versioned History, and snapshot-only public reads without rendering or deployment. |
 | [ADR-020](./decisions/ADR-020-Website-Published-Section-Content-Snapshot.md) | Website Published Section Content Snapshot | Active | Completes immutable Published Snapshots with normalized typed Section content and captured renderability evidence. |
+| [ADR-021](./decisions/ADR-021-Public-Website-Rendering-Contract.md) | Public Website Rendering Contract | Active | Defines a transient typed snapshot-only render tree with deterministic ordering and adaptive Section omission. |
 
 ## Superseded ADRs
 

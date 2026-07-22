@@ -1,5 +1,7 @@
 # MVP Scope
 
+> **Public Website Rendering Contract amendment (2026-08-14):** Public rendering is a deterministic transient projection of immutable Published Snapshots into typed Website, Branding, SEO, Header, Footer, Section, Asset, and Publication contracts. This foundation adds no HTML, Blade, Vue, route, controller, API, cache, or storage resolution.
+
 > **Website Published Section Content Snapshot amendment (2026-08-13):** Website publication captures normalized immutable typed content and renderability evidence for all nine governed Sections. Public delivery can therefore remain independent from mutable draft, Clinic, Service, Booking, and storage configuration. This increment adds no renderer, HTML, controller, API, preview, or deployment capability.
 
 > **Website Publishing Pipeline Foundation amendment (2026-08-12):** Website may atomically publish an immutable, explicitly versioned Snapshot after approval, entitlement, draft, Section-content, Asset, SEO, and ownership readiness succeeds. Preview remains draft-only and public reads remain snapshot-only. This foundation adds no rendering, deployment, scheduling, rollback execution, controller, or UI.

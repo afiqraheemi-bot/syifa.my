@@ -1,5 +1,7 @@
 # Syifa.my Phase 1 Domain Model
 
+> **Public Website Rendering Contract note (2026-08-14):** Rendering adds no Domain object or Aggregate. It is a readonly Application projection of immutable `PublishedWebsiteSnapshot` values and never reads mutable Website state.
+
 > **Website Published Section Content Snapshot amendment (2026-08-13):** Published Section Content is an immutable internal child of `PublishedWebsiteSnapshot`. Exactly one typed content snapshot exists for every governed Section and owns its captured renderability evidence, deterministic fingerprint, opaque Service and Asset references, and normalized ordered child values.
 
 > **Website Publishing Pipeline Foundation amendment (2026-08-12):** Published Snapshot and Publication History are immutable internal Website entities. Website owns the current Snapshot, monotonically increasing published version, last-published metadata, and history. Draft configuration remains independently mutable and cannot be a public read source.

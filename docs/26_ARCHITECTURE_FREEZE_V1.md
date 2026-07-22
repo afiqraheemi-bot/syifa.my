@@ -1,5 +1,7 @@
 # Architecture Freeze v1
 
+> **Public Website Rendering Contract governance note (2026-08-14):** ADR-021 authorizes a transient strongly typed Application render tree projected only from immutable Published Snapshots. It adds no Aggregate Root, bounded context, repository, persistence, delivery surface, or rendering technology.
+
 > **Website Published Section Content Snapshot governance note (2026-08-13):** ADR-020 completes the existing Website-owned Published Snapshot with immutable normalized typed Section content and captured renderability evidence. It adds no Aggregate Root, bounded context, repository abstraction, rendering capability, endpoint, or deployment integration.
 
 > **Website Publishing Pipeline Foundation governance note (2026-08-12):** ADR-019 authorizes immutable Website-owned Published Snapshots, Publication History, and a snapshot-only public-read contract. It adds no Aggregate Root, Publishing bounded context, renderer, deployment integration, endpoint, scheduler, or rollback executor.

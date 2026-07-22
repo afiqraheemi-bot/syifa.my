@@ -1,0 +1,24 @@
+# ADR-021: Public Website Rendering Contract
+
+**Status:** Accepted  
+**Date:** 2026-08-14
+
+## Decision
+
+Public Website rendering is a deterministic, transient Application projection of one immutable `PublishedWebsiteSnapshot`. It is not an Aggregate, Repository, bounded context, persistence model, or delivery technology. The projector accepts a complete Snapshot value directly and produces a strongly typed immutable render tree without performing reads or writes.
+
+The render tree contains Website identity, Branding, SEO, Header, Footer, ordered Section contracts, published Asset projections, and Publication metadata. It omits publication actors, source and optimistic versions, fingerprints, validation evidence, editing metadata, storage keys, checksums, byte sizes, and draft lifecycle state. Asset references remain opaque identifiers; rendering does not resolve storage or construct URLs.
+
+Exactly the published Section order is preserved. A Section is projected only when its immutable metadata says `enabled` and its matching immutable content evidence says `renderable`. All other Sections are absent. No placeholder, empty-state, or fallback Section is produced. Doctor projections include only visible profiles and Testimonial projections include only featured testimonials; their control flags do not escape into render contracts.
+
+## Contract
+
+Each of the nine governed Section types has an explicit readonly render contract. Scalar content remains typed, ordered child values remain ordered, and Service and Asset references remain opaque. Header and Footer are deterministic projections of published Branding. SEO is copied as published without validation or generation. Publication metadata exposes only public provenance required to identify the rendered Snapshot version.
+
+## Boundaries
+
+The projector may depend on immutable Website Domain snapshot values and PHP primitives only. It must not depend on Infrastructure, persistence queries, Booking, Billing, Tracking, Analytics, storage providers, publishing orchestration, HTML, Blade, Vue, Livewire, Inertia, routing, controllers, APIs, cache, or external services.
+
+## Compliance
+
+This decision consumes the complete Snapshot authorized by ADR-019 and ADR-020, preserves ADR-016's `enabled && renderable` and no-placeholder rules, and introduces no Aggregate Root or bounded context. Rendering never dereferences mutable Website configuration.
