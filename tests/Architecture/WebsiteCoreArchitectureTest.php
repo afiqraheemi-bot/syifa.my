@@ -24,7 +24,7 @@ final class WebsiteCoreArchitectureTest extends TestCase
     public function test_core_contains_no_delivery_content_or_future_module_implementation(): void
     {
         $website = (string) file_get_contents($this->root().'/app/Modules/WebsiteBuilder/Domain/Website.php');
-        foreach (['Booking', 'Payment', 'Subscription', 'ClinicId', 'Page', 'Seo', 'Tracking', 'File', 'Image', 'Renderer', 'Deployment'] as $forbidden) {
+        foreach (['Booking', 'Payment', 'Subscription', 'ClinicId', 'Page', 'Tracking', 'File', 'Renderer', 'Deployment'] as $forbidden) {
             self::assertStringNotContainsString($forbidden, $website);
         }
         self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Domain/WebsitePage.php');
@@ -79,6 +79,23 @@ final class WebsiteCoreArchitectureTest extends TestCase
 
         self::assertSame([], $this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Presentation'));
         self::assertFileDoesNotExist($this->root().'/database/migrations/website_builder/2026_08_09_000001_create_website_section_content_tables.php');
+    }
+
+    public function test_seo_is_internal_normalized_and_has_no_delivery_dependencies(): void
+    {
+        $seo = (string) file_get_contents($this->root().'/app/Modules/WebsiteBuilder/Domain/WebsiteSeoConfiguration.php');
+        foreach (['App\\Modules\\Booking\\', 'App\\Modules\\SubscriptionBilling\\', 'Publishing\\', 'Rendering\\', 'Analytics\\', 'Tracking\\', 'Illuminate\\'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $seo);
+        }
+        foreach (['sitemap', 'robots.txt', 'schema.org', 'SearchConsole', 'GoogleIndexing'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $seo);
+        }
+        self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Contracts/Repositories/WebsiteSeoConfigurationRepositoryInterface.php');
+        $migration = (string) file_get_contents($this->root().'/database/migrations/website_builder/2026_08_10_000001_create_website_seo_configurations_table.php');
+        self::assertStringContainsString("uuid('website_id')->primary()", $migration);
+        self::assertStringContainsString("foreign('website_id')", $migration);
+        self::assertStringNotContainsString("json('", $migration);
+        self::assertStringNotContainsString("jsonb('", $migration);
     }
 
     /** @return list<string> */

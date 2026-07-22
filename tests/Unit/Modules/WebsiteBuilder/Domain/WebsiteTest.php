@@ -32,6 +32,8 @@ final class WebsiteTest extends TestCase
         self::assertSame(TemplateId::SyifaEssential, $website->templateId());
         self::assertSame('Klinik Syifa', $website->branding()->clinicName);
         self::assertSame(WebsiteLifecycle::Draft, $website->lifecycle());
+        self::assertSame($website->id->value, $website->seo()->websiteId->value);
+        self::assertSame('Klinik Syifa', $website->seo()->metaTitle());
     }
 
     public function test_identity_is_immutable(): void

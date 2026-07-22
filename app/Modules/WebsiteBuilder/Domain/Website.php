@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
@@ -26,6 +27,7 @@ final class Website
         public readonly DateTimeImmutable $createdAt,
         private DateTimeImmutable $updatedAt,
         private WebsiteSectionCollection $sections,
+        private WebsiteSeoConfiguration $seo,
         private int $version = 0,
     ) {
         if ($version < 0 || $updatedAt < $createdAt) {
@@ -36,7 +38,7 @@ final class Website
     /** @param list<SectionId> $sectionIds */
     public static function create(WebsiteId $id, TenantId $tenantId, TemplateId $templateId, WebsiteBranding $branding, array $sectionIds, DateTimeImmutable $at): self
     {
-        return new self($id, $tenantId, $templateId, $branding, WebsiteLifecycle::Draft, $at, $at, WebsiteSectionCollection::defaults($sectionIds, $at));
+        return new self($id, $tenantId, $templateId, $branding, WebsiteLifecycle::Draft, $at, $at, WebsiteSectionCollection::defaults($sectionIds, $at), WebsiteSeoConfiguration::defaults($id, $branding, $at));
     }
 
     public function templateId(): TemplateId
@@ -67,6 +69,28 @@ final class Website
     public function sections(): WebsiteSectionCollection
     {
         return $this->sections;
+    }
+
+    public function seo(): WebsiteSeoConfiguration
+    {
+        return $this->seo;
+    }
+
+    public function configureSeo(
+        string $metaTitle,
+        string $metaDescription,
+        ?string $metaKeywords,
+        ?string $canonicalUrl,
+        RobotsDirective $robotsDirective,
+        string $openGraphTitle,
+        string $openGraphDescription,
+        ?string $openGraphImageReference,
+        bool $indexingEnabled,
+        DateTimeImmutable $at,
+    ): void {
+        $this->assertNotArchived();
+        $this->seo->configure($metaTitle, $metaDescription, $metaKeywords, $canonicalUrl, $robotsDirective, $openGraphTitle, $openGraphDescription, $openGraphImageReference, $indexingEnabled, $at);
+        $this->updatedAt = $at;
     }
 
     public function enableSection(SectionId $id, DateTimeImmutable $at): void

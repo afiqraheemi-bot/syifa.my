@@ -12,10 +12,13 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
 use App\Modules\WebsiteBuilder\Domain\Website;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSection;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSectionCollection;
+use App\Modules\WebsiteBuilder\Domain\WebsiteSeoConfiguration;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Exceptions\InvalidWebsiteStorageStateException;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSectionPersistenceMapper;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConfigurationPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Records\WebsiteSectionStorageRecord;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Records\WebsiteSeoConfigurationStorageRecord;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Records\WebsiteStorageRecord;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -24,7 +27,7 @@ use stdClass;
 
 final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInterface
 {
-    public function __construct(private ConnectionInterface $connection, private WebsitePersistenceMapper $mapper, private WebsiteSectionPersistenceMapper $sectionMapper) {}
+    public function __construct(private ConnectionInterface $connection, private WebsitePersistenceMapper $mapper, private WebsiteSectionPersistenceMapper $sectionMapper, private WebsiteSeoConfigurationPersistenceMapper $seoMapper) {}
 
     public function findById(TenantId $tenantId, WebsiteId $websiteId): ?Website
     {
@@ -49,9 +52,11 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
             foreach ($website->sections()->sections() as $section) {
                 $sectionVersions[] = [$section, $this->saveSection($record->id, $section)];
             }
+            $seoVersion = $this->saveSeo($website);
             foreach ($sectionVersions as [$section, $sectionVersion]) {
                 $section->synchronizeVersion($sectionVersion);
             }
+            $website->seo()->synchronizeVersion($seoVersion);
             $website->synchronizeVersion($version);
         });
     }
@@ -104,6 +109,10 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
         try {
             $sectionRows = $this->connection->table('website_sections')->where('website_id', $this->string($row, 'id'))->orderBy('display_order')->get()->all();
             $sections = array_values(array_map(fn (stdClass $section): WebsiteSection => $this->sectionDomain($section), $sectionRows));
+            $seoRow = $this->connection->table('website_seo_configurations')->where('website_id', $this->string($row, 'id'))->first();
+            if (! $seoRow instanceof stdClass) {
+                throw new InvalidWebsiteStorageStateException('Stored Website SEO configuration is missing.');
+            }
 
             return $this->mapper->toDomain(new WebsiteStorageRecord(
                 $this->string($row, 'id'), $this->string($row, 'tenant_id'), $this->string($row, 'template_id'), $this->string($row, 'lifecycle'),
@@ -111,7 +120,7 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
                 $this->nullableString($row, 'logo_reference'), $this->nullableString($row, 'favicon_reference'), $this->string($row, 'contact_email'),
                 $this->string($row, 'contact_phone'), $this->string($row, 'address'), $links, $this->dateTime($row->domain_created_at ?? null),
                 $this->dateTime($row->domain_updated_at ?? null), $this->integer($row, 'version'),
-            ), new WebsiteSectionCollection($sections));
+            ), new WebsiteSectionCollection($sections), $this->seoDomain($seoRow));
         } catch (InvalidWebsiteValueException $exception) {
             throw new InvalidWebsiteStorageStateException('Stored Website failed Domain validation.', 0, $exception);
         }
@@ -144,6 +153,46 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
     private function sectionDomain(stdClass $row): WebsiteSection
     {
         return $this->sectionMapper->toDomain(new WebsiteSectionStorageRecord($this->string($row, 'id'), $this->string($row, 'website_id'), $this->string($row, 'section_type'), $this->integer($row, 'display_order'), $this->boolean($row, 'enabled'), $this->dateTime($row->domain_created_at ?? null), $this->dateTime($row->domain_updated_at ?? null), $this->integer($row, 'version')));
+    }
+
+    private function saveSeo(Website $website): int
+    {
+        $record = $this->seoMapper->record($website->seo());
+        $now = $this->timestamp(new DateTimeImmutable);
+        if ($record->version === 0) {
+            $this->connection->table('website_seo_configurations')->insert([...$this->seoPayload($record, 1), 'created_at' => $now, 'updated_at' => $now]);
+
+            return 1;
+        }
+        $next = $record->version + 1;
+        $affected = $this->connection->table('website_seo_configurations')->where('website_id', $record->websiteId)->where('version', $record->version)->update([...$this->seoPayload($record, $next), 'updated_at' => $now]);
+        if ($affected !== 1) {
+            throw new StaleWebsiteWriteException('Website SEO write rejected because its version is stale.');
+        }
+
+        return $next;
+    }
+
+    /** @return array<string, mixed> */
+    private function seoPayload(WebsiteSeoConfigurationStorageRecord $record, int $version): array
+    {
+        return [
+            'website_id' => $record->websiteId, 'meta_title' => $record->metaTitle, 'meta_description' => $record->metaDescription,
+            'meta_keywords' => $record->metaKeywords, 'canonical_url' => $record->canonicalUrl, 'robots_directive' => $record->robotsDirective,
+            'open_graph_title' => $record->openGraphTitle, 'open_graph_description' => $record->openGraphDescription,
+            'open_graph_image_reference' => $record->openGraphImageReference, 'indexing_enabled' => $record->indexingEnabled,
+            'domain_created_at' => $this->timestamp($record->domainCreatedAt), 'domain_updated_at' => $this->timestamp($record->domainUpdatedAt), 'version' => $version,
+        ];
+    }
+
+    private function seoDomain(stdClass $row): WebsiteSeoConfiguration
+    {
+        return $this->seoMapper->toDomain(new WebsiteSeoConfigurationStorageRecord(
+            $this->string($row, 'website_id'), $this->string($row, 'meta_title'), $this->string($row, 'meta_description'),
+            $this->nullableString($row, 'meta_keywords'), $this->nullableString($row, 'canonical_url'), $this->string($row, 'robots_directive'),
+            $this->string($row, 'open_graph_title'), $this->string($row, 'open_graph_description'), $this->nullableString($row, 'open_graph_image_reference'),
+            $this->boolean($row, 'indexing_enabled'), $this->dateTime($row->domain_created_at ?? null), $this->dateTime($row->domain_updated_at ?? null), $this->integer($row, 'version'),
+        ));
     }
 
     private function boolean(stdClass $row, string $field): bool

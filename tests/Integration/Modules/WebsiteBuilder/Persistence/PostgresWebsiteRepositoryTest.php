@@ -6,6 +6,7 @@ namespace Tests\Integration\Modules\WebsiteBuilder\Persistence;
 
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
@@ -15,6 +16,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
 use App\Modules\WebsiteBuilder\Domain\Website;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSectionPersistenceMapper;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConfigurationPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsiteRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteReadAdapter;
 use DateTimeImmutable;
@@ -46,6 +48,7 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         config()->set('database.connections.'.self::CONNECTION, ['driver' => 'pgsql', 'url' => $dsn, 'charset' => 'utf8', 'prefix' => '', 'prefix_indexes' => true, 'search_path' => 'public', 'sslmode' => 'prefer', 'timezone' => 'UTC']);
         DB::purge(self::CONNECTION);
         $this->connection = DB::connection(self::CONNECTION);
+        Schema::connection(self::CONNECTION)->dropIfExists('website_seo_configurations');
         Schema::connection(self::CONNECTION)->dropIfExists('website_sections');
         Schema::connection(self::CONNECTION)->dropIfExists('websites');
         Schema::connection(self::CONNECTION)->dropIfExists('tenants');
@@ -61,6 +64,10 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         self::assertInstanceOf(Migration::class, $sectionsMigration);
         $sectionsMigration->up();
         $this->migrations[] = $sectionsMigration;
+        $seoMigration = require base_path('database/migrations/website_builder/2026_08_10_000001_create_website_seo_configurations_table.php');
+        self::assertInstanceOf(Migration::class, $seoMigration);
+        $seoMigration->up();
+        $this->migrations[] = $seoMigration;
     }
 
     protected function tearDown(): void
@@ -89,6 +96,49 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         self::assertNull($read->detail($this->uuid(2)));
         self::assertCount(9, $loaded->sections()->sections());
         self::assertSame(9, $this->db()->table('website_sections')->where('website_id', $website->id->value)->count());
+        self::assertSame('Klinik Syifa', $loaded->seo()->metaTitle());
+        self::assertSame(1, $loaded->seo()->version());
+    }
+
+    public function test_seo_configuration_round_trips_with_explicit_columns(): void
+    {
+        $website = $this->website();
+        $website->configureSeo('Klinik Syifa KL', 'Trusted primary care in Kuala Lumpur.', 'clinic, primary care', 'https://clinic.example/about', RobotsDirective::IndexNoFollow, 'Klinik Syifa', 'Book trusted care.', $this->uuid(700), false, $this->at('+1 hour'));
+        $this->repository()->save($website);
+
+        $loaded = $this->repository()->findByTenant(new TenantId($this->uuid(1)));
+        self::assertNotNull($loaded);
+        self::assertSame('Klinik Syifa KL', $loaded->seo()->metaTitle());
+        self::assertSame('clinic, primary care', $loaded->seo()->metaKeywords());
+        self::assertSame('https://clinic.example/about', $loaded->seo()->canonicalUrl());
+        self::assertSame(RobotsDirective::IndexNoFollow, $loaded->seo()->robotsDirective());
+        self::assertFalse($loaded->seo()->indexingEnabled());
+        self::assertSame(1, $this->db()->table('website_seo_configurations')->where('website_id', $website->id->value)->count());
+    }
+
+    public function test_seo_constraints_reject_arbitrary_robots_directive(): void
+    {
+        $website = $this->website();
+        $this->repository()->save($website);
+        $this->expectException(QueryException::class);
+        $this->db()->table('website_seo_configurations')->where('website_id', $website->id->value)->update(['robots_directive' => 'all']);
+    }
+
+    public function test_stale_seo_write_rolls_back_the_entire_website_transaction(): void
+    {
+        $website = $this->website();
+        $this->repository()->save($website);
+        $this->db()->table('website_seo_configurations')->where('website_id', $website->id->value)->update(['version' => 99]);
+        $website->configureSeo('Changed title', 'Changed description', null, null, RobotsDirective::IndexFollow, 'Changed title', 'Changed description', null, true, $this->at('+1 hour'));
+
+        try {
+            $this->repository()->save($website);
+            self::fail('Expected stale SEO write.');
+        } catch (StaleWebsiteWriteException) {
+            self::assertSame(1, $website->version());
+            self::assertSame(1, $this->db()->table('websites')->where('id', $website->id->value)->value('version'));
+            self::assertSame('Klinik Syifa', $this->db()->table('website_seo_configurations')->where('website_id', $website->id->value)->value('meta_title'));
+        }
     }
 
     public function test_section_state_round_trips_with_deterministic_order(): void
@@ -123,6 +173,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
 
     public function test_migration_backfills_all_sections_for_an_existing_website(): void
     {
+        $seoMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $seoMigration);
+        $seoMigration->down();
         $sectionsMigration = array_pop($this->migrations);
         self::assertInstanceOf(Migration::class, $sectionsMigration);
         $sectionsMigration->down();
@@ -137,10 +190,28 @@ final class PostgresWebsiteRepositoryTest extends TestCase
 
         $sectionsMigration->up();
         $this->migrations[] = $sectionsMigration;
+        $seoMigration->up();
+        $this->migrations[] = $seoMigration;
         $rows = $this->db()->table('website_sections')->where('website_id', $this->uuid(30))->orderBy('display_order')->get();
         self::assertCount(9, $rows);
         self::assertSame(['HERO', 'ABOUT', 'SERVICES', 'DOCTORS', 'TESTIMONIALS', 'GALLERY', 'FAQ', 'CONTACT', 'BOOKING_CTA'], $rows->pluck('section_type')->all());
         self::assertNotContains(false, $rows->pluck('enabled')->map(static fn (mixed $value): bool => (bool) $value)->all());
+    }
+
+    public function test_seo_migration_backfills_existing_website_with_safe_defaults(): void
+    {
+        $this->repository()->save($this->website());
+        $seoMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $seoMigration);
+        $seoMigration->down();
+
+        $seoMigration->up();
+        $this->migrations[] = $seoMigration;
+        $row = $this->db()->table('website_seo_configurations')->where('website_id', $this->uuid(3))->first();
+        self::assertNotNull($row);
+        self::assertSame('Klinik Syifa', $row->meta_title);
+        self::assertSame('index,follow', $row->robots_directive);
+        self::assertTrue((bool) $row->indexing_enabled);
     }
 
     public function test_section_write_rolls_back_with_stale_website(): void
@@ -204,7 +275,7 @@ final class PostgresWebsiteRepositoryTest extends TestCase
 
     private function repository(): WebsiteRepositoryInterface
     {
-        return new PostgresWebsiteRepository($this->db(), new WebsitePersistenceMapper, new WebsiteSectionPersistenceMapper);
+        return new PostgresWebsiteRepository($this->db(), new WebsitePersistenceMapper, new WebsiteSectionPersistenceMapper, new WebsiteSeoConfigurationPersistenceMapper);
     }
 
     private function website(int $id = 3): Website
