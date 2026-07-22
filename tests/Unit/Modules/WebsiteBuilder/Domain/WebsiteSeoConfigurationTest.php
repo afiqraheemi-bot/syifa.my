@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteBranding;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
@@ -49,7 +50,6 @@ final class WebsiteSeoConfigurationTest extends TestCase
         yield 'description over 160' => [['metaDescription' => str_repeat('D', 161)]];
         yield 'non-https canonical' => [['canonicalUrl' => 'http://clinic.example']];
         yield 'canonical credentials' => [['canonicalUrl' => 'https://user:pass@clinic.example']];
-        yield 'invalid image reference' => [['openGraphImageReference' => 'image.jpg']];
         yield 'HTML title' => [['metaTitle' => '<b>Clinic</b>']];
         yield 'script description' => [['metaDescription' => '<script>alert(1)</script>']];
         yield 'blank keywords' => [['metaKeywords' => '']];
@@ -65,10 +65,11 @@ final class WebsiteSeoConfigurationTest extends TestCase
     public function test_valid_optional_fields_and_configuration_update_are_preserved(): void
     {
         $seo = WebsiteSeoConfiguration::defaults($this->websiteId(), $this->branding(), $this->at());
-        $seo->configure('Klinik Syifa KL', 'Primary care in Kuala Lumpur.', 'clinic, primary care', 'https://clinic.example/about', RobotsDirective::NoIndexNoFollow, 'Klinik Syifa', 'Trusted local care.', $this->uuid(2), false, $this->at('+1 hour'));
+        $seo->configure('Klinik Syifa KL', 'Primary care in Kuala Lumpur.', 'clinic, primary care', 'https://clinic.example/about', RobotsDirective::NoIndexNoFollow, 'Klinik Syifa', 'Trusted local care.', new AssetId($this->uuid(2)), false, $this->at('+1 hour'));
         self::assertSame('clinic, primary care', $seo->metaKeywords());
         self::assertSame('https://clinic.example/about', $seo->canonicalUrl());
         self::assertSame(RobotsDirective::NoIndexNoFollow, $seo->robotsDirective());
+        self::assertSame($this->uuid(2), $seo->openGraphImageReference()?->value);
         self::assertFalse($seo->indexingEnabled());
         self::assertEquals($this->at('+1 hour'), $seo->updatedAt());
     }

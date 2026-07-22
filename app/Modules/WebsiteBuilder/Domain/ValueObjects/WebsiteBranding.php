@@ -14,8 +14,8 @@ final readonly class WebsiteBranding
         public ?string $tagline,
         public string $primaryColor,
         public string $secondaryColor,
-        public ?string $logoReference,
-        public ?string $faviconReference,
+        public ?AssetId $logoReference,
+        public ?AssetId $faviconReference,
         public string $contactEmail,
         public string $contactPhone,
         public string $address,
@@ -30,11 +30,6 @@ final readonly class WebsiteBranding
         foreach ([$primaryColor, $secondaryColor] as $color) {
             if (preg_match('/^#[0-9A-F]{6}$/', $color) !== 1) {
                 throw new InvalidWebsiteValueException('Brand color must use uppercase #RRGGBB format.');
-            }
-        }
-        foreach ([$logoReference, $faviconReference] as $reference) {
-            if ($reference !== null && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $reference) !== 1) {
-                throw new InvalidWebsiteValueException('Brand asset reference is invalid.');
             }
         }
         if (filter_var($contactEmail, FILTER_VALIDATE_EMAIL) === false || mb_strlen($contactEmail) > 254) {

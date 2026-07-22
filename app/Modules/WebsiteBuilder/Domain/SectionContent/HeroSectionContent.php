@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\WebsiteBuilder\Domain\SectionContent;
 
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionType;
 
@@ -17,7 +18,7 @@ final readonly class HeroSectionContent implements WebsiteSectionContentInterfac
         public ?string $primaryCtaTarget = null,
         public ?string $secondaryCtaLabel = null,
         public ?string $secondaryCtaTarget = null,
-        public ?string $heroImageReference = null,
+        public ?AssetId $heroImageReference = null,
     ) {
         SectionContentRules::optionalText($headline, 160, 'Hero headline');
         SectionContentRules::optionalText($subheadline, 500, 'Hero subheadline');
@@ -27,7 +28,6 @@ final readonly class HeroSectionContent implements WebsiteSectionContentInterfac
         SectionContentRules::optionalText($secondaryCtaLabel, 80, 'Hero secondary CTA label');
         SectionContentRules::optionalTarget($secondaryCtaTarget, 'Hero secondary CTA target');
         SectionContentRules::paired($secondaryCtaLabel, $secondaryCtaTarget, 'Hero secondary CTA');
-        SectionContentRules::optionalUuid($heroImageReference, 'Hero image reference');
     }
 
     public function sectionId(): SectionId

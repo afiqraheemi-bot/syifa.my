@@ -98,6 +98,24 @@ final class WebsiteCoreArchitectureTest extends TestCase
         self::assertStringNotContainsString("jsonb('", $migration);
     }
 
+    public function test_assets_are_internal_normalized_and_have_no_provider_or_delivery_dependencies(): void
+    {
+        foreach (['WebsiteAsset.php', 'WebsiteAssetCollection.php'] as $name) {
+            $source = (string) file_get_contents($this->root().'/app/Modules/WebsiteBuilder/Domain/'.$name);
+            foreach (['App\\Modules\\Booking\\', 'App\\Modules\\SubscriptionBilling\\', 'Publishing\\', 'Rendering\\', 'Tracking\\', 'Illuminate\\', 'S3', 'Cloudflare', 'Storage::'] as $forbidden) {
+                self::assertStringNotContainsString($forbidden, $source);
+            }
+        }
+        self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Contracts/Repositories/WebsiteAssetRepositoryInterface.php');
+        $migration = (string) file_get_contents($this->root().'/database/migrations/website_builder/2026_08_11_000001_create_website_assets_table.php');
+        self::assertStringContainsString("Schema::create('website_assets'", $migration);
+        self::assertStringContainsString("foreign('website_id')", $migration);
+        self::assertStringContainsString("foreign('tenant_id')", $migration);
+        self::assertStringNotContainsString("json('", $migration);
+        self::assertStringNotContainsString("binary('", $migration);
+        self::assertStringNotContainsString('provider', $migration);
+    }
+
     /** @return list<string> */
     private function phpFiles(string ...$directories): array
     {

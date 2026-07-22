@@ -9,6 +9,7 @@ use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\ClinicPersistenceMapper;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteAssetPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSectionPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConfigurationPersistenceMapper;
@@ -25,6 +26,7 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ClinicPersistenceMapper::class);
         $this->app->singleton(WebsitePersistenceMapper::class);
+        $this->app->singleton(WebsiteAssetPersistenceMapper::class);
         $this->app->singleton(WebsiteSectionPersistenceMapper::class);
         $this->app->singleton(WebsiteSeoConfigurationPersistenceMapper::class);
         $this->app->singleton(
@@ -41,6 +43,7 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
                 $application->make(WebsitePersistenceMapper::class),
                 $application->make(WebsiteSectionPersistenceMapper::class),
                 $application->make(WebsiteSeoConfigurationPersistenceMapper::class),
+                $application->make(WebsiteAssetPersistenceMapper::class),
             ),
         );
         $this->app->singleton(

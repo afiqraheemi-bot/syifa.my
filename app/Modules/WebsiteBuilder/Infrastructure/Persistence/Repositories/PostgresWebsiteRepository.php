@@ -10,13 +10,17 @@ use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
 use App\Modules\WebsiteBuilder\Domain\Website;
+use App\Modules\WebsiteBuilder\Domain\WebsiteAsset;
+use App\Modules\WebsiteBuilder\Domain\WebsiteAssetCollection;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSection;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSectionCollection;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSeoConfiguration;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Exceptions\InvalidWebsiteStorageStateException;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteAssetPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSectionPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConfigurationPersistenceMapper;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Records\WebsiteAssetStorageRecord;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Records\WebsiteSectionStorageRecord;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Records\WebsiteSeoConfigurationStorageRecord;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Records\WebsiteStorageRecord;
@@ -27,7 +31,7 @@ use stdClass;
 
 final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInterface
 {
-    public function __construct(private ConnectionInterface $connection, private WebsitePersistenceMapper $mapper, private WebsiteSectionPersistenceMapper $sectionMapper, private WebsiteSeoConfigurationPersistenceMapper $seoMapper) {}
+    public function __construct(private ConnectionInterface $connection, private WebsitePersistenceMapper $mapper, private WebsiteSectionPersistenceMapper $sectionMapper, private WebsiteSeoConfigurationPersistenceMapper $seoMapper, private WebsiteAssetPersistenceMapper $assetMapper) {}
 
     public function findById(TenantId $tenantId, WebsiteId $websiteId): ?Website
     {
@@ -53,10 +57,17 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
                 $sectionVersions[] = [$section, $this->saveSection($record->id, $section)];
             }
             $seoVersion = $this->saveSeo($website);
+            $assetVersions = [];
+            foreach ($website->assets()->assets() as $asset) {
+                $assetVersions[] = [$asset, $this->saveAsset($record->id, $asset)];
+            }
             foreach ($sectionVersions as [$section, $sectionVersion]) {
                 $section->synchronizeVersion($sectionVersion);
             }
             $website->seo()->synchronizeVersion($seoVersion);
+            foreach ($assetVersions as [$asset, $assetVersion]) {
+                $asset->synchronizeVersion($assetVersion);
+            }
             $website->synchronizeVersion($version);
         });
     }
@@ -113,6 +124,8 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
             if (! $seoRow instanceof stdClass) {
                 throw new InvalidWebsiteStorageStateException('Stored Website SEO configuration is missing.');
             }
+            $assetRows = $this->connection->table('website_assets')->where('website_id', $this->string($row, 'id'))->orderBy('created_at')->orderBy('id')->get()->all();
+            $assets = array_values(array_map(fn (stdClass $asset): WebsiteAsset => $this->assetDomain($asset), $assetRows));
 
             return $this->mapper->toDomain(new WebsiteStorageRecord(
                 $this->string($row, 'id'), $this->string($row, 'tenant_id'), $this->string($row, 'template_id'), $this->string($row, 'lifecycle'),
@@ -120,7 +133,7 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
                 $this->nullableString($row, 'logo_reference'), $this->nullableString($row, 'favicon_reference'), $this->string($row, 'contact_email'),
                 $this->string($row, 'contact_phone'), $this->string($row, 'address'), $links, $this->dateTime($row->domain_created_at ?? null),
                 $this->dateTime($row->domain_updated_at ?? null), $this->integer($row, 'version'),
-            ), new WebsiteSectionCollection($sections), $this->seoDomain($seoRow));
+            ), new WebsiteSectionCollection($sections), $this->seoDomain($seoRow), new WebsiteAssetCollection($assets));
         } catch (InvalidWebsiteValueException $exception) {
             throw new InvalidWebsiteStorageStateException('Stored Website failed Domain validation.', 0, $exception);
         }
@@ -195,6 +208,45 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
         ));
     }
 
+    private function saveAsset(string $websiteId, WebsiteAsset $asset): int
+    {
+        $record = $this->assetMapper->record($websiteId, $asset);
+        $now = $this->timestamp(new DateTimeImmutable);
+        if ($record->version === 0) {
+            $this->connection->table('website_assets')->insert([...$this->assetPayload($record, 1), 'created_at' => $now, 'updated_at' => $now]);
+
+            return 1;
+        }
+        $next = $record->version + 1;
+        $affected = $this->connection->table('website_assets')->where('id', $record->id)->where('website_id', $websiteId)->where('version', $record->version)->update([...$this->assetPayload($record, $next), 'updated_at' => $now]);
+        if ($affected !== 1) {
+            throw new StaleWebsiteWriteException('Website Asset write rejected because its version is stale.');
+        }
+
+        return $next;
+    }
+
+    /** @return array<string, mixed> */
+    private function assetPayload(WebsiteAssetStorageRecord $record, int $version): array
+    {
+        return [
+            'id' => $record->id, 'website_id' => $record->websiteId, 'tenant_id' => $record->tenantId, 'storage_key' => $record->storageKey,
+            'mime_type' => $record->mimeType, 'file_size_bytes' => $record->fileSizeBytes, 'width' => $record->width, 'height' => $record->height,
+            'checksum' => $record->checksum, 'status' => $record->status, 'domain_created_at' => $this->timestamp($record->domainCreatedAt),
+            'domain_updated_at' => $this->timestamp($record->domainUpdatedAt), 'version' => $version,
+        ];
+    }
+
+    private function assetDomain(stdClass $row): WebsiteAsset
+    {
+        return $this->assetMapper->toDomain(new WebsiteAssetStorageRecord(
+            $this->string($row, 'id'), $this->string($row, 'website_id'), $this->string($row, 'tenant_id'), $this->string($row, 'storage_key'),
+            $this->string($row, 'mime_type'), $this->integer($row, 'file_size_bytes'), $this->nullableInteger($row, 'width'), $this->nullableInteger($row, 'height'),
+            $this->string($row, 'checksum'), $this->string($row, 'status'), $this->dateTime($row->domain_created_at ?? null),
+            $this->dateTime($row->domain_updated_at ?? null), $this->integer($row, 'version'),
+        ));
+    }
+
     private function boolean(stdClass $row, string $field): bool
     {
         $value = $row->{$field} ?? null;
@@ -229,6 +281,18 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
     private function integer(stdClass $row, string $field): int
     {
         $value = $row->{$field} ?? null;
+        if (is_int($value) || (is_string($value) && ctype_digit($value))) {
+            return (int) $value;
+        }
+        throw new InvalidWebsiteStorageStateException(sprintf('Website field %s is invalid.', $field));
+    }
+
+    private function nullableInteger(stdClass $row, string $field): ?int
+    {
+        $value = $row->{$field} ?? null;
+        if ($value === null) {
+            return null;
+        }
         if (is_int($value) || (is_string($value) && ctype_digit($value))) {
             return (int) $value;
         }

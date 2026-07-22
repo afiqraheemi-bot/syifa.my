@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteBranding;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
@@ -21,7 +22,7 @@ final class WebsiteSeoConfiguration
         private RobotsDirective $robotsDirective,
         private string $openGraphTitle,
         private string $openGraphDescription,
-        private ?string $openGraphImageReference,
+        private ?AssetId $openGraphImageReference,
         private bool $indexingEnabled,
         public readonly DateTimeImmutable $createdAt,
         private DateTimeImmutable $updatedAt,
@@ -49,7 +50,7 @@ final class WebsiteSeoConfiguration
         RobotsDirective $robotsDirective,
         string $openGraphTitle,
         string $openGraphDescription,
-        ?string $openGraphImageReference,
+        ?AssetId $openGraphImageReference,
         bool $indexingEnabled,
         DateTimeImmutable $at,
     ): void {
@@ -101,7 +102,7 @@ final class WebsiteSeoConfiguration
         return $this->openGraphDescription;
     }
 
-    public function openGraphImageReference(): ?string
+    public function openGraphImageReference(): ?AssetId
     {
         return $this->openGraphImageReference;
     }
@@ -141,9 +142,6 @@ final class WebsiteSeoConfiguration
             if (filter_var($this->canonicalUrl, FILTER_VALIDATE_URL) === false || ! is_array($parts) || ($parts['scheme'] ?? null) !== 'https' || isset($parts['user']) || isset($parts['pass'])) {
                 throw new InvalidWebsiteValueException('Canonical URL must be a credential-free HTTPS URL.');
             }
-        }
-        if ($this->openGraphImageReference !== null && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $this->openGraphImageReference) !== 1) {
-            throw new InvalidWebsiteValueException('Open Graph image reference is invalid.');
         }
     }
 

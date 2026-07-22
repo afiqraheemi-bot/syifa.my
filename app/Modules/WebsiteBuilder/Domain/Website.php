@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetAvailabilityEvidence;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
@@ -28,17 +30,23 @@ final class Website
         private DateTimeImmutable $updatedAt,
         private WebsiteSectionCollection $sections,
         private WebsiteSeoConfiguration $seo,
+        private WebsiteAssetCollection $assets,
         private int $version = 0,
     ) {
         if ($version < 0 || $updatedAt < $createdAt) {
             throw new InvalidWebsiteValueException('Website persisted state is invalid.');
+        }
+        foreach ($assets->assets() as $asset) {
+            if ($asset->tenantId->value !== $tenantId->value) {
+                throw new InvalidWebsiteValueException('Website Asset Tenant lineage does not match Website ownership.');
+            }
         }
     }
 
     /** @param list<SectionId> $sectionIds */
     public static function create(WebsiteId $id, TenantId $tenantId, TemplateId $templateId, WebsiteBranding $branding, array $sectionIds, DateTimeImmutable $at): self
     {
-        return new self($id, $tenantId, $templateId, $branding, WebsiteLifecycle::Draft, $at, $at, WebsiteSectionCollection::defaults($sectionIds, $at), WebsiteSeoConfiguration::defaults($id, $branding, $at));
+        return new self($id, $tenantId, $templateId, $branding, WebsiteLifecycle::Draft, $at, $at, WebsiteSectionCollection::defaults($sectionIds, $at), WebsiteSeoConfiguration::defaults($id, $branding, $at), new WebsiteAssetCollection);
     }
 
     public function templateId(): TemplateId
@@ -76,6 +84,32 @@ final class Website
         return $this->seo;
     }
 
+    public function assets(): WebsiteAssetCollection
+    {
+        return $this->assets;
+    }
+
+    public function registerAsset(WebsiteAsset $asset, DateTimeImmutable $at): void
+    {
+        $this->assertNotArchived();
+        $this->assets->add($asset, $this->tenantId);
+        $this->updatedAt = $at;
+    }
+
+    public function makeAssetAvailable(AssetId $id, AssetAvailabilityEvidence $evidence, DateTimeImmutable $at): void
+    {
+        $this->assertNotArchived();
+        $this->assets->asset($id)->markAvailable($evidence, $at);
+        $this->updatedAt = $at;
+    }
+
+    public function archiveAsset(AssetId $id, DateTimeImmutable $at): void
+    {
+        $this->assertNotArchived();
+        $this->assets->asset($id)->archive($at);
+        $this->updatedAt = $at;
+    }
+
     public function configureSeo(
         string $metaTitle,
         string $metaDescription,
@@ -84,7 +118,7 @@ final class Website
         RobotsDirective $robotsDirective,
         string $openGraphTitle,
         string $openGraphDescription,
-        ?string $openGraphImageReference,
+        ?AssetId $openGraphImageReference,
         bool $indexingEnabled,
         DateTimeImmutable $at,
     ): void {

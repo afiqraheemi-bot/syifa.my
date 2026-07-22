@@ -6,6 +6,9 @@ namespace Tests\Integration\Modules\WebsiteBuilder\Persistence;
 
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetAvailabilityEvidence;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetMimeType;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
@@ -14,6 +17,8 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteBranding;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
 use App\Modules\WebsiteBuilder\Domain\Website;
+use App\Modules\WebsiteBuilder\Domain\WebsiteAsset;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteAssetPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSectionPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConfigurationPersistenceMapper;
@@ -48,6 +53,7 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         config()->set('database.connections.'.self::CONNECTION, ['driver' => 'pgsql', 'url' => $dsn, 'charset' => 'utf8', 'prefix' => '', 'prefix_indexes' => true, 'search_path' => 'public', 'sslmode' => 'prefer', 'timezone' => 'UTC']);
         DB::purge(self::CONNECTION);
         $this->connection = DB::connection(self::CONNECTION);
+        Schema::connection(self::CONNECTION)->dropIfExists('website_assets');
         Schema::connection(self::CONNECTION)->dropIfExists('website_seo_configurations');
         Schema::connection(self::CONNECTION)->dropIfExists('website_sections');
         Schema::connection(self::CONNECTION)->dropIfExists('websites');
@@ -68,6 +74,10 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         self::assertInstanceOf(Migration::class, $seoMigration);
         $seoMigration->up();
         $this->migrations[] = $seoMigration;
+        $assetMigration = require base_path('database/migrations/website_builder/2026_08_11_000001_create_website_assets_table.php');
+        self::assertInstanceOf(Migration::class, $assetMigration);
+        $assetMigration->up();
+        $this->migrations[] = $assetMigration;
     }
 
     protected function tearDown(): void
@@ -103,7 +113,7 @@ final class PostgresWebsiteRepositoryTest extends TestCase
     public function test_seo_configuration_round_trips_with_explicit_columns(): void
     {
         $website = $this->website();
-        $website->configureSeo('Klinik Syifa KL', 'Trusted primary care in Kuala Lumpur.', 'clinic, primary care', 'https://clinic.example/about', RobotsDirective::IndexNoFollow, 'Klinik Syifa', 'Book trusted care.', $this->uuid(700), false, $this->at('+1 hour'));
+        $website->configureSeo('Klinik Syifa KL', 'Trusted primary care in Kuala Lumpur.', 'clinic, primary care', 'https://clinic.example/about', RobotsDirective::IndexNoFollow, 'Klinik Syifa', 'Book trusted care.', new AssetId($this->uuid(700)), false, $this->at('+1 hour'));
         $this->repository()->save($website);
 
         $loaded = $this->repository()->findByTenant(new TenantId($this->uuid(1)));
@@ -156,6 +166,46 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         self::assertSame(range(1, 9), array_map(static fn ($section): int => $section->displayOrder()->value, $loaded->sections()->sections()));
     }
 
+    public function test_asset_metadata_and_lifecycle_round_trip(): void
+    {
+        $website = $this->website();
+        $asset = WebsiteAsset::register(new AssetId($this->uuid(800)), new TenantId($this->uuid(1)), 'tenant-1/assets/hero.webp', AssetMimeType::Webp, 4096, 1200, 800, str_repeat('a', 64), $this->at());
+        $website->registerAsset($asset, $this->at());
+        $website->makeAssetAvailable($asset->id, new AssetAvailabilityEvidence(true, true), $this->at('+1 hour'));
+        $this->repository()->save($website);
+
+        $loaded = $this->repository()->findByTenant(new TenantId($this->uuid(1)));
+        self::assertNotNull($loaded);
+        $stored = $loaded->assets()->asset($asset->id);
+        self::assertSame('tenant-1/assets/hero.webp', $stored->storageKey);
+        self::assertSame(AssetMimeType::Webp, $stored->mimeType);
+        self::assertSame('available', $stored->status()->value);
+        self::assertSame(1, $stored->version());
+        self::assertSame(1, $this->db()->table('website_assets')->where('website_id', $website->id->value)->count());
+    }
+
+    public function test_asset_database_constraints_reject_unknown_mime(): void
+    {
+        $website = $this->website();
+        $asset = WebsiteAsset::register(new AssetId($this->uuid(801)), new TenantId($this->uuid(1)), 'tenant-1/assets/logo.png', AssetMimeType::Png, 1024, 400, 200, str_repeat('b', 64), $this->at());
+        $website->registerAsset($asset, $this->at());
+        $this->repository()->save($website);
+
+        $this->expectException(QueryException::class);
+        $this->db()->table('website_assets')->where('id', $asset->id->value)->update(['mime_type' => 'application/javascript']);
+    }
+
+    public function test_asset_database_constraint_rejects_cross_tenant_ownership(): void
+    {
+        $website = $this->website();
+        $asset = WebsiteAsset::register(new AssetId($this->uuid(802)), new TenantId($this->uuid(1)), 'tenant-1/assets/about.png', AssetMimeType::Png, 1024, null, null, str_repeat('c', 64), $this->at());
+        $website->registerAsset($asset, $this->at());
+        $this->repository()->save($website);
+
+        $this->expectException(QueryException::class);
+        $this->db()->table('website_assets')->where('id', $asset->id->value)->update(['tenant_id' => $this->uuid(2)]);
+    }
+
     public function test_section_unique_type_and_order_constraints_are_enforced(): void
     {
         $website = $this->website();
@@ -173,6 +223,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
 
     public function test_migration_backfills_all_sections_for_an_existing_website(): void
     {
+        $assetMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $assetMigration);
+        $assetMigration->down();
         $seoMigration = array_pop($this->migrations);
         self::assertInstanceOf(Migration::class, $seoMigration);
         $seoMigration->down();
@@ -192,6 +245,8 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $this->migrations[] = $sectionsMigration;
         $seoMigration->up();
         $this->migrations[] = $seoMigration;
+        $assetMigration->up();
+        $this->migrations[] = $assetMigration;
         $rows = $this->db()->table('website_sections')->where('website_id', $this->uuid(30))->orderBy('display_order')->get();
         self::assertCount(9, $rows);
         self::assertSame(['HERO', 'ABOUT', 'SERVICES', 'DOCTORS', 'TESTIMONIALS', 'GALLERY', 'FAQ', 'CONTACT', 'BOOKING_CTA'], $rows->pluck('section_type')->all());
@@ -201,12 +256,17 @@ final class PostgresWebsiteRepositoryTest extends TestCase
     public function test_seo_migration_backfills_existing_website_with_safe_defaults(): void
     {
         $this->repository()->save($this->website());
+        $assetMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $assetMigration);
+        $assetMigration->down();
         $seoMigration = array_pop($this->migrations);
         self::assertInstanceOf(Migration::class, $seoMigration);
         $seoMigration->down();
 
         $seoMigration->up();
         $this->migrations[] = $seoMigration;
+        $assetMigration->up();
+        $this->migrations[] = $assetMigration;
         $row = $this->db()->table('website_seo_configurations')->where('website_id', $this->uuid(3))->first();
         self::assertNotNull($row);
         self::assertSame('Klinik Syifa', $row->meta_title);
@@ -275,7 +335,7 @@ final class PostgresWebsiteRepositoryTest extends TestCase
 
     private function repository(): WebsiteRepositoryInterface
     {
-        return new PostgresWebsiteRepository($this->db(), new WebsitePersistenceMapper, new WebsiteSectionPersistenceMapper, new WebsiteSeoConfigurationPersistenceMapper);
+        return new PostgresWebsiteRepository($this->db(), new WebsitePersistenceMapper, new WebsiteSectionPersistenceMapper, new WebsiteSeoConfigurationPersistenceMapper, new WebsiteAssetPersistenceMapper);
     }
 
     private function website(int $id = 3): Website

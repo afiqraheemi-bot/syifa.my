@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\WebsiteBuilder\Domain\SectionContent;
 
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
+
 final readonly class ManualDoctorProfile implements WebsiteSectionContentItemInterface
 {
-    public function __construct(public string $id, public string $name, public ?string $professionalTitle = null, public bool $visible = true)
+    public function __construct(public string $id, public string $name, public ?string $professionalTitle = null, public bool $visible = true, public ?AssetId $photo = null)
     {
         SectionContentRules::uuid($id, 'Manual doctor profile ID');
         SectionContentRules::requiredText($name, 160, 'Manual doctor name');

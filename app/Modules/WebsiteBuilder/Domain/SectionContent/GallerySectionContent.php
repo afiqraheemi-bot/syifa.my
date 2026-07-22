@@ -14,7 +14,7 @@ final readonly class GallerySectionContent implements WebsiteSectionContentInter
     public function __construct(private SectionId $sectionId, public array $images = [])
     {
         SectionContentRules::uniqueItemIds($images, 'Gallery images');
-        $references = array_map(static fn (GalleryImage $image): string => $image->imageReference, $images);
+        $references = array_map(static fn (GalleryImage $image): string => $image->imageReference->value, $images);
         if (count(array_unique($references)) !== count($references)) {
             throw new InvalidWebsiteValueException('Gallery contains duplicate image references.');
         }

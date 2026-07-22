@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionType;
@@ -31,6 +32,7 @@ final class WebsiteTest extends TestCase
         self::assertSame($this->uuid(2), $website->tenantId->value);
         self::assertSame(TemplateId::SyifaEssential, $website->templateId());
         self::assertSame('Klinik Syifa', $website->branding()->clinicName);
+        self::assertSame($this->uuid(4), $website->branding()->logoReference?->value);
         self::assertSame(WebsiteLifecycle::Draft, $website->lifecycle());
         self::assertSame($website->id->value, $website->seo()->websiteId->value);
         self::assertSame('Klinik Syifa', $website->seo()->metaTitle());
@@ -164,9 +166,14 @@ final class WebsiteTest extends TestCase
         yield 'arbitrary color' => [['primaryColor' => 'red']];
         yield 'lowercase hex' => [['secondaryColor' => '#aabbcc']];
         yield 'invalid email' => [['contactEmail' => 'invalid']];
-        yield 'invalid logo reference' => [['logoReference' => 'not-a-uuid']];
         yield 'unknown social channel' => [['socialLinks' => ['telegram' => 'https://example.test']]];
         yield 'non-https social URL' => [['socialLinks' => ['facebook' => 'http://example.test']]];
+    }
+
+    public function test_asset_reference_rejects_invalid_identity(): void
+    {
+        $this->expectException(InvalidWebsiteValueException::class);
+        new AssetId('not-a-uuid');
     }
 
     #[DataProvider('templateProvider')]
@@ -196,7 +203,7 @@ final class WebsiteTest extends TestCase
 
     private function branding(array $overrides = []): WebsiteBranding
     {
-        $values = array_merge(['clinicName' => 'Klinik Syifa', 'tagline' => 'Care with confidence', 'primaryColor' => '#112233', 'secondaryColor' => '#AABBCC', 'logoReference' => $this->uuid(4), 'faviconReference' => null, 'contactEmail' => 'hello@clinic.test', 'contactPhone' => '+60123456789', 'address' => 'Kuala Lumpur', 'socialLinks' => ['facebook' => 'https://facebook.com/clinic']], $overrides);
+        $values = array_merge(['clinicName' => 'Klinik Syifa', 'tagline' => 'Care with confidence', 'primaryColor' => '#112233', 'secondaryColor' => '#AABBCC', 'logoReference' => new AssetId($this->uuid(4)), 'faviconReference' => null, 'contactEmail' => 'hello@clinic.test', 'contactPhone' => '+60123456789', 'address' => 'Kuala Lumpur', 'socialLinks' => ['facebook' => 'https://facebook.com/clinic']], $overrides);
 
         return new WebsiteBranding(...$values);
     }

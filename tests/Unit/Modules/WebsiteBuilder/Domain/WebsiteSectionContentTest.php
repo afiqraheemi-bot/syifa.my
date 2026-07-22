@@ -19,6 +19,7 @@ use App\Modules\WebsiteBuilder\Domain\SectionContent\ManualTestimonial;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\ServicesSectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\TestimonialsSectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\WebsiteSectionContentInterface;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionType;
@@ -97,8 +98,18 @@ final class WebsiteSectionContentTest extends TestCase
 
     public function test_gallery_and_faq_require_at_least_one_valid_item(): void
     {
-        self::assertTrue((new GallerySectionContent($this->sectionId(), [new GalleryImage($this->uuid(40), $this->uuid(41))]))->isRenderable());
+        $gallery = new GallerySectionContent($this->sectionId(), [new GalleryImage($this->uuid(40), new AssetId($this->uuid(41)))]);
+        self::assertTrue($gallery->isRenderable());
         self::assertTrue((new FaqSectionContent($this->sectionId(), [new FaqEntry($this->uuid(50), 'When are you open?', 'Every weekday.')]))->isRenderable());
+    }
+
+    public function test_all_section_image_and_doctor_photo_references_are_asset_ids(): void
+    {
+        $assetId = new AssetId($this->uuid(70));
+        self::assertSame($assetId, (new HeroSectionContent($this->sectionId(), 'Headline', heroImageReference: $assetId))->heroImageReference);
+        self::assertSame($assetId, (new AboutSectionContent($this->sectionId(), 'About', 'Description', $assetId))->imageReference);
+        self::assertSame($assetId, (new GalleryImage($this->uuid(71), $assetId))->imageReference);
+        self::assertSame($assetId, (new ManualDoctorProfile($this->uuid(72), 'Dr Syifa', photo: $assetId))->photo);
     }
 
     public function test_contact_uses_branding_without_duplicating_contact_fields(): void
@@ -139,7 +150,7 @@ final class WebsiteSectionContentTest extends TestCase
         }
 
         $this->expectException(InvalidWebsiteValueException::class);
-        new GalleryImage($this->uuid(61), 'not-an-asset-reference');
+        new GalleryImage($this->uuid(61), new AssetId('not-an-asset-reference'));
     }
 
     private function sectionId(): SectionId
