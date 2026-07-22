@@ -1,5 +1,7 @@
 # Permission Matrix
 
+> **Website Section Content Models amendment (2026-08-09):** Clinic Owners manage Website Section content, assigned Website Designers configure it within the existing Website authorization boundary, and Super Admins provide support. Public actors have no content-management access. No new role or public endpoint is introduced.
+
 > **Website Sections Foundation amendment (2026-08-08):** Clinic Owner may manage Sections for the owned Tenant Website; an assigned Website Designer may configure Sections; Super Admin support requires explicit support authority; Public Visitor has no configuration access. The existing Website authorization boundary applies unchanged.
 
 > **Website Core Foundation amendment (2026-08-07):** Clinic Owner may update the Website for the Tenant represented by trusted authority; Website Designer may set up only an assigned Tenant Website; Super Admin support requires explicit support authorization. Public Visitor has no Website Core access. Authorization context never changes Website Tenant ownership.

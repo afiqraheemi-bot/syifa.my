@@ -1,5 +1,7 @@
 # Architecture Freeze v1
 
+> **Website Section Content Models governance note (2026-08-09):** ADR-016 authorizes typed internal content models for the nine governed Website Sections without adding an Aggregate Root, cross-context Domain dependency, persistence schema, API, or rendering capability.
+
 > **Website Sections Foundation amendment (2026-08-08):** Section Collection and Website Section are internal Website entities. They do not add an Aggregate Root, bounded context, module, public surface, or rendering capability. The sixteen-root registry remains unchanged.
 
 > **Website Core Foundation amendment (2026-08-07):** Website is the tenant-owned root for future website capabilities. Core is limited to Website identity, Tenant lineage, one governed Template reference, constrained Branding, lifecycle, optimistic version, and timestamps. It imports no Booking, Payment, Subscription, Clinic, rendering, CMS, domain, analytics, or file implementation.

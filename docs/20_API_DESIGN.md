@@ -1,5 +1,7 @@
 # API Design
 
+> **Website Section Content Models amendment (2026-08-09):** No Website content API is introduced. The typed content and renderability models are Domain-only preparation; controllers, requests, responses, and public delivery require a later approved increment.
+
 > **Website Sections Foundation amendment (2026-08-08):** This increment adds no HTTP surface. Future Section delivery must operate through the Website resource and aggregate boundary; Section is not an independently owned top-level resource.
 
 > **Website Core Foundation amendment (2026-08-07):** This increment supplies tenant-scoped Website summary/detail read contracts and application/domain foundations only. It adds no HTTP controller, public endpoint, renderer, publishing endpoint, or UI. Public access remains unavailable.

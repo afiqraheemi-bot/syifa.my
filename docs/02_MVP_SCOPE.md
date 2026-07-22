@@ -1,5 +1,7 @@
 # MVP Scope
 
+> **Website Section Content Models amendment (2026-08-09):** The nine built-in Sections have explicit, strongly typed Domain content models and minimum renderability rules. This remains governed configuration only: rendering, delivery, controllers, APIs, and content persistence are not introduced.
+
 > **Website Sections Foundation amendment (2026-08-08):** Website remains the Aggregate Root and owns exactly one internal Section Collection. The collection contains the nine governed, ordered, content-free Section entities (`HERO`, `ABOUT`, `SERVICES`, `DOCTORS`, `TESTIMONIALS`, `GALLERY`, `FAQ`, `CONTACT`, `BOOKING_CTA`). This foundation configures enablement and order only; it adds no content, rendering, page-builder, API, or UI capability.
 
 > **Website Core Foundation amendment (2026-08-07):** MVP permits exactly one tenant-owned Website per Tenant and Clinic. Website Core owns immutable identity and Tenant lineage, one of the five governed Template references, constrained Branding, lifecycle state (`draft`, `ready_for_review`, `published`, `archived`), version, and timestamps. This foundation does not implement rendering, deployment, domains, pages, CMS, SEO, tracking, files, or public delivery.

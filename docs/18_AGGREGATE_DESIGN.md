@@ -1,5 +1,7 @@
 # Aggregate Design
 
+> **Website Section Content Models amendment (2026-08-09):** Built-in content models remain internal Website configuration identified by the owning Section. Manual Doctor profiles, manual Testimonials, Gallery images, and FAQ entries are typed child values, not Aggregate Roots. External active-Service and booking-enabled facts are inputs to renderability evaluation, never cross-context Domain imports. The Aggregate Root registry remains unchanged.
+
 > **Website Sections Foundation amendment (2026-08-08):** Section Collection and Website Section are internal to the Website aggregate. Creation explicitly initializes all nine built-in types in governed order. Types and display orders are unique; enable, disable, and reorder operations execute through Website. Built-in sections cannot be deleted. The aggregate-root registry is unchanged.
 
 > **Website Core Foundation amendment (2026-08-07):** Website Core establishes the Website root with immutable WebsiteId/TenantId, constrained Branding, one governed Template reference, lifecycle, version, and timestamps. Template is changeable only before `published`. Lifecycle is `draft → ready_for_review → published → archived`; the state transition to `published` requires explicit approval and entitlement evidence supplied through an infrastructure-neutral application boundary, but this increment performs no rendering, deployment, or public publishing. Exactly one Website per Tenant is enforced by persistence.

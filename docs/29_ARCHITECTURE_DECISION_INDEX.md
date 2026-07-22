@@ -26,6 +26,7 @@ This document is the governance index for architecture decisions and architectur
 | [ADR-013](./decisions/ADR-013-Booking-Availability-Reservation-Lifecycle-Strategy.md) | Booking Availability, Reservation and Lifecycle Strategy | Active, amended 2026-07-22 | Clinic owns shared duration/capacity/hours; Service is category-only; PostgreSQL reservation buckets enforce Tenant/exact-slot capacity; reschedule is an event. Earlier Service-owned scheduling clauses are superseded. |
 | [ADR-014](./decisions/ADR-014-Website-Core-Foundation.md) | Website Core Foundation | Active | Defines the one-per-Tenant Website root, governed Template references, constrained Branding, lifecycle, normalized persistence, and authorization boundary without rendering or publishing delivery. |
 | [ADR-015](./decisions/ADR-015-Website-Sections-Foundation.md) | Website Sections Foundation | Active | Defines Section Collection and Website Section as internal Website entities with governed types, deterministic ordering, normalized persistence, and no change to the Aggregate Root registry. |
+| [ADR-016](./decisions/ADR-016-Website-Section-Content-Models.md) | Website Section Content Models | Active | Defines typed content and minimum renderability for all built-in Website Sections without persistence, delivery, or a new Aggregate Root. |
 
 ## Superseded ADRs
 

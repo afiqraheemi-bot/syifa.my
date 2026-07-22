@@ -1,5 +1,7 @@
 # Database Strategy — Engineering Principles
 
+> **Website Section Content Models amendment (2026-08-09):** This increment defines Domain content schemas only and intentionally makes no persistence-schema change. It does not place content in `website_sections`, JSON, polymorphic blobs, or generic key/value storage. Normalized content persistence requires a separately approved increment and migration.
+
 > **Website Sections Foundation amendment (2026-08-08):** `website_sections` stores one normalized row per internal Section with non-null Website ownership, governed type, unique `(website_id, section_type)` and `(website_id, display_order)` constraints, enablement, optimistic version, and timestamps. No content or JSON payload is stored. Existing Websites receive the same explicit default collection during the additive migration.
 
 > **Website Core Foundation amendment (2026-08-07):** `websites` stores normalized identity, Tenant ownership, governed Template/lifecycle values, constrained Branding columns, optimistic version, and domain timestamps. Fixed social-link channels use explicit nullable columns rather than an ungoverned JSON blob. Tenant ownership is non-null and unique; no Clinic identifier is duplicated.

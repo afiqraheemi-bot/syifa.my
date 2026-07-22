@@ -1,5 +1,7 @@
 # Syifa.my Phase 1 Domain Model
 
+> **Website Section Content Models amendment (2026-08-09):** Each built-in Website Section has an explicit content model identified by its owning `SectionId`. Content models validate only approved fields and expose their minimum renderability decision. Services and booking availability remain external facts supplied as opaque evaluation inputs; Contact reads Website Branding without copying contact data.
+
 > **Website Sections Foundation amendment (2026-08-08):** Website owns one Section Collection as an internal entity boundary. Website Sections are internal entities, never Aggregate Roots or independently owned records. They contain identity, governed type, unique display order, enablement, version, and timestamps only. Future content attaches through separately governed increments.
 
 > **Website Core Foundation amendment (2026-08-07):** The initial Website aggregate persists only identity, Tenant ownership, one governed Template reference, constrained Branding, lifecycle, version, and audit timestamps. Future Navigation, SEO, Tracking, Sections, content, rendering, domains, and publication delivery attach by reference or separately governed increments; they are not embedded in Website Core.
