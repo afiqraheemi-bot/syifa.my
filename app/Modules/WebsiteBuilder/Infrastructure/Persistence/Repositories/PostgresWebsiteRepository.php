@@ -78,6 +78,11 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
         return $row === null ? null : $this->domain($row);
     }
 
+    public function findPublishedSnapshot(string $websiteId): ?PublishedWebsiteSnapshot
+    {
+        return $this->publishedSnapshot($websiteId);
+    }
+
     public function save(Website $website): void
     {
         $this->connection->transaction(function () use ($website): void {

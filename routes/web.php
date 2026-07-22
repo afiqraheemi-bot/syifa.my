@@ -11,7 +11,13 @@ use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCata
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanController;
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanOfferingController;
 use App\Modules\TenantManagement\Presentation\Http\Controllers\ClinicOwnerSessionController;
+use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicLegalDocumentController;
+use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicWebsiteController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/', PublicWebsiteController::class)->name('public-website.home');
+Route::get('/privacy', [PublicLegalDocumentController::class, 'privacy'])->name('public-website.privacy');
+Route::get('/terms', [PublicLegalDocumentController::class, 'terms'])->name('public-website.terms');
 
 if ((bool) config('operations.enabled', true)) {
     Route::prefix((string) config('operations.prefix', 'operations'))
