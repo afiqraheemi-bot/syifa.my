@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidClinicOperationalTimeException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicBookingConfiguration;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\IanaTimezone;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
@@ -21,6 +22,7 @@ final class Clinic
         public readonly DateTimeImmutable $createdAt,
         private DateTimeImmutable $updatedAt,
         private int $version,
+        private ?ClinicBookingConfiguration $bookingConfiguration,
     ) {}
 
     public static function create(
@@ -29,8 +31,9 @@ final class Clinic
         IanaTimezone $timezone,
         WeeklyOperatingHours $weeklyOperatingHours,
         DateTimeImmutable $occurredAt,
+        ?ClinicBookingConfiguration $bookingConfiguration = null,
     ): self {
-        return new self($id, $tenantId, $timezone, $weeklyOperatingHours, $occurredAt, $occurredAt, 0);
+        return new self($id, $tenantId, $timezone, $weeklyOperatingHours, $occurredAt, $occurredAt, 0, $bookingConfiguration);
     }
 
     public static function reconstitute(
@@ -41,6 +44,7 @@ final class Clinic
         DateTimeImmutable $createdAt,
         DateTimeImmutable $updatedAt,
         int $version,
+        ?ClinicBookingConfiguration $bookingConfiguration = null,
     ): self {
         if ($version < 1) {
             throw new InvalidClinicOperationalTimeException('A persisted Clinic requires a positive version.');
@@ -49,7 +53,7 @@ final class Clinic
             throw new InvalidClinicOperationalTimeException('A persisted Clinic cannot be updated before creation.');
         }
 
-        return new self($id, $tenantId, $timezone, $weeklyOperatingHours, $createdAt, $updatedAt, $version);
+        return new self($id, $tenantId, $timezone, $weeklyOperatingHours, $createdAt, $updatedAt, $version, $bookingConfiguration);
     }
 
     public function reconfigureOperationalTime(
@@ -74,6 +78,32 @@ final class Clinic
     public function weeklyOperatingHours(): WeeklyOperatingHours
     {
         return $this->weeklyOperatingHours;
+    }
+
+    public function bookingConfiguration(): ClinicBookingConfiguration
+    {
+        if ($this->bookingConfiguration === null) {
+            throw new InvalidClinicOperationalTimeException('Clinic Booking Configuration has not been explicitly initialized.');
+        }
+
+        return $this->bookingConfiguration;
+    }
+
+    public function bookingConfigurationOrNull(): ?ClinicBookingConfiguration
+    {
+        return $this->bookingConfiguration;
+    }
+
+    public function configureBooking(
+        ClinicBookingConfiguration $configuration,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        if ($occurredAt < $this->updatedAt) {
+            throw new InvalidClinicOperationalTimeException('Clinic Booking Configuration cannot be changed in the past.');
+        }
+
+        $this->bookingConfiguration = $configuration;
+        $this->updatedAt = $occurredAt;
     }
 
     public function updatedAt(): DateTimeImmutable

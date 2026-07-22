@@ -34,11 +34,15 @@ final readonly class BookingClinicOperationalTimeAdapter implements ClinicOperat
             }
         }
 
+        $configuration = $clinic->bookingConfigurationOrNull();
+
         return new ClinicOperationalTimeData(
             $clinic->id->value,
             $clinic->tenantId->value,
             $clinic->timezone()->value,
             $intervals,
+            $configuration?->appointmentDuration->minutes,
+            $configuration?->capacityPerSlot->value,
         );
     }
 }

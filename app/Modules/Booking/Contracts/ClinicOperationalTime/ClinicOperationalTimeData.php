@@ -12,5 +12,7 @@ final readonly class ClinicOperationalTimeData
         public string $tenantId,
         public string $timezone,
         public array $operatingIntervals,
+        public ?int $appointmentDurationMinutes,
+        public ?int $bookingCapacityPerSlot,
     ) {}
 }

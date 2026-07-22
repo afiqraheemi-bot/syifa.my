@@ -58,6 +58,8 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
                     ->where('version', $record->version)
                     ->update([
                         'timezone' => $record->timezone,
+                        'appointment_duration_minutes' => $record->appointmentDurationMinutes,
+                        'booking_capacity_per_slot' => $record->bookingCapacityPerSlot,
                         'domain_updated_at' => $this->timestamp($record->domainUpdatedAt),
                         'version' => $newVersion,
                         'updated_at' => $this->timestamp(new DateTimeImmutable),
@@ -83,6 +85,8 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
             'id' => $record->id,
             'tenant_id' => $record->tenantId,
             'timezone' => $record->timezone,
+            'appointment_duration_minutes' => $record->appointmentDurationMinutes,
+            'booking_capacity_per_slot' => $record->bookingCapacityPerSlot,
             'domain_created_at' => $this->timestamp($record->domainCreatedAt),
             'domain_updated_at' => $this->timestamp($record->domainUpdatedAt),
             'version' => $version,
@@ -131,6 +135,8 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
             $this->dateTime($row, 'domain_created_at'),
             $this->dateTime($row, 'domain_updated_at'),
             $this->integer($row, 'version'),
+            $this->nullableInteger($row, 'appointment_duration_minutes'),
+            $this->nullableInteger($row, 'booking_capacity_per_slot'),
         );
 
         try {
@@ -160,6 +166,21 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
             return (int) $value;
         }
         throw new InvalidClinicStorageStateException(sprintf('Storage field %s must be an integer.', $field));
+    }
+
+    private function nullableInteger(stdClass $row, string $field): ?int
+    {
+        $value = $row->{$field} ?? null;
+        if ($value === null) {
+            return null;
+        }
+        if (is_int($value)) {
+            return $value;
+        }
+        if (is_string($value) && ctype_digit($value)) {
+            return (int) $value;
+        }
+        throw new InvalidClinicStorageStateException(sprintf('Storage field %s must be an integer or null.', $field));
     }
 
     private function time(stdClass $row, string $field): string

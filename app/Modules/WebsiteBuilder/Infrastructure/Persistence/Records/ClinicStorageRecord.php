@@ -17,5 +17,7 @@ final readonly class ClinicStorageRecord
         public DateTimeImmutable $domainCreatedAt,
         public DateTimeImmutable $domainUpdatedAt,
         public int $version,
+        public ?int $appointmentDurationMinutes,
+        public ?int $bookingCapacityPerSlot,
     ) {}
 }

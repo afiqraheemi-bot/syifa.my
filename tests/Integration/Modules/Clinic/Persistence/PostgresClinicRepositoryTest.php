@@ -6,6 +6,9 @@ namespace Tests\Integration\Modules\Clinic\Persistence;
 
 use App\Modules\WebsiteBuilder\Domain\Clinic;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleClinicWriteException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\BookingAppointmentDuration;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\BookingCapacityPerSlot;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicBookingConfiguration;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\IanaTimezone;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\LocalTime;
@@ -34,6 +37,8 @@ final class PostgresClinicRepositoryTest extends TestCase
 
     private ?Migration $clinicMigration = null;
 
+    private ?Migration $configurationMigration = null;
+
     private ?PostgresClinicRepository $repository = null;
 
     protected function setUp(): void
@@ -58,12 +63,16 @@ final class PostgresClinicRepositoryTest extends TestCase
 
         $tenantMigration = require base_path('database/migrations/tenant_management/2026_07_13_000001_create_tenant_aggregate_tables.php');
         $clinicMigration = require base_path('database/migrations/website_builder/2026_08_04_000001_create_clinic_operational_time_tables.php');
+        $configurationMigration = require base_path('database/migrations/website_builder/2026_08_05_000001_add_booking_configuration_to_clinics.php');
         self::assertInstanceOf(Migration::class, $tenantMigration);
         self::assertInstanceOf(Migration::class, $clinicMigration);
+        self::assertInstanceOf(Migration::class, $configurationMigration);
         $this->tenantMigration = $tenantMigration;
         $this->clinicMigration = $clinicMigration;
+        $this->configurationMigration = $configurationMigration;
         $tenantMigration->up();
         $clinicMigration->up();
+        $configurationMigration->up();
         $this->repository = new PostgresClinicRepository($this->connection, new ClinicPersistenceMapper);
         $this->insertTenant(2);
         $this->insertTenant(3);
@@ -71,6 +80,7 @@ final class PostgresClinicRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
+        $this->configurationMigration?->down();
         $this->clinicMigration?->down();
         $this->tenantMigration?->down();
         DB::purge(self::CONNECTION);
@@ -88,6 +98,8 @@ final class PostgresClinicRepositoryTest extends TestCase
         self::assertSame(1, $clinic->version());
         self::assertSame($clinic->id->value, $loaded->id->value);
         self::assertSame('Asia/Kuala_Lumpur', $loaded->timezone()->value);
+        self::assertSame(30, $loaded->bookingConfiguration()->appointmentDuration->minutes);
+        self::assertSame(2, $loaded->bookingConfiguration()->capacityPerSlot->value);
         self::assertSame(['09:00', '13:00'], array_map(
             static fn (OpeningInterval $interval): string => $interval->opensAt->value,
             $loaded->weeklyOperatingHours()->all()[1],
@@ -182,6 +194,8 @@ final class PostgresClinicRepositoryTest extends TestCase
     {
         self::assertTrue(Schema::connection(self::CONNECTION)->hasTable('clinics'));
         self::assertTrue(Schema::connection(self::CONNECTION)->hasTable('clinic_operating_intervals'));
+        $this->configurationMigration?->down();
+        $this->configurationMigration = null;
         $this->clinicMigration?->down();
         $this->clinicMigration = null;
         self::assertFalse(Schema::connection(self::CONNECTION)->hasTable('clinics'));
@@ -200,6 +214,7 @@ final class PostgresClinicRepositoryTest extends TestCase
                 ],
             ]),
             $this->time(),
+            new ClinicBookingConfiguration(new BookingAppointmentDuration(30), new BookingCapacityPerSlot(2)),
         );
     }
 

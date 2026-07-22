@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers;
 
 use App\Modules\WebsiteBuilder\Domain\Clinic;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\BookingAppointmentDuration;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\BookingCapacityPerSlot;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicBookingConfiguration;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\IanaTimezone;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\LocalTime;
@@ -29,6 +32,8 @@ final class ClinicPersistenceMapper
             }
         }
 
+        $configuration = $clinic->bookingConfigurationOrNull();
+
         return new ClinicStorageRecord(
             $clinic->id->value,
             $clinic->tenantId->value,
@@ -37,6 +42,8 @@ final class ClinicPersistenceMapper
             $clinic->createdAt,
             $clinic->updatedAt(),
             $clinic->version(),
+            $configuration?->appointmentDuration->minutes,
+            $configuration?->capacityPerSlot->value,
         );
     }
 
@@ -58,6 +65,12 @@ final class ClinicPersistenceMapper
             $record->domainCreatedAt,
             $record->domainUpdatedAt,
             $record->version,
+            $record->appointmentDurationMinutes === null || $record->bookingCapacityPerSlot === null
+                ? null
+                : new ClinicBookingConfiguration(
+                    new BookingAppointmentDuration($record->appointmentDurationMinutes),
+                    new BookingCapacityPerSlot($record->bookingCapacityPerSlot),
+                ),
         );
     }
 }
