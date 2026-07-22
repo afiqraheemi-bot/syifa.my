@@ -6,6 +6,19 @@ namespace App\Modules\WebsiteBuilder\Application\Rendering\Contracts;
 
 final readonly class FooterRenderModel
 {
-    /** @param array<string, string> $socialLinks */
-    public function __construct(public string $clinicName, public string $contactEmail, public string $contactPhone, public string $address, public array $socialLinks) {}
+    /**
+     * @param  array<string, string>  $socialLinks
+     * @param  list<BusinessHourRenderModel>  $businessHours
+     */
+    public function __construct(
+        public string $clinicName,
+        public ?string $contactEmail,
+        public ?string $contactPhone,
+        public ?string $address,
+        public array $socialLinks,
+        public array $businessHours,
+        public ?string $whatsAppNumber,
+        public ?float $latitude,
+        public ?float $longitude,
+    ) {}
 }

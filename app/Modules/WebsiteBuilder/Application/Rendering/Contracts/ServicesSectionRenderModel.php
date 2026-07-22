@@ -6,8 +6,8 @@ namespace App\Modules\WebsiteBuilder\Application\Rendering\Contracts;
 
 final readonly class ServicesSectionRenderModel implements SectionRenderContract
 {
-    /** @param list<string> $serviceIds */
-    public function __construct(public array $serviceIds) {}
+    /** @param list<ServiceItemRenderModel> $services */
+    public function __construct(public array $services) {}
 
     public function type(): string
     {

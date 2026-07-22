@@ -8,9 +8,11 @@ use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
 use App\Modules\WebsiteBuilder\Domain\PublishedAssetSnapshot;
+use App\Modules\WebsiteBuilder\Domain\PublishedBusinessHour;
 use App\Modules\WebsiteBuilder\Domain\PublishedContactProjection;
 use App\Modules\WebsiteBuilder\Domain\PublishedSectionContentSnapshot;
 use App\Modules\WebsiteBuilder\Domain\PublishedSectionSnapshot;
+use App\Modules\WebsiteBuilder\Domain\PublishedServiceItem;
 use App\Modules\WebsiteBuilder\Domain\PublishedWebsiteSnapshot;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\AboutSectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\BookingCtaSectionContent;
@@ -367,15 +369,36 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
         match (true) {
             $content instanceof HeroSectionContent => $this->connection->table('website_published_hero_contents')->insert([...$identity, 'headline' => $content->headline, 'subheadline' => $content->subheadline, 'primary_cta_label' => $content->primaryCtaLabel, 'primary_cta_target' => $content->primaryCtaTarget, 'secondary_cta_label' => $content->secondaryCtaLabel, 'secondary_cta_target' => $content->secondaryCtaTarget, 'hero_image_asset_id' => $content->heroImageReference?->value]),
             $content instanceof AboutSectionContent => $this->connection->table('website_published_about_contents')->insert([...$identity, 'heading' => $content->heading, 'description' => $content->description, 'image_asset_id' => $content->imageReference?->value]),
-            $content instanceof ServicesSectionContent => $this->insertOrdered('website_published_service_references', $identity, $content->items, static fn (ServicePresentationItem $item): array => ['service_id' => $item->serviceId, 'is_featured' => $item->isFeatured]),
+            $content instanceof ServicesSectionContent => $this->savePublishedServices($identity, $content, $snapshot->publishedServices),
             $content instanceof DoctorsSectionContent => $this->insertOrdered('website_published_doctor_profiles', $identity, $content->profiles, static fn (ManualDoctorProfile $profile): array => ['profile_id' => $profile->id, 'name' => $profile->name, 'professional_title' => $profile->professionalTitle, 'visible' => $profile->visible, 'photo_asset_id' => $profile->photo?->value]),
             $content instanceof TestimonialsSectionContent => $this->insertOrdered('website_published_testimonials', $identity, $content->testimonials, static fn (ManualTestimonial $item): array => ['testimonial_id' => $item->id, 'quote' => $item->quote, 'author_name' => $item->authorName, 'featured' => $item->featured]),
-            $content instanceof GallerySectionContent => $this->insertOrdered('website_published_gallery_images', $identity, $content->images, static fn (GalleryImage $image): array => ['gallery_image_id' => $image->id, 'asset_id' => $image->imageReference->value]),
+            $content instanceof GallerySectionContent => $this->insertOrdered('website_published_gallery_images', $identity, $content->images, static fn (GalleryImage $image): array => ['gallery_image_id' => $image->id, 'asset_id' => $image->imageReference->value, 'alt_text' => $image->altText, 'caption' => $image->caption, 'decorative' => $image->decorative]),
             $content instanceof FaqSectionContent => $this->insertOrdered('website_published_faq_entries', $identity, $content->entries, static fn (FaqEntry $entry): array => ['faq_entry_id' => $entry->id, 'question' => $entry->question, 'answer' => $entry->answer]),
             $content instanceof ContactSectionContent => $this->savePublishedContact($identity, $snapshot->contactProjection),
             $content instanceof BookingCtaSectionContent => $this->connection->table('website_published_booking_cta_contents')->insert([...$identity, 'heading' => $content->heading, 'description' => $content->description, 'button_label' => $content->buttonLabel]),
             default => throw new InvalidWebsiteStorageStateException('Published Section content type is unsupported.'),
         };
+    }
+
+    /**
+     * @param  array<string, string>  $identity
+     * @param  list<PublishedServiceItem>  $services
+     */
+    private function savePublishedServices(array $identity, ServicesSectionContent $content, array $services): bool
+    {
+        $this->insertOrdered('website_published_service_references', $identity, $content->items, static fn (ServicePresentationItem $item): array => ['service_id' => $item->serviceId, 'is_featured' => $item->isFeatured]);
+        foreach ($services as $service) {
+            $this->connection->table('website_published_service_items')->insert([
+                ...$identity,
+                'service_id' => $service->serviceId,
+                'display_name' => $service->displayName,
+                'short_description' => $service->shortDescription,
+                'display_order' => $service->displayOrder,
+                'is_featured' => $service->isFeatured,
+            ]);
+        }
+
+        return true;
     }
 
     /**
@@ -400,12 +423,18 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
         if ($contact === null) {
             throw new InvalidWebsiteStorageStateException('Published Contact projection is missing.');
         }
-        $this->connection->table('website_published_contact_contents')->insert([
+        $this->connection->table('website_published_contact_projections')->insert([
             ...$identity, 'contact_email' => $contact->email, 'contact_phone' => $contact->phone, 'address' => $contact->address,
             'facebook_url' => $contact->socialLinks['facebook'] ?? null, 'instagram_url' => $contact->socialLinks['instagram'] ?? null,
             'youtube_url' => $contact->socialLinks['youtube'] ?? null, 'tiktok_url' => $contact->socialLinks['tiktok'] ?? null,
-            'linkedin_url' => $contact->socialLinks['linkedin'] ?? null,
+            'linkedin_url' => $contact->socialLinks['linkedin'] ?? null, 'whatsapp_number' => $contact->whatsAppNumber,
+            'latitude' => $contact->latitude, 'longitude' => $contact->longitude,
         ]);
+        foreach ($contact->businessHours as $hours) {
+            $this->connection->table('website_published_business_hours')->insert([
+                ...$identity, 'day_of_week' => $hours->dayOfWeek, 'opens_at' => $hours->opensAt, 'closes_at' => $hours->closesAt,
+            ]);
+        }
 
         return true;
     }
@@ -482,16 +511,16 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
         $publicationId = $this->string($row, 'publication_id');
         $sectionId = $this->string($row, 'section_id');
         $type = SectionType::fromStored($this->string($row, 'section_type'));
-        [$content, $contact] = $this->publishedTypedContent($publicationId, $sectionId, $type);
+        [$content, $contact, $services] = $this->publishedTypedContent($publicationId, $sectionId, $type);
 
         return new PublishedSectionContentSnapshot(
             new PublicationId($publicationId), new WebsiteId($this->string($row, 'website_id')), new SectionId($sectionId), $type,
             $this->integer($row, 'published_version'), $content, $this->string($row, 'content_fingerprint'), $this->boolean($row, 'renderable'),
-            $this->dateTime($row->created_at ?? null), $this->integer($row, 'version'), $contact,
+            $this->dateTime($row->created_at ?? null), $this->integer($row, 'version'), $contact, $services,
         );
     }
 
-    /** @return array{WebsiteSectionContentInterface, ?PublishedContactProjection} */
+    /** @return array{WebsiteSectionContentInterface, ?PublishedContactProjection, list<PublishedServiceItem>} */
     private function publishedTypedContent(string $publicationId, string $sectionId, SectionType $type): array
     {
         $id = new SectionId($sectionId);
@@ -501,25 +530,27 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
         return match ($type) {
             SectionType::Hero => [(function (stdClass $row) use ($id): HeroSectionContent {
                 return new HeroSectionContent($id, $this->nullableString($row, 'headline'), $this->nullableString($row, 'subheadline'), $this->nullableString($row, 'primary_cta_label'), $this->nullableString($row, 'primary_cta_target'), $this->nullableString($row, 'secondary_cta_label'), $this->nullableString($row, 'secondary_cta_target'), $this->assetId($row, 'hero_image_asset_id'));
-            })($singleton('website_published_hero_contents')), null],
+            })($singleton('website_published_hero_contents')), null, []],
             SectionType::About => [(function (stdClass $row) use ($id): AboutSectionContent {
                 return new AboutSectionContent($id, $this->nullableString($row, 'heading'), $this->nullableString($row, 'description'), $this->assetId($row, 'image_asset_id'));
-            })($singleton('website_published_about_contents')), null],
-            SectionType::Services => [new ServicesSectionContent($id, array_values(array_map(fn (stdClass $item): ServicePresentationItem => new ServicePresentationItem($this->string($item, 'service_id'), $this->integer($item, 'display_order'), $this->boolean($item, 'is_featured')), $ordered('website_published_service_references')))), null],
-            SectionType::Doctors => [new DoctorsSectionContent($id, array_values(array_map(fn (stdClass $item): ManualDoctorProfile => new ManualDoctorProfile($this->string($item, 'profile_id'), $this->string($item, 'name'), $this->nullableString($item, 'professional_title'), $this->boolean($item, 'visible'), $this->assetId($item, 'photo_asset_id')), $ordered('website_published_doctor_profiles')))), null],
-            SectionType::Testimonials => [new TestimonialsSectionContent($id, array_values(array_map(fn (stdClass $item): ManualTestimonial => new ManualTestimonial($this->string($item, 'testimonial_id'), $this->string($item, 'quote'), $this->string($item, 'author_name'), $this->boolean($item, 'featured')), $ordered('website_published_testimonials')))), null],
-            SectionType::Gallery => [new GallerySectionContent($id, array_values(array_map(fn (stdClass $item): GalleryImage => new GalleryImage($this->string($item, 'gallery_image_id'), new AssetId($this->string($item, 'asset_id'))), $ordered('website_published_gallery_images')))), null],
-            SectionType::Faq => [new FaqSectionContent($id, array_values(array_map(fn (stdClass $item): FaqEntry => new FaqEntry($this->string($item, 'faq_entry_id'), $this->string($item, 'question'), $this->string($item, 'answer')), $ordered('website_published_faq_entries')))), null],
-            SectionType::Contact => $this->publishedContactContent($id, $singleton('website_published_contact_contents')),
+            })($singleton('website_published_about_contents')), null, []],
+            SectionType::Services => [new ServicesSectionContent($id, array_values(array_map(fn (stdClass $item): ServicePresentationItem => new ServicePresentationItem($this->string($item, 'service_id'), $this->integer($item, 'display_order'), $this->boolean($item, 'is_featured')), $ordered('website_published_service_references')))), null, array_values(array_map(fn (stdClass $item): PublishedServiceItem => new PublishedServiceItem($this->string($item, 'service_id'), $this->string($item, 'display_name'), $this->nullableString($item, 'short_description'), $this->integer($item, 'display_order'), $this->boolean($item, 'is_featured')), $ordered('website_published_service_items')))],
+            SectionType::Doctors => [new DoctorsSectionContent($id, array_values(array_map(fn (stdClass $item): ManualDoctorProfile => new ManualDoctorProfile($this->string($item, 'profile_id'), $this->string($item, 'name'), $this->nullableString($item, 'professional_title'), $this->boolean($item, 'visible'), $this->assetId($item, 'photo_asset_id')), $ordered('website_published_doctor_profiles')))), null, []],
+            SectionType::Testimonials => [new TestimonialsSectionContent($id, array_values(array_map(fn (stdClass $item): ManualTestimonial => new ManualTestimonial($this->string($item, 'testimonial_id'), $this->string($item, 'quote'), $this->string($item, 'author_name'), $this->boolean($item, 'featured')), $ordered('website_published_testimonials')))), null, []],
+            SectionType::Gallery => [new GallerySectionContent($id, array_values(array_map(fn (stdClass $item): GalleryImage => new GalleryImage($this->string($item, 'gallery_image_id'), new AssetId($this->string($item, 'asset_id')), $this->nullableString($item, 'alt_text'), $this->nullableString($item, 'caption'), $this->boolean($item, 'decorative')), $ordered('website_published_gallery_images')))), null, []],
+            SectionType::Faq => [new FaqSectionContent($id, array_values(array_map(fn (stdClass $item): FaqEntry => new FaqEntry($this->string($item, 'faq_entry_id'), $this->string($item, 'question'), $this->string($item, 'answer')), $ordered('website_published_faq_entries')))), null, []],
+            SectionType::Contact => $this->publishedContactContent($publicationId, $id),
             SectionType::BookingCta => [(function (stdClass $row) use ($id): BookingCtaSectionContent {
                 return new BookingCtaSectionContent($id, $this->nullableString($row, 'heading'), $this->nullableString($row, 'description'), $this->nullableString($row, 'button_label'));
-            })($singleton('website_published_booking_cta_contents')), null],
+            })($singleton('website_published_booking_cta_contents')), null, []],
         };
     }
 
-    /** @return array{ContactSectionContent, PublishedContactProjection} */
-    private function publishedContactContent(SectionId $sectionId, stdClass $row): array
+    /** @return array{ContactSectionContent, PublishedContactProjection, list<PublishedServiceItem>} */
+    private function publishedContactContent(string $publicationId, SectionId $sectionId): array
     {
+        $row = $this->connection->table('website_published_contact_projections')->where('publication_id', $publicationId)->where('section_id', $sectionId->value)->first()
+            ?? $this->requiredRow('website_published_contact_contents', $publicationId, $sectionId->value);
         $links = [];
         foreach (['facebook', 'instagram', 'youtube', 'tiktok', 'linkedin'] as $channel) {
             $value = $this->nullableString($row, $channel.'_url');
@@ -528,7 +559,13 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
             }
         }
 
-        return [new ContactSectionContent($sectionId), new PublishedContactProjection($this->string($row, 'contact_email'), $this->string($row, 'contact_phone'), $this->string($row, 'address'), $links)];
+        $hours = $this->connection->table('website_published_business_hours')->where('publication_id', $publicationId)->where('section_id', $sectionId->value)->orderBy('day_of_week')->orderBy('opens_at')->get()->all();
+
+        return [new ContactSectionContent($sectionId), new PublishedContactProjection(
+            $this->nullableString($row, 'contact_email'), $this->nullableString($row, 'contact_phone'), $this->nullableString($row, 'address'), $links,
+            array_values(array_map(fn (stdClass $hour): PublishedBusinessHour => new PublishedBusinessHour($this->integer($hour, 'day_of_week'), substr($this->string($hour, 'opens_at'), 0, 5), substr($this->string($hour, 'closes_at'), 0, 5)), $hours)),
+            $this->nullableString($row, 'whatsapp_number'), $this->nullableFloat($row, 'latitude'), $this->nullableFloat($row, 'longitude'),
+        ), []];
     }
 
     private function requiredRow(string $table, string $publicationId, string $sectionId): stdClass
@@ -601,6 +638,18 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
         }
         if (is_int($value) || (is_string($value) && ctype_digit($value))) {
             return (int) $value;
+        }
+        throw new InvalidWebsiteStorageStateException(sprintf('Website field %s is invalid.', $field));
+    }
+
+    private function nullableFloat(stdClass $row, string $field): ?float
+    {
+        $value = $row->{$field} ?? null;
+        if ($value === null) {
+            return null;
+        }
+        if (is_float($value) || is_int($value) || (is_string($value) && is_numeric($value))) {
+            return (float) $value;
         }
         throw new InvalidWebsiteStorageStateException(sprintf('Website field %s is invalid.', $field));
     }

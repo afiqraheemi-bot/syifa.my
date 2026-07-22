@@ -280,6 +280,16 @@ final class Website
         $publishedVersion = $this->publishedVersion() + 1;
         $sections = array_map(static fn (WebsiteSection $section): PublishedSectionSnapshot => new PublishedSectionSnapshot($section->id, $section->type, $section->displayOrder()->value, $section->enabled()), $this->sections->sections());
         $sectionContents = $content->capture($this->sections, $publicationId, $this->id, $publishedVersion, $this->branding, $at);
+        $publishedServicesContent = null;
+        foreach ($content->contents as $sectionContent) {
+            if ($sectionContent instanceof ServicesSectionContent) {
+                $publishedServicesContent = $sectionContent;
+                break;
+            }
+        }
+        if (! $publishedServicesContent instanceof ServicesSectionContent || ! $this->servicesPresentation()->equals($publishedServicesContent)) {
+            throw new InvalidWebsiteValueException('Published Services presentation must match Website configuration.');
+        }
         $assets = [];
         foreach ($this->assets->assets() as $asset) {
             if ($asset->status() === AssetStatus::Available) {
@@ -288,13 +298,24 @@ final class Website
         }
         $branding = $this->branding;
         $seo = $this->seo;
+        $contentFingerprint = hash('sha256', json_encode([
+            'templateId' => $this->templateId->value,
+            'branding' => [$branding->clinicName, $branding->tagline, $branding->primaryColor, $branding->secondaryColor, $branding->logoReference?->value, $branding->faviconReference?->value],
+            'seo' => [$seo->metaTitle(), $seo->metaDescription(), $seo->metaKeywords(), $seo->canonicalUrl(), $seo->robotsDirective()->value, $seo->openGraphTitle(), $seo->openGraphDescription(), $seo->openGraphImageReference()?->value, $seo->indexingEnabled()],
+            'sections' => array_map(
+                static fn (PublishedSectionContentSnapshot $section, int $index): array => [$section->sectionId->value, $section->sectionType->value, $index + 1, $sections[$index]->enabled, $section->contentFingerprint],
+                $sectionContents,
+                array_keys($sectionContents),
+            ),
+            'assets' => array_map(static fn (PublishedAssetSnapshot $asset): array => [$asset->assetId->value, $asset->mimeType->value, $asset->width, $asset->height, $asset->checksum], $assets),
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
         $snapshot = new PublishedWebsiteSnapshot(
             $publicationId, $this->id, $publishedVersion, $this->version, $at, $publishedBy, $this->templateId,
             $branding->clinicName, $branding->tagline, $branding->primaryColor, $branding->secondaryColor, $branding->logoReference,
             $branding->faviconReference, $branding->contactEmail, $branding->contactPhone, $branding->address, $branding->socialLinks,
             $seo->metaTitle(), $seo->metaDescription(), $seo->metaKeywords(), $seo->canonicalUrl(), $seo->robotsDirective(),
             $seo->openGraphTitle(), $seo->openGraphDescription(), $seo->openGraphImageReference(), $seo->indexingEnabled(),
-            $readiness->contentFingerprint, $sections, $assets, $sectionContents,
+            $contentFingerprint, $sections, $assets, $sectionContents,
         );
         $history = new WebsitePublicationHistoryEntry($publicationId, $this->id, $publishedVersion, $at, $publishedBy, PublicationResult::Published);
         $this->publishedSnapshot = $snapshot;

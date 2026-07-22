@@ -8,6 +8,7 @@ use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\AboutSectionRende
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\AssetRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\BookingCtaSectionRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\BrandingRenderModel;
+use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\BusinessHourRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\ContactSectionRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\DoctorRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\DoctorsSectionRenderModel;
@@ -22,6 +23,7 @@ use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicationMetada
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\SectionRenderContract;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\SeoRenderModel;
+use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\ServiceItemRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\ServicesSectionRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\TestimonialRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\TestimonialsSectionRenderModel;
@@ -45,6 +47,7 @@ final readonly class PublicWebsiteRenderProjector
 {
     public function project(PublishedWebsiteSnapshot $snapshot): PublicWebsiteRenderModel
     {
+        $contact = $this->publishedContact($snapshot);
         $sections = [];
         foreach ($snapshot->sections as $index => $metadata) {
             $content = $snapshot->sectionContents[$index];
@@ -64,7 +67,7 @@ final readonly class PublicWebsiteRenderProjector
             new BrandingRenderModel($snapshot->clinicName, $snapshot->tagline, $snapshot->primaryColor, $snapshot->secondaryColor, $snapshot->logoAssetId?->value, $snapshot->faviconAssetId?->value),
             new SeoRenderModel($snapshot->metaTitle, $snapshot->metaDescription, $snapshot->metaKeywords, $snapshot->canonicalUrl, $snapshot->robotsDirective->value, $snapshot->openGraphTitle, $snapshot->openGraphDescription, $snapshot->openGraphImageAssetId?->value, $snapshot->indexingEnabled),
             new HeaderRenderModel($snapshot->clinicName, $snapshot->tagline, $snapshot->logoAssetId?->value),
-            new FooterRenderModel($snapshot->clinicName, $snapshot->contactEmail, $snapshot->contactPhone, $snapshot->address, $snapshot->socialLinks),
+            new FooterRenderModel($snapshot->clinicName, $contact->email, $contact->phone, $contact->address, $contact->socialLinks, $this->businessHours($contact), $contact->whatsAppNumber, $contact->latitude, $contact->longitude),
             $sections,
             $assets,
             new PublicationMetadataRenderModel($snapshot->publicationId->value, $snapshot->publishedVersion, $snapshot->publishedAt),
@@ -78,7 +81,10 @@ final readonly class PublicWebsiteRenderProjector
         return match (true) {
             $content instanceof HeroSectionContent => new HeroSectionRenderModel($this->required($content->headline), $content->subheadline, $content->primaryCtaLabel, $content->primaryCtaTarget, $content->secondaryCtaLabel, $content->secondaryCtaTarget, $content->heroImageReference?->value),
             $content instanceof AboutSectionContent => new AboutSectionRenderModel($this->required($content->heading), $this->required($content->description), $content->imageReference?->value),
-            $content instanceof ServicesSectionContent => new ServicesSectionRenderModel($content->serviceReferences()),
+            $content instanceof ServicesSectionContent => new ServicesSectionRenderModel(array_map(
+                static fn ($service): ServiceItemRenderModel => new ServiceItemRenderModel($service->serviceId, $service->displayName, $service->shortDescription, $service->displayOrder, $service->isFeatured),
+                $snapshot->publishedServices,
+            )),
             $content instanceof DoctorsSectionContent => new DoctorsSectionRenderModel(array_values(array_map(
                 static fn ($profile): DoctorRenderModel => new DoctorRenderModel($profile->name, $profile->professionalTitle, $profile->photo?->value),
                 array_filter($content->profiles, static fn ($profile): bool => $profile->visible),
@@ -87,7 +93,7 @@ final readonly class PublicWebsiteRenderProjector
                 static fn ($item): TestimonialRenderModel => new TestimonialRenderModel($item->quote, $item->authorName),
                 array_filter($content->testimonials, static fn ($item): bool => $item->featured),
             ))),
-            $content instanceof GallerySectionContent => new GallerySectionRenderModel(array_map(static fn ($image): GalleryImageRenderModel => new GalleryImageRenderModel($image->imageReference->value), $content->images)),
+            $content instanceof GallerySectionContent => new GallerySectionRenderModel(array_map(static fn ($order, $image): GalleryImageRenderModel => new GalleryImageRenderModel($image->imageReference->value, $image->altText, $image->caption, $order + 1, $image->decorative), array_keys($content->images), $content->images)),
             $content instanceof FaqSectionContent => new FaqSectionRenderModel(array_map(static fn ($entry): FaqEntryRenderModel => new FaqEntryRenderModel($entry->question, $entry->answer), $content->entries)),
             $content instanceof ContactSectionContent => $this->contact($snapshot->contactProjection),
             $content instanceof BookingCtaSectionContent => new BookingCtaSectionRenderModel($this->required($content->heading), $this->required($content->description), $this->required($content->buttonLabel)),
@@ -101,7 +107,27 @@ final readonly class PublicWebsiteRenderProjector
             throw new LogicException('Published Snapshot is missing its Contact projection.');
         }
 
-        return new ContactSectionRenderModel($contact->email, $contact->phone, $contact->address, $contact->socialLinks);
+        return new ContactSectionRenderModel($contact->email, $contact->phone, $contact->address, $contact->socialLinks, $this->businessHours($contact), $contact->whatsAppNumber, $contact->latitude, $contact->longitude);
+    }
+
+    private function publishedContact(PublishedWebsiteSnapshot $snapshot): PublishedContactProjection
+    {
+        foreach ($snapshot->sectionContents as $section) {
+            if ($section->contactProjection !== null) {
+                return $section->contactProjection;
+            }
+        }
+
+        throw new LogicException('Published Snapshot is missing its Contact projection.');
+    }
+
+    /** @return list<BusinessHourRenderModel> */
+    private function businessHours(PublishedContactProjection $contact): array
+    {
+        return array_map(
+            static fn ($hours): BusinessHourRenderModel => new BusinessHourRenderModel($hours->dayOfWeek, $hours->opensAt, $hours->closesAt),
+            $contact->businessHours,
+        );
     }
 
     private function required(?string $value): string
