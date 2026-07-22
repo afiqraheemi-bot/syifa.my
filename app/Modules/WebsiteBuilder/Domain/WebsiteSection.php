@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\WebsiteSectionContentInterface;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionType;
@@ -49,6 +50,15 @@ final class WebsiteSection
     public function version(): int
     {
         return $this->version;
+    }
+
+    public function isRenderEligible(WebsiteSectionContentInterface $content, bool $contentRenderable): bool
+    {
+        if ($content->sectionId()->value !== $this->id->value || $content->sectionType() !== $this->type) {
+            throw new InvalidWebsiteValueException('Website Section content does not belong to this Section.');
+        }
+
+        return $this->enabled && $contentRenderable;
     }
 
     public function setEnabled(bool $enabled, DateTimeImmutable $at): void

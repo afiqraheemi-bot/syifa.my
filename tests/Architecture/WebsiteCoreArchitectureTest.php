@@ -67,6 +67,20 @@ final class WebsiteCoreArchitectureTest extends TestCase
         self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/WebsiteSectionController.php');
     }
 
+    public function test_section_content_models_have_no_delivery_or_cross_context_dependencies(): void
+    {
+        $directory = $this->root().'/app/Modules/WebsiteBuilder/Domain/SectionContent';
+        foreach ($this->phpFiles($directory) as $file) {
+            $source = (string) file_get_contents($file);
+            foreach (['Illuminate\\', 'App\\Modules\\Booking\\', 'App\\Modules\\Clinic\\', 'App\\Modules\\Payment\\', 'App\\Modules\\Subscription', 'Publishing\\', 'Rendering\\', 'Seo\\', 'Tracking\\', 'Analytics\\'] as $forbidden) {
+                self::assertStringNotContainsString($forbidden, $source, $file);
+            }
+        }
+
+        self::assertSame([], $this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Presentation'));
+        self::assertFileDoesNotExist($this->root().'/database/migrations/website_builder/2026_08_09_000001_create_website_section_content_tables.php');
+    }
+
     /** @return list<string> */
     private function phpFiles(string ...$directories): array
     {
