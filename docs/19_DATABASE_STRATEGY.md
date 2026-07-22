@@ -1,5 +1,7 @@
 # Database Strategy — Engineering Principles
 
+> **Booking source persistence amendment (2026-08-06):** `bookings.booking_source` is constrained and non-null with no permanent default. The additive migration classifies pre-amendment rows as `WEBSITE` because the only previously implemented creation boundary was public submission, then removes the transitional default so future writes must supply source explicitly.
+
 **Status: Current with implementation-alignment note.** The aggregate count is governed by [26_ARCHITECTURE_FREEZE_V1.md](./26_ARCHITECTURE_FREEZE_V1.md). Amended ADR-013 supersedes historical references below to Service-owned Availability Schedule/Exception persistence: active MVP scheduling uses Clinic weekly hours/configuration plus Booking reservation buckets and history.
 
 ## Table of Contents

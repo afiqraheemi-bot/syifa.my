@@ -1,5 +1,7 @@
 # Architecture Freeze v1
 
+> **Governed Booking source amendment (2026-08-06):** The frozen Booking design uses one aggregate and one transactional creation workflow for all five approved origins. BookingSource and BookingActor remain separate. Channel-specific aggregates, direct manual persistence, bypass reservation paths, Clinic Staff, and messaging integrations are prohibited.
+
 ## Table of Contents
 
 - [Document Authority](#document-authority)

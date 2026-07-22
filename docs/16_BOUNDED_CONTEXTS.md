@@ -1,5 +1,7 @@
 # Bounded Contexts
 
+> **Booking source amendment (2026-08-06):** The existing Booking context owns one creation engine for website and Clinic Owner-recorded manual origins. No channel-specific context, manual-booking module, staff role, or messaging integration is introduced.
+
 ## Table of Contents
 
 - [Document Authority](#document-authority)

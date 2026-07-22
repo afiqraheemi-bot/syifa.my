@@ -4,6 +4,8 @@
 
 Accepted, amended 2026-07-22.
 
+Amended 2026-08-06: one Booking Engine supports `WEBSITE`, `WHATSAPP`, `PHONE`, `WALK_IN`, and `STAFF`. BookingSource is mandatory, immutable, and separate from BookingActor. Public submission records `WEBSITE` with a Public actor. An authenticated Clinic Owner may record the other four sources only through the same tenant-scoped Service eligibility, Clinic slot generation, exact-interval PostgreSQL reservation, immutable snapshot, BookingSubmitted history, and transaction workflow. Manual Bookings begin `submitted`; Website Designers have no operational Booking permission. Earlier wording implying exclusively public submission is superseded only to this extent.
+
 ## Date
 
 2026-07-22

@@ -1,5 +1,7 @@
 # Syifa.my Phase 1 Domain Model
 
+> **Booking source amendment (2026-08-06):** Every Booking owns one immutable governed source: `WEBSITE`, `WHATSAPP`, `PHONE`, `WALK_IN`, or `STAFF`. Source records origin and is not the actor. Public and Clinic Owner-recorded manual submissions use the same Booking aggregate and creation invariants.
+
 ## Table of Contents
 
 - [Document Authority](#document-authority)

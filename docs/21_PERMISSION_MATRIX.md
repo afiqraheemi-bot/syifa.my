@@ -1,5 +1,7 @@
 # Permission Matrix
 
+> **Booking source permission amendment (2026-08-06):** Public Visitors may submit only `WEBSITE` Bookings. Authenticated Clinic Owners may create manual `WHATSAPP`, `PHONE`, `WALK_IN`, and `STAFF` Bookings for their resolved Tenant. Website Designers cannot create or operate Bookings.
+
 **Status: Draft — Under CTO Review.** This document is the authoritative Phase 1 RBAC (role-based access control) matrix for Syifa.my. It defines permissions only. It does not create a Laravel Policy, a middleware, or any other implementation artifact — those require separately governed engineering work once this matrix is approved.
 
 ## Table of Contents

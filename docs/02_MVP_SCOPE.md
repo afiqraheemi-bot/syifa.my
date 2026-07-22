@@ -1,5 +1,7 @@
 # MVP Scope
 
+> **Booking source amendment (2026-08-06):** One governed Booking Engine serves `WEBSITE`, `WHATSAPP`, `PHONE`, `WALK_IN`, and `STAFF`. Public submission always records `WEBSITE`; an authenticated Clinic Owner may record the four manual origins through the same Service, slot, capacity, snapshot, history, and transaction pipeline. Booking source is distinct from the auditable actor, manual bookings begin `submitted`, and Website Designers have no operational Booking permission.
+
 ## Table of Contents
 
 - [Document Authority](#document-authority)
