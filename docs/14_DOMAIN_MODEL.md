@@ -1,5 +1,7 @@
 # Syifa.my Phase 1 Domain Model
 
+> **Website Publishing Pipeline Foundation amendment (2026-08-12):** Published Snapshot and Publication History are immutable internal Website entities. Website owns the current Snapshot, monotonically increasing published version, last-published metadata, and history. Draft configuration remains independently mutable and cannot be a public read source.
+
 > **Website Asset Management Foundation amendment (2026-08-11):** Website Asset is an internal Website entity with immutable Asset/Tenant identity, storage key, governed image MIME type, byte size, optional dimensions, checksum, lifecycle, version, and timestamps. Website owns the collection and validates Tenant lineage. Branding, Section content, doctor photos, and SEO use typed `AssetId` references.
 
 > **Website SEO Configuration amendment (2026-08-10):** SEO Configuration is a one-to-one internal Website entity keyed by Website identity. It owns validated meta, canonical, robots, Open Graph, indexing, version, and timestamps. It is not independently owned and is not an Aggregate Root.

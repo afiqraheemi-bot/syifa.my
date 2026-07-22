@@ -1,5 +1,7 @@
 # API Design
 
+> **Website Publishing Pipeline Foundation amendment (2026-08-12):** No publishing HTTP endpoint is introduced. The public-read contract is snapshot-only and physically independent of mutable Website draft tables; preview remains a future protected draft path. Controllers, APIs, rendering, and delivery remain deferred.
+
 > **Website Asset Management Foundation amendment (2026-08-11):** No Asset HTTP surface is introduced. Upload, browsing, binary delivery, controllers, APIs, and public rendering require later approved increments. Asset authorization remains inside the existing protected Website boundary.
 
 > **Website SEO Configuration amendment (2026-08-10):** No SEO HTTP surface is introduced. SEO management remains protected by the existing Website authorization boundary; controllers, APIs, public reads, and generated SEO artifacts require later approval.

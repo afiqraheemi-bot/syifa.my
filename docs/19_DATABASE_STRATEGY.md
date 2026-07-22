@@ -1,5 +1,7 @@
 # Database Strategy — Engineering Principles
 
+> **Website Publishing Pipeline Foundation amendment (2026-08-12):** Immutable `website_published_snapshots` and normalized Section/Asset snapshot children are stored separately from mutable draft tables. `website_publication_history` records publication identity, version, actor, time, and result. Unique versions, insert-only snapshots, optimistic Website writes, and one transaction prevent partial publication. Public snapshot queries never join mutable draft tables.
+
 > **Website Asset Management Foundation amendment (2026-08-11):** `website_assets` stores one normalized row per Website-owned Asset with explicit Website and Tenant lineage, storage metadata, governed MIME/status, checksum, optional dimensions, optimistic version, and timestamps. No generic file table, JSON metadata, binary payload, or storage-provider configuration is introduced. Existing image-reference columns remain opaque Asset identifiers.
 
 > **Website SEO Configuration amendment (2026-08-10):** `website_seo_configurations` stores exactly one normalized row per Website using `website_id` as primary key and cascading ownership reference. Meta, canonical, robots, Open Graph, indexing, version, and timestamps use explicit columns; JSON and generic metadata storage are prohibited. Existing Websites receive deterministic validated defaults during the additive migration.

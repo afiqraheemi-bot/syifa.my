@@ -1,5 +1,7 @@
 # Aggregate Design
 
+> **Website Publishing Pipeline Foundation amendment (2026-08-12):** Publishing is an atomic Website operation. Valid readiness produces one immutable Snapshot and matching successful History entry at the next version; failure mutates neither publication state nor history. Republish creates a new Snapshot and never modifies an earlier one. Website remains the Aggregate Root and no Publishing context is added.
+
 > **Website Asset Management Foundation amendment (2026-08-11):** Website owns its Asset Collection and governs Asset registration and lifecycle. Assets cannot exist independently and do not add an Aggregate Root. Typed references identify Assets without transferring ownership; SVG Assets are eligible only for logo use. The Aggregate Root registry is unchanged.
 
 > **Website SEO Configuration amendment (2026-08-10):** Website owns exactly one internal SEO Configuration and governs all changes through the Website aggregate. SEO cannot exist independently. The Aggregate Root registry is unchanged.

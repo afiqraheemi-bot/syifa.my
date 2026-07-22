@@ -1,5 +1,7 @@
 # Permission Matrix
 
+> **Website Publishing Pipeline Foundation amendment (2026-08-12):** Tenant-bound Clinic Owners and assigned Website Designers may publish through the existing Website authorization boundary; explicitly authorized Super Admins provide support. Public actors cannot mutate or preview draft state and may consume only a Published Snapshot through a future public delivery boundary.
+
 > **Website Asset Management Foundation amendment (2026-08-11):** Clinic Owners may use Website Assets, assigned Website Designers may manage them within the Website boundary, and Super Admins provide support. Public actors have no management access. No upload or asset endpoint is introduced.
 
 > **Website SEO Configuration amendment (2026-08-10):** Clinic Owners manage Website SEO, assigned Website Designers configure it within the existing Website authorization boundary, and Super Admins provide support. Public actors have no SEO-management access. No new role or endpoint is introduced.

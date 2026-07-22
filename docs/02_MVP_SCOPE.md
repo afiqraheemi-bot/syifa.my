@@ -1,5 +1,7 @@
 # MVP Scope
 
+> **Website Publishing Pipeline Foundation amendment (2026-08-12):** Website may atomically publish an immutable, explicitly versioned Snapshot after approval, entitlement, draft, Section-content, Asset, SEO, and ownership readiness succeeds. Preview remains draft-only and public reads remain snapshot-only. This foundation adds no rendering, deployment, scheduling, rollback execution, controller, or UI.
+
 > **Website Asset Management Foundation amendment (2026-08-11):** Website owns reusable internal image Assets and all Website image configuration references them through `AssetId`. This foundation defines metadata, lifecycle, ownership, normalized persistence, and logo-only SVG eligibility; it adds no upload, processing, storage-provider, CDN, media-library, or rendering capability.
 
 > **Website SEO Configuration amendment (2026-08-10):** Every Website owns one validated SEO configuration with governed robots policy and SEO-ready defaults. This increment adds Domain configuration and normalized persistence only; it adds no meta-tag rendering, sitemap, robots.txt, structured data, webmaster integration, API, or UI.
