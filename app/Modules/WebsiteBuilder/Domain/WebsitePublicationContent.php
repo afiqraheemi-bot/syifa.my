@@ -93,7 +93,7 @@ final readonly class WebsitePublicationContent
         return match (true) {
             $content instanceof HeroSectionContent => $content->isRenderable(),
             $content instanceof AboutSectionContent => $content->isRenderable(),
-            $content instanceof ServicesSectionContent => $content->serviceReferences !== [],
+            $content instanceof ServicesSectionContent => $content->serviceReferences() !== [],
             $content instanceof DoctorsSectionContent => $content->isRenderable(),
             $content instanceof TestimonialsSectionContent => $content->isRenderable(),
             $content instanceof GallerySectionContent => $content->isRenderable(),
@@ -110,7 +110,7 @@ final readonly class WebsitePublicationContent
         return match (true) {
             $content instanceof HeroSectionContent => ['type' => SectionType::Hero->value, 'headline' => $content->headline, 'subheadline' => $content->subheadline, 'primaryCtaLabel' => $content->primaryCtaLabel, 'primaryCtaTarget' => $content->primaryCtaTarget, 'secondaryCtaLabel' => $content->secondaryCtaLabel, 'secondaryCtaTarget' => $content->secondaryCtaTarget, 'heroImageReference' => $content->heroImageReference?->value],
             $content instanceof AboutSectionContent => ['type' => SectionType::About->value, 'heading' => $content->heading, 'description' => $content->description, 'imageReference' => $content->imageReference?->value],
-            $content instanceof ServicesSectionContent => ['type' => SectionType::Services->value, 'serviceReferences' => $content->serviceReferences],
+            $content instanceof ServicesSectionContent => ['type' => SectionType::Services->value, 'services' => array_map(static fn ($item): array => ['serviceId' => $item->serviceId, 'displayOrder' => $item->displayOrder, 'isFeatured' => $item->isFeatured], $content->items)],
             $content instanceof DoctorsSectionContent => ['type' => SectionType::Doctors->value, 'profiles' => array_map(static fn ($profile): array => ['id' => $profile->id, 'name' => $profile->name, 'professionalTitle' => $profile->professionalTitle, 'visible' => $profile->visible, 'photo' => $profile->photo?->value], $content->profiles)],
             $content instanceof TestimonialsSectionContent => ['type' => SectionType::Testimonials->value, 'testimonials' => array_map(static fn ($item): array => ['id' => $item->id, 'quote' => $item->quote, 'authorName' => $item->authorName, 'featured' => $item->featured], $content->testimonials)],
             $content instanceof GallerySectionContent => ['type' => SectionType::Gallery->value, 'images' => array_map(static fn ($image): array => ['id' => $image->id, 'assetId' => $image->imageReference->value], $content->images)],

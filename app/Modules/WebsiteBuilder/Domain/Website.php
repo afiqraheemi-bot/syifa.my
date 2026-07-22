@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\ServicePresentationItem;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\ServicesSectionContent;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetAvailabilityEvidence;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetStatus;
@@ -14,6 +16,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\PublicationResult;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionType;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteBranding;
@@ -40,6 +43,7 @@ final class Website
         /** @var list<WebsitePublicationHistoryEntry> */
         private array $publicationHistory = [],
         private int $version = 0,
+        private ?ServicesSectionContent $servicesPresentation = null,
     ) {
         if ($version < 0 || $updatedAt < $createdAt) {
             throw new InvalidWebsiteValueException('Website persisted state is invalid.');
@@ -57,6 +61,20 @@ final class Website
             if (! $lastHistory instanceof WebsitePublicationHistoryEntry || $publishedSnapshot->websiteId->value !== $id->value || $lastHistory->publicationId->value !== $publishedSnapshot->publicationId->value) {
                 throw new InvalidWebsiteValueException('Website publication ownership is invalid.');
             }
+        }
+        $servicesSection = null;
+        foreach ($sections->sections() as $section) {
+            if ($section->type === SectionType::Services) {
+                $servicesSection = $section;
+                break;
+            }
+        }
+        if (! $servicesSection instanceof WebsiteSection) {
+            throw new InvalidWebsiteValueException('Website Services Section is missing.');
+        }
+        $this->servicesPresentation ??= new ServicesSectionContent($servicesSection->id);
+        if ($this->servicesPresentation->sectionId()->value !== $servicesSection->id->value) {
+            throw new InvalidWebsiteValueException('Service presentation does not belong to the Website Services Section.');
         }
     }
 
@@ -104,6 +122,36 @@ final class Website
     public function assets(): WebsiteAssetCollection
     {
         return $this->assets;
+    }
+
+    public function servicesPresentation(): ServicesSectionContent
+    {
+        if (! $this->servicesPresentation instanceof ServicesSectionContent) {
+            throw new InvalidWebsiteValueException('Website Services presentation is unavailable.');
+        }
+
+        return $this->servicesPresentation;
+    }
+
+    /**
+     * @param  list<ServicePresentationItem>  $items
+     * @param  list<string>  $eligibleServiceIds
+     */
+    public function configureServicesPresentation(array $items, array $eligibleServiceIds, DateTimeImmutable $at): bool
+    {
+        $this->assertNotArchived();
+        $configuredIds = array_map(static fn (ServicePresentationItem $item): string => $item->serviceId, $items);
+        if (array_diff($configuredIds, $eligibleServiceIds) !== []) {
+            throw new InvalidWebsiteValueException('Service presentation requires same-Tenant publication-eligible Services.');
+        }
+        $next = new ServicesSectionContent($this->servicesPresentation()->sectionId(), $items);
+        if ($this->servicesPresentation()->equals($next)) {
+            return false;
+        }
+        $this->servicesPresentation = $next;
+        $this->updatedAt = $at;
+
+        return true;
     }
 
     public function publishedSnapshot(): ?PublishedWebsiteSnapshot

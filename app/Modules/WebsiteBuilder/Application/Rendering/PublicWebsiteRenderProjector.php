@@ -78,7 +78,7 @@ final readonly class PublicWebsiteRenderProjector
         return match (true) {
             $content instanceof HeroSectionContent => new HeroSectionRenderModel($this->required($content->headline), $content->subheadline, $content->primaryCtaLabel, $content->primaryCtaTarget, $content->secondaryCtaLabel, $content->secondaryCtaTarget, $content->heroImageReference?->value),
             $content instanceof AboutSectionContent => new AboutSectionRenderModel($this->required($content->heading), $this->required($content->description), $content->imageReference?->value),
-            $content instanceof ServicesSectionContent => new ServicesSectionRenderModel($content->serviceReferences),
+            $content instanceof ServicesSectionContent => new ServicesSectionRenderModel($content->serviceReferences()),
             $content instanceof DoctorsSectionContent => new DoctorsSectionRenderModel(array_values(array_map(
                 static fn ($profile): DoctorRenderModel => new DoctorRenderModel($profile->name, $profile->professionalTitle, $profile->photo?->value),
                 array_filter($content->profiles, static fn ($profile): bool => $profile->visible),
