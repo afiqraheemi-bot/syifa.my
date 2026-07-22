@@ -2,6 +2,8 @@
 
 **Implementation Alignment Note — SYIFA-085A.** This audit remains historically useful, but the current bounded-context and Aggregate Root registries are governed by [16_BOUNDED_CONTEXTS.md](./16_BOUNDED_CONTEXTS.md), [26_ARCHITECTURE_FREEZE_V1.md](./26_ARCHITECTURE_FREEZE_V1.md), and [ADR-006](./decisions/ADR-006-Commercial.md). CommercialOffer is now an accepted Aggregate Root in the Commercial context. Clinic Registration is now its own bounded context.
 
+**Booking Amendment — 2026-07-22.** Amended [ADR-013](./decisions/ADR-013-Booking-Availability-Reservation-Lifecycle-Strategy.md) supersedes this historical audit wherever it classifies Service Setup, Availability Schedule, or Availability Exception as Service-owned scheduling. Clinic owns shared Booking Configuration, timezone, operating hours, appointment duration, and slot capacity; Service is category master data only.
+
 ## Table of Contents
 
 - [Document Authority](#document-authority)

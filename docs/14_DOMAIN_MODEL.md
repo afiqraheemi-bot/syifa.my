@@ -561,15 +561,15 @@ Platform Identity, Activity Log, Audit Log, Platform Setting, and any retained S
 
 **Purpose.** Defines how a Clinic Service participates in the Phase 1 Booking System.
 
-**Responsibilities.** Specifies duration, booking status, applicable location or delivery context, permitted availability basis, and other approved booking rules.
+**Responsibilities.** Specifies service name, public description, active/inactive status, display order, and controlled public Booking Form eligibility. Appointment duration, capacity, operating hours, and availability belong to Clinic Booking Configuration.
 
 **Ownership.** Tenant-owned and associated with one Clinic Service.
 
-**Relationships.** Connects a Clinic Service to Availability Schedules, Availability Exceptions, and Bookings. It may aggregate applicable Clinic Locations and Practitioner Profiles without owning their clinic meaning.
+**Relationships.** Connects a tenant-owned Service category to Bookings and controlled Booking Form eligibility. It does not own scheduling entities.
 
 **Lifecycle.** Incomplete, configured, review required, active, paused, revised, and retired.
 
-**Business Rules.** A Setup must be complete and valid before public slots are offered. It cannot create cross-Tenant associations. Exact resource, buffer, capacity, and recurrence semantics remain open until booking policy is approved.
+**Business Rules.** An active eligible Service may be selected for any Clinic-generated slot. All Services share the Clinic duration and slot inventory. Per-Service duration or availability is outside MVP.
 
 **Who can modify it.** Clinic Owner and assigned Website Designer during onboarding; Super Admin only through authorized support.
 
@@ -578,6 +578,8 @@ Platform Identity, Activity Log, Audit Log, Platform Setting, and any retained S
 **What module owns it.** Booking System.
 
 ### Availability Schedule
+
+**Amendment.** Superseded for Phase 1 by amended ADR-013. No Service-owned Availability Schedule exists in the active MVP; Clinic weekly operating intervals are authoritative.
 
 **Purpose.** Represents the recurring or declared periods during which a Service Setup may offer booking opportunities.
 
@@ -598,6 +600,8 @@ Platform Identity, Activity Log, Audit Log, Platform Setting, and any retained S
 **What module owns it.** Booking System.
 
 ### Availability Exception
+
+**Amendment.** Superseded for Phase 1 by amended ADR-013. Service-owned date exceptions and holiday automation are outside MVP.
 
 **Purpose.** Represents a deliberate change to normal Availability Schedule behavior for a bounded period.
 
@@ -641,17 +645,17 @@ Platform Identity, Activity Log, Audit Log, Platform Setting, and any retained S
 
 **Purpose.** Represents a Public Visitor's collision-safe reserved appointment for a specific Clinic Service and generated booking opportunity, per [ADR-013](./decisions/ADR-013-Booking-Availability-Reservation-Lifecycle-Strategy.md).
 
-**Responsibilities.** Preserves the mandatory Service identity, local appointment date and time, UTC start and end, Clinic IANA timezone and Service-duration snapshots, Booking Contact, consent evidence, current status, cancellation outcome, and communication state.
+**Responsibilities.** Preserves the mandatory Service category, local appointment interval, UTC interval, Clinic IANA timezone and Clinic-duration snapshots, Booking Contact, consent evidence, current status, immutable transition history, and cancellation outcome.
 
 **Ownership.** Tenant-owned and associated with exactly one Tenant.
 
 **Relationships.** Refers to one Clinic Service, one Service Setup context, one Booking Opportunity, one Booking Contact, and relevant Notifications. It may be viewed and managed by the Clinic Owner under approved rules.
 
-**Lifecycle.** `submitted`, `confirmed`, `cancelled`, or `completed`. `submitted` is already reserved and awaits Clinic Owner confirmation; `cancelled` and `completed` are terminal. No-show, a separate rejected status, rescheduling, and automatic completion are outside Phase 1.
+**Lifecycle.** `submitted`, `confirmed`, `cancelled`, or `completed`. `submitted` is reserved and awaits Clinic Owner confirmation; `cancelled` and `completed` are terminal. Rescheduling is an event that preserves submitted/confirmed status, not a status. No-show and automatic completion are outside Phase 1.
 
-**Business Rules.** Service is mandatory, active, tenant-owned, durationally configured, and must offer the selected generated slot. Capacity is one for overlapping `[start, end)` intervals scoped by Tenant and Service. PostgreSQL exclusion enforcement is authoritative; an Application check alone is insufficient. It is not a clinical record, diagnosis, emergency communication, or patient account. Historical meaning must survive later Service or Schedule changes.
+**Business Rules.** Service is mandatory, active, tenant-owned, and eligible, but is only a category. Capacity is Clinic-configured for the exact Tenant slot interval; PostgreSQL reservation-bucket locking is authoritative. It is not a clinical record, diagnosis, emergency communication, or patient account. Historical scheduling snapshots survive later configuration changes.
 
-**Who can modify it.** Public Visitor may submit; no public cancellation policy is approved. Clinic Owner may confirm, cancel with reason, or complete according to the approved transitions. Super Admin may perform purpose-limited, atomically audited support correction only. Website Designer has no operational Booking access.
+**Who can modify it.** Public Visitor may submit. Clinic Owner may confirm, reschedule after contacting the patient, or cancel. Super Admin may perform purpose-limited, atomically audited support correction only. Website Designer has no operational Booking access.
 
 **Who owns it.** The Tenant owns the booking business relationship; the Public Visitor owns supplied personal-detail accuracy; Syifa.my governs booking integrity.
 
@@ -1087,10 +1091,9 @@ Ownership means one Tenant, platform authority, or participant accountability bo
 | Website to Custom Domain | One-to-Many over time | A Website may have domain history; active-domain cardinality depends on approved Phase 1 policy |
 | Custom Domain to Domain Verification | One-to-Many composition | Verification evidence belongs to one domain request and may be renewed or superseded |
 | Clinic Service to Service Setup | One-to-One active | A bookable Service has one active Setup governing its current booking behavior |
-| Service Setup to Availability Schedule | One-to-Many composition | Schedules express normal availability for one Setup |
-| Service Setup to Availability Exception | One-to-Many composition | Exceptions adjust availability for one Setup context |
+| Clinic to Booking Configuration | One-to-One composition | Shared duration, capacity, timezone, and weekly operating hours govern all Services |
 | Service Setup to Booking Opportunity | One-to-Many aggregation | Opportunities are derived from one Setup and its availability rules |
-| Booking Opportunity to Booking | One-to-One under single-capacity Phase 1 assumption | One opportunity may support one accepted Booking unless product policy later approves capacity greater than one |
+| Booking Opportunity to Booking | One-to-Many up to Clinic capacity snapshot | A Tenant/exact-slot reservation bucket authoritatively bounds submitted plus confirmed occupancy |
 | Tenant to Booking | One-to-Many ownership | Every Booking belongs to one Tenant and can never transfer to another |
 | Booking to Booking Contact | One-to-One composition | Contact information exists only for its Booking; no longitudinal Phase 1 profile is created |
 | Booking to Notification | One-to-Many association | Booking events may produce several transactional Notifications without making delivery the source of Booking truth |
@@ -1134,7 +1137,7 @@ Owns Website, Template, Theme, Website Content, Publication, Media presentation,
 
 ### Booking Context
 
-Owns Clinic Service business behavior, Service Setup, Availability Schedule, Availability Exception, Booking Opportunity, Booking, Booking Contact, and booking lifecycle. It publishes approved service meaning to the Website Experience Context.
+Owns Service category behavior, Booking Opportunity projection, Booking, Booking Contact, reservation capacity, immutable history, and booking lifecycle. Clinic Booking Configuration remains owned by Clinic in Website Builder.
 
 ### Subscription & Billing Context
 
@@ -1213,7 +1216,7 @@ The following are candidates only and are not Phase 1 scope:
 - Additional Clinic Owner or clinic workforce roles.
 - Patient account or portal.
 - Practitioner scheduling as a full independent resource model.
-- Rooms, equipment, service capacity greater than one, waiting lists, and recurring appointments.
+- Rooms, equipment, resource capacity, capacity above ten, waiting lists, and recurring appointments.
 - Rescheduling, reminders, deposits, clinic-to-patient payments, and no-show policy beyond approved Phase 1 semantics.
 - Multi-language content and localized Template variants.
 - Additional premium Templates beyond the locked five.

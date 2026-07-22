@@ -741,13 +741,13 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 
 ### 11. Clinic Services
 
-**Purpose:** A clinic-approved service, its presentation meaning, and its booking configuration and availability — absorbing what 14_DOMAIN_MODEL.md separately named Service Setup, per 18_AGGREGATE_DESIGN.md's merge.
+**Purpose:** Tenant-owned Service category master data and controlled public Booking eligibility. It owns no scheduling configuration or availability.
 
 **Aggregate Owner:** Clinic Service (18_AGGREGATE_DESIGN.md).
 
 **Bounded Context:** Booking Context.
 
-**Supported Operations:** `GET` ✓ · `POST` (create) ✓ · `PATCH` (update, configure, retire) ✓ · nested Availability Schedule/Exception management ✓ · `PUT` ✗ · `DELETE` ✗ — **intentionally**: a Clinic Service is retired (a lifecycle state), never deleted, because 18_AGGREGATE_DESIGN.md's own invariant requires that "retiring a Clinic Service stops new booking activity without rewriting historical Bookings," which a delete would jeopardize.
+**Supported Operations:** `GET` ✓ · `POST` (create) ✓ · `PATCH` (name, description, active status, display order, controlled eligibility) ✓ · `PUT` ✗ · `DELETE` ✗. Service owns no duration or availability endpoint in MVP.
 
 **A note on public access:** Per this document's earlier note on Public Visitor and this API, the public service catalogue a visitor sees on a published Website page is server-rendered (ADR-003, Decision 4), not served by this resource directly. This resource is authenticated (Clinic Owner, Website Designer, Super Admin) for catalogue management; the Booking resource below exposes the one genuinely public, interactive read this context requires (live availability).
 
@@ -772,7 +772,7 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 - Audit Requirements: None.
 
 **`PATCH /clinic-services/{id}`**
-- Purpose: Update service meaning, complete or revise booking configuration (duration, location/delivery context, availability basis), or transition to `retired`.
+- Purpose: Update Service category meaning, display order, controlled public eligibility, or active/retired state.
 - Business Rules: A configuration cannot be marked bookable until it is complete and valid (18_AGGREGATE_DESIGN.md's Business Invariant); retiring stops new booking activity without affecting existing Bookings, which already hold a captured snapshot.
 - Authorization: Clinic Owner (own) · Website Designer (assigned, onboarding scope).
 - Request Summary: Changed fields or a lifecycle transition.
@@ -781,31 +781,11 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 - Idempotency: Safe to retry with the same idempotency key.
 - Audit Requirements: None.
 
-**`POST /clinic-services/{id}/availability-schedules`, `PATCH .../availability-schedules/{scheduleId}`, `DELETE .../availability-schedules/{scheduleId}`**
-- Purpose: Manage recurring Availability Schedules within a Clinic Service's configuration.
-- Business Rules: Availability must be unambiguous in clinic-local time (19_DATABASE_STRATEGY.md's Timezone Policy); removing a schedule entry is safe because Bookings hold a captured snapshot, not a live reference.
-- Authorization: Clinic Owner (own) · Website Designer (assigned, onboarding scope).
-- Request Summary: Recurrence pattern, effective period, clinic-local time values.
-- Response Summary: Created, updated, or removed schedule entry.
-- Possible Errors: `422` for an internally inconsistent schedule.
-- Idempotency: Required for creation; deletion is naturally idempotent.
-- Audit Requirements: None.
-
-**`POST /clinic-services/{id}/availability-exceptions`, `DELETE .../availability-exceptions/{exceptionId}`**
-- Purpose: Apply or cancel a deliberate deviation from normal availability.
-- Business Rules: An Exception must never silently invalidate an already-accepted Booking (18_AGGREGATE_DESIGN.md) — a conflicting Exception against an existing Booking requires the change/cancellation workflow on the affected Booking, not a silent override.
-- Authorization: Clinic Owner (own) · Website Designer (assigned, onboarding scope).
-- Request Summary: Affected period and business reason.
-- Response Summary: Created or cancelled Exception.
-- Possible Errors: `409` if the Exception would silently conflict with an existing accepted Booking.
-- Idempotency: Required for creation.
-- Audit Requirements: None.
-
-**`GET /clinic-services/{id}/available-slots`**
+**`GET /booking/available-slots`**
 - Purpose: The one genuinely public, interactive read in this context — computes currently available booking slots for a service.
-- Business Rules: Computed on demand from the Clinic Service's own Availability Schedules, Exceptions, and existing Bookings (18_AGGREGATE_DESIGN.md: this is explicitly a projection, never a stored entity — "Booking Opportunity" has no independent persistence); must never combine one Tenant's service with another Tenant's availability.
+- Business Rules: Computed from Clinic timezone, weekly hours, shared duration, and authoritative reservation buckets. Service is not an availability input. Slots are projections, never persisted aggregates.
 - Authorization: Public Visitor · Clinic Owner · Website Designer · Super Admin.
-- Request Summary: Date range query, resolved through the verified public host (ADR-002) for Public Visitor callers.
+- Request Summary: Local date, resolved through verified public Tenant context. Service is not required to calculate inventory.
 - Response Summary: A list of currently available slots; presentation does not guarantee acceptance until the Booking submission's own conflict check completes.
 - Possible Errors: `404` if the service is not currently bookable; `429` under public rate limiting.
 - Idempotency: Naturally idempotent (safe read); the result may legitimately differ between calls as availability changes.
@@ -825,7 +805,7 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 
 **`POST /bookings`**
 - Purpose: Submit a new Booking.
-- Business Rules: Requires a mandatory active tenant-owned Service and a generated slot from effective Clinic-local availability. Acceptance transactionally reserves capacity one and creates `submitted`; PostgreSQL exclusion enforcement is authoritative over overlaps for the same Tenant and Service. It also requires explicit consent that submission is not for emergencies and does not create medical advice, and captures the ADR-013 temporal and Service snapshots. This endpoint must not be exposed until ADR-013's public guardrail is satisfied.
+- Business Rules: Requires a mandatory active eligible tenant-owned Service category and an exact Clinic-generated slot. Acceptance locks the Tenant/UTC-interval bucket, reserves within its capacity snapshot, persists Booking scheduling snapshots and `BookingSubmitted` history, and creates `submitted`. Public input cannot control Tenant, Clinic, timezone, duration, capacity, or UTC values.
 - Authorization: Public Visitor.
 - Request Summary: Clinic Service reference, selected slot, minimum Booking Contact information, required consent acknowledgment.
 - Response Summary: `201 Created` with a reserved `submitted` Booking awaiting Clinic Owner confirmation and a confirmation reference; `409` if the slot is no longer available.
@@ -862,6 +842,16 @@ Clinic Owner sessions are encrypted, server-side Redis-protocol runtime state wi
 - Possible Errors: `409` if not currently in `submitted` state.
 - Idempotency: Naturally idempotent.
 - Audit Requirements: None.
+
+**`POST /bookings/{id}/reschedule`**
+- Purpose: Move a submitted or confirmed Booking after the Clinic Owner contacts the patient.
+- Business Rules: Rescheduling is not a status. The target current Clinic slot is reserved before the original capacity is released; target failure leaves the original unchanged. Scheduling snapshots and immutable `AppointmentRescheduled` history capture old/new intervals.
+- Authorization: Clinic Owner (own Tenant).
+- Request Summary: Target local date/start and optional governed operational note; no timezone, duration, capacity, TenantId, ClinicId, or UTC input.
+- Response Summary: Booking with unchanged lifecycle status and updated scheduling interval.
+- Possible Errors: `404` for unrelated Tenant; `409` when target is unavailable or transition is invalid; `422` for a non-generated slot.
+- Idempotency: Requires the standard mutation idempotency/version contract.
+- Audit Requirements: Ordinary tenant-owned business history.
 
 **`POST /bookings/{id}/cancellation`**
 - Purpose: Cancel a Booking.

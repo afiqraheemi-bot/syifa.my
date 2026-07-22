@@ -366,6 +366,7 @@ Nineteen resources, matching 20_API_DESIGN.md's Resource Catalogue exactly. Colu
 | Assign | N/A [R3] | N/A [R3] | N/A [R3] | N/A [R3] |
 | Cancel | ❌ — no public policy approved | ✅ Own (submitted/confirmed, reason required) | ❌ | 🔒 Privileged (support correction only, atomic audit required) |
 | Confirm | ❌ | ✅ Own (submitted only) | ❌ | ❌ — not an ordinary Super Admin action |
+| Reschedule | ❌ | ✅ Own (submitted/confirmed, after patient contact) | ❌ | 🔒 Privileged correction only |
 | Complete | ❌ | ✅ Own | ❌ | ❌ |
 | Archive | ❌ | ❌ | ❌ | 🔒 Privileged (old completed/cancelled Bookings) |
 | Restore | N/A [R9] | N/A [R9] | N/A [R9] | N/A [R9] |

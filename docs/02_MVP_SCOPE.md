@@ -88,8 +88,8 @@ Booking System is the primary public conversion and clinic scheduling capability
 
 In scope:
 
-- First-class Service Setup covering the service name, public description, duration, booking status, location or delivery context, and other minimum booking attributes approved for Phase 1.
-- Configuration of bookable availability and exceptions through a bounded clinic scheduling model.
+- First-class Service Setup covering service name, public description, active/inactive status, display order, and controlled public Booking Form eligibility. Service is tenant-owned master data used as the mandatory booking category; it does not own duration, capacity, availability, operating hours, or scheduling rules in Phase 1.
+- One Clinic-level Booking Configuration covering appointment duration, capacity per slot, working days, and working hours. All Services share this Clinic appointment duration and slot inventory in Phase 1; per-Service duration is outside MVP and requires a later architecture decision.
 - Public discovery of bookable services from the clinic website.
 - Public Visitor selection of a service, available date and time, and submission of the minimum contact and booking information required.
 - Explicit consent and clear messaging that submission is not for emergencies and does not create medical advice.

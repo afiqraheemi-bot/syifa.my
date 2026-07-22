@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted, amended 2026-07-22.
 
 ## Date
 
@@ -20,37 +20,39 @@ This decision locks the business semantics and implementation boundaries before 
 
 ## Decision
 
+### Amendment and Supersession
+
+The CTO amendment of 2026-07-22 supersedes only the earlier ADR-013 clauses assigning duration, availability, schedules, exceptions, collision scope, or capacity to Service. Specifically superseded are: Service-level collision-safe reservation; Service-owned duration and availability; collision identity `TenantId + ServiceId`; capacity one; Service-level schedules/exceptions; and the exclusion-constraint direction for enforcing capacity. The decisions below are the active replacement. Clinic timezone authority, immutable Booking snapshots, collision-safe `submitted`, tenant isolation, half-open intervals, and operational authorization/audit rules remain active.
+
 ### Submission and Service
 
-- Phase 1 uses Service-level collision-safe reservation.
+- Phase 1 uses Clinic-level collision-safe reservation.
 - A successful public submission proves that the selected slot was available and reserved transactionally, and creates the Booking as `submitted`.
 - `submitted` is a reserved Booking awaiting Clinic Owner confirmation, not an unprotected contact request.
-- Every public Phase 1 Booking contains `ServiceId`. The Service belongs to the trusted Tenant, is active, has an approved bookable duration, and offers the selected slot through effective availability.
+- Every public Phase 1 Booking contains `ServiceId`. The Service belongs to the trusted Tenant, is active, and is eligible through controlled Booking Form configuration. Service is the booking category only and does not own duration, availability, capacity, operating hours, or scheduling rules.
 - Service-less public Booking is prohibited. Public publishing requires the controlled Service field to be enabled and required, populated only from active tenant-owned Services. Future-ready configuration vocabulary may remain, but an optional or disabled Service configuration is not publishable for this workflow.
 
 ### Time and Availability Ownership
 
 - Clinic owns one governed IANA timezone and weekly operating hours. Availability is expressed in Clinic-local business time; server, request, and viewer timezone are never inferred as authority.
-- Clinic Service owns Service duration, Availability Schedules, and Availability Exceptions.
-- Effective availability is bounded by Clinic operating hours. Service schedules may narrow those hours. Explicit closures win fail-closed; explicit openings cannot exceed the Clinic operating boundary in Phase 1. Contradictory or overlapping exceptions are rejected during configuration. Automatic public-holiday calendars are outside MVP.
-- Booking will retain local appointment date, local appointment time, UTC `starts_at`, UTC `ends_at`, the IANA timezone snapshot, and the Service duration snapshot.
+- Clinic owns one Booking configuration containing controlled appointment duration and capacity per slot, in addition to its governed timezone and weekly operating intervals. All active Services share the same Clinic slot inventory.
+- Booking retains local appointment date, local start/end time, UTC `starts_at`/`ends_at`, IANA timezone snapshot, and Clinic appointment-duration snapshot.
 
 ### Slot Model
 
-- A bookable Service has a mandatory duration. Slot duration equals Service duration; Phase 1 has no independent buffer or separately configurable slot interval.
-- Candidate starts advance by Service duration from the schedule start, and the slot end remains within effective availability.
+- Clinic Booking Configuration has a mandatory controlled duration. Slot duration and start interval equal that Clinic duration; Phase 1 has no buffer or separate slot interval.
+- Candidate starts advance by Clinic duration from each operating-interval start, and incomplete trailing time produces no slot.
 - Intervals are half-open, `[start, end)`, so back-to-back Bookings are permitted.
 - Arbitrary requested times that were not generated as active slots are rejected.
 - Available slots are an on-demand projection, not persisted aggregates.
 
 ### Collision Authority
 
-- Capacity is exactly one for the collision scope of `TenantId`, `ServiceId`, and overlapping reservation interval.
-- The collision-participating statuses are `submitted`, `confirmed`, and `completed`. `cancelled` releases capacity.
-- PostgreSQL exclusion enforcement is authoritative: equality on `tenant_id`, equality on `service_id`, and overlap on `tstzrange(starts_at, ends_at, '[)')`, partially enforced for collision-participating statuses.
-- Implementation must assess and enable the required PostgreSQL GiST capabilities, including `btree_gist` when required.
-- An Application availability check may improve errors but never replaces the database invariant. Application-level check-then-insert alone is prohibited.
-- Doctor, Branch, Room, Practitioner, Location, equipment, and capacity greater than one are outside MVP.
+- Capacity is configurable from one to ten for the collision scope of `TenantId` and the exact UTC slot interval. Service does not participate in collision identity.
+- `submitted` and `confirmed` consume capacity. `cancelled` releases it. `completed` remains historical and does not affect future capacity.
+- PostgreSQL reservation buckets are authoritative. One lazily created bucket per Tenant and exact UTC interval snapshots capacity when first created; row-level locking serializes occupancy changes. An unlocked count or application-memory lock is prohibited.
+- Later Clinic configuration changes never rewrite an existing bucket or Booking snapshot; future uncreated slots use current configuration.
+- Doctor, Branch, Room, Practitioner, Location, equipment, and resource scheduling remain outside MVP.
 
 ### Lifecycle and Authorization
 
@@ -61,10 +63,10 @@ Approved statuses are `submitted`, `confirmed`, `cancelled`, and `completed`. Ap
 - `confirmed` to `cancelled`; and
 - `confirmed` to `completed`.
 
-`cancelled` and `completed` are terminal. Clinic rejection is cancellation with a required, accountable reason. No-show, a separate rejected status, rescheduling, and automatic completion are outside MVP.
+`cancelled` and `completed` are terminal. Clinic rejection is cancellation with an accountable reason. Rescheduling is an event and scheduling-snapshot change, never a lifecycle status; it preserves `submitted` or `confirmed`. No-show, a separate rejected status, and automatic completion are outside MVP.
 
 - Public Visitor may submit through future public delivery. No public cancellation policy is approved here.
-- Clinic Owner may list and view own-Tenant Bookings, confirm a submitted Booking, cancel a submitted or confirmed Booking with reason, and complete a confirmed Booking.
+- Clinic Owner may list/view own-Tenant Bookings, confirm submitted, reschedule submitted or confirmed after contacting the patient, and cancel submitted or confirmed. Completion remains only the already-approved lifecycle decision; no automation or new delivery is added here.
 - Website Designer has no Booking operational visibility or control.
 - Super Admin may perform only purpose-limited support correction, with an atomic append-only Audit Entry, and does not routinely confirm or complete Bookings.
 - System does not automatically confirm or complete Bookings.
@@ -75,22 +77,21 @@ Every transition records business-event history containing `BookingId`, `TenantI
 
 ### Public Exposure Guardrail
 
-The internal `SubmitBookingService` must not be connected to public delivery until Clinic timezone and operating hours, Service duration and availability, offered-slot validation, Booking temporal snapshots, authoritative PostgreSQL collision protection, and collision-safe submission integration are all implemented.
+The internal `SubmitBookingService` must not be connected to public delivery until Clinic timezone, operating hours and Booking configuration, deterministic slot validation, Booking temporal snapshots, PostgreSQL bucket capacity protection, immutable history, and collision-safe submission integration are implemented. Public input never controls TenantId, ClinicId, timezone, duration, capacity, or UTC timestamps.
 
 ## Implementation Sequence
 
 - **Increment 5C — Clinic operational-time foundation:** Clinic IANA timezone, weekly operating hours, and the tenant-scoped read contract required by Booking; no full Website Builder or Clinic Profile UI.
-- **Increment 5D — Bookable Service availability foundation:** mandatory duration for a bookable Service, Service schedules and exceptions, and configuration invariants.
-- **Increment 5E — Availability projection:** effective slot generation, Clinic-hours intersection, Service schedules and exceptions, timezone-safe UTC conversion, and no persistence of slots as aggregates.
-- **Increment 5F — Collision-safe Booking reservation:** Booking UTC temporal and duration/timezone snapshots, exclusion constraint, offered-slot validation, atomic `SubmitBookingService` integration, and concurrent PostgreSQL tests.
-- **Increment 5G — Booking lifecycle:** confirmation, cancellation, completion, transition invariants, actor and reason, transition history, and optimistic locking.
-- **Increment 5H — Booking management Application layer:** tenant-scoped list/detail with filters and cursor pagination, confirm/cancel/complete operations, and authorization contracts; no delivery/API yet.
+- **Clinic Booking Configuration:** controlled shared duration and capacity, explicitly initialized without silent defaults.
+- **Availability projection:** Clinic operating hours, deterministic timezone-safe slot generation, and no persistence of available slots as aggregates.
+- **Collision-safe reservation:** UTC scheduling snapshots, reservation buckets, offered-slot validation, atomic submission, and concurrent PostgreSQL proof.
+- **Booking operations:** confirm, reschedule and cancel invariants, immutable history, optimistic locking, tenant-scoped reads, and no delivery/API in this backend increment.
 
 These increments remain separate implementation commits.
 
 ## Consequences
 
-Public availability supersedes the prior lower-level assumption that Service may be disabled or optional for a Phase 1 public Booking. Production Booking Form Configuration is unchanged by this documentation decision and retains future vocabulary, but cannot be publicly published unless Service is enabled and required.
+Public availability supersedes both the optional-Service assumption and Service-owned scheduling. Production Booking Form Configuration retains controlled Service eligibility, and public publishing requires Service enabled and required.
 
 Reservation correctness requires a database constraint and transactional creation. Later implementation must add the approved temporal snapshots and lifecycle history; this ADR creates no schema, runtime behavior, delivery endpoint, worker, or user interface.
 

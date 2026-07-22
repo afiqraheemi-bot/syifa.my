@@ -178,9 +178,9 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Internal Entities.** Clinic Location (one or many), Practitioner Profile (one or many).
 
-**Value Objects.** Clinic Name, Public Clinic Description, Contact Details, Operating Hours.
+**Value Objects.** Clinic Name, Public Clinic Description, Contact Details, Operating Hours, Booking Appointment Duration, Booking Capacity Per Slot.
 
-**Business Invariants.** A Clinic is accountable to exactly one Tenant (1:1 in Phase 1). A Clinic Location or Practitioner Profile can never be reassigned to another Clinic — doing so would cross a Tenant boundary. Retiring a Location or Profile must not rewrite historical Booking meaning that referenced it.
+**Business Invariants.** A Clinic is accountable to exactly one Tenant. Its Booking Configuration requires a controlled 15/20/30/45/60-minute duration and capacity from one to ten; all Services share it. Changes never rewrite existing Booking or reservation-bucket snapshots.
 
 **Lifecycle.** Proposed (through Registration) → verified for onboarding → active → corrected → suspended from presentation → offboarding → retained or removed.
 
@@ -338,33 +338,33 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Aggregate Root.** Clinic Service.
 
-**Internal Entities.** Availability Schedule (one or many), Availability Exception (one or many).
+**Internal Entities.** None for scheduling; Service is category master data only.
 
-**Value Objects.** Service Duration, Service Description, booking status flag, applicable location/delivery context.
+**Value Objects.** Service Description, active status, display order, and controlled public eligibility.
 
-**Business Invariants.** A Clinic Service cannot be marked bookable without complete and valid configuration, including mandatory duration and at least one availability basis — being published for presentation does not by itself make a service bookable. Its schedules may only narrow the Clinic's weekly operating hours; explicit closures win, explicit openings cannot exceed that boundary, and contradictory or overlapping exceptions are rejected. Retiring a Clinic Service stops new booking activity without rewriting historical Bookings that already referenced it. An Availability Exception can never silently invalidate an already-accepted Booking. See ADR-013.
+**Business Invariants.** Service belongs to one Tenant and is eligible only while active and allowed by Booking Form configuration. It owns no duration, capacity, availability, operating hours, or scheduling rule. Retiring it stops selection without rewriting historical Bookings.
 
 **Lifecycle.** Draft → active for presentation → configured → bookable → temporarily unavailable → unbookable but visible → retired → historically referenced.
 
-**Transaction Boundary.** Publishing service meaning, completing or revising the booking configuration, and adding or applying an Availability Schedule or Exception each complete as one atomic action. This aggregate does not participate in the transaction that accepts an individual Booking — see Booking below.
+**Transaction Boundary.** Publishing, activating, retiring, reordering, or changing controlled eligibility of Service category data is atomic. Clinic owns Booking Configuration; Booking owns reservation transactions.
 
 **Consistency Boundary.** Service meaning, configuration completeness, and current availability rules are strongly consistent with each other inside this aggregate. Whether a specific time slot is currently free is *computed on demand* from this state — it is never itself a piece of owned, persisted state (see the Booking Opportunity note below).
 
-**Allowed State Changes.** Publish/Retire Service; Configure/Revise Booking Setup; Add/Revise/Remove Availability Schedule; Apply/Cancel Availability Exception — all by the Clinic Owner, or the assigned Website Designer within approved onboarding responsibility.
+**Allowed State Changes.** Publish/Retire Service, revise name/description/display order, and change controlled eligibility.
 
-**Business Rules.** ADR-013 resolves exception precedence: closures win fail-closed and contradictory or overlapping exceptions are rejected during configuration. Service duration is both slot duration and start interval; there is no buffer or separate interval. Resource, practitioner, recurrence, and capacity beyond one remain unapproved.
+**Business Rules.** Clinic duration drives slot duration and interval. All Services share Clinic slots. Resource, practitioner, recurrence, per-Service scheduling, and capacity beyond ten remain unapproved.
 
 **External References.** References Tenant (owner) and Clinic (which clinic's catalogue), Clinic Location(s) and Practitioner Profile(s) — all by identifier.
 
-**On Booking Opportunity.** A "Booking Opportunity" is not modeled as a stored entity anywhere in this aggregate. It is the *result* of evaluating this aggregate's current Availability Schedules and Exceptions against existing Bookings at query time. If a future capability requires a temporary hold on a specific slot before a Booking is confirmed (14_DOMAIN_MODEL.md leaves this explicitly deferred), that hold would be a short-lived, tenant-scoped coordination mechanism belonging to the Booking aggregate's acceptance transaction — not a new persisted business object of its own.
+**On Booking Opportunity.** A Booking Opportunity is a computed projection of Clinic operating time/configuration and Booking reservation buckets, never a stored aggregate. Service does not influence slot generation.
 
-**Events Produced.** Clinic Service Published; Clinic Service Retired; Service Setup Configured; Availability Schedule Activated/Revised; Availability Exception Applied/Cancelled.
+**Events Produced.** Clinic Service Published; Clinic Service Retired; Service Eligibility Changed.
 
 **Events Consumed.** Tenant Activated / Tenant Suspended (gates whether the service may remain bookable); Entitlement Changed (gates Booking System and Service Setup availability); Clinic Location Updated / Practitioner Profile Updated (from Clinic).
 
 **Security Considerations.** Availability data must never combine one Tenant's Service with another Tenant's availability rules (ADR-002). Any future capacity-hold mechanism must use tenant-scoped coordination, never a shared, unscoped lock.
 
-**Future Expansion.** Practitioner-based booking as an independent resource model; rooms, equipment, capacity greater than one; recurring appointments. All explicitly deferred, and the highest-risk open domain questions in the entire platform concentrate here.
+**Future Expansion.** Per-Service duration/availability, practitioner/resource booking, rooms, equipment, and recurring appointments remain deferred. Clinic capacity one to ten is active MVP behavior.
 
 ### Aggregate: Booking
 
@@ -380,7 +380,7 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Value Objects.** Booking Contact (the minimum person and communication information for this Booking — converted from Entity to Value Object per 15_DOMAIN_CLASSIFICATION.md, since it has no lifecycle beyond this Booking); a captured snapshot of the service name, duration, and location at the moment of booking (protecting historical meaning even if Clinic Service later changes, per 14_DOMAIN_MODEL.md's explicit rule that "Bookings refer to the Service meaning that applied when booked").
 
-**Business Invariants.** A Booking must never conflict with another `submitted`, `confirmed`, or `completed` Booking with the same Tenant and Service over a half-open interval; authoritative PostgreSQL exclusion enforcement protects capacity one. A successful submission transaction reserves a generated active slot and creates `submitted`, never an unreserved contact request. A Booking Opportunity (computed, not stored) must never combine one Tenant's Service with another Tenant's availability. A Booking is not a clinical record, diagnosis, emergency communication, or patient account.
+**Business Invariants.** Submitted plus confirmed occupancy for an exact Tenant UTC slot never exceeds the Clinic capacity snapshot. PostgreSQL row-locked reservation buckets are authoritative. Service is mandatory but absent from collision identity. Cancellation releases once; reschedule atomically reserves target before releasing origin. Booking remains non-clinical.
 
 **Lifecycle.** `submitted → confirmed`, `submitted → cancelled`, `confirmed → cancelled`, or `confirmed → completed`. Clinic Owner confirmation is required. `cancelled` and `completed` are terminal.
 
@@ -400,7 +400,7 @@ Consistent with 15_DOMAIN_CLASSIFICATION.md, the following catalogued entities a
 
 **Security Considerations.** Public Visitor data must be minimized and never logged beyond what isolation diagnosis strictly requires (ADR-002). A host-resolved Tenant context must agree with every other signal in the booking request; any mismatch fails closed, never falling back to a default Tenant.
 
-**Future Expansion.** Waiting lists, rescheduling, reminders, deposits, and no-show policy beyond approved Phase 1 semantics — all explicitly deferred.
+**Future Expansion.** Waiting lists, reminders, deposits, and no-show policy remain deferred. Rescheduling after patient contact is active Phase 1 behavior and is recorded as history, not status.
 
 ---
 

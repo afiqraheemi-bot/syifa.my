@@ -217,25 +217,25 @@ No context introduces a fifth role or a capability outside the locked MVP scope.
 
 **Purpose.** Core context — the second half of the locked "website and booking system" promise, and the MVP's primary public conversion workflow. Owns the true business meaning of a Clinic Service, how it may be scheduled, and the lifecycle of a Public Visitor's Booking against it.
 
-**Responsibilities.** Defining Clinic Service business meaning (name, description, duration, bookable status) and publishing an approved projection for public display; Service Setup covering duration, booking status, and location/delivery context; Availability Schedules and Exceptions; deriving Booking Opportunities from valid availability; accepting Bookings while preventing conflicts under the approved capacity rule; carrying a Booking through its lifecycle (submitted, confirmed, changed, cancelled, completed); holding the minimum Booking Contact information needed for that one Booking.
+**Responsibilities.** Defining tenant-owned Service category meaning (name, description, active status, display order, controlled eligibility); deriving slots from the Clinic operational-time contract and shared Clinic Booking Configuration; accepting Bookings through PostgreSQL-safe capacity reservation; carrying Booking through submitted, confirmed, cancelled, and completed states plus reschedule events; holding minimum Booking Contact information.
 
-**Owned Entities.** Clinic Service (business behavior), Service Setup, Availability Schedule, Availability Exception, Booking Opportunity, Booking, Booking Contact.
+**Owned Entities.** Clinic Service category, computed Booking Opportunity, Booking, Booking Contact, reservation bucket persistence, and immutable Booking history. Clinic Booking Configuration remains owned by Clinic in Website Builder.
 
 **Aggregate Roots.** Clinic Service or Service Setup for configuration and availability (14_DOMAIN_MODEL.md flags this root choice as still open pending whether non-bookable services must exist independently of a Setup — this document does not resolve it). Booking for the accepted transaction, its contact, and its lifecycle.
 
-**Events Produced.** Clinic Service Published (consumed by Website Builder); Clinic Service Retired; Service Setup Configured; Availability Schedule Activated; Availability Exception Applied; Booking Opportunity Offered; Booking Submitted; Booking Confirmed; Booking Changed; Booking Cancelled; Booking Completed.
+**Events Produced.** Clinic Service Published/Retired; Booking Opportunity Offered; Booking Submitted; Booking Confirmed; Appointment Rescheduled; Booking Cancelled; Booking Completed.
 
 **Events Consumed.** Tenant Activated / Tenant Suspended (from Tenant Management — gates whether new Bookings may be accepted); Entitlement Changed (from Subscription & Billing — gates Booking System and Service Setup access, per 02_MVP_SCOPE.md's first-class capability table); Clinic Location Updated / Practitioner Profile Updated (from Website Builder — informs which Locations/Practitioners a Service Setup may reference); Resolve Public Host result (from Website Builder — establishes the Tenant context for a Public Visitor's booking attempt).
 
 **Dependencies.** Depends on Tenant Management for tenant lifecycle gating. Depends on Subscription & Billing for entitlement. Depends on Website Builder for the resolved public Tenant context that a Public Visitor's booking attempt arrives through, and for Clinic Location/Practitioner references. Website Builder, in turn, depends on this context for Clinic Service meaning — this pairing is the platform's tightest cross-context coupling (see Coupling Analysis).
 
-**Public Interfaces (conceptual).** Configure Service Setup; Define Availability Schedule/Exception; Get Bookable Opportunities(tenant, service, dateRange) — the public discovery surface; Submit Booking; Confirm/Cancel/Complete Booking (Clinic Owner or Super Admin, per authorized action); Get Clinic Service Summary(tenant, serviceId) — the read-only projection Website Builder consumes.
+**Public Interfaces (conceptual).** Get Clinic-level available slots; Submit Booking with a mandatory Service category; tenant-scoped list/detail/history; Confirm/Reschedule/Cancel Booking; Get Clinic Service Summary.
 
 **Invariants.** A Booking must never conflict with another accepted Booking under the approved capacity rule. A Booking Opportunity must never combine one Tenant's Service with another Tenant's availability (ADR-002). Retiring a Clinic Service stops new Bookings without rewriting historical ones. A Booking is not a clinical record, diagnosis, emergency communication, or patient account (02_MVP_SCOPE.md, Out of Scope).
 
-**Business Rules.** Being published on the Website does not automatically make a Service bookable. An Availability Exception cannot silently invalidate an already-accepted Booking. Public Visitor consent that submission is not for emergencies and does not create medical advice is required before a Booking is accepted. Booking Contact information is collected at the minimum necessary and never reused across clinics or for marketing.
+**Business Rules.** Being published does not automatically make a Service eligible. Service owns no availability. Public Visitor consent that submission is not for emergencies and does not create medical advice is required before acceptance. Booking Contact information is minimized and never reused across clinics or for marketing.
 
-**Future Expansion.** Practitioner-based booking as an independent resource model; rooms, equipment, and capacity greater than one; waiting lists, recurring appointments, rescheduling, reminders, and deposits. All are explicitly deferred (14_DOMAIN_MODEL.md, Future Expansion Candidates) and several of the highest-risk domain rules (resource, capacity, confirmation, cancellation) remain open questions this document does not resolve.
+**Future Expansion.** Practitioner/resource scheduling, rooms, equipment, per-Service duration/availability, waiting lists, recurring appointments, reminders, and deposits remain deferred. Clinic slot capacity from one to ten and rescheduling after patient contact are approved MVP behavior.
 
 ---
 

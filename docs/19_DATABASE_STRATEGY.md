@@ -1,6 +1,6 @@
 # Database Strategy — Engineering Principles
 
-**Status: Current with implementation-alignment note.** The aggregate count this document previously named as an outstanding blocker is now resolved by the active registry in [26_ARCHITECTURE_FREEZE_V1.md](./26_ARCHITECTURE_FREEZE_V1.md): sixteen Aggregate Roots, with CommercialOffer added by [ADR-006](./decisions/ADR-006-Commercial.md). This document remains subject to its other outstanding decisions, most notably every retention duration this document deliberately leaves unset pending qualified legal input.
+**Status: Current with implementation-alignment note.** The aggregate count is governed by [26_ARCHITECTURE_FREEZE_V1.md](./26_ARCHITECTURE_FREEZE_V1.md). Amended ADR-013 supersedes historical references below to Service-owned Availability Schedule/Exception persistence: active MVP scheduling uses Clinic weekly hours/configuration plus Booking reservation buckets and history.
 
 ## Table of Contents
 
@@ -281,7 +281,7 @@ All timestamps are stored as unambiguous instants; see Timezone Policy for how b
 
 ## Timezone Policy
 
-Every stored instant is an unambiguous point in time (see Money, Timestamp, and Date sections for how this composes with business meaning). The layer this section adds: wherever business meaning genuinely depends on clinic-local time — Operating Hours, Availability Schedule, Availability Exception, and the time a Public Visitor sees when choosing a Booking slot — Clinic's governed IANA timezone is retained explicitly and never inferred from the current server, request, or viewer context. Booking retains local appointment date/time, UTC start/end, timezone snapshot, and Service-duration snapshot as required by ADR-013. 14_DOMAIN_MODEL.md names "Clinic Local Time, Booking Time, and Availability Period" as high-value business objects for exactly this reason: an ambiguous time interpretation can silently produce a booking, commercial, or routing failure.
+Every stored instant is an unambiguous point in time. Clinic's governed IANA timezone is retained explicitly and never inferred from server, request, or viewer context. Booking retains local date/start/end, UTC start/end, timezone snapshot, and Clinic-duration snapshot. Capacity uses a unique Tenant/exact-UTC-interval reservation bucket with row-level locking and a first-creation capacity snapshot; unlocked counts and per-Service collision identity are prohibited by amended ADR-013.
 
 A Clinic's operating time zone is itself a governed value on the Clinic aggregate. Phase 1's single-market launch (02_MVP_SCOPE.md) means multi-time-zone locations for one Clinic are not a current concern, but the principle — retain the source time zone explicitly rather than assume one globally — is set now specifically so it does not need to be retrofitted later if that assumption changes.
 

@@ -1,6 +1,6 @@
 # Entity Relationship Diagram (Logical)
 
-**Status: Current with implementation-alignment note.** This is a **logical** ERD. It contains no table names, no columns, no data types, no keys, no indexes, and no SQL. The original diagram was produced from the fifteen-root baseline; SYIFA-085A records that the current official Aggregate Root registry contains sixteen roots, adding CommercialOffer under the Commercial context per [ADR-006](./decisions/ADR-006-Commercial.md). The next ERD revision should draw CommercialOffer explicitly; until then, this note controls any conflict between the diagram and the active registry.
+**Status: Current with implementation-alignment note.** This is a **logical** ERD. Amended ADR-013 supersedes historical diagram nodes for Service-owned Availability Schedule/Exception: Clinic owns shared Booking Configuration, while Booking persistence owns Tenant/exact-slot reservation buckets and immutable history. The diagram remains historical until redrawn; this note and textual definitions control conflicts.
 
 ## Table of Contents
 
@@ -137,8 +137,8 @@ The original diagram contains thirty entities: fifteen aggregate roots, ten inte
 
 ### 7. Clinic Service
 
-- **Purpose:** A clinic-approved service, its business meaning, and its booking configuration and availability — absorbing what 14_DOMAIN_MODEL.md separately named Service Setup.
-- **Owned Entities:** Availability Schedule (zero or many), Availability Exception (zero or many).
+- **Purpose:** A tenant-owned service category with public meaning and controlled Booking Form eligibility. Clinic owns shared duration, capacity, hours, and availability.
+- **Owned Entities:** None for scheduling.
 - **Relationships:** References Tenant, Clinic, Clinic Location (many), Practitioner Profile (many, provisional). Referenced by Website (presentation), Booking (snapshot), Onboarding Job (evidence).
 - **Ownership:** Tenant-owned.
 - **Cardinality:** One Clinic Service to one Tenant and one Clinic; many Clinic Services to many Clinic Locations; many Clinic Services to many Practitioner Profiles (provisional); one Clinic Service to many Availability Schedules and Exceptions.
@@ -147,7 +147,7 @@ The original diagram contains thirty entities: fifteen aggregate roots, ten inte
 - **Lifecycle Dependency:** Depends on Clinic existing; independent of Booking (a service can exist with zero Bookings).
 - **Deletion Behaviour:** Never deleted; retired — stops new booking activity without rewriting historical Bookings, which hold a captured snapshot rather than a live reference.
 - **Archive Behaviour:** Rare; volume is low relative to Booking, so independent archival is typically unnecessary.
-- **Business Constraints:** Cannot be marked bookable until its configuration is complete and valid; an Availability Exception must never silently invalidate an already-accepted Booking.
+- **Business Constraints:** Must belong to Tenant and be active/eligible for selection; it owns no duration, capacity, or availability.
 
 ### 8. Booking
 
@@ -157,11 +157,11 @@ The original diagram contains thirty entities: fifteen aggregate roots, ten inte
 - **Ownership:** Tenant-owned.
 - **Cardinality:** One Booking to one Tenant and one Clinic Service (as it existed at the moment of booking); one Booking to exactly one Booking Contact (value, composed).
 - **Composition:** Booking Contact is composed within Booking as a value object; the captured service/location/practitioner snapshot is likewise a value, never a live foreign reference.
-- **Reference:** This is the model's clearest "snapshot, don't subscribe" case — Booking captures the service name, duration, and location at booking time rather than holding a reference that would let a later Clinic Service change silently rewrite history.
+- **Reference:** Booking captures Service category identity plus Clinic scheduling snapshots so later Service or Clinic configuration changes cannot rewrite history.
 - **Lifecycle Dependency:** Depends on a bookable Clinic Service existing at submission time; independent thereafter — a later Clinic Service change never alters an existing Booking.
 - **Deletion Behaviour:** Never deleted under any circumstance once accepted — an explicit, non-negotiable invariant. Cancellation and completion are lifecycle states, never removal. Booking Contact's personal-data fields may be anonymized in place without deleting the Booking itself.
 - **Archive Behaviour:** Old completed or cancelled Bookings are archived non-destructively once outside the active operational window.
-- **Business Constraints:** Must never conflict with another accepted Booking for the same service and time under the approved single-capacity rule; must never combine one Tenant's service with another Tenant's availability.
+- **Business Constraints:** Submitted plus confirmed occupancy must never exceed the row-locked reservation bucket's Clinic capacity snapshot for the exact Tenant slot interval.
 
 ### 9. Subscription
 
@@ -550,7 +550,7 @@ The following are named future possibilities from 14_DOMAIN_MODEL.md and 18_AGGR
 | Multiple Websites per Tenant | The Tenant–Website relationship changes from 1:0..1 to 1:0..N; every relationship currently drawn from Website (Template, Custom Domain, Media, Clinic Service, Clinic) would need to be re-scoped per Website instance, not per Tenant. |
 | One Customer purchasing for several Tenants | Reintroduces a Customer concept distinct from Tenant (this model deliberately folded Customer into Tenant per 18_AGGREGATE_DESIGN.md) — would add a new aggregate root referenced by many Tenants, a genuine new many-to-one relationship not present today. |
 | Practitioner-based booking as an independent resource model | Would likely promote Practitioner Profile from a Clinic-composed internal entity to its own aggregate root with its own availability, changing today's provisional Clinic Service–Practitioner Profile association into a firmer, better-specified relationship. |
-| Rooms, equipment, and capacity greater than one | Would add new resource-type entities referenced by Clinic Service and, at booking time, snapshotted by Booking exactly as Clinic Location is today. |
+| Rooms, equipment, and resource-based capacity | Would require new scheduling resources and remains outside MVP. Clinic slot capacity one to ten requires no Doctor/Room/resource entity. |
 | A broader Add-On catalogue | Add-On already appears in this model as reference data; expansion would only deepen its existing relationship to Subscription, not add a new relationship shape. |
 | Invoice's full lifecycle confirmed | If Invoice's provisional weight is resolved toward a fuller commercial model, it may warrant promotion from an internal entity of Subscription to its own aggregate root, mirroring Payment's own reasoning in 18_AGGREGATE_DESIGN.md. |
 | Public website search | Would introduce a new search-index projection, explicitly excluded from this ERD by the same rule that excludes Report and Activity Log today — it would never be drawn as a related entity even if approved. |
