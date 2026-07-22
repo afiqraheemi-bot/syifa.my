@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Modules\Clinic\Persistence;
 
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
+use App\Modules\WebsiteBuilder\Application\ClinicContact\OptionalContactValue;
+use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileCommand;
+use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileService;
+use App\Modules\WebsiteBuilder\Application\WebsiteAuthorization;
+use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Domain\Clinic;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleClinicWriteException;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\BookingAppointmentDuration;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\BookingCapacityPerSlot;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicBookingConfiguration;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicContactProfile;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\IanaTimezone;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\LocalTime;
@@ -18,10 +25,12 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\WeeklyOperatingHours;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Exceptions\InvalidClinicStorageStateException;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\ClinicPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresClinicRepository;
+use App\Modules\WebsiteBuilder\Infrastructure\Transactions\PostgresClinicTransaction;
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
@@ -38,6 +47,8 @@ final class PostgresClinicRepositoryTest extends TestCase
     private ?Migration $clinicMigration = null;
 
     private ?Migration $configurationMigration = null;
+
+    private ?Migration $contactMigration = null;
 
     private ?PostgresClinicRepository $repository = null;
 
@@ -57,6 +68,7 @@ final class PostgresClinicRepositoryTest extends TestCase
         DB::purge(self::CONNECTION);
         $this->connection = DB::connection(self::CONNECTION);
         Schema::connection(self::CONNECTION)->dropIfExists('clinic_operating_intervals');
+        Schema::connection(self::CONNECTION)->dropIfExists('clinic_contact_profiles');
         Schema::connection(self::CONNECTION)->dropIfExists('clinics');
         Schema::connection(self::CONNECTION)->dropIfExists('clinic_owner_authorities');
         Schema::connection(self::CONNECTION)->dropIfExists('tenants');
@@ -64,15 +76,19 @@ final class PostgresClinicRepositoryTest extends TestCase
         $tenantMigration = require base_path('database/migrations/tenant_management/2026_07_13_000001_create_tenant_aggregate_tables.php');
         $clinicMigration = require base_path('database/migrations/website_builder/2026_08_04_000001_create_clinic_operational_time_tables.php');
         $configurationMigration = require base_path('database/migrations/website_builder/2026_08_05_000001_add_booking_configuration_to_clinics.php');
+        $contactMigration = require base_path('database/migrations/website_builder/2026_08_17_000001_create_clinic_contact_profiles.php');
         self::assertInstanceOf(Migration::class, $tenantMigration);
         self::assertInstanceOf(Migration::class, $clinicMigration);
         self::assertInstanceOf(Migration::class, $configurationMigration);
+        self::assertInstanceOf(Migration::class, $contactMigration);
         $this->tenantMigration = $tenantMigration;
         $this->clinicMigration = $clinicMigration;
         $this->configurationMigration = $configurationMigration;
+        $this->contactMigration = $contactMigration;
         $tenantMigration->up();
         $clinicMigration->up();
         $configurationMigration->up();
+        $contactMigration->up();
         $this->repository = new PostgresClinicRepository($this->connection, new ClinicPersistenceMapper);
         $this->insertTenant(2);
         $this->insertTenant(3);
@@ -80,6 +96,8 @@ final class PostgresClinicRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
+        $this->contactMigration?->down();
+        Schema::connection(self::CONNECTION)->dropIfExists('websites');
         $this->configurationMigration?->down();
         $this->clinicMigration?->down();
         $this->tenantMigration?->down();
@@ -114,6 +132,125 @@ final class PostgresClinicRepositoryTest extends TestCase
 
         self::assertNull($this->repository()->findById(new TenantId($this->uuid(3)), $clinic->id));
         self::assertNull($this->repository()->findByTenantId(new TenantId($this->uuid(3))));
+    }
+
+    public function test_contact_profile_round_trips_normalized_values_and_enforces_one_tenant_owned_profile(): void
+    {
+        $clinic = $this->clinic();
+        $clinic->updateContactProfile(new ClinicContactProfile(
+            '+60 3-1234 5678',
+            'Care@EXAMPLE.COM',
+            "12, Jalan Damai\nKuala Lumpur",
+            '+60 12-345 6789',
+            3.139,
+            101.6869,
+        ), $this->time('+1 hour'));
+        $this->repository()->save($clinic);
+
+        $loaded = $this->repository()->findById($clinic->tenantId, $clinic->id);
+        self::assertNotNull($loaded);
+        self::assertSame('+60312345678', $loaded->contactProfile()->operationalPhone);
+        self::assertSame('Care@example.com', $loaded->contactProfile()->operationalEmail);
+        self::assertSame('+60123456789', $loaded->contactProfile()->whatsAppNumber);
+        self::assertSame(3.139, $loaded->contactProfile()->latitude);
+        self::assertSame(1, $this->connection()->table('clinic_contact_profiles')->count());
+
+        $this->expectException(QueryException::class);
+        $this->connection()->table('clinic_contact_profiles')->insert([
+            'clinic_id' => $this->uuid(9),
+            'tenant_id' => $clinic->tenantId->value,
+            'created_at' => $this->time(),
+            'updated_at' => $this->time(),
+        ]);
+    }
+
+    public function test_database_rejects_partial_or_out_of_range_coordinates(): void
+    {
+        $clinic = $this->clinic();
+        $this->repository()->save($clinic);
+
+        try {
+            $this->connection()->table('clinic_contact_profiles')->where('clinic_id', $clinic->id->value)->update(['latitude' => 3.1]);
+            self::fail('Partial coordinates must fail.');
+        } catch (QueryException) {
+            self::assertNull($this->connection()->table('clinic_contact_profiles')->where('clinic_id', $clinic->id->value)->value('latitude'));
+        }
+
+        $this->expectException(QueryException::class);
+        $this->connection()->table('clinic_contact_profiles')->where('clinic_id', $clinic->id->value)->update(['latitude' => 91, 'longitude' => 10]);
+    }
+
+    public function test_legacy_migration_normalizes_unambiguous_values_without_fabricating_new_channels(): void
+    {
+        $this->contactMigration?->down();
+        Schema::connection(self::CONNECTION)->create('websites', function (Blueprint $table): void {
+            $table->uuid('tenant_id')->unique();
+            $table->string('contact_phone')->nullable();
+            $table->string('contact_email')->nullable();
+            $table->text('address')->nullable();
+        });
+        $time = $this->time()->format('Y-m-d H:i:sP');
+        $this->connection()->table('clinics')->insert([
+            'id' => $this->uuid(1),
+            'tenant_id' => $this->uuid(2),
+            'timezone' => 'Asia/Kuala_Lumpur',
+            'domain_created_at' => $time,
+            'domain_updated_at' => $time,
+            'version' => 1,
+            'created_at' => $time,
+            'updated_at' => $time,
+        ]);
+        $this->connection()->table('websites')->insert([
+            'tenant_id' => $this->uuid(2),
+            'contact_phone' => '+60 3-1234 5678',
+            'contact_email' => 'Care@EXAMPLE.COM',
+            'address' => '12, Jalan Damai',
+        ]);
+
+        $this->contactMigration?->up();
+        $row = $this->connection()->table('clinic_contact_profiles')->where('clinic_id', $this->uuid(1))->first();
+        self::assertNotNull($row);
+        self::assertSame('+60312345678', $row->operational_phone);
+        self::assertSame('Care@example.com', $row->operational_email);
+        self::assertSame('12, Jalan Damai', $row->postal_address);
+        self::assertNull($row->whatsapp_number);
+        self::assertNull($row->latitude);
+        self::assertNull($row->longitude);
+    }
+
+    public function test_invalid_legacy_value_aborts_deterministically_and_preserves_legacy_data(): void
+    {
+        $this->contactMigration?->down();
+        Schema::connection(self::CONNECTION)->create('websites', function (Blueprint $table): void {
+            $table->uuid('tenant_id')->unique();
+            $table->string('contact_phone')->nullable();
+            $table->string('contact_email')->nullable();
+            $table->text('address')->nullable();
+        });
+        $time = $this->time()->format('Y-m-d H:i:sP');
+        $this->connection()->table('clinics')->insert([
+            'id' => $this->uuid(1), 'tenant_id' => $this->uuid(2), 'timezone' => 'Asia/Kuala_Lumpur',
+            'domain_created_at' => $time, 'domain_updated_at' => $time, 'version' => 1,
+            'created_at' => $time, 'updated_at' => $time,
+        ]);
+        $this->connection()->table('websites')->insert([
+            'tenant_id' => $this->uuid(2),
+            'contact_phone' => 'not-a-phone',
+            'contact_email' => 'care@example.com',
+            'address' => '12, Jalan Damai',
+        ]);
+
+        try {
+            $this->contactMigration?->up();
+            self::fail('Invalid legacy contact must abort migration.');
+        } catch (RuntimeException $exception) {
+            self::assertStringContainsString('Legacy Clinic contact migration failed for clinic', $exception->getMessage());
+            self::assertSame('not-a-phone', $this->connection()->table('websites')->value('contact_phone'));
+        } finally {
+            $this->contactMigration?->down();
+            $this->connection()->table('websites')->update(['contact_phone' => '+60312345678']);
+            $this->contactMigration?->up();
+        }
     }
 
     public function test_database_enforces_exactly_one_clinic_per_tenant_and_tenant_existence(): void
@@ -188,12 +325,55 @@ final class PostgresClinicRepositoryTest extends TestCase
 
         self::assertSame(0, $this->connection()->table('clinics')->count());
         self::assertSame(0, $this->connection()->table('clinic_operating_intervals')->count());
+        self::assertSame(0, $this->connection()->table('clinic_contact_profiles')->count());
+    }
+
+    public function test_application_transaction_rolls_back_profile_and_version_when_audit_fails(): void
+    {
+        $clinic = $this->clinic();
+        $this->repository()->save($clinic);
+        $audit = $this->createMock(AuditEntryRecorderInterface::class);
+        $audit->expects(self::once())->method('record')->willThrowException(new RuntimeException('audit unavailable'));
+        $service = new UpdateClinicContactProfileService(
+            $this->repository(),
+            new PostgresClinicTransaction($this->connection()),
+            new WebsiteAuthorization,
+            $audit,
+        );
+
+        try {
+            $service->handle(new UpdateClinicContactProfileCommand(
+                $clinic->tenantId->value,
+                $clinic->id->value,
+                new WebsiteAuthorizationContext($this->uuid(10), 'clinic_owner', actorTenantId: $clinic->tenantId->value),
+                OptionalContactValue::with('+60312345678'),
+                OptionalContactValue::omitted(),
+                OptionalContactValue::omitted(),
+                OptionalContactValue::omitted(),
+                OptionalContactValue::omitted(),
+                OptionalContactValue::omitted(),
+                $this->time('+1 hour'),
+                $this->uuid(99),
+            ));
+            self::fail('Audit failure must abort the transaction.');
+        } catch (RuntimeException $exception) {
+            self::assertSame('audit unavailable', $exception->getMessage());
+        }
+
+        $row = $this->connection()->table('clinic_contact_profiles')->where('clinic_id', $clinic->id->value)->first();
+        self::assertNotNull($row);
+        self::assertNull($row->operational_phone);
+        self::assertSame(1, $this->connection()->table('clinics')->where('id', $clinic->id->value)->value('version'));
     }
 
     public function test_migration_is_reversible(): void
     {
         self::assertTrue(Schema::connection(self::CONNECTION)->hasTable('clinics'));
         self::assertTrue(Schema::connection(self::CONNECTION)->hasTable('clinic_operating_intervals'));
+        self::assertTrue(Schema::connection(self::CONNECTION)->hasTable('clinic_contact_profiles'));
+        $this->contactMigration?->down();
+        $this->contactMigration = null;
+        self::assertFalse(Schema::connection(self::CONNECTION)->hasTable('clinic_contact_profiles'));
         $this->configurationMigration?->down();
         $this->configurationMigration = null;
         $this->clinicMigration?->down();
