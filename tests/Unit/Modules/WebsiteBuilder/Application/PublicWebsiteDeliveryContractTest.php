@@ -6,10 +6,13 @@ namespace Tests\Unit\Modules\WebsiteBuilder\Application;
 
 use App\Modules\WebsiteBuilder\Application\Delivery\ContactActionFactory;
 use App\Modules\WebsiteBuilder\Application\Delivery\Exceptions\InvalidPublicDeliveryValueException;
+use App\Modules\WebsiteBuilder\Application\Delivery\Exceptions\PublicAssetResolutionException;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicAssetPurpose;
+use App\Modules\WebsiteBuilder\Application\Delivery\PublicAssetUrlResolverInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicRoute;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicRoutePolicy;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContext;
+use App\Modules\WebsiteBuilder\Application\Delivery\PublicUrl;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteDocumentFactory;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\FooterRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRenderModel;
@@ -23,6 +26,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationEvidence;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationReadiness;
 use App\Modules\WebsiteBuilder\Domain\Website;
+use App\Modules\WebsiteBuilder\Infrastructure\Delivery\ConfiguredPlatformLegalContentProvider;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\OriginPublicAssetUrlResolver;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -64,7 +68,7 @@ final class PublicWebsiteDeliveryContractTest extends TestCase
         $model = $this->renderModel();
         $context = new PublicSiteContext('https', 'clinic.example', websiteId: $this->uuid(1));
         $resolver = new OriginPublicAssetUrlResolver('https://cdn.example');
-        $document = (new PublicWebsiteDocumentFactory($resolver))->make($model, $context);
+        $document = (new PublicWebsiteDocumentFactory($resolver, new ConfiguredPlatformLegalContentProvider([])))->make($model, $context);
 
         self::assertSame('https://cdn.example/assets/'.$this->uuid(9990).'?purpose=content', $document->assetUrls[$this->uuid(9990)]->value);
         self::assertSame('tel:%2B6012', $document->contactActions->telephone);
@@ -81,7 +85,21 @@ final class PublicWebsiteDeliveryContractTest extends TestCase
     public function test_context_cannot_cross_publication_website_identity(): void
     {
         $this->expectException(InvalidPublicDeliveryValueException::class);
-        (new PublicWebsiteDocumentFactory(new OriginPublicAssetUrlResolver('https://cdn.example')))->make($this->renderModel(), new PublicSiteContext('https', 'clinic.example', websiteId: $this->uuid(2)));
+        (new PublicWebsiteDocumentFactory(new OriginPublicAssetUrlResolver('https://cdn.example'), new ConfiguredPlatformLegalContentProvider([])))->make($this->renderModel(), new PublicSiteContext('https', 'clinic.example', websiteId: $this->uuid(2)));
+    }
+
+    public function test_required_asset_resolution_failure_is_explicit_without_placeholder(): void
+    {
+        $resolver = new readonly class implements PublicAssetUrlResolverInterface
+        {
+            public function resolve(string $assetId, PublicAssetPurpose $purpose): PublicUrl
+            {
+                throw new PublicAssetResolutionException('Asset unavailable.');
+            }
+        };
+
+        $this->expectException(PublicAssetResolutionException::class);
+        (new PublicWebsiteDocumentFactory($resolver, new ConfiguredPlatformLegalContentProvider([])))->make($this->renderModel(), new PublicSiteContext('https', 'clinic.example', websiteId: $this->uuid(1)));
     }
 
     public function test_contact_actions_omit_missing_values(): void
