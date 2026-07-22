@@ -53,6 +53,7 @@ final readonly class PublicWebsiteDocumentFactory
             $booking,
             $sitemap,
             $this->todayHoursLabel($model->footer->businessHours),
+            (new BrandTokenResolver)->resolve($model->branding->primaryColor, $model->branding->secondaryColor),
         );
     }
 

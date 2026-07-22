@@ -18,6 +18,7 @@
         <link rel="icon" href="{{ $document->assetUrls[$document->website->branding->faviconAssetId]->value }}">
     @endif
     <script type="application/ld+json">{!! $document->head->jsonLd() !!}</script>
+    <style>:root{--brand-primary:{{ $document->brandTokens->primary }};--brand-primary-hover:{{ $document->brandTokens->primaryHover }};--brand-primary-active:{{ $document->brandTokens->primaryActive }};--brand-on-primary:{{ $document->brandTokens->onPrimary }};--brand-secondary:{{ $document->brandTokens->secondary }};--brand-on-secondary:{{ $document->brandTokens->onSecondary }};}</style>
     @unless (app()->environment('testing')) @vite('resources/js/public-website.js') @endunless
 </head>
 <body class="public-site">

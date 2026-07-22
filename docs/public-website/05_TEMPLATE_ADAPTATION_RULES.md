@@ -1,5 +1,7 @@
 # Template Adaptation Rules
 
+> **Variant axes implementation deferral (Reference Certification Remediation V1):** the finite variant axes below remain fully governed by this document, but no `TemplateId`-driven selection mechanism exists in code yet, and none is introduced by this remediation. Implementation is intentionally deferred until the first additional template — expected to be Syifa Care — is actually built. No Blade or CSS forking is permitted in the interim; Syifa Essential remains the sole implemented expression of this system. When the first additional template is built, it must introduce the minimum evidence-based selection mechanism this document requires, and any shared abstraction must be derived from at least two real template expressions (Essential plus the new template), never invented ahead of a second real need. This is a deliberate decision against premature abstraction, not an omission — building a selection mechanism for four templates that do not yet exist would itself violate the Design System Governance's admission standard for new components/variants (`09_DESIGN_SYSTEM_GOVERNANCE.md`: *"Reuse across more than one clinic/template scenario"*), since there is currently only one real template to reuse from.
+
 Five templates are five governed visual personalities over one rendering contract and component system. They are not separate products, schemas, Domain models, component forks, or delivery stacks.
 
 ## Shared invariants

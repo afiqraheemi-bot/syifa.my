@@ -12,8 +12,11 @@ final readonly class NavigationFactory
     public function make(PublicWebsiteRenderModel $model, PublicSiteContext $context): array
     {
         $available = (new PublicRoutePolicy)->available($model, $context);
+        // Home is intentionally excluded: the brand/logo is the canonical Home
+        // link (see navbar.blade.php and footer.blade.php), and the Component
+        // Catalogue caps Desktop Navigation at six primary items plus Booking.
         $labels = [
-            PublicRoute::Home->value => 'Home', PublicRoute::About->value => 'About', PublicRoute::Services->value => 'Services',
+            PublicRoute::About->value => 'About', PublicRoute::Services->value => 'Services',
             PublicRoute::Doctors->value => 'Doctors', PublicRoute::Gallery->value => 'Gallery', PublicRoute::Testimonials->value => 'Testimonials',
             PublicRoute::Contact->value => 'Contact', PublicRoute::Booking->value => 'Book Appointment',
         ];

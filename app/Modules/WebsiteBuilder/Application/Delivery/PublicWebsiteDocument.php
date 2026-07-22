@@ -27,5 +27,6 @@ final readonly class PublicWebsiteDocument
         public PublicUrl $bookingDestination,
         public array $sitemapUrls,
         public ?string $todayHoursLabel,
+        public BrandTokens $brandTokens,
     ) {}
 }

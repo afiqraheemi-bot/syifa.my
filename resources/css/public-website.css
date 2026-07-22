@@ -26,6 +26,16 @@
         --focus-ring: #875c00;
         --accent-warm: #c9854c;
         --accent-inverse: #c9e9dc;
+        /* Governed brand-* family (01_DESIGN_TOKEN_TAXONOMY.md). Defaults
+           below reproduce the exact current Syifa Essential appearance;
+           a per-Website <style> override (see BrandTokenResolver) replaces
+           them only with contrast-validated tenant values. */
+        --brand-primary: #176b50;
+        --brand-primary-hover: #10543f;
+        --brand-primary-active: #0c4434;
+        --brand-on-primary: #f9fcfa;
+        --brand-secondary: #e8f0ea;
+        --brand-on-secondary: #18221f;
         --border-inverse: rgb(255 255 255 / 18%);
         --surface-footer: #0e251f;
         --surface-translucent: rgb(255 253 249 / 96%);
@@ -204,14 +214,14 @@
             color var(--motion-fast) var(--ease-standard);
     }
     .button--primary {
-        background: var(--action-primary);
-        color: var(--text-inverse);
+        background: var(--brand-primary);
+        color: var(--brand-on-primary);
     }
     .button--primary:hover {
-        background: var(--action-primary-hover);
+        background: var(--brand-primary-hover);
     }
     .button--primary:active {
-        background: var(--action-primary-active);
+        background: var(--brand-primary-active);
     }
     .button--secondary {
         border-color: var(--border-strong);
@@ -236,7 +246,7 @@
         font-weight: 680;
     }
     .text-action--inverse {
-        color: var(--text-inverse);
+        color: var(--brand-on-primary);
     }
     .icon {
         width: 1rem;
@@ -374,7 +384,7 @@
         width: 28rem;
         height: 28rem;
         border-radius: 50%;
-        background: var(--surface-emphasis);
+        background: var(--brand-secondary);
         content: '';
         filter: blur(0.125rem);
         inset: -12rem -12rem auto auto;
@@ -704,8 +714,8 @@
         display: grid;
         gap: var(--space-8);
         border-radius: var(--radius-large);
-        background: var(--action-primary);
-        color: var(--text-inverse);
+        background: var(--brand-primary);
+        color: var(--brand-on-primary);
         padding: var(--space-8);
         box-shadow: var(--shadow-raised);
     }
@@ -1008,8 +1018,8 @@
         .booking-panel {
             border: 0.125rem solid CanvasText;
         }
-        .hero__trust span::before {
-            background: CanvasText;
+        .icon {
+            color: CanvasText;
         }
     }
 }

@@ -238,7 +238,7 @@ All meaningful public images require an approved immutable accessible descriptio
 - **Interaction:** explicit Service exploration only when an approved destination exists; no card mystery links or horizontal carousel.
 - **Adaptive behavior:** Doctors or the next trust Section follows About; no “Services coming soon”.
 - **Failure conditions:** current-Service lookup, invented names/descriptions, too many equal booking buttons, unreadable card density, free-text services.
-- **Contract prerequisite:** ADR-021 currently provides opaque identifiers only. Production cards cannot be implemented until approved immutable public display fields exist.
+- **Resolved prerequisite:** ADR-020 (Website Published Section Content Snapshot) added Service display name, short description, ordering, and featured state to the immutable publication contract. Production Service cards are implemented against this contract — see `ServicesSectionRenderModel`/`ServiceItemRenderModel`. No prerequisite remains.
 
 ### 4. Doctors — Trust deepening
 
@@ -272,7 +272,7 @@ All meaningful public images require an approved immutable accessible descriptio
 - **Interaction:** static grid by default; later accessible lightbox only if separately approved.
 - **Adaptive behavior:** FAQ follows; no empty image frame or spacing.
 - **Failure conditions:** stock imagery represented as premises, unstable masonry, oversized transfer, inaccessible meaningful imagery, arbitrary reorder.
-- **Contract prerequisite:** meaningful delivery requires immutable alt text/caption support; it cannot be inferred from Asset metadata.
+- **Resolved prerequisite:** ADR-020 added approved alternative text, optional caption, and decorative state to each published Gallery image reference. Production delivery reads these immutable values directly — see `GalleryImage`/`PublishedSectionContentSnapshot` — and never infers alt text from Asset metadata. No prerequisite remains. An accessible lightbox remains future scope, not a current limitation of the existing static grid.
 
 ### 7. FAQ — Objection removal
 
@@ -295,7 +295,7 @@ All meaningful public images require an approved immutable accessible descriptio
 - **Interaction:** explicit Call, Email, Get Directions, and WhatsApp only when their immutable values and destinations exist; text address precedes map.
 - **Adaptive behavior:** Booking CTA follows FAQ/Gallery directly; Footer still provides published essential Contact data.
 - **Failure conditions:** mutable Clinic read, inferred hours/coordinates/WhatsApp, arbitrary iframe, map before direct details, icon-only actions.
-- **Contract prerequisite:** hours, coordinates, directions target, and WhatsApp-specific data remain outside ADR-021 and are omitted until approved.
+- **Resolved prerequisite:** ADR-023 (Clinic Public Contact Authority) established business hours, WhatsApp number, and coordinates as governed Clinic data, and ADR-020 captured their immutable projection at publication time. Production delivery reads these values directly from the published Contact projection and derives the Directions destination from the immutable coordinates (or address fallback) per ADR-023's governed policy — no destination is stored or inferred at render time. No prerequisite remains for hours, WhatsApp, or coordinates. Embedded map/iframe presentation remains future scope, not a current limitation; text address and direct actions remain the approved default per the Failure conditions above.
 
 ### 9. Booking CTA — Book Appointment
 
@@ -395,17 +395,19 @@ Syifa Essential must score at least 24/30 under the shared Ferrari gate, with ev
 
 ## Canonical approval checklist
 
-- [ ] Published Template identity is `SYIFA_ESSENTIAL`.
-- [ ] Published Section order matches the canonical configuration unless a later governed variant explicitly authorizes otherwise.
-- [ ] Five-second test passes on a representative compact screen.
-- [ ] Book Appointment is unmistakably primary in Header, Hero, and final CTA without adjacent duplication.
-- [ ] Every present Section has a documented purpose and passes Trust, Clarity, Effortlessness, Conversion, and Delight.
-- [ ] Every absent Section fully reflows without placeholder, heading, navigation anchor, or residual spacing.
-- [ ] Long valid Malay/English content, difficult brand colours, zoom/reflow, keyboard, screen reader, reduced motion, and constrained network are reviewed.
-- [ ] No runtime data is inferred or fetched outside ADR-021.
-- [ ] Accessibility and performance budgets pass.
-- [ ] Ferrari score is at least 24/30 with no blocking defect.
-- [ ] No arbitrary frontend extension, tenant fork, fabricated claim, or unresolved critical contract prerequisite is hidden by presentation.
+> Evidence below distinguishes automated/structural verification (code, tests, migrations) from the human governance sign-off `09_DESIGN_SYSTEM_GOVERNANCE.md` requires for release (Product, Design System, accessibility-qualified, and performance-qualified reviewers). An item is marked complete only where concrete, checkable evidence exists. Items requiring a human reviewer's judgment that has not yet occurred remain unchecked, with an explicit statement of whether the gap blocks Reference Lock.
+
+- [x] Published Template identity is `SYIFA_ESSENTIAL`. *Evidence: `TemplateId::SyifaEssential` (`SYIFA_ESSENTIAL`) enum case; `websites_template_check` CHECK constraint in `database/migrations/website_builder/2026_08_07_000001_create_websites_table.php`; the reference `syifa:preview:setup` command publishes against this identity.*
+- [x] Published Section order matches the canonical configuration unless a later governed variant explicitly authorizes otherwise. *Evidence: `SectionType` enum order (Hero, About, Services, Doctors, Testimonials, Gallery, Faq, Contact, BookingCta) matches this document's Canonical page composition table exactly; enforced by `WebsiteSectionCollection::defaults()` and the section `display_order`/uniqueness CHECK constraints; asserted by `tests/Architecture/WebsiteCoreArchitectureTest.php`.*
+- [ ] Five-second test passes on a representative compact screen. **Not blocking at this remediation stage.** No test with real representative participants has been conducted. `08_FERRARI_EXPERIENCE_QUALITY_GATE.md` itself frames this as "a target pending representative validation, not a research finding" — an ongoing product activity, not a one-time precondition this remediation can satisfy. Required before claiming validated real-user usability.
+- [x] Book Appointment is unmistakably primary in Header, Hero, and final CTA without adjacent duplication. *Evidence: Ferrari UX Iteration V2 (`navbar.blade.php`) made the header CTA persistent and removed the prior mobile duplication; verified directly against rendered output (`grep -c "Book Appointment"` on the live preview shows exactly one header instance, no duplicate inside the mobile menu); `hero.blade.php` and `booking-cta.blade.php` each carry exactly one primary action.*
+- [ ] Every present Section has a documented purpose and passes Trust, Clarity, Effortlessness, Conversion, and Delight. **Not blocking, but formal sign-off is outstanding.** The Ferrari UX Review V1 and Iteration V2 assessed every Section against equivalent criteria and remediated the defects found (non-functional Booking loop, hidden mobile CTA, sparse-grid layouts, CTA-tier inconsistency). This is AI-conducted structural review, not the accountable Product/Design System reviewer sign-off `09_DESIGN_SYSTEM_GOVERNANCE.md`'s Release approval section requires.
+- [x] Every absent Section fully reflows without placeholder, heading, navigation anchor, or residual spacing. *Evidence: `document.blade.php` only iterates `$document->website->sections`, the model's actually-present Sections — an absent Section is never rendered; `PublicRoutePolicy::available()`/`NavigationFactory` only emit anchors for Sections present in the model; `tests/Architecture/SyifaEssentialPresentationArchitectureTest.php::test_reference_components_are_delivery_only_and_reusable` forbids `"Coming Soon"`/`"No Data"`/placeholder strings anywhere in the component set.*
+- [ ] Long valid Malay/English content, difficult brand colours, zoom/reflow, keyboard, screen reader, reduced motion, and constrained network are reviewed. **Partially evidenced; does not fully block.** This remediation directly adds automated coverage for *difficult brand colours* (`BrandTokenResolverTest`, see below) and *reduced motion*/*keyboard* remain structurally verified (`prefers-reduced-motion` CSS block; skip-link, `:focus-visible`, native `<details>`, Escape/focus-restore JS — `tests/Architecture/SyifaEssentialPresentationArchitectureTest.php::test_progressive_enhancement_is_small_safe_and_nonessential`). Long-content stress testing, zoom/reflow testing, real screen-reader testing, and constrained-network testing have not been separately conducted in this remediation and remain open.
+- [x] No runtime data is inferred or fetched outside ADR-021. *Evidence: `BrandTokenResolver` (introduced by this remediation) reads only `PublicWebsiteRenderModel->branding->primaryColor/secondaryColor` — values already sourced from the immutable `PublishedWebsiteSnapshot` — and performs no repository, database, or mutable-aggregate read; `tests/Architecture/PublicWebsiteDeliveryArchitectureTest.php::test_delivery_application_has_no_aggregate_repository_storage_or_provider_dependency` forbids `Illuminate\`/`RepositoryInterface`/`Infrastructure\` references anywhere in `Application/Delivery`, including this new class.*
+- [ ] Accessibility and performance budgets pass. **Accessibility structurally strong; performance not independently blocking.** `12_SYIFA_ESSENTIAL_IMPLEMENTATION_V1.md`'s own Known Limitations already record: *"No supported browser/visual-regression or deterministic Lighthouse environment exists in the repository; structural... checks are used instead."* This remediation changes nothing about that pre-existing, disclosed constraint. Real LCP/INP/CLS field measurement remains outstanding; CSS bundle size was checked (see Quality Gates) and stayed within the documented reference budget.
+- [ ] Ferrari score is at least 24/30 with no blocking defect. **Not blocking, but formal scoring is outstanding.** No CURRENT blocking defect is known to this remediation team after Iteration V2 resolved the previously-identified Booking-loop and hidden-mobile-CTA defects. A formal scorecard signed by the named accountable reviewers per pillar (`09_DESIGN_SYSTEM_GOVERNANCE.md`) has not been recorded and this remediation cannot fabricate that sign-off.
+- [x] No arbitrary frontend extension, tenant fork, fabricated claim, or unresolved critical contract prerequisite is hidden by presentation. *Evidence: `BrandTokenResolver` accepts only `#RRGGBB` values and emits only fixed, named CSS custom properties — no tenant CSS, HTML, or script ever reaches output; one shared component/stylesheet set serves every tenant (no fork); `tests/Architecture/SyifaEssentialPresentationArchitectureTest.php` forbids fabricated-claim strings; the three previously-stale Contract prerequisite notes (Services, Gallery, Contact) are corrected earlier in this document as part of this same remediation, so none remain hidden.*
 
 ## Final reference decision
 

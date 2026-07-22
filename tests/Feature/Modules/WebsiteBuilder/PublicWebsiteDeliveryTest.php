@@ -193,6 +193,69 @@ final class PublicWebsiteDeliveryTest extends TestCase
             ->assertDontSee('href="https://clinic.example/terms"', false);
     }
 
+    public function test_desktop_navigation_never_exceeds_six_primary_items_plus_booking_and_omits_home(): void
+    {
+        $this->bindWebsite($this->renderModel('Klinik Syifa'));
+
+        $html = $this->get('https://clinic.example/')->assertOk()->getContent();
+
+        preg_match('/<nav id="public-navigation".*?<\/nav>/s', $html, $matches);
+        self::assertNotSame([], $matches, 'Primary navigation region was not found.');
+        preg_match_all('/<a href="[^"]*">([^<]+)<\/a>/', $matches[0], $linkMatches);
+        $labels = $linkMatches[1];
+
+        self::assertNotContains('Home', $labels);
+        self::assertLessThanOrEqual(6, count($labels));
+        self::assertDontSeeBookingDuplicatedInside($matches[0]);
+    }
+
+    public function test_brand_and_logo_remain_the_canonical_home_link(): void
+    {
+        $this->bindWebsite($this->renderModel('Klinik Syifa'));
+
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertSee('<a class="brand" href="https://clinic.example/"', false);
+    }
+
+    public function test_booking_cta_remains_present_and_reachable_from_the_header(): void
+    {
+        $this->bindWebsite($this->renderModel('Klinik Syifa'));
+
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertSee('navbar__booking', false)
+            ->assertSee('Book Appointment');
+    }
+
+    public function test_brand_tokens_are_derived_only_from_the_published_snapshot_branding_colours(): void
+    {
+        $this->bindWebsite($this->renderModel('Klinik Syifa'));
+
+        // renderModel() publishes with WebsiteBranding primary #112233 / secondary #AABBCC.
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertSee('--brand-primary:#112233;--brand-primary-hover:#0E1C2A;--brand-primary-active:#0C1723;--brand-on-primary:#F9FCFA;--brand-secondary:#F5F7F9;--brand-on-secondary:#18221F;', false);
+    }
+
+    public function test_an_unsafe_tenant_brand_colour_falls_back_to_the_current_default_appearance(): void
+    {
+        $website = Website::create(new WebsiteId($this->uuid(1)), new TenantId($this->uuid(2)), TemplateId::SyifaEssential, new WebsiteBranding('Klinik Syifa', 'Trusted care', '#FF0000', '#AABBCC', null, null, 'hello@clinic.test', '+6012', 'Kuala Lumpur'), array_map(fn (int $suffix): SectionId => new SectionId($this->uuid($suffix)), range(100, 108)), new DateTimeImmutable('2026-08-20T00:00:00Z'));
+        $website->readyForReview(new DateTimeImmutable('2026-08-20T01:00:00Z'));
+        $website->publish(new WebsitePublicationEvidence(true, true), new WebsitePublicationReadiness(true, true, true, true, true, true, str_repeat('a', 64)), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(80)), $this->uuid(90), new DateTimeImmutable('2026-08-20T02:00:00Z'));
+        $model = (new PublicWebsiteRenderProjector)->project($website->publishedSnapshot());
+        $this->bindWebsite($model);
+
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertSee('--brand-primary:#176B50;--brand-primary-hover:#10543F;--brand-primary-active:#0C4434;--brand-on-primary:#F9FCFA;', false);
+    }
+
+    private static function assertDontSeeBookingDuplicatedInside(string $navigationHtml): void
+    {
+        self::assertSame(0, substr_count($navigationHtml, 'Book Appointment'));
+    }
+
     private function renderModel(string $clinicName): PublicWebsiteRenderModel
     {
         $website = Website::create(new WebsiteId($this->uuid(1)), new TenantId($this->uuid(2)), TemplateId::SyifaEssential, new WebsiteBranding($clinicName, 'Trusted care', '#112233', '#AABBCC', null, null, 'hello@clinic.test', '+6012', 'Kuala Lumpur'), array_map(fn (int $suffix): SectionId => new SectionId($this->uuid($suffix)), range(100, 108)), new DateTimeImmutable('2026-08-20T00:00:00Z'));
