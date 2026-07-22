@@ -9,11 +9,13 @@ use App\Modules\Onboarding\Infrastructure\OnboardingServiceProvider;
 use App\Modules\PlatformAdministration\Infrastructure\PlatformAdministrationServiceProvider;
 use App\Modules\SubscriptionBilling\Infrastructure\SubscriptionBillingServiceProvider;
 use App\Modules\TenantManagement\Infrastructure\TenantManagementServiceProvider;
+use App\Modules\WebsiteBuilder\Infrastructure\WebsiteBuilderServiceProvider;
 use App\Providers\AppServiceProvider;
 
 return [
     AppServiceProvider::class,
     TenantManagementServiceProvider::class,
+    WebsiteBuilderServiceProvider::class,
     OnboardingServiceProvider::class,
     ClinicRegistrationServiceProvider::class,
     CommercialServiceProvider::class,
