@@ -10,6 +10,7 @@ use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\ClinicPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersistenceMapper;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSectionPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresClinicRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsiteRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\BookingClinicOperationalTimeAdapter;
@@ -23,6 +24,7 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ClinicPersistenceMapper::class);
         $this->app->singleton(WebsitePersistenceMapper::class);
+        $this->app->singleton(WebsiteSectionPersistenceMapper::class);
         $this->app->singleton(
             ClinicRepositoryInterface::class,
             static fn (Application $application): PostgresClinicRepository => new PostgresClinicRepository(
@@ -35,6 +37,7 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
             static fn (Application $application): PostgresWebsiteRepository => new PostgresWebsiteRepository(
                 $application->make('db')->connection(),
                 $application->make(WebsitePersistenceMapper::class),
+                $application->make(WebsiteSectionPersistenceMapper::class),
             ),
         );
         $this->app->singleton(

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteBranding;
@@ -23,6 +25,7 @@ final class Website
         private WebsiteLifecycle $lifecycle,
         public readonly DateTimeImmutable $createdAt,
         private DateTimeImmutable $updatedAt,
+        private WebsiteSectionCollection $sections,
         private int $version = 0,
     ) {
         if ($version < 0 || $updatedAt < $createdAt) {
@@ -30,9 +33,10 @@ final class Website
         }
     }
 
-    public static function create(WebsiteId $id, TenantId $tenantId, TemplateId $templateId, WebsiteBranding $branding, DateTimeImmutable $at): self
+    /** @param list<SectionId> $sectionIds */
+    public static function create(WebsiteId $id, TenantId $tenantId, TemplateId $templateId, WebsiteBranding $branding, array $sectionIds, DateTimeImmutable $at): self
     {
-        return new self($id, $tenantId, $templateId, $branding, WebsiteLifecycle::Draft, $at, $at);
+        return new self($id, $tenantId, $templateId, $branding, WebsiteLifecycle::Draft, $at, $at, WebsiteSectionCollection::defaults($sectionIds, $at));
     }
 
     public function templateId(): TemplateId
@@ -58,6 +62,32 @@ final class Website
     public function version(): int
     {
         return $this->version;
+    }
+
+    public function sections(): WebsiteSectionCollection
+    {
+        return $this->sections;
+    }
+
+    public function enableSection(SectionId $id, DateTimeImmutable $at): void
+    {
+        $this->assertNotArchived();
+        $this->sections->enable($id, $at);
+        $this->updatedAt = $at;
+    }
+
+    public function disableSection(SectionId $id, DateTimeImmutable $at): void
+    {
+        $this->assertNotArchived();
+        $this->sections->disable($id, $at);
+        $this->updatedAt = $at;
+    }
+
+    public function reorderSection(SectionId $id, SectionDisplayOrder $order, DateTimeImmutable $at): void
+    {
+        $this->assertNotArchived();
+        $this->sections->reorder($id, $order, $at);
+        $this->updatedAt = $at;
     }
 
     public function updateBranding(WebsiteBranding $branding, DateTimeImmutable $at): void

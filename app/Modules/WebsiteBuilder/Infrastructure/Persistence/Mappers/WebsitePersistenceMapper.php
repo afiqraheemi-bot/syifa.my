@@ -10,6 +10,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteBranding;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteLifecycle;
 use App\Modules\WebsiteBuilder\Domain\Website;
+use App\Modules\WebsiteBuilder\Domain\WebsiteSectionCollection;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Records\WebsiteStorageRecord;
 
 final class WebsitePersistenceMapper
@@ -21,8 +22,8 @@ final class WebsitePersistenceMapper
         return new WebsiteStorageRecord($website->id->value, $website->tenantId->value, $website->templateId()->value, $website->lifecycle()->value, $branding->clinicName, $branding->tagline, $branding->primaryColor, $branding->secondaryColor, $branding->logoReference, $branding->faviconReference, $branding->contactEmail, $branding->contactPhone, $branding->address, $branding->socialLinks, $website->createdAt, $website->updatedAt(), $website->version());
     }
 
-    public function toDomain(WebsiteStorageRecord $record): Website
+    public function toDomain(WebsiteStorageRecord $record, WebsiteSectionCollection $sections): Website
     {
-        return new Website(new WebsiteId($record->id), new TenantId($record->tenantId), TemplateId::fromStored($record->templateId), new WebsiteBranding($record->clinicName, $record->tagline, $record->primaryColor, $record->secondaryColor, $record->logoReference, $record->faviconReference, $record->contactEmail, $record->contactPhone, $record->address, $record->socialLinks), WebsiteLifecycle::fromStored($record->lifecycle), $record->domainCreatedAt, $record->domainUpdatedAt, $record->version);
+        return new Website(new WebsiteId($record->id), new TenantId($record->tenantId), TemplateId::fromStored($record->templateId), new WebsiteBranding($record->clinicName, $record->tagline, $record->primaryColor, $record->secondaryColor, $record->logoReference, $record->faviconReference, $record->contactEmail, $record->contactPhone, $record->address, $record->socialLinks), WebsiteLifecycle::fromStored($record->lifecycle), $record->domainCreatedAt, $record->domainUpdatedAt, $sections, $record->version);
     }
 }

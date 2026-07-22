@@ -38,6 +38,8 @@ final class WebsiteCoreArchitectureTest extends TestCase
         foreach ($this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Domain', $this->root().'/app/Modules/WebsiteBuilder/Application') as $file) {
             self::assertStringNotContainsString('implements WebsiteRepositoryInterface', (string) file_get_contents($file), $file);
         }
+        self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Contracts/Repositories/WebsiteSectionRepositoryInterface.php');
+        self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Infrastructure/Persistence/Repositories/PostgresWebsiteSectionRepository.php');
     }
 
     public function test_exactly_one_tenant_owned_website_and_normalized_branding_are_enforced_by_migration(): void
@@ -47,6 +49,22 @@ final class WebsiteCoreArchitectureTest extends TestCase
         self::assertStringNotContainsString("json('branding", $migration);
         self::assertStringNotContainsString("jsonb('branding", $migration);
         self::assertStringNotContainsString('clinic_id', $migration);
+    }
+
+    public function test_sections_are_normalized_internal_entities_owned_by_website(): void
+    {
+        $migration = (string) file_get_contents($this->root().'/database/migrations/website_builder/2026_08_08_000001_create_website_sections_table.php');
+        self::assertStringContainsString("Schema::create('website_sections'", $migration);
+        self::assertStringContainsString("foreign('website_id')", $migration);
+        self::assertStringContainsString('website_sections_website_type_unique', $migration);
+        self::assertStringContainsString('website_sections_website_order_unique', $migration);
+        self::assertStringNotContainsString("json('sections", $migration);
+        self::assertStringNotContainsString("jsonb('sections", $migration);
+
+        $collection = (string) file_get_contents($this->root().'/app/Modules/WebsiteBuilder/Domain/WebsiteSectionCollection.php');
+        self::assertStringNotContainsString('function delete', $collection);
+        self::assertStringNotContainsString('function remove', $collection);
+        self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/WebsiteSectionController.php');
     }
 
     /** @return list<string> */

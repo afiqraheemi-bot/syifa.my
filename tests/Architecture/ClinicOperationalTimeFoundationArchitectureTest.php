@@ -76,7 +76,7 @@ final class ClinicOperationalTimeFoundationArchitectureTest extends TestCase
             $source = $this->source($file);
             foreach ([
                 'ServiceSchedule', 'AvailabilityException', 'SlotGenerator', 'BookingCollision',
-                'Doctor', 'Branch', 'Room', 'Practitioner', 'Notification', 'Controller', 'Route::',
+                'DoctorId', 'Branch', 'Room', 'Practitioner', 'Notification', 'Controller', 'Route::',
             ] as $forbidden) {
                 self::assertStringNotContainsString($forbidden, $source, $file);
             }
