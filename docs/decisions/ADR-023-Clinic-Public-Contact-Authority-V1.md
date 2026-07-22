@@ -99,7 +99,9 @@ The profile may never contain arbitrary URLs, provider-specific map or WhatsApp 
 
 ## Deferred implementation
 
-This ADR does not implement Domain classes, persistence, migration, commands, APIs, publication projection, snapshot schema, render contracts, frontend, maps, geocoding, WhatsApp messaging, or multi-location support. Those changes require separately governed increments.
+ClinicContactProfile Domain behavior, normalized persistence, Tenant-safe application update, authorization, audit evidence, and guarded legacy Website Branding migration were implemented by the Clinic Contact Profile Implementation V1 increment on 2026-08-17. Legacy fields remain present and existing readers remain unchanged.
+
+Publication projection, snapshot schema, render contracts, APIs, frontend, maps, geocoding, WhatsApp messaging, and multi-location support remain deferred to separately governed increments.
 
 ## Compliance
 

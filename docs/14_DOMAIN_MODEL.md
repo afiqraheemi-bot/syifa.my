@@ -1,6 +1,6 @@
 # Syifa.my Phase 1 Domain Model
 
-> **Clinic Public Contact Authority amendment (2026-08-16):** ADR-023 assigns operational phone, operational email, postal address, a distinct optional WhatsApp number, and optional paired coordinates to a governed `ClinicContactProfile` inside the existing Clinic Aggregate. Clinic continues to own IANA timezone and weekly operating hours. Website Branding contact fields are legacy compatibility data pending a governed migration; Website continues to own visual branding, Section configuration, and immutable publication.
+> **Clinic Contact Profile implementation amendment (2026-08-17):** ADR-023's governed `ClinicContactProfile` is implemented inside Clinic with normalized optional operational phone, email, postal address, distinct WhatsApp number, and paired coordinates. Updates occur cohesively through Clinic, use optimistic persistence, enforce Tenant-scoped loading and authorization, and emit redacted audit evidence only for actual changes. Legacy Website Branding contact columns remain read-compatible; public publication still reads its existing source pending the separately governed projection increment.
 
 > **Public Website Rendering Contract note (2026-08-14):** Rendering adds no Domain object or Aggregate. It is a readonly Application projection of immutable `PublishedWebsiteSnapshot` values and never reads mutable Website state.
 

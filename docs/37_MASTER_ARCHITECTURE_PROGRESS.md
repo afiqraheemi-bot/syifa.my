@@ -1,7 +1,7 @@
 # Master Architecture Progress
 
-**Updated:** 2026-08-16
-**Current documented baseline:** `c2570544f8264ae0469bfa55e099d83388992e04`
+**Updated:** 2026-08-17
+**Current documented baseline:** `e8e99cdd1c054ae39a3ddb91058ad618469bfd75`
 
 This record summarizes accepted architecture increments. It does not supersede Product Vision, MVP Scope, ADRs, the Architecture Freeze, or implementation history.
 
@@ -18,7 +18,7 @@ This record summarizes accepted architecture increments. It does not supersede P
 | ADR-020 | Published Section Content Snapshot | Complete | Normalized immutable typed Section content, Asset/Service references, and renderability evidence. | Presentation. |
 | ADR-021 | Public Website Rendering Contract | Complete | Transient typed snapshot-only render tree with adaptive omission and published ordering. | HTML, routes, controllers, CSS, JavaScript. |
 | ADR-022 | Public Website Experience and Design System V1 | Complete | Experience north star, tokens, responsive rules, components, Sections, templates, accessibility, performance, quality gate, and governance. | All production frontend implementation. |
-| ADR-023 | Clinic Public Contact Authority V1 | Complete | Clinic-owned operational contact, time and semantic location; internal ClinicContactProfile; explicit WhatsApp channel; provider-neutral directions evidence; staged Website Branding compatibility transition. | Domain/persistence migration, publication projection, render-contract extension, and frontend delivery. |
+| ADR-023 | Clinic Public Contact Authority V1 | Implemented | Clinic-owned immutable Contact Profile value semantics, normalized Tenant-safe persistence, guarded legacy migration, authorized transactional update, and redacted actual-change audit. | Publication read migration, legacy-column removal, snapshot/render-contract extension, and frontend delivery. |
 
 ## Reference template specifications
 
@@ -53,12 +53,11 @@ The public experience can now be implemented without inventing product hierarchy
 
 No next increment is authorized by this progress record. Likely future decisions must remain separately scoped:
 
-1. Implement ClinicContactProfile and its staged compatibility migration under ADR-023.
-2. Resolve required immutable public projection gaps without cross-context Domain imports.
-3. Select and implement public delivery composition using the existing server-rendered architecture authority.
-4. Define public host routing and Custom Domain delivery.
-5. Define Asset URL resolution and delivery without leaking providers into rendering contracts.
-6. Implement booking entry presentation against the existing Booking boundary.
-7. Add provider-neutral tracking only after privacy, consent, and event-contract approval.
+1. Resolve required immutable public projection gaps without cross-context Domain imports, consuming ClinicContactProfile under ADR-023.
+2. Select and implement public delivery composition using the existing server-rendered architecture authority.
+3. Define public host routing and Custom Domain delivery.
+4. Define Asset URL resolution and delivery without leaking providers into rendering contracts.
+5. Implement booking entry presentation against the existing Booking boundary.
+6. Add provider-neutral tracking only after privacy, consent, and event-contract approval.
 
 No item above authorizes HTML, Blade, controllers, APIs, storage providers, caching, CDN, analytics, or dependencies in ADR-022.

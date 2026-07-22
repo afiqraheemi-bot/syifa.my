@@ -1,5 +1,7 @@
 # Database Strategy — Engineering Principles
 
+> **Clinic Contact Profile implementation amendment (2026-08-17):** `clinic_contact_profiles` stores exactly one normalized Clinic-owned profile keyed by `clinic_id`, with explicit Tenant lineage, nullable semantic contact columns, paired constrained coordinates, and no JSON or provider URLs. A composite Clinic/Tenant foreign key prevents cross-Tenant ownership. The additive migration copies unambiguous legacy Website Branding phone, email, and address through Domain normalization, fabricates no WhatsApp or coordinates, preserves all legacy columns, and is rollback-safe.
+
 > **Website Published Section Content Snapshot amendment (2026-08-13):** `website_published_section_contents` and explicit typed child tables persist immutable content for every governed Section. Scalar fields use explicit columns and ordered collections use normalized child rows. Publication inserts them atomically with the Published Snapshot and history; no JSON, serialization, draft joins, storage URLs, or generic content table is permitted.
 
 > **Website Publishing Pipeline Foundation amendment (2026-08-12):** Immutable `website_published_snapshots` and normalized Section/Asset snapshot children are stored separately from mutable draft tables. `website_publication_history` records publication identity, version, actor, time, and result. Unique versions, insert-only snapshots, optimistic Website writes, and one transaction prevent partial publication. Public snapshot queries never join mutable draft tables.
