@@ -6,6 +6,8 @@
 
 **Template identity:** `SYIFA_ESSENTIAL`
 
+> **Implementation blueprint:** [Syifa Essential Reference Blueprint V1](./SYIFA_ESSENTIAL_BLUEPRINT_V1.md) is the authoritative page, component, responsive, accessibility, SEO, and implementation acceptance specification. This reference retains the product journey and conversion rationale; the blueprint translates it into implementation-complete requirements under ADR-024's governed single-page delivery policy.
+
 ## Product intent
 
 Syifa Essential is the clearest, most broadly suitable expression of the SYIFA.my public experience: modern, calm, credible, efficient, and booking-first. It helps a clinic acquire patients, build trust, explain relevant care, reduce booking uncertainty, and convert intent without visual excess or manipulative persuasion.
