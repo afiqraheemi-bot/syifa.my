@@ -118,6 +118,30 @@ final class BookingFoundationArchitectureTest extends TestCase
         self::assertFileDoesNotExist($this->root().'/database/migrations/booking/create_clinics_table.php');
     }
 
+    public function test_booking_submission_is_application_orchestration_without_unapproved_dependencies(): void
+    {
+        $submission = $this->source($this->root().'/app/Modules/Booking/Application/SubmitBookingService.php');
+        $command = $this->source($this->root().'/app/Modules/Booking/Application/Commands/SubmitBookingCommand.php');
+
+        self::assertStringContainsString('BookingFormConfigurationRepositoryInterface', $submission);
+        self::assertStringContainsString('ServiceRepositoryInterface', $submission);
+        self::assertStringContainsString('BookingRepositoryInterface', $submission);
+        self::assertStringContainsString('BookingTransactionInterface', $submission);
+        self::assertStringNotContainsString('ClinicId', $submission.$command);
+        self::assertStringNotContainsString('array $', $command);
+
+        foreach (['Doctor', 'Branch', 'Room', 'Availability', 'Notification'] as $unapproved) {
+            self::assertStringNotContainsString($unapproved, $submission.$command);
+        }
+
+        foreach ($this->phpFilesIn($this->root().'/app/Modules/Booking/Infrastructure/Persistence/Repositories') as $repository) {
+            self::assertStringNotContainsString('SubmitBooking', $this->source($repository), $repository);
+        }
+
+        self::assertStringNotContainsString('RepositoryInterface', $this->source($this->root().'/app/Modules/Booking/Domain/Booking.php'));
+        self::assertDoesNotMatchRegularExpression('/use App\\\\Modules\\\\(?!Booking\\\\)/', $submission);
+    }
+
     public function test_booking_form_configuration_is_isolated_from_the_booking_aggregate(): void
     {
         self::assertFileExists($this->root().'/app/Modules/Booking/Domain/BookingFormConfiguration.php');
