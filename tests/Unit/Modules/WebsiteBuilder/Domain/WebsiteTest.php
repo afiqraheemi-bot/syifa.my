@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\ServicePresentationItem;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\PublicationId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
@@ -76,6 +77,39 @@ final class WebsiteTest extends TestCase
             array_map(static fn (WebsiteSection $section): SectionType => $section->type, array_slice($website->sections()->sections(), 0, 4)),
         );
         self::assertSame(range(1, 9), array_map(static fn (WebsiteSection $section): int => $section->displayOrder()->value, $website->sections()->sections()));
+    }
+
+    public function test_services_presentation_moves_featured_state_atomically_and_is_idempotent(): void
+    {
+        $website = $this->website();
+        $items = [
+            new ServicePresentationItem($this->uuid(200), 1, true),
+            new ServicePresentationItem($this->uuid(201), 2),
+        ];
+        $eligible = [$this->uuid(200), $this->uuid(201)];
+        self::assertTrue($website->configureServicesPresentation($items, $eligible, $this->at('+1 hour')));
+        self::assertFalse($website->configureServicesPresentation($items, $eligible, $this->at('+2 hours')));
+
+        $moved = [
+            new ServicePresentationItem($this->uuid(200), 1),
+            new ServicePresentationItem($this->uuid(201), 2, true),
+        ];
+        self::assertTrue($website->configureServicesPresentation($moved, $eligible, $this->at('+3 hours')));
+        self::assertTrue($website->servicesPresentation()->items[1]->isFeatured);
+
+        $cleared = array_map(static fn (ServicePresentationItem $item): ServicePresentationItem => new ServicePresentationItem($item->serviceId, $item->displayOrder), $moved);
+        self::assertTrue($website->configureServicesPresentation($cleared, $eligible, $this->at('+4 hours')));
+        self::assertFalse(array_any($website->servicesPresentation()->items, static fn (ServicePresentationItem $item): bool => $item->isFeatured));
+    }
+
+    public function test_services_presentation_rejects_service_without_same_tenant_eligibility_evidence(): void
+    {
+        $this->expectException(InvalidWebsiteValueException::class);
+        $this->website()->configureServicesPresentation(
+            [new ServicePresentationItem($this->uuid(200), 1)],
+            [$this->uuid(201)],
+            $this->at('+1 hour'),
+        );
     }
 
     public function test_collection_rejects_duplicate_types(): void

@@ -7,6 +7,7 @@ namespace Tests\Integration\Modules\WebsiteBuilder\Persistence;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\GallerySectionContent;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\ServicePresentationItem;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetAvailabilityEvidence;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetMimeType;
@@ -62,6 +63,7 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         foreach (['website_published_faq_entries', 'website_published_gallery_images', 'website_published_testimonials', 'website_published_doctor_profiles', 'website_published_service_references', 'website_published_booking_cta_contents', 'website_published_contact_contents', 'website_published_about_contents', 'website_published_hero_contents', 'website_published_section_contents'] as $table) {
             Schema::connection(self::CONNECTION)->dropIfExists($table);
         }
+        Schema::connection(self::CONNECTION)->dropIfExists('website_service_section_items');
         Schema::connection(self::CONNECTION)->dropIfExists('website_publication_history');
         Schema::connection(self::CONNECTION)->dropIfExists('website_published_snapshot_assets');
         Schema::connection(self::CONNECTION)->dropIfExists('website_published_snapshot_sections');
@@ -99,6 +101,10 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         self::assertInstanceOf(Migration::class, $contentMigration);
         $contentMigration->up();
         $this->migrations[] = $contentMigration;
+        $servicePresentationMigration = require base_path('database/migrations/website_builder/2026_08_18_000001_create_website_service_section_items.php');
+        self::assertInstanceOf(Migration::class, $servicePresentationMigration);
+        $servicePresentationMigration->up();
+        $this->migrations[] = $servicePresentationMigration;
     }
 
     protected function tearDown(): void
@@ -129,6 +135,73 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         self::assertSame(9, $this->db()->table('website_sections')->where('website_id', $website->id->value)->count());
         self::assertSame('Klinik Syifa', $loaded->seo()->metaTitle());
         self::assertSame(1, $loaded->seo()->version());
+    }
+
+    public function test_service_presentation_persists_featured_state_order_and_tenant_lineage(): void
+    {
+        $website = $this->website();
+        $website->configureServicesPresentation([
+            new ServicePresentationItem($this->uuid(701), 2),
+            new ServicePresentationItem($this->uuid(700), 1, true),
+        ], [$this->uuid(700), $this->uuid(701)], $this->at('+1 hour'));
+        $this->repository()->save($website);
+
+        $loaded = $this->repository()->findByTenant(new TenantId($this->uuid(1)));
+        self::assertNotNull($loaded);
+        self::assertSame([$this->uuid(700), $this->uuid(701)], $loaded->servicesPresentation()->serviceReferences());
+        self::assertTrue($loaded->servicesPresentation()->items[0]->isFeatured);
+        self::assertSame(1, $this->db()->table('website_service_section_items')->where('is_featured', true)->count());
+        self::assertSame($website->servicesPresentation()->sectionId()->value, $this->db()->table('website_service_section_items')->value('section_id'));
+    }
+
+    public function test_database_enforces_unique_service_order_and_single_featured_item(): void
+    {
+        $website = $this->website();
+        $website->configureServicesPresentation([
+            new ServicePresentationItem($this->uuid(700), 1, true),
+        ], [$this->uuid(700)], $this->at('+1 hour'));
+        $this->repository()->save($website);
+        $row = $this->db()->table('website_service_section_items')->first();
+        self::assertNotNull($row);
+
+        try {
+            $this->db()->table('website_service_section_items')->insert([
+                'website_id' => $row->website_id, 'section_id' => $row->section_id,
+                'service_id' => $this->uuid(701), 'display_order' => 1, 'is_featured' => false,
+            ]);
+            self::fail('Duplicate display order must fail.');
+        } catch (QueryException) {
+            self::assertSame(1, $this->db()->table('website_service_section_items')->count());
+        }
+
+        $this->expectException(QueryException::class);
+        $this->db()->table('website_service_section_items')->insert([
+            'website_id' => $row->website_id, 'section_id' => $row->section_id,
+            'service_id' => $this->uuid(702), 'display_order' => 2, 'is_featured' => true,
+        ]);
+    }
+
+    public function test_service_presentation_migration_backfills_latest_published_order_as_not_featured_and_reverses_safely(): void
+    {
+        $website = $this->website();
+        $this->repository()->save($website);
+        $website->readyForReview($this->at('+1 hour'));
+        $website->publish($this->publicationEvidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(849)), $this->uuid(900), $this->at('+2 hours'));
+        $this->repository()->save($website);
+
+        $migration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $migration);
+        $migration->down();
+        self::assertFalse(Schema::connection(self::CONNECTION)->hasTable('website_service_section_items'));
+        self::assertTrue(Schema::connection(self::CONNECTION)->hasColumn('website_published_service_references', 'service_id'));
+
+        $migration->up();
+        $this->migrations[] = $migration;
+        $row = $this->db()->table('website_service_section_items')->first();
+        self::assertNotNull($row);
+        self::assertSame($this->uuid(702), $row->service_id);
+        self::assertSame(1, $row->display_order);
+        self::assertFalse((bool) $row->is_featured);
     }
 
     public function test_seo_configuration_round_trips_with_explicit_columns(): void
@@ -338,6 +411,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
 
     public function test_migration_backfills_all_sections_for_an_existing_website(): void
     {
+        $servicePresentationMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $servicePresentationMigration);
+        $servicePresentationMigration->down();
         $contentMigration = array_pop($this->migrations);
         self::assertInstanceOf(Migration::class, $contentMigration);
         $contentMigration->down();
@@ -372,6 +448,8 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $this->migrations[] = $publishingMigration;
         $contentMigration->up();
         $this->migrations[] = $contentMigration;
+        $servicePresentationMigration->up();
+        $this->migrations[] = $servicePresentationMigration;
         $rows = $this->db()->table('website_sections')->where('website_id', $this->uuid(30))->orderBy('display_order')->get();
         self::assertCount(9, $rows);
         self::assertSame(['HERO', 'ABOUT', 'SERVICES', 'DOCTORS', 'TESTIMONIALS', 'GALLERY', 'FAQ', 'CONTACT', 'BOOKING_CTA'], $rows->pluck('section_type')->all());
@@ -381,6 +459,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
     public function test_seo_migration_backfills_existing_website_with_safe_defaults(): void
     {
         $this->repository()->save($this->website());
+        $servicePresentationMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $servicePresentationMigration);
+        $servicePresentationMigration->down();
         $contentMigration = array_pop($this->migrations);
         self::assertInstanceOf(Migration::class, $contentMigration);
         $contentMigration->down();
@@ -402,6 +483,8 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $this->migrations[] = $publishingMigration;
         $contentMigration->up();
         $this->migrations[] = $contentMigration;
+        $servicePresentationMigration->up();
+        $this->migrations[] = $servicePresentationMigration;
         $row = $this->db()->table('website_seo_configurations')->where('website_id', $this->uuid(3))->first();
         self::assertNotNull($row);
         self::assertSame('Klinik Syifa', $row->meta_title);

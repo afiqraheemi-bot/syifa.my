@@ -16,6 +16,7 @@ use App\Modules\WebsiteBuilder\Domain\SectionContent\GallerySectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\HeroSectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\ManualDoctorProfile;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\ManualTestimonial;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\ServicePresentationItem;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\ServicesSectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\TestimonialsSectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\WebsiteSectionContentInterface;
@@ -80,6 +81,52 @@ final class WebsiteSectionContentTest extends TestCase
         $content = new ServicesSectionContent($this->sectionId(), [$this->uuid(10), $this->uuid(11)]);
         self::assertFalse($content->isRenderable([$this->uuid(12)]));
         self::assertTrue($content->isRenderable([$this->uuid(11)]));
+    }
+
+    public function test_service_presentation_is_ordered_and_allows_at_most_one_featured_item(): void
+    {
+        $content = new ServicesSectionContent($this->sectionId(), [
+            new ServicePresentationItem($this->uuid(11), 2),
+            new ServicePresentationItem($this->uuid(10), 1, true),
+        ]);
+        self::assertSame([$this->uuid(10), $this->uuid(11)], $content->serviceReferences());
+        self::assertTrue($content->items[0]->isFeatured);
+
+        $this->expectException(InvalidWebsiteValueException::class);
+        new ServicesSectionContent($this->sectionId(), [
+            new ServicePresentationItem($this->uuid(10), 1, true),
+            new ServicePresentationItem($this->uuid(11), 2, true),
+        ]);
+    }
+
+    public function test_service_presentation_rejects_duplicates_and_invalid_ordering(): void
+    {
+        try {
+            new ServicesSectionContent($this->sectionId(), [
+                new ServicePresentationItem($this->uuid(10), 1),
+                new ServicePresentationItem($this->uuid(10), 2),
+            ]);
+            self::fail('Duplicate Services must fail.');
+        } catch (InvalidWebsiteValueException) {
+            self::assertTrue(true);
+        }
+
+        $this->expectException(InvalidWebsiteValueException::class);
+        new ServicesSectionContent($this->sectionId(), [
+            new ServicePresentationItem($this->uuid(10), 1),
+            new ServicePresentationItem($this->uuid(11), 1),
+        ]);
+    }
+
+    public function test_featured_emphasis_can_move_or_clear_but_must_reference_a_present_service(): void
+    {
+        $content = new ServicesSectionContent($this->sectionId(), [$this->uuid(10), $this->uuid(11)]);
+        $featured = $content->withFeaturedService($this->uuid(11));
+        self::assertTrue($featured->items[1]->isFeatured);
+        self::assertFalse($featured->withFeaturedService(null)->items[1]->isFeatured);
+
+        $this->expectException(InvalidWebsiteValueException::class);
+        $content->withFeaturedService($this->uuid(12));
     }
 
     public function test_doctors_require_at_least_one_visible_manual_profile(): void
