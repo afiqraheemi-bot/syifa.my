@@ -1,10 +1,12 @@
 # Reference Template Specification — Syifa Essential
 
-**Status:** Canonical V1 reference
+**Status:** **LOCKED** — Syifa Essential Reference Template V1 (certified 2026-07-23)
 
-**Authority:** ADR-022 and the Public Website Experience and Design System V1
+**Authority:** ADR-022, ADR-025, and the Public Website Experience and Design System V1
 
 **Template identity:** `SYIFA_ESSENTIAL`
+
+> **Reference Lock record:** [Syifa Essential Reference Template V1 — Reference Lock Record](../13_REFERENCE_LOCK_V1.md) records the canonical version marking, the frozen Design Token contract, and the frozen public Component contract this document and its implementation are now locked against. See [ADR-025](../../decisions/ADR-025-Official-Website-Design-Language.md) for the governing decision.
 
 > **Implementation blueprint:** [Syifa Essential Reference Blueprint V1](./SYIFA_ESSENTIAL_BLUEPRINT_V1.md) is the authoritative page, component, responsive, accessibility, SEO, and implementation acceptance specification. This reference retains the product journey and conversion rationale; the blueprint translates it into implementation-complete requirements under ADR-024's governed single-page delivery policy.
 

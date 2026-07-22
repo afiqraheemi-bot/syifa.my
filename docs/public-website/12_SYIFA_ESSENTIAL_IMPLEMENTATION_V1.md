@@ -50,12 +50,14 @@ Mobile navigation is progressive enhancement. Without JavaScript the links remai
 
 Blade escapes all public text and attributes. JSON-LD retains ADR-024 safe serialization. Views use only resolver-supplied public URLs. No arbitrary HTML, unsafe redirect, storage path, internal identity, draft data, or mutable data lookup is present.
 
-The dedicated public bundle introduces no framework hydration or UI library. Production build reference:
+The dedicated public bundle introduces no framework hydration or UI library. Production build reference (measured at Reference Lock, 2026-07-23):
 
-- public stylesheet: approximately 15.5 kB before gzip;
-- navigation enhancement: approximately 0.73 kB before gzip;
+- public stylesheet: 17.81 kB raw / 4.06 kB gzip — against `07_PERFORMANCE_BUDGET.md`'s governing "Critical CSS ≤ 30 KB compressed" budget, measured in gzip bytes, this is comfortably within budget;
+- navigation enhancement: 0.73 kB raw / 0.37 kB gzip;
 - no blocking inline application script;
 - no animation library or third-party runtime.
+
+These are lab build measurements, not field data. No real LCP, INP, CLS, browser-based accessibility audit, or field performance measurement has been conducted — see Known limitations below.
 
 ## Known limitations
 

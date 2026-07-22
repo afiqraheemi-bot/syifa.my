@@ -1,7 +1,7 @@
 # Master Architecture Progress
 
-**Updated:** 2026-08-18
-**Current documented baseline:** `43af75c49b9eef2ac790f06ba6bdd290419263a3`
+**Updated:** 2026-07-23
+**Current documented baseline:** `6f32baa9cb8e3c244d4312ddcc9a69bb345cde2c` (Reference Certification Remediation V1; Reference Lock documentation lands in the immediately following commit)
 
 This record summarizes accepted architecture increments. It does not supersede Product Vision, MVP Scope, ADRs, the Architecture Freeze, or implementation history.
 
@@ -23,12 +23,13 @@ This record summarizes accepted architecture increments. It does not supersede P
 | ADR-022 | Public Website Experience and Design System V1 | Complete | Experience north star, tokens, responsive rules, components, Sections, templates, accessibility, performance, quality gate, and governance. | All production frontend implementation. |
 | ADR-023 | Clinic Public Contact Authority V1 | Implemented | Clinic-owned immutable Contact Profile value semantics, normalized Tenant-safe persistence, guarded legacy migration, authorized transactional update, and redacted actual-change audit. | Publication read migration, legacy-column removal, snapshot/render-contract extension, and frontend delivery. |
 | ADR-016 amendment | Website Service Presentation Authority V1 | Implemented | Website-owned ordered Service references and presentation-only featured state with one-featured invariant, normalized persistence, same-Tenant eligibility evidence, and deterministic compatibility backfill. | Immutable Service master projection, complete public render-contract projection, and frontend presentation. |
+| ADR-025 | Official Website Design Language | **Complete and Locked** | Locks Syifa Essential Reference Template V1 as the canonical design language, token contract, and public component contract every future template must inherit; freezes CTA hierarchy, navigation rules, and accessibility baseline. | Syifa Care/Dental/Aesthetic/Specialist visual variants; the shared variant-selection mechanism (deferred until a second real template exists); Public Booking implementation. |
 
 ## Reference template specifications
 
 | Template | Status | Canonical reference |
 |---|---|---|
-| Syifa Essential | Complete | [Reference Template Specification — Syifa Essential](./public-website/templates/SYIFA_ESSENTIAL_REFERENCE.md) establishes the default page flow, Section blueprints, mobile/desktop behavior, conversion hierarchy, adaptive journey, and personality-specific quality baseline. |
+| Syifa Essential | **Complete and Locked** (Reference Template V1, 2026-07-23, ADR-025) | [Reference Template Specification — Syifa Essential](./public-website/templates/SYIFA_ESSENTIAL_REFERENCE.md) establishes the default page flow, Section blueprints, mobile/desktop behavior, conversion hierarchy, adaptive journey, and personality-specific quality baseline. See [Reference Lock Record](./public-website/13_REFERENCE_LOCK_V1.md) for the frozen token/component contract. |
 | Syifa Care | Not specified | Requires a future governed reference increment. |
 | Syifa Dental | Not specified | Requires a future governed reference increment. |
 | Syifa Aesthetic | Not specified | Requires a future governed reference increment. |
@@ -48,20 +49,20 @@ Website Aggregate
         -> typed Public Rendering Contract
             -> governed Experience & Design System V1
                 -> governed Ferrari Visual Language V1
-                    -> future delivery implementation (not yet authorized)
+                    -> Syifa Essential Reference Template V1 (LOCKED, ADR-025)
+                        -> Public Booking Contract (next milestone, not yet authorized)
 ```
 
-The public experience can now be implemented without inventing product hierarchy or presentation rules. ADR-023 resolves Contact ownership and the ADR-016 amendment resolves Service featured-presentation ownership. Future immutable Service publication combines Service-owned public display values with Website-owned ordering and featured emphasis. Implementation must still close the ADR-021 projection gaps: Service display projection, Gallery accessibility metadata, and authorized Clinic Contact values are not yet complete in published snapshots or render contracts.
+The public experience is implemented and locked for Syifa Essential. ADR-020 completed the Service display projection and Gallery accessibility metadata; ADR-023 (with its ADR-020 publication-read capture) completed the Clinic Contact projection — business hours, WhatsApp, and coordinates are present in published snapshots and render contracts today, not deferred. ADR-024 established the delivery boundary and Ferrari UX Iteration V2 plus Reference Certification Remediation V1 completed and certified the Syifa Essential implementation itself. ADR-025 records that lock. Care, Dental, Aesthetic, and Specialist visual variants remain unbuilt; the shared variant-selection mechanism required to build them is deliberately deferred until the first of them exists (`05_TEMPLATE_ADAPTATION_RULES.md`).
 
 ## Next governed decisions
 
-No next increment is authorized by this progress record. Likely future decisions must remain separately scoped:
+**Next milestone: Public Booking Contract and Availability Delivery.** Booking remains CTA-only — no public Booking form, availability UI, or Booking Engine change has been authorized or implemented by this record. Likely future decisions must remain separately scoped:
 
-1. Resolve required immutable public projection gaps without cross-context Domain imports, consuming ClinicContactProfile under ADR-023.
-2. Select and implement public delivery composition using the existing server-rendered architecture authority.
-3. Define public host routing and Custom Domain delivery.
-4. Define Asset URL resolution and delivery without leaking providers into rendering contracts.
-5. Implement booking entry presentation against the existing Booking boundary.
-6. Add provider-neutral tracking only after privacy, consent, and event-contract approval.
+1. Define and authorize the public Booking Contract: what a patient-facing booking submission is permitted to read/write against the existing Booking Domain boundary (ADR-013), without weakening the Syifa Essential design language or CTA hierarchy ADR-025 locks.
+2. Define public host routing and Custom Domain delivery.
+3. Define Asset URL resolution and delivery without leaking providers into rendering contracts.
+4. Introduce the first additional template (expected Syifa Care) and, with it, the minimum evidence-based variant-selection mechanism ADR-025 defers.
+5. Add provider-neutral tracking only after privacy, consent, and event-contract approval.
 
-No item above authorizes HTML, Blade, controllers, APIs, storage providers, caching, CDN, analytics, or dependencies in ADR-022.
+No item above authorizes HTML, Blade, controllers, APIs, storage providers, caching, CDN, analytics, or dependencies beyond what ADR-022/ADR-025 already govern, and none of it modifies the Booking Domain.

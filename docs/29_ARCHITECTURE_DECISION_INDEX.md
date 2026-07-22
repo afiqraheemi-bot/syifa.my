@@ -35,6 +35,7 @@ This document is the governance index for architecture decisions and architectur
 | [ADR-021](./decisions/ADR-021-Public-Website-Rendering-Contract.md) | Public Website Rendering Contract | Active | Defines a transient typed snapshot-only render tree with deterministic ordering and adaptive Section omission. |
 | [ADR-022](./decisions/ADR-022-Public-Website-Experience-and-Design-System-V1.md) | Public Website Experience and Design System V1 | Active | Governs booking-first public experience, tokens, responsive components, five template personalities, accessibility, performance, quality review, and change control. |
 | [ADR-023](./decisions/ADR-023-Clinic-Public-Contact-Authority-V1.md) | Clinic Public Contact Authority V1 | Active | Assigns operational contact, operating time, and semantic location to Clinic; defines the internal ClinicContactProfile, explicit WhatsApp semantics, provider-neutral directions evidence, and the staged Website Branding compatibility transition. |
+| [ADR-025](./decisions/ADR-025-Official-Website-Design-Language.md) | Official Website Design Language | Active | Locks Syifa Essential Reference Template V1 as the canonical design language, token contract, and public component contract for all future SYIFA.my templates; freezes navigation, CTA hierarchy, and accessibility baseline; defers the shared variant-selection mechanism until a second real template exists. |
 
 ## Superseded ADRs
 
