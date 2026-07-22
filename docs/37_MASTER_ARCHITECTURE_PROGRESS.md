@@ -1,7 +1,7 @@
 # Master Architecture Progress
 
 **Updated:** 2026-08-15
-**Current documented baseline:** `8ad6288f88c4f629cb5127ff28aec9124e3dbae1`
+**Current documented baseline:** `7d82bdd5d2ec506b3fd881cf04b4baa4e792ae82`
 
 This record summarizes accepted architecture increments. It does not supersede Product Vision, MVP Scope, ADRs, the Architecture Freeze, or implementation history.
 
@@ -29,6 +29,12 @@ This record summarizes accepted architecture increments. It does not supersede P
 | Syifa Aesthetic | Not specified | Requires a future governed reference increment. |
 | Syifa Specialist | Not specified | Requires a future governed reference increment. |
 
+## Product and visual specifications
+
+| Specification | Status | Capability established |
+|---|---|---|
+| Ferrari Visual Language V1 | Complete | [Ferrari Visual Language V1](./public-website/10_FERRARI_VISUAL_LANGUAGE_V1.md) defines the shared premium-healthcare emotional journey, composition principles, shape, colour, typography, photography, iconography, motion, trust, CTA, Section feel, prohibited patterns, and craftsmanship bar without authorizing frontend implementation. |
+
 ## Current architecture state
 
 ```text
@@ -36,7 +42,8 @@ Website Aggregate
     -> atomic immutable Published Snapshot
         -> typed Public Rendering Contract
             -> governed Experience & Design System V1
-                -> future delivery implementation (not yet authorized)
+                -> governed Ferrari Visual Language V1
+                    -> future delivery implementation (not yet authorized)
 ```
 
 The public experience can now be implemented without inventing product hierarchy or presentation rules. Implementation must still resolve explicitly recorded contract gaps through approved increments rather than mutable reads: public Service display names/descriptions, meaningful Gallery alternative text/captions, and immutable Contact operating-hours/location-coordinate/directions data are not present in ADR-021.
