@@ -51,6 +51,7 @@ use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivatio
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationReconciliationCaseRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationTransactionInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
 use App\Modules\SubscriptionBilling\Infrastructure\Audit\PaymentAuditAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Audit\SubscriptionActivationAuditAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\CommercialCataloguePlatformAuthorizationAdapter;
@@ -73,6 +74,7 @@ use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\Subscript
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionIntegrationOutboxPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresCommercialCatalogueQueryAdapter;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresSubscriptionSummaryReadAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresBillingOptionRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresCapabilityDefinitionRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentOutboxRepository;
@@ -139,6 +141,12 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(PaymentIdentifierGeneratorInterface::class, PaymentIdentifierGenerator::class);
         $this->app->singleton(PaymentPersistenceMapper::class);
         $this->app->singleton(SubscriptionPersistenceMapper::class);
+        $this->app->singleton(
+            SubscriptionSummaryReadInterface::class,
+            static fn (Application $application): PostgresSubscriptionSummaryReadAdapter => new PostgresSubscriptionSummaryReadAdapter(
+                $application->make('db')->connection(),
+            ),
+        );
         $this->app->singleton(SubscriptionIntegrationOutboxPersistenceMapper::class);
         $this->app->singleton(SubscriptionActivationApplicationPersistenceMapper::class);
         $this->app->singleton(AnnualTermCalculator::class);
