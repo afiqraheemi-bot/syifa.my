@@ -3,6 +3,10 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\OperationsController;
+use App\Modules\Booking\Presentation\Http\Controllers\ClinicOwnerBookingOperationController;
+use App\Modules\PlatformAdministration\Presentation\Http\Controllers\PlatformEmailVerificationController;
+use App\Modules\PlatformAdministration\Presentation\Http\Controllers\PlatformPasswordConfirmationController;
+use App\Modules\PlatformAdministration\Presentation\Http\Controllers\PlatformPasswordResetController;
 use App\Modules\PlatformAdministration\Presentation\Http\Controllers\PlatformSessionController;
 use App\Modules\PlatformAdministration\Presentation\Http\Middleware\AuthenticatePlatformSessionMiddleware;
 use App\Modules\SubscriptionBilling\Presentation\ApiVersion;
@@ -11,16 +15,51 @@ use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCata
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanController;
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanOfferingController;
 use App\Modules\TenantManagement\Presentation\Http\Controllers\ClinicOwnerSessionController;
+use App\Modules\TenantManagement\Presentation\Http\Middleware\AuthenticateClinicOwnerSessionMiddleware;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\AvailabilityController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\BookingController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicLegalDocumentController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicWebsiteController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\SuccessController;
+use App\Support\Dashboard\Presentation\Http\Controllers\AuthenticatedDashboardController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteContentOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerJobDetailController;
+use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerOnboardingQueueController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', PublicWebsiteController::class)->name('public-website.home');
 Route::get('/privacy', [PublicLegalDocumentController::class, 'privacy'])->name('public-website.privacy');
 Route::get('/terms', [PublicLegalDocumentController::class, 'terms'])->name('public-website.terms');
+Route::get('/dashboard', AuthenticatedDashboardController::class)
+    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
+    ->name('dashboard');
+Route::get('/dashboard/onboarding', WebsiteDesignerOnboardingQueueController::class)
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding');
+Route::get('/dashboard/onboarding/{jobId}', WebsiteDesignerJobDetailController::class)
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.show');
+Route::get('/dashboard/website', ClinicOwnerWebsiteOverviewController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website');
+Route::get('/dashboard/website/content', ClinicOwnerWebsiteContentOverviewController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website.content');
+Route::get('/dashboard/bookings', ClinicOwnerBookingOverviewController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.bookings');
+Route::prefix('/dashboard/bookings/{bookingId}')
+    ->whereUuid('bookingId')
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.bookings.')
+    ->group(function (): void {
+        Route::post('/confirm', [ClinicOwnerBookingOperationController::class, 'confirm'])->name('confirm');
+        Route::post('/cancel', [ClinicOwnerBookingOperationController::class, 'cancel'])->name('cancel');
+        Route::patch('/reschedule', [ClinicOwnerBookingOperationController::class, 'reschedule'])->name('reschedule');
+    });
 
 // Public Booking Delivery (ADR-029, amended by ADR-030/031) — finite, additive
 // route set. No wildcard, no reference/bookingId-shaped parameter anywhere.
@@ -57,7 +96,11 @@ Route::prefix('api/v1')
     ->group(function (): void {
         Route::post('/sessions', [ClinicOwnerSessionController::class, 'store'])
             ->middleware('throttle:clinic-owner-session');
-        Route::get('/sessions/current', [ClinicOwnerSessionController::class, 'show']);
+        Route::get('/sessions/current', [ClinicOwnerSessionController::class, 'show'])
+            ->middleware([
+                AuthenticateClinicOwnerSessionMiddleware::class,
+                'authorize.context:clinic_owner,clinic_owner',
+            ]);
         Route::delete('/sessions/current', [ClinicOwnerSessionController::class, 'destroy']);
     });
 
@@ -69,8 +112,28 @@ Route::prefix('api/v1/platform/sessions')
             ->middleware([
                 'throttle:platform.session',
                 AuthenticatePlatformSessionMiddleware::class,
+                'authorize.context:platform_identity,super_admin,website_designer',
             ]);
         Route::delete('/current', [PlatformSessionController::class, 'destroy'])
+            ->middleware('throttle:platform.session');
+    });
+
+Route::prefix('api/v1/platform/password')
+    ->middleware('throttle:platform.password-reset')
+    ->group(function (): void {
+        Route::post('/forgot', [PlatformPasswordResetController::class, 'forgotPassword']);
+        Route::post('/reset', [PlatformPasswordResetController::class, 'resetPassword']);
+    });
+
+Route::post('/api/v1/platform/password/confirm', [PlatformPasswordConfirmationController::class, 'confirm'])
+    ->middleware('throttle:platform.session');
+
+Route::prefix('api/v1/platform/email')
+    ->group(function (): void {
+        Route::get('/verify/{id}/{hash}', [PlatformEmailVerificationController::class, 'verify'])
+            ->middleware('signed')
+            ->name('platform.email.verify');
+        Route::post('/verification-notification', [PlatformEmailVerificationController::class, 'resend'])
             ->middleware('throttle:platform.session');
     });
 

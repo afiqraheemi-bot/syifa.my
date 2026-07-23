@@ -15,6 +15,7 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteD
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteId;
 use App\Modules\Onboarding\Infrastructure\Persistence\Mappers\OnboardingJobPersistenceMapper;
 use App\Modules\Onboarding\Infrastructure\Persistence\Repositories\PostgresOnboardingJobRepository;
+use App\Modules\Onboarding\Infrastructure\Queries\PostgresWebsiteDesignerDashboardReadAdapter;
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Migrations\Migration;
@@ -199,6 +200,56 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
         }
     }
 
+    public function test_designer_dashboard_query_projects_current_work_and_assignment_history(): void
+    {
+        $designerId = $this->uuid(20);
+        foreach ([
+            31 => ['awaiting_inputs', 'active', null],
+            32 => ['in_progress', 'active', null],
+            33 => ['correction_required', 'active', null],
+            34 => ['ready_for_launch', 'active', null],
+            35 => ['completed', 'ended', 'onboarding_job_completed'],
+            36 => ['cancelled', 'ended', 'onboarding_job_cancelled'],
+        ] as $suffix => [$status, $assignmentStatus, $endReason]) {
+            $this->insertDashboardAssignment(
+                $suffix,
+                $designerId,
+                $status,
+                $assignmentStatus,
+                $endReason,
+            );
+        }
+
+        $adapter = new PostgresWebsiteDesignerDashboardReadAdapter($this->connection());
+        $data = $adapter->forPlatformIdentity($designerId);
+
+        self::assertSame(4, $data->assignedJobs);
+        self::assertSame(1, $data->pendingContentCollection);
+        self::assertSame(1, $data->websiteSetup);
+        self::assertSame(1, $data->reviewAndRevision);
+        self::assertSame(1, $data->readyToPublish);
+        self::assertSame(1, $data->completedProjects);
+        self::assertCount(5, $data->recentAssignments);
+        self::assertSame($this->uuid(36), $data->recentAssignments[0]->assignmentId);
+
+        $filtered = $adapter->queue($designerId, 'in_progress', null, 10, '000000000132');
+        self::assertCount(1, $filtered);
+        self::assertSame($this->uuid(132), $filtered[0]->onboardingJobId);
+        self::assertSame('in_progress', $filtered[0]->status);
+
+        $firstPage = $adapter->queue($designerId, null, null, 3, null);
+        self::assertSame([$this->uuid(34), $this->uuid(33), $this->uuid(32)], array_column($firstPage, 'assignmentId'));
+        $nextPage = $adapter->queue($designerId, null, $this->uuid(33), 3, null);
+        self::assertSame([$this->uuid(32), $this->uuid(31)], array_column($nextPage, 'assignmentId'));
+
+        $detail = $adapter->detail($designerId, $this->uuid(132));
+        self::assertNotNull($detail);
+        self::assertSame('in_progress', $detail->status);
+        self::assertSame($this->uuid(232), $detail->tenantId);
+        self::assertNotNull($detail->lifecycle['job_created_at']);
+        self::assertNull($adapter->detail($this->uuid(99), $this->uuid(132)));
+    }
+
     private function jobWithAssignment(): OnboardingJob
     {
         $job = $this->job();
@@ -209,6 +260,41 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
         );
 
         return $job;
+    }
+
+    private function insertDashboardAssignment(
+        int $suffix,
+        string $designerId,
+        string $status,
+        string $assignmentStatus,
+        ?string $endReason,
+    ): void {
+        $timestamp = $this->time(sprintf('10:%02d:00', $suffix));
+        $jobId = $this->uuid(100 + $suffix);
+        $tenantId = $this->uuid(200 + $suffix);
+
+        $this->connection()->table('onboarding_jobs')->insert([
+            'id' => $jobId,
+            'tenant_id' => $tenantId,
+            'website_id' => $this->uuid(300 + $suffix),
+            'status' => $status,
+            'version' => 1,
+            'job_created_at' => $timestamp,
+            'created_at' => $timestamp,
+            'updated_at' => $timestamp,
+        ]);
+        $this->connection()->table('website_designer_assignments')->insert([
+            'id' => $this->uuid($suffix),
+            'onboarding_job_id' => $jobId,
+            'tenant_id' => $tenantId,
+            'platform_identity_id' => $designerId,
+            'assignment_status' => $assignmentStatus,
+            'assigned_at' => $timestamp,
+            'ended_at' => $assignmentStatus === 'ended' ? $timestamp : null,
+            'end_reason' => $endReason,
+            'created_at' => $timestamp,
+            'updated_at' => $timestamp,
+        ]);
     }
 
     private function job(): OnboardingJob
