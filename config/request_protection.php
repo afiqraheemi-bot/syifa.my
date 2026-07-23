@@ -65,6 +65,23 @@ return [
             'key_parts' => ['host', 'email', 'network'],
         ],
 
+        'public_booking_submit' => [
+            'limiter' => 'booking-submission',
+            'max_attempts' => (int) env('REQUEST_PROTECTION_BOOKING_SUBMISSION_MAX_ATTEMPTS', 10),
+            'decay_seconds' => (int) env('REQUEST_PROTECTION_BOOKING_SUBMISSION_DECAY_SECONDS', 60),
+            'type' => 'booking_temporarily_unavailable',
+            'title' => 'Booking Temporarily Unavailable',
+            'detail' => 'Something went wrong on our end. Please try again.',
+            'key_parts' => ['host', 'network'],
+            // ADR-027's Security category: the public booking flow is an HTML
+            // form, never a JSON API consumer — a visitor who trips this limit
+            // must see the same generic, unremarkable Error Recovery screen as
+            // every other failure category, never a raw problem+json body and
+            // never any indication that abuse was suspected.
+            'html_redirect_route' => 'public-website.booking.review',
+            'html_error_key' => 'infrastructure',
+        ],
+
         'payment_provider_webhook' => [
             'limiter' => 'payment-provider-webhook',
             'max_attempts' => (int) env('REQUEST_PROTECTION_PAYMENT_WEBHOOK_MAX_ATTEMPTS', 300),

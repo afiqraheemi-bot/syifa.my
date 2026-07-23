@@ -17,6 +17,8 @@ final readonly class RequestProtectionProfile
         public string $title,
         public string $detail,
         public array $keyParts,
+        public ?string $htmlRedirectRouteName,
+        public ?string $htmlErrorKey,
     ) {}
 
     /**
@@ -31,6 +33,8 @@ final readonly class RequestProtectionProfile
         $title = $configuration['title'] ?? null;
         $detail = $configuration['detail'] ?? null;
         $keyParts = $configuration['key_parts'] ?? null;
+        $htmlRedirectRouteName = $configuration['html_redirect_route'] ?? null;
+        $htmlErrorKey = $configuration['html_error_key'] ?? null;
 
         if (! is_string($limiter) || $limiter === ''
             || ! is_int($maxAttempts) || $maxAttempts < 1
@@ -39,6 +43,8 @@ final readonly class RequestProtectionProfile
             || ! is_string($title) || $title === ''
             || ! is_string($detail) || $detail === ''
             || ! is_array($keyParts)
+            || ($htmlRedirectRouteName !== null && (! is_string($htmlRedirectRouteName) || $htmlRedirectRouteName === ''))
+            || ($htmlErrorKey !== null && (! is_string($htmlErrorKey) || $htmlErrorKey === ''))
         ) {
             return null;
         }
@@ -63,6 +69,8 @@ final readonly class RequestProtectionProfile
             $title,
             $detail,
             $normalizedKeyParts,
+            $htmlRedirectRouteName,
+            $htmlErrorKey,
         );
     }
 }

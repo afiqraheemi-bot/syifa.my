@@ -11,13 +11,32 @@ use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCata
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanController;
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanOfferingController;
 use App\Modules\TenantManagement\Presentation\Http\Controllers\ClinicOwnerSessionController;
+use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\AvailabilityController;
+use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\BookingController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicLegalDocumentController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicWebsiteController;
+use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\SuccessController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', PublicWebsiteController::class)->name('public-website.home');
 Route::get('/privacy', [PublicLegalDocumentController::class, 'privacy'])->name('public-website.privacy');
 Route::get('/terms', [PublicLegalDocumentController::class, 'terms'])->name('public-website.terms');
+
+// Public Booking Delivery (ADR-029, amended by ADR-030/031) — finite, additive
+// route set. No wildcard, no reference/bookingId-shaped parameter anywhere.
+Route::prefix('booking')->name('public-website.booking.')->group(function (): void {
+    Route::get('/', [BookingController::class, 'landing'])->name('start');
+    Route::get('/service', [BookingController::class, 'service'])->name('service');
+    Route::post('/service', [BookingController::class, 'updateService'])->name('service.update');
+    Route::get('/date', [BookingController::class, 'date'])->name('date');
+    Route::post('/date', [BookingController::class, 'updateDate'])->name('date.update');
+    Route::get('/availability', [AvailabilityController::class, 'forDate'])->name('availability');
+    Route::get('/details', [BookingController::class, 'details'])->name('details');
+    Route::post('/details', [BookingController::class, 'updateDetails'])->name('details.update');
+    Route::get('/review', [BookingController::class, 'review'])->name('review');
+    Route::post('/', [BookingController::class, 'submit'])->middleware('throttle:booking-submission')->name('submit');
+    Route::get('/success/{token}', [SuccessController::class, 'show'])->name('success');
+});
 
 if ((bool) config('operations.enabled', true)) {
     Route::prefix((string) config('operations.prefix', 'operations'))

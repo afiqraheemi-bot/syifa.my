@@ -20,6 +20,7 @@ final class RequestProtectionFoundationTest extends TestCase
         Route::middleware(['web', 'throttle:platform.session'])->get('/request-protection/session', static fn () => response()->json(['ok' => true]));
         Route::middleware(['web', 'throttle:platform.admin'])->get('/request-protection/admin', static fn () => response()->json(['ok' => true]));
         Route::middleware(['web', 'throttle:public.default'])->get('/request-protection/public', static fn () => response()->json(['ok' => true]));
+        Route::middleware(['web', 'throttle:booking-submission'])->post('/request-protection/booking-submission', static fn () => response()->json(['ok' => true]));
     }
 
     public function test_platform_login_limiter_returns_problem_details_when_exceeded(): void
@@ -90,6 +91,27 @@ final class RequestProtectionFoundationTest extends TestCase
         $this->getJson('/request-protection/public')
             ->assertStatus(429)
             ->assertJsonPath('type', 'public_access_temporarily_unavailable');
+    }
+
+    public function test_booking_submission_limiter_redirects_html_requests_to_review_with_a_generic_error(): void
+    {
+        config()->set('request_protection.profiles.public_booking_submit.max_attempts', 1);
+
+        $this->post('/request-protection/booking-submission')->assertOk();
+        $this->post('/request-protection/booking-submission')
+            ->assertRedirect(route('public-website.booking.review'))
+            ->assertSessionHasErrors(['infrastructure' => 'Something went wrong on our end. Please try again.']);
+    }
+
+    public function test_booking_submission_limiter_still_returns_problem_details_for_json_requests(): void
+    {
+        config()->set('request_protection.profiles.public_booking_submit.max_attempts', 1);
+
+        $this->postJson('/request-protection/booking-submission')->assertOk();
+        $this->postJson('/request-protection/booking-submission')
+            ->assertStatus(429)
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonPath('type', 'booking_temporarily_unavailable');
     }
 
     public function test_existing_routes_have_the_correct_named_limiter_assignments(): void

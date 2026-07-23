@@ -6,6 +6,7 @@ namespace App\Http\RateLimiting;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -73,7 +74,7 @@ final readonly class RequestProtectionRateLimiters
     {
         return (new Limit('', $profile->maxAttempts, $profile->decaySeconds))
             ->by($this->key($profile, $request))
-            ->response(fn (Request $limitedRequest, array $headers): JsonResponse => $this->response(
+            ->response(fn (Request $limitedRequest, array $headers): JsonResponse|RedirectResponse => $this->response(
                 $profile,
                 $limitedRequest,
                 $headers,
@@ -102,8 +103,15 @@ final readonly class RequestProtectionRateLimiters
     /**
      * @param  array<string, string>  $headers
      */
-    private function response(RequestProtectionProfile $profile, Request $request, array $headers): JsonResponse
+    private function response(RequestProtectionProfile $profile, Request $request, array $headers): JsonResponse|RedirectResponse
     {
+        if ($profile->htmlRedirectRouteName !== null && ! $request->expectsJson()) {
+            return redirect()
+                ->route($profile->htmlRedirectRouteName)
+                ->withErrors([($profile->htmlErrorKey ?? 'request_protection') => $profile->detail])
+                ->withHeaders($headers);
+        }
+
         $correlationId = $request->attributes->get('correlation_id');
 
         if (! is_string($correlationId) || ! Str::isUuid($correlationId)) {

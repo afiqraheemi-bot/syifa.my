@@ -77,10 +77,23 @@ final class WebsiteCoreArchitectureTest extends TestCase
             }
         }
 
-        self::assertSame([
+        // Booking Delivery (ADR-029/031, Sprint 1) is an approved, governed addition to
+        // Presentation; this inventory is kept exact and updated deliberately as each
+        // new file is added, so it still catches any genuinely unexpected file.
+        $expectedPresentationFiles = [
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/BookingDraftStore.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/BookingSubmissionTokenStore.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/BookingSuccessTokenStore.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/AvailabilityController.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/BookingController.php',
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicLegalDocumentController.php',
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicWebsiteController.php',
-        ], $this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Presentation'));
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/SuccessController.php',
+        ];
+        sort($expectedPresentationFiles);
+        $actualPresentationFiles = $this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Presentation');
+        sort($actualPresentationFiles);
+        self::assertSame($expectedPresentationFiles, $actualPresentationFiles);
         self::assertFileDoesNotExist($this->root().'/database/migrations/website_builder/2026_08_09_000001_create_website_section_content_tables.php');
     }
 
@@ -182,10 +195,23 @@ final class WebsiteCoreArchitectureTest extends TestCase
         }
         self::assertFileDoesNotExist($this->root().'/database/migrations/website_builder/2026_08_14_000001_create_public_rendering_tables.php');
         self::assertFileDoesNotExist($this->root().'/app/Modules/WebsiteBuilder/Contracts/Repositories/PublicWebsiteRenderingRepositoryInterface.php');
-        self::assertSame([
+        // Booking Delivery (ADR-029/031, Sprint 1) is an approved, governed addition to
+        // Presentation; this inventory is kept exact and updated deliberately as each
+        // new file is added, so it still catches any genuinely unexpected file.
+        $expectedPresentationFiles = [
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/BookingDraftStore.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/BookingSubmissionTokenStore.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/BookingSuccessTokenStore.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/AvailabilityController.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/BookingController.php',
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicLegalDocumentController.php',
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicWebsiteController.php',
-        ], $this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Presentation'));
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/SuccessController.php',
+        ];
+        sort($expectedPresentationFiles);
+        $actualPresentationFiles = $this->phpFiles($this->root().'/app/Modules/WebsiteBuilder/Presentation');
+        sort($actualPresentationFiles);
+        self::assertSame($expectedPresentationFiles, $actualPresentationFiles);
     }
 
     /** @return list<string> */
