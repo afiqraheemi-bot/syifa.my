@@ -13,9 +13,11 @@ use App\Modules\Booking\Application\BookingIdentifierGeneratorInterface;
 use App\Modules\Booking\Application\BookingOwnerAuthorization;
 use App\Modules\Booking\Application\BookingReferenceGenerator;
 use App\Modules\Booking\Application\BookingReferenceGeneratorInterface;
+use App\Modules\Booking\Application\ClinicOwnerBookingOperations;
 use App\Modules\Booking\Application\Queries\PublicBookingFormReader;
 use App\Modules\Booking\Contracts\Capacity\SlotCapacityReservationInterface;
 use App\Modules\Booking\Contracts\Clock\BookingClockInterface;
+use App\Modules\Booking\Contracts\Operations\ClinicOwnerBookingOperationsInterface;
 use App\Modules\Booking\Contracts\Queries\AvailableSlotReaderInterface;
 use App\Modules\Booking\Contracts\Queries\ClinicOwnerBookingReadInterface;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
@@ -49,6 +51,7 @@ final class BookingServiceProvider extends ServiceProvider
         $this->app->singleton(PublicBookingFormReaderInterface::class, PublicBookingFormReader::class);
         $this->app->singleton(BookingReferenceGeneratorInterface::class, BookingReferenceGenerator::class);
         $this->app->singleton(BookingClockInterface::class, SystemBookingClock::class);
+        $this->app->singleton(ClinicOwnerBookingOperationsInterface::class, ClinicOwnerBookingOperations::class);
         $this->app->singleton(
             BookingTransactionInterface::class,
             static fn (Application $application): PostgresBookingTransaction => new PostgresBookingTransaction(

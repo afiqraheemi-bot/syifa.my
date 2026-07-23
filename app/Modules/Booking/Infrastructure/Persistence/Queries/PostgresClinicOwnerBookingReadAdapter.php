@@ -23,17 +23,39 @@ final readonly class PostgresClinicOwnerBookingReadAdapter implements ClinicOwne
         return $row === null ? null : $this->detailData($row);
     }
 
-    public function list(string $trustedTenantId, ?string $status, ?string $cursor, int $limit): array
-    {
+    public function list(
+        string $trustedTenantId,
+        ?string $status,
+        ?string $cursor,
+        int $limit,
+        ?string $search = null,
+        ?string $source = null,
+    ): array {
         $query = $this->connection->table('bookings')->where('tenant_id', $trustedTenantId)->orderBy('id')->limit(max(1, min(100, $limit)));
         if ($status !== null) {
             $query->where('status', $status);
+        }
+        if ($source !== null) {
+            $query->where('booking_source', $source);
+        }
+        if ($search !== null) {
+            $query->where('booking_reference', 'ilike', '%'.$search.'%');
         }
         if ($cursor !== null) {
             $query->where('id', '>', $cursor);
         }
 
         return array_values(array_map(fn (stdClass $row): BookingDetailData => $this->detailData($row), $query->get()->all()));
+    }
+
+    public function countByStatus(string $trustedTenantId): array
+    {
+        return $this->groupedCounts($trustedTenantId, 'status');
+    }
+
+    public function countBySource(string $trustedTenantId): array
+    {
+        return $this->groupedCounts($trustedTenantId, 'booking_source');
     }
 
     public function history(string $trustedTenantId, string $bookingId): array
@@ -65,5 +87,22 @@ final readonly class PostgresClinicOwnerBookingReadAdapter implements ClinicOwne
         }
 
         return new BookingDetailData((string) $row->id, (string) $row->tenant_id, (string) $row->service_id, (string) $row->booking_reference, (string) $row->booking_source, (string) $row->status, substr((string) $row->appointment_on, 0, 10), substr((string) $row->appointment_time, 0, 5), substr((string) $row->local_end_time, 0, 5), (string) $row->timezone, (string) $row->starts_at_utc, (string) $row->ends_at_utc, (int) $row->appointment_duration_minutes);
+    }
+
+    /** @return array<string, int> */
+    private function groupedCounts(string $trustedTenantId, string $column): array
+    {
+        $counts = [];
+        foreach ($this->connection->table('bookings')
+            ->where('tenant_id', $trustedTenantId)
+            ->selectRaw($column.', COUNT(*) AS aggregate')
+            ->groupBy($column)
+            ->get() as $row) {
+            $counts[(string) $row->{$column}] = (int) $row->aggregate;
+        }
+
+        ksort($counts);
+
+        return $counts;
     }
 }

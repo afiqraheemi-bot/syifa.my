@@ -9,11 +9,16 @@ use App\Modules\Booking\Application\BookingHistoryIdentifierGeneratorInterface;
 use App\Modules\Booking\Application\BookingIdentifierGeneratorInterface;
 use App\Modules\Booking\Application\BookingOwnerAuthorization;
 use App\Modules\Booking\Application\BookingReferenceGeneratorInterface;
+use App\Modules\Booking\Application\CancelBookingService;
+use App\Modules\Booking\Application\ClinicOwnerBookingOperations;
 use App\Modules\Booking\Application\Commands\CreateManualBookingCommand;
 use App\Modules\Booking\Application\Commands\SubmitBookingCommand;
+use App\Modules\Booking\Application\ConfirmBookingService;
 use App\Modules\Booking\Application\CreateBookingWorkflow;
 use App\Modules\Booking\Application\CreateManualBookingService;
+use App\Modules\Booking\Application\Exceptions\BookingOperationNotFoundException;
 use App\Modules\Booking\Application\Exceptions\SlotUnavailableException;
+use App\Modules\Booking\Application\RescheduleBookingService;
 use App\Modules\Booking\Application\SubmitBookingService;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperatingIntervalData;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeData;
@@ -142,7 +147,58 @@ final class PostgresSubmitBookingServiceTest extends TestCase
         self::assertSame('clinic_owner', $history->actor_type);
         self::assertSame($this->uuid(20), $history->actor_id);
         self::assertStringContainsString('WHATSAPP', (string) $history->payload);
-        self::assertSame('WHATSAPP', (new PostgresClinicOwnerBookingReadAdapter($this->db()))->detail($this->uuid(1), $result->bookingId)?->source);
+        $reader = new PostgresClinicOwnerBookingReadAdapter($this->db());
+        self::assertSame('WHATSAPP', $reader->detail($this->uuid(1), $result->bookingId)?->source);
+        self::assertCount(1, $reader->list($this->uuid(1), $result->status, null, 20, $result->reference, 'WHATSAPP'));
+        self::assertSame([$result->status => 1], $reader->countByStatus($this->uuid(1)));
+        self::assertSame(['WHATSAPP' => 1], $reader->countBySource($this->uuid(1)));
+        self::assertSame([], $reader->countBySource($this->uuid(9)));
+    }
+
+    public function test_clinic_owner_operations_preserve_history_snapshots_and_capacity(): void
+    {
+        $result = $this->application(40)->execute($this->command());
+        $operations = $this->operations();
+
+        try {
+            $operations->confirm($this->uuid(9), $result->bookingId, $this->uuid(20), 'clinic_owner');
+            self::fail('Cross-tenant Booking operation must fail closed.');
+        } catch (BookingOperationNotFoundException) {
+            self::assertSame('submitted', $this->db()->table('bookings')->where('id', $result->bookingId)->value('status'));
+            self::assertSame(1, $this->db()->table('booking_history')->where('booking_id', $result->bookingId)->count());
+        }
+
+        $operations->confirm($this->uuid(1), $result->bookingId, $this->uuid(20), 'clinic_owner');
+        self::assertSame('confirmed', $this->db()->table('bookings')->where('id', $result->bookingId)->value('status'));
+
+        $operations->reschedule($this->uuid(1), $result->bookingId, '2026-08-10', '10:30', $this->uuid(20), 'clinic_owner');
+        $rescheduled = $this->db()->table('bookings')->where('id', $result->bookingId)->first();
+        self::assertNotNull($rescheduled);
+        self::assertSame('10:30:00', $rescheduled->appointment_time);
+        self::assertSame('11:00:00', $rescheduled->local_end_time);
+        self::assertSame(
+            [0, 1],
+            $this->db()->table('booking_slot_reservation_buckets')->orderBy('starts_at_utc')->pluck('reserved_count')->map(static fn (mixed $count): int => (int) $count)->all(),
+        );
+
+        $operations->cancel($this->uuid(1), $result->bookingId, $this->uuid(20), 'clinic_owner');
+        self::assertSame('cancelled', $this->db()->table('bookings')->where('id', $result->bookingId)->value('status'));
+        self::assertSame(
+            [0, 0],
+            $this->db()->table('booking_slot_reservation_buckets')->orderBy('starts_at_utc')->pluck('reserved_count')->map(static fn (mixed $count): int => (int) $count)->all(),
+        );
+        self::assertSame(
+            ['BookingSubmitted', 'BookingConfirmed', 'AppointmentRescheduled', 'BookingCancelled'],
+            $this->db()->table('booking_history')->where('booking_id', $result->bookingId)->orderBy('occurred_at')->orderBy('id')->pluck('event_type')->all(),
+        );
+        self::assertStringContainsString(
+            '"old_local_start": "10:00"',
+            (string) $this->db()->table('booking_history')->where('booking_id', $result->bookingId)->where('event_type', 'AppointmentRescheduled')->value('payload'),
+        );
+
+        $this->db()->table('booking_history')->delete();
+        $this->db()->table('booking_slot_reservation_buckets')->delete();
+        $this->db()->table('bookings')->delete();
     }
 
     public function test_separate_postgresql_connections_cannot_exceed_final_capacity(): void
@@ -205,6 +261,21 @@ final class PostgresSubmitBookingServiceTest extends TestCase
     private function workflow(ConnectionInterface $connection, PostgresBookingFixedValues $fixed): CreateBookingWorkflow
     {
         return new CreateBookingWorkflow(new PostgresBookingFormConfigurationRepository($connection, new BookingFormConfigurationPersistenceMapper), new PostgresServiceRepository($connection, new ServicePersistenceMapper), new PostgresBookingRepository($connection, new BookingPersistenceMapper), new PostgresBookingTransaction($connection), $fixed, $fixed, $fixed, $fixed, new ClinicSlotGenerator, new PostgresSlotCapacityReservation($connection), new PostgresBookingHistoryRepository($connection), $fixed);
+    }
+
+    private function operations(): ClinicOwnerBookingOperations
+    {
+        $bookings = new PostgresBookingRepository($this->db(), new BookingPersistenceMapper);
+        $history = new PostgresBookingHistoryRepository($this->db());
+        $capacity = new PostgresSlotCapacityReservation($this->db());
+        $transactions = new PostgresBookingTransaction($this->db());
+        $authorization = new BookingOwnerAuthorization;
+
+        return new ClinicOwnerBookingOperations(
+            new ConfirmBookingService($bookings, $history, $transactions, new PostgresBookingFixedValues($this->uuid(50), 'unused', $this->now()), new PostgresBookingFixedValues($this->uuid(50), 'unused', $this->now()), $authorization),
+            new CancelBookingService($bookings, $history, $capacity, $transactions, new PostgresBookingFixedValues($this->uuid(52), 'unused', $this->now()), new PostgresBookingFixedValues($this->uuid(52), 'unused', $this->now()), $authorization),
+            new RescheduleBookingService($bookings, $history, $capacity, new PostgresBookingFixedValues($this->uuid(51), 'unused', $this->now()), new ClinicSlotGenerator, $transactions, new PostgresBookingFixedValues($this->uuid(51), 'unused', $this->now()), new PostgresBookingFixedValues($this->uuid(51), 'unused', $this->now()), $authorization),
+        );
     }
 
     private function command(): SubmitBookingCommand

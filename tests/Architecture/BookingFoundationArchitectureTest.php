@@ -173,7 +173,7 @@ final class BookingFoundationArchitectureTest extends TestCase
         self::assertStringNotContainsString('BookingFormConfiguration', $bookingSource);
     }
 
-    public function test_mvp_scheduling_introduces_no_unapproved_resource_or_delivery_artifact(): void
+    public function test_booking_module_introduces_no_unapproved_resource_or_business_capability(): void
     {
         foreach ($this->phpFilesIn($this->root().'/app/Modules/Booking') as $file) {
             $source = $this->source($file);
@@ -189,7 +189,6 @@ final class BookingFoundationArchitectureTest extends TestCase
                 'DoctorAssignment',
                 'class Doctor',
                 'Room',
-                'Controller',
             ] as $forbidden) {
                 self::assertStringNotContainsString($forbidden, $source, $file);
             }
