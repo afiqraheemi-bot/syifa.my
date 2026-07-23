@@ -5,18 +5,31 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Infrastructure;
 
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeReaderInterface;
+use App\Modules\Booking\Contracts\Queries\AvailableSlotReaderInterface;
+use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
+use App\Modules\WebsiteBuilder\Application\Delivery\AvailabilityDeliveryService;
+use App\Modules\WebsiteBuilder\Application\Delivery\BookingDeliveryService;
 use App\Modules\WebsiteBuilder\Application\Delivery\PlatformLegalContentProviderInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicAssetUrlResolverInterface;
+use App\Modules\WebsiteBuilder\Application\Delivery\PublicAvailabilityCacheInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContextFactoryInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteDocumentFactory;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteRenderModelProviderInterface;
+use App\Modules\WebsiteBuilder\Contracts\Delivery\BookingSubmissionGatewayInterface;
+use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicAvailabilityReaderInterface;
+use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfigurationReaderInterface;
+use App\Modules\WebsiteBuilder\Contracts\Delivery\WebsiteTenantResolverInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsitePublishedSnapshotReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
+use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingAvailableSlotReaderAdapter;
+use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingFormConfigurationReaderAdapter;
+use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingSubmissionGatewayAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\ConfiguredPlatformLegalContentProvider;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\ConfiguredPublicSiteContextFactory;
+use App\Modules\WebsiteBuilder\Infrastructure\Delivery\LaravelPublicAvailabilityCache;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\OriginPublicAssetUrlResolver;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\PostgresPublicWebsiteRenderModelProvider;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\ClinicPersistenceMapper;
@@ -29,6 +42,7 @@ use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresW
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\BookingClinicOperationalTimeAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsitePublishedSnapshotReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteReadAdapter;
+use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteTenantResolver;
 use App\Modules\WebsiteBuilder\Infrastructure\Transactions\PostgresClinicTransaction;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
@@ -90,6 +104,47 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
             ClinicOperationalTimeReaderInterface::class,
             BookingClinicOperationalTimeAdapter::class,
         );
+
+        // Sprint 2 (ADR-029/030): the real adapter, calling the Booking Engine's
+        // SubmitBookingService. Replaces the Sprint 1 Stub — no other class
+        // (Controllers, BookingDeliveryService, ViewModels, Blade) changes.
+        $this->app->singleton(BookingSubmissionGatewayInterface::class, BookingSubmissionGatewayAdapter::class);
+
+        // ADR-029: closes the Website -> Tenant identity gap. Real from day one —
+        // the data it needs (websites.tenant_id) already exists.
+        $this->app->singleton(
+            WebsiteTenantResolverInterface::class,
+            static fn (Application $application): PostgresWebsiteTenantResolver => new PostgresWebsiteTenantResolver($application->make('db')->connection()),
+        );
+
+        // Sprint 2 (ADR-028/029): the real adapter over the Booking Engine's
+        // existing AvailableSlotReaderInterface. Replaces the Sprint 1 Fixture —
+        // no other class (AvailabilityDeliveryService, ViewModels, Controllers,
+        // Blade) changes.
+        $this->app->singleton(
+            PublicAvailabilityReaderInterface::class,
+            static fn (Application $application): BookingAvailableSlotReaderAdapter => new BookingAvailableSlotReaderAdapter(
+                $application->make(AvailableSlotReaderInterface::class),
+            ),
+        );
+
+        // Sprint 2 (ADR-027/031): the real adapter, wrapping Booking's own
+        // PublicBookingFormReaderInterface (never a raw Booking repository
+        // directly). Replaces the Sprint 1 Fixture — no other class changes.
+        $this->app->singleton(
+            PublicBookingFormConfigurationReaderInterface::class,
+            static fn (Application $application): BookingFormConfigurationReaderAdapter => new BookingFormConfigurationReaderAdapter(
+                $application->make(PublicBookingFormReaderInterface::class),
+            ),
+        );
+
+        // Sprint 2 (ADR-028): the real, Illuminate-backed cache implementation,
+        // kept out of the Application layer per this module's own boundary
+        // (Application/Delivery never references the framework directly).
+        $this->app->singleton(PublicAvailabilityCacheInterface::class, LaravelPublicAvailabilityCache::class);
+
+        $this->app->singleton(AvailabilityDeliveryService::class);
+        $this->app->singleton(BookingDeliveryService::class);
     }
 
     public function boot(): void

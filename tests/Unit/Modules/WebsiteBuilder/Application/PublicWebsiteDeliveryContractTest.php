@@ -73,7 +73,7 @@ final class PublicWebsiteDeliveryContractTest extends TestCase
         self::assertSame('https://cdn.example/assets/'.$this->uuid(9990).'?purpose=content', $document->assetUrls[$this->uuid(9990)]->value);
         self::assertSame('tel:%2B6012', $document->contactActions->telephone);
         self::assertSame('mailto:hello%40clinic.test', $document->contactActions->email);
-        self::assertSame('https://wa.me/60123456789', $document->contactActions->whatsApp?->value);
+        self::assertSame('https://wa.me/60123456789?text=Hi%2C%20I%20would%20like%20to%20make%20an%20enquiry.', $document->contactActions->whatsApp?->value);
         self::assertStringContainsString('3.139%2C101.6869', $document->contactActions->directions?->value ?? '');
         self::assertSame('https://clinic.example/', $document->head->canonicalUrl->value);
         self::assertSame(['https://clinic.example/'], array_map(static fn ($url): string => $url->value, $document->sitemapUrls));
