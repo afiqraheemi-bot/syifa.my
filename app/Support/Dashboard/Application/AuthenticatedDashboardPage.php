@@ -1,0 +1,92 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Support\Dashboard\Application;
+
+use App\Support\Authorization\Application\AuthorizationContext;
+use App\Support\Dashboard\Application\WebsiteDesigner\WebsiteDesignerDashboardOverviewProvider;
+use App\Support\Identity\ActorType;
+use LogicException;
+
+final readonly class AuthenticatedDashboardPage
+{
+    public function __construct(
+        private ClinicOwnerDashboardOverviewProvider $clinicOwnerOverview,
+        private WebsiteDesignerDashboardOverviewProvider $websiteDesignerOverview,
+    ) {}
+
+    /**
+     * Converts the trusted context established by authorization middleware
+     * into presentation data. Navigation is deliberately shared in this
+     * increment; later role-specific items must be pre-authorized here, never
+     * filtered by Vue components.
+     */
+    public function fromTrustedContext(mixed $context): DashboardPageView
+    {
+        if (! $context instanceof AuthorizationContext) {
+            throw new LogicException('Authenticated dashboard context was not established.');
+        }
+
+        $props = [
+            'navigation' => [
+                (new DashboardNavigationItem(
+                    'dashboard',
+                    'Dashboard',
+                    route('dashboard'),
+                    true,
+                ))->toArray(),
+            ],
+            'breadcrumbs' => [
+                ['key' => 'dashboard', 'label' => 'Dashboard'],
+            ],
+            'pageTitle' => 'Dashboard',
+            'pageDescription' => 'Your SYIFA.my workspace is ready.',
+            'identityName' => $context->name,
+            'contextLabel' => 'SYIFA.my workspace',
+        ];
+
+        if ($context->actorType === ActorType::ClinicOwner->value && $context->role === 'clinic_owner') {
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'website',
+                'Website',
+                route('dashboard.website'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'content',
+                'Content',
+                route('dashboard.website.content'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'bookings',
+                'Bookings',
+                route('dashboard.bookings'),
+                false,
+            ))->toArray();
+
+            return new DashboardPageView(
+                'TenantManagement/Dashboard/ClinicOwnerDashboardOverview',
+                [...$props, ...$this->clinicOwnerOverview->for($context)],
+            );
+        }
+
+        if ($context->actorType === ActorType::PlatformIdentity->value && $context->role === 'website_designer') {
+            $props['contextLabel'] = 'Website Designer workspace';
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'onboarding',
+                'Onboarding',
+                route('dashboard.onboarding'),
+                false,
+            ))->toArray();
+
+            return new DashboardPageView(
+                'PlatformAdministration/Dashboard/WebsiteDesignerDashboardOverview',
+                [...$props, ...$this->websiteDesignerOverview->for($context)],
+            );
+        }
+
+        return new DashboardPageView('Shared/Dashboard/AuthenticatedDashboard', $props);
+    }
+}

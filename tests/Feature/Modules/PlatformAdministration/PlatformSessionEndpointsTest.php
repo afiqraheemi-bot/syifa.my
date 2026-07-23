@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\PlatformAdministration;
 
+use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardData;
+use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
+use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerJobDetailData;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityData;
@@ -18,6 +21,7 @@ use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditEntry
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\Route;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 final class PlatformSessionEndpointsTest extends TestCase
@@ -62,6 +66,10 @@ final class PlatformSessionEndpointsTest extends TestCase
         $this->app->instance(PlatformIdentityLookupInterface::class, $this->identities);
         $this->app->instance(PlatformWorkforceCredentialLookupInterface::class, $this->credentials);
         $this->app->instance(AuditEntryRecorderInterface::class, $this->auditRecorder);
+        $this->app->instance(
+            WebsiteDesignerDashboardReadInterface::class,
+            new EmptyWebsiteDesignerDashboardRead,
+        );
     }
 
     public function test_successful_login_session_regeneration_principal_resolution_and_logout_work_end_to_end(): void
@@ -86,6 +94,16 @@ final class PlatformSessionEndpointsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.principal.platform_identity_id', self::IDENTITY_ID)
             ->assertJsonPath('data.principal.role', 'website_designer');
+
+        $this->get('https://clinic.app.syifa.my/dashboard')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('PlatformAdministration/Dashboard/WebsiteDesignerDashboardOverview', false)
+                    ->where('identityName', 'Website Designer')
+                    ->has('summaries', 6)
+                    ->where('recentAssignments', []),
+            );
 
         $this->deleteJson('https://clinic.app.syifa.my/api/v1/platform/sessions/current')->assertNoContent();
         $this->deleteJson('https://clinic.app.syifa.my/api/v1/platform/sessions/current')->assertNoContent();
@@ -175,6 +193,24 @@ final class PlatformSessionEndpointsTest extends TestCase
         self::assertContains('web', $routes[0][2]);
         self::assertContains('web', $routes[1][2]);
         self::assertContains('web', $routes[2][2]);
+    }
+}
+
+final readonly class EmptyWebsiteDesignerDashboardRead implements WebsiteDesignerDashboardReadInterface
+{
+    public function forPlatformIdentity(string $platformIdentityId): WebsiteDesignerDashboardData
+    {
+        return new WebsiteDesignerDashboardData(0, 0, 0, 0, 0, 0, []);
+    }
+
+    public function queue(string $platformIdentityId, ?string $status, ?string $cursor, int $limit, ?string $search): array
+    {
+        return [];
+    }
+
+    public function detail(string $platformIdentityId, string $onboardingJobId): ?WebsiteDesignerJobDetailData
+    {
+        return null;
     }
 }
 
