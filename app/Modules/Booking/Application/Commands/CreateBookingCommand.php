@@ -6,12 +6,19 @@ namespace App\Modules\Booking\Application\Commands;
 
 use App\Modules\Booking\Domain\ValueObjects\BookingActorType;
 use App\Modules\Booking\Domain\ValueObjects\BookingSource;
-use App\Modules\Booking\Domain\ValueObjects\TenantId;
 
+/**
+ * `tenantId` is a plain, trusted string (ADR-030) — `CreateBookingWorkflow`
+ * constructs the Domain `TenantId` internally, exactly once.
+ *
+ * `consent` is nullable: required and enforced (`true`) only for
+ * `BookingSource::Website` submissions (ADR-027); not applicable for
+ * manual sources (WhatsApp/Phone/Walk-in/Staff), which never collect it.
+ */
 final readonly class CreateBookingCommand
 {
     public function __construct(
-        public TenantId $tenantId,
+        public string $tenantId,
         public BookingSource $source,
         public BookingActorType $actorType,
         public ?string $actorId,
@@ -22,5 +29,6 @@ final readonly class CreateBookingCommand
         public ?string $serviceId,
         public ?string $email,
         public ?string $notes,
+        public ?bool $consent = null,
     ) {}
 }

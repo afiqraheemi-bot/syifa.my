@@ -36,7 +36,7 @@ final readonly class CreateManualBookingService
 
         try {
             return $this->workflow->execute(new CreateBookingCommand(
-                $command->tenantId, $source, BookingActorType::ClinicOwner, $command->actorId,
+                $command->tenantId->value, $source, BookingActorType::ClinicOwner, $command->actorId,
                 $command->patientName, $command->phone, $command->appointmentDate, $command->appointmentTime,
                 $command->serviceId, $command->email, $command->notes,
             ));

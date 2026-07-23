@@ -31,7 +31,7 @@ final readonly class SubmitBookingService
             return $this->workflow->execute(new CreateBookingCommand(
                 $command->tenantId, BookingSource::Website, BookingActorType::PublicVisitor, null,
                 $command->patientName, $command->phone, $command->appointmentDate, $command->appointmentTime,
-                $command->serviceId, $command->email, $command->notes,
+                $command->serviceId, $command->email, $command->notes, $command->consent,
             ));
         } catch (BookingFormConfigurationNotFoundException|RequiredBookingFieldMissingException|DisabledBookingFieldSuppliedException|BookingServiceNotFoundException|BookingServiceInactiveException|InvalidBookingValueException|InvalidClinicBookingConfigurationException|ClinicOperationalTimeNotFoundException|SlotUnavailableException $exception) {
             throw $exception;

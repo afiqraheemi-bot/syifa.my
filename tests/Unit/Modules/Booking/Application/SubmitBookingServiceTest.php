@@ -15,6 +15,7 @@ use App\Modules\Booking\Application\CreateBookingWorkflow;
 use App\Modules\Booking\Application\CreateManualBookingService;
 use App\Modules\Booking\Application\Exceptions\BookingOperationForbiddenException;
 use App\Modules\Booking\Application\Exceptions\BookingServiceNotFoundException;
+use App\Modules\Booking\Application\Exceptions\RequiredBookingFieldMissingException;
 use App\Modules\Booking\Application\Exceptions\UnsupportedManualBookingSourceException;
 use App\Modules\Booking\Application\SubmitBookingService;
 use App\Modules\Booking\Contracts\Capacity\ReservationSlotData;
@@ -61,6 +62,21 @@ final class SubmitBookingServiceTest extends TestCase
         self::assertSame('WEBSITE', $fixture->bookings[0]->source->value);
         self::assertSame('public_visitor', $fixture->history[0]->actorType->value);
         self::assertSame('WEBSITE', $fixture->history[0]->payload['source']);
+        self::assertSame(true, $fixture->history[0]->payload['consent_acknowledged']);
+    }
+
+    public function test_website_submission_without_consent_is_rejected_before_reservation(): void
+    {
+        $fixture = new SubmitBookingFixture;
+        $command = new SubmitBookingCommand($fixture->uuid(1), 'Aisyah Rahman', '+60123456789', '2026-08-10', '10:00', false, $fixture->uuid(4));
+
+        $this->expectException(RequiredBookingFieldMissingException::class);
+        try {
+            $fixture->application()->execute($command);
+        } finally {
+            self::assertSame(0, $fixture->reservations);
+            self::assertSame([], $fixture->bookings);
+        }
     }
 
     public function test_all_governed_manual_sources_use_the_shared_workflow_and_record_owner_actor(): void
@@ -150,7 +166,7 @@ final class SubmitBookingFixture implements BookingClockInterface, BookingHistor
 
     public function command(): SubmitBookingCommand
     {
-        return new SubmitBookingCommand(new TenantId($this->uuid(1)), 'Aisyah Rahman', '+60123456789', '2026-08-10', '10:00', $this->uuid(4));
+        return new SubmitBookingCommand($this->uuid(1), 'Aisyah Rahman', '+60123456789', '2026-08-10', '10:00', true, $this->uuid(4));
     }
 
     public function manualCommand(string $source, string $role = 'clinic_owner', int $actorTenant = 1, ?string $actorId = null): CreateManualBookingCommand

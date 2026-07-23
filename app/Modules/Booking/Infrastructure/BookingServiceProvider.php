@@ -13,10 +13,12 @@ use App\Modules\Booking\Application\BookingIdentifierGeneratorInterface;
 use App\Modules\Booking\Application\BookingOwnerAuthorization;
 use App\Modules\Booking\Application\BookingReferenceGenerator;
 use App\Modules\Booking\Application\BookingReferenceGeneratorInterface;
+use App\Modules\Booking\Application\Queries\PublicBookingFormReader;
 use App\Modules\Booking\Contracts\Capacity\SlotCapacityReservationInterface;
 use App\Modules\Booking\Contracts\Clock\BookingClockInterface;
 use App\Modules\Booking\Contracts\Queries\AvailableSlotReaderInterface;
 use App\Modules\Booking\Contracts\Queries\ClinicOwnerBookingReadInterface;
+use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
 use App\Modules\Booking\Contracts\Repositories\BookingFormConfigurationRepositoryInterface;
 use App\Modules\Booking\Contracts\Repositories\BookingHistoryRepositoryInterface;
 use App\Modules\Booking\Contracts\Repositories\BookingRepositoryInterface;
@@ -44,6 +46,7 @@ final class BookingServiceProvider extends ServiceProvider
         $this->app->singleton(ClinicSlotGenerator::class);
         $this->app->singleton(BookingOwnerAuthorization::class);
         $this->app->singleton(AvailableSlotReaderInterface::class, AvailableSlotReader::class);
+        $this->app->singleton(PublicBookingFormReaderInterface::class, PublicBookingFormReader::class);
         $this->app->singleton(BookingReferenceGeneratorInterface::class, BookingReferenceGenerator::class);
         $this->app->singleton(BookingClockInterface::class, SystemBookingClock::class);
         $this->app->singleton(

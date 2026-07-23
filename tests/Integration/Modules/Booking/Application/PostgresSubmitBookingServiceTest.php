@@ -102,6 +102,10 @@ final class PostgresSubmitBookingServiceTest extends TestCase
         self::assertSame('Asia/Kuala_Lumpur', $row->timezone);
         self::assertSame(1, $this->db()->table('booking_slot_reservation_buckets')->value('reserved_count'));
         self::assertSame(1, $this->db()->table('booking_history')->where('event_type', 'BookingSubmitted')->count());
+        $history = $this->db()->table('booking_history')->where('booking_id', $result->bookingId)->first();
+        self::assertNotNull($history);
+        $payload = json_decode((string) $history->payload, true, flags: JSON_THROW_ON_ERROR);
+        self::assertTrue($payload['consent_acknowledged']);
     }
 
     public function test_full_slot_rejects_second_submission_without_leaking_booking_or_history(): void
@@ -205,7 +209,7 @@ final class PostgresSubmitBookingServiceTest extends TestCase
 
     private function command(): SubmitBookingCommand
     {
-        return new SubmitBookingCommand(new TenantId($this->uuid(1)), 'Aisyah', '+6012', '2026-08-10', '10:00', $this->uuid(4));
+        return new SubmitBookingCommand($this->uuid(1), 'Aisyah', '+6012', '2026-08-10', '10:00', true, $this->uuid(4));
     }
 
     private function manualCommand(string $source = 'PHONE'): CreateManualBookingCommand
