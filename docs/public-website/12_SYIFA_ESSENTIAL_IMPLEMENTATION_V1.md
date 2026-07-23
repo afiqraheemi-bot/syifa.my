@@ -1,6 +1,6 @@
 # Syifa Essential High-Fidelity Implementation V1
 
-**Status:** Official reference implementation  
+**Status:** Complete for Milestone M1, including governed Public Booking and real Booking Engine integration
 **Blueprint:** [Syifa Essential Reference Blueprint V1](./templates/SYIFA_ESSENTIAL_BLUEPRINT_V1.md)
 
 ## Architecture
@@ -61,7 +61,7 @@ These are lab build measurements, not field data. No real LCP, INP, CLS, browser
 
 ## Known limitations
 
-- Booking remains CTA-only until an authorized public Booking contract exists.
+- Public Booking is implemented through the ADR-027–031 Delivery boundary. Booking management, cancellation/reschedule UI, notifications and payments remain outside this public-site increment.
 - Production Privacy and Terms copy remains unavailable until Product/Legal approval; links are omitted and routes return 404.
 - Hero and About alternative-text metadata is not present in the immutable contract, so their optional media is decorative.
 - Image transformation and `srcset` policy are not authorized; V1 emits the approved resolved Asset with intrinsic dimensions.

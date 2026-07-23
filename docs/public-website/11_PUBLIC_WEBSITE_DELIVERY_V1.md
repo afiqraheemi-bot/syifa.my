@@ -26,7 +26,7 @@ The platform route catalogue is finite. Home is `/`; Privacy is `/privacy`; Term
 - The resolver uses an approved HTTPS public/CDN origin and an encoded identifier; it receives no storage key.
 - Resolution failure is explicit. No silent placeholder is generated.
 - Phone and email use encoded `tel:` and `mailto:` values.
-- WhatsApp uses `https://wa.me/{digits}` with no predefined message.
+- WhatsApp uses `https://wa.me/{digits}?text={...}`; the message is resolved from a governed, closed Delivery Intent (ADR-026), never from tenant or request input.
 - Directions use encoded coordinates when complete, otherwise the immutable address; no map API call or iframe occurs.
 - Booking is the governed same-site `#booking` destination and has no Booking repository dependency.
 

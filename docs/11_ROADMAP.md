@@ -61,6 +61,10 @@ Only the current phase should contain detailed delivery commitments. Numeric dat
 
 ## Phase 1: MVP Build Readiness and Delivery
 
+### Current delivery checkpoint
+
+Milestone M1, **Public Product Complete**, delivers the Website Foundation, immutable public Website publication/rendering, the locked Syifa Essential experience, Public Booking, and real Booking Engine integration governed by ADR-026 through ADR-031. M1 does not include private dashboard capabilities. Authentication, identity, authorization and the shared dashboard foundation remain the next separately governed delivery increment and must not begin until the M1 baseline is committed, tagged and release-green.
+
 ### Outcomes
 
 - Deliver the capabilities defined in [02_MVP_SCOPE.md](./02_MVP_SCOPE.md) as one coherent, operable service.

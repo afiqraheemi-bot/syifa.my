@@ -1,7 +1,7 @@
 # Master Architecture Progress
 
 **Updated:** 2026-07-23
-**Current documented baseline:** `6f32baa9cb8e3c244d4312ddcc9a69bb345cde2c` (Reference Certification Remediation V1; Reference Lock documentation lands in the immediately following commit)
+**Current documented baseline:** Milestone M1 release candidate, based on `616ef1df01e30a960cd8d9a749a83b9a503a9aa2` (Reference Lock V1), with ADR-026 through ADR-031 and Public Booking implemented.
 
 This record summarizes accepted architecture increments. It does not supersede Product Vision, MVP Scope, ADRs, the Architecture Freeze, or implementation history.
 
@@ -23,7 +23,13 @@ This record summarizes accepted architecture increments. It does not supersede P
 | ADR-022 | Public Website Experience and Design System V1 | Complete | Experience north star, tokens, responsive rules, components, Sections, templates, accessibility, performance, quality gate, and governance. | All production frontend implementation. |
 | ADR-023 | Clinic Public Contact Authority V1 | Implemented | Clinic-owned immutable Contact Profile value semantics, normalized Tenant-safe persistence, guarded legacy migration, authorized transactional update, and redacted actual-change audit. | Publication read migration, legacy-column removal, snapshot/render-contract extension, and frontend delivery. |
 | ADR-016 amendment | Website Service Presentation Authority V1 | Implemented | Website-owned ordered Service references and presentation-only featured state with one-featured invariant, normalized persistence, same-Tenant eligibility evidence, and deterministic compatibility backfill. | Immutable Service master projection, complete public render-contract projection, and frontend presentation. |
-| ADR-025 | Official Website Design Language | **Complete and Locked** | Locks Syifa Essential Reference Template V1 as the canonical design language, token contract, and public component contract every future template must inherit; freezes CTA hierarchy, navigation rules, and accessibility baseline. | Syifa Care/Dental/Aesthetic/Specialist visual variants; the shared variant-selection mechanism (deferred until a second real template exists); Public Booking implementation. |
+| ADR-025 | Official Website Design Language | **Complete and Locked** | Locks Syifa Essential Reference Template V1 as the canonical design language, token contract, and public component contract every future template must inherit; freezes CTA hierarchy, navigation rules, and accessibility baseline. | Syifa Care/Dental/Aesthetic/Specialist visual variants and the shared variant-selection mechanism deferred until a second real template exists. |
+| ADR-026 | Public Contact Channel Policy | **Complete and Locked** | Governs Phone/Email/WhatsApp as clinic-configured minimal data with Delivery-only public URL construction; the governed, localization-ready Delivery Intent vocabulary; Secondary-tier CTA rule. | New channels and actual message localization. |
+| ADR-027 | Public Booking Contract | **Complete and Implemented** | Public-safe contracts, validation ownership and closed error categories connect Public Website to Booking without exposing internal identifiers. | Payments, notifications, reminders, doctor/room scheduling, cancellation and reschedule UI. |
+| ADR-028 | Public Availability Delivery Contract | **Complete and Implemented** | Real Booking availability is projected through clinic-local time, a bounded cache and the closed three-state vocabulary without exposing capacity. | Richer public availability vocabulary and capacity disclosure remain prohibited. |
+| ADR-029 | Public Booking Delivery Implementation | **Complete and Implemented; amended by ADR-030/031** | Finite routes, thin Controllers, Delivery-owned ViewModels, session continuity, Blade UI, request protection, trusted Tenant resolution and real Booking adapters. | Booking management, cancellation/reschedule, notifications and payments. |
+| ADR-030 | Booking Submission Contract Corrections | **Complete and Implemented** | Website consent reaches append-only Booking history and trusted Tenant input is translated inside Booking Application. | No deferred M1 implementation. |
+| ADR-031 | Booking Form Configuration Read Contract and Success Continuity | **Complete and Implemented** | The narrow configuration query and expiring session-bound Success Token are implemented and integration-tested. | Durable cross-device success lookup remains outside the approved contract. |
 
 ## Reference template specifications
 
@@ -40,6 +46,11 @@ This record summarizes accepted architecture increments. It does not supersede P
 | Specification | Status | Capability established |
 |---|---|---|
 | Ferrari Visual Language V1 | Complete | [Ferrari Visual Language V1](./public-website/10_FERRARI_VISUAL_LANGUAGE_V1.md) defines the shared premium-healthcare emotional journey, composition principles, shape, colour, typography, photography, iconography, motion, trust, CTA, Section feel, prohibited patterns, and craftsmanship bar without authorizing frontend implementation. |
+| Public Booking Experience V1 | Complete — Experience Architecture Approved | [Public Booking Experience V1](./public-website/14_PUBLIC_BOOKING_EXPERIENCE_V1.md) designs the full visitor journey (Arrival through Success) strictly within ADR-013/025/026/027's locked contracts — stage order, field order, honest `submitted`-not-`confirmed` Success state, and the Availability Contract's dependency — as the binding foundation for all future Booking UI design. Authorizes no UI, route, controller, or Domain change. |
+| Public Booking UI Specification V1 | Complete — Canonical UI Specification Approved | [Public Booking UI Specification V1](./public-website/15_PUBLIC_BOOKING_UI_SPECIFICATION_V1.md) defines all 9 Booking screens, 12 new additive components, their contracts, microcopy, accessibility, responsive, empty/loading/error states, and a Design QA checklist — the binding source of truth for wireframes, high-fidelity UI, and any future Blade/Vue implementation. Proposes instantiating the Design Token Freeze's reserved `status` token family (Minor-class); authorizes no route, controller, HTML/Blade/CSS, or Domain change. |
+| Public Booking Sprint 1 Implementation Plan | **Complete** | The governed route, Delivery, ViewModel, session-continuity, Blade, accessibility and security work is implemented; Sprint 2 replaced temporary fixtures with real PostgreSQL-backed Booking adapters. |
+| Public Booking Production Readiness Review V1 | Complete — **READY WITH CONDITIONS** (superseded by the resolution below) | [Production Readiness Review V1](./public-website/17_PUBLIC_BOOKING_PRODUCTION_READINESS_REVIEW_V1.md) is an independent, code-verified audit of ADR-025–029 plus the Experience/UI Specification/Sprint 1 documents. Found one **Critical** gap (consent persistence) and three **High** findings (Tenant `TenantId` boundary ambiguity; the undefined Booking Form Configuration query; the Success-page-refresh gap). Score: 79/100. |
+| Architecture Resolution Board V1 | Complete — **ALL BLOCKERS RESOLVED** | [Architecture Resolution Board V1](./public-website/18_ARCHITECTURE_RESOLUTION_BOARD_V1.md) resolves every Critical/High finding from the Production Readiness Review, minting [ADR-030](../decisions/ADR-030-Booking-Submission-Contract-Corrections.md) and [ADR-031](../decisions/ADR-031-Booking-Form-Configuration-Read-Contract-And-Success-Continuity.md). All four resolutions are additive and require zero database migrations. Booking is now clear to enter Sprint 1 execution without a known open architectural contradiction. |
 
 ## Current architecture state
 
@@ -50,19 +61,25 @@ Website Aggregate
             -> governed Experience & Design System V1
                 -> governed Ferrari Visual Language V1
                     -> Syifa Essential Reference Template V1 (LOCKED, ADR-025)
-                        -> Public Booking Contract (next milestone, not yet authorized)
+                        -> Public Contact Channel Policy (LOCKED, ADR-026)
+                        -> Public Booking Contract (IMPLEMENTED, ADR-027)
+                            -> Public Availability Delivery Contract (IMPLEMENTED, ADR-028)
+                            -> Public Booking Delivery (IMPLEMENTED, ADR-029, amended by ADR-030/031)
+                                -> Production Readiness Review -> Resolution Board -> Sprint 1/2 delivery -> M1 stabilization
 ```
 
-The public experience is implemented and locked for Syifa Essential. ADR-020 completed the Service display projection and Gallery accessibility metadata; ADR-023 (with its ADR-020 publication-read capture) completed the Clinic Contact projection — business hours, WhatsApp, and coordinates are present in published snapshots and render contracts today, not deferred. ADR-024 established the delivery boundary and Ferrari UX Iteration V2 plus Reference Certification Remediation V1 completed and certified the Syifa Essential implementation itself. ADR-025 records that lock. Care, Dental, Aesthetic, and Specialist visual variants remain unbuilt; the shared variant-selection mechanism required to build them is deliberately deferred until the first of them exists (`05_TEMPLATE_ADAPTATION_RULES.md`).
+The public experience is implemented and locked for Syifa Essential. ADR-020 completed the Service display projection and Gallery accessibility metadata; ADR-023 (with its ADR-020 publication-read capture) completed the Clinic Contact projection — business hours, WhatsApp, and coordinates are present in published snapshots and render contracts today, not deferred. ADR-024 established the delivery boundary and Ferrari UX Iteration V2 plus Reference Certification Remediation V1 completed and certified the Syifa Essential implementation itself. ADR-025 records that lock. ADR-026 locks the Phone/Email/WhatsApp contact-channel policy on the same foundation. ADR-027 through ADR-031 are now implemented as the public Booking journey and its real Booking Engine adapters. Consent persists in append-only Booking history; Tenant resolution remains trusted; the public form query excludes Doctor/Branch structurally; availability exposes no capacity; and Success uses a short-lived, session-bound opaque token. Care, Dental, Aesthetic, and Specialist visual variants remain unbuilt; the shared variant-selection mechanism required to build them is deliberately deferred until the first of them exists (`05_TEMPLATE_ADAPTATION_RULES.md`).
 
 ## Next governed decisions
 
-**Next milestone: Public Booking Contract and Availability Delivery.** Booking remains CTA-only — no public Booking form, availability UI, or Booking Engine change has been authorized or implemented by this record. Likely future decisions must remain separately scoped:
+**Current milestone: M1 Public Product Complete.** Website Foundation, immutable publication/rendering, Syifa Essential, Public Booking and real Booking Engine integration are implemented. Sprint 3/private SaaS work has not started and is outside M1.
 
-1. Define and authorize the public Booking Contract: what a patient-facing booking submission is permitted to read/write against the existing Booking Domain boundary (ADR-013), without weakening the Syifa Essential design language or CTA hierarchy ADR-025 locks.
-2. Define public host routing and Custom Domain delivery.
-3. Define Asset URL resolution and delivery without leaking providers into rendering contracts.
-4. Introduce the first additional template (expected Syifa Care) and, with it, the minimum evidence-based variant-selection mechanism ADR-025 defers.
-5. Add provider-neutral tracking only after privacy, consent, and event-contract approval.
+Future decisions remain separately scoped:
 
-No item above authorizes HTML, Blade, controllers, APIs, storage providers, caching, CDN, analytics, or dependencies beyond what ADR-022/ADR-025 already govern, and none of it modifies the Booking Domain.
+1. Begin the private-platform foundation only after M1 is committed, tagged and release-green.
+2. Define public Custom Domain host delivery.
+3. Define Asset URL resolution without leaking providers into rendering contracts.
+4. Introduce the first additional template and only then the minimum variant-selection mechanism ADR-025 defers.
+5. Add provider-neutral tracking only after privacy, consent and event-contract approval.
+
+No item above authorizes HTML, Blade, controllers, APIs, storage providers, caching, CDN, analytics, or dependencies beyond what ADR-022/ADR-025/ADR-027/ADR-028/ADR-029/ADR-030/ADR-031 already govern.

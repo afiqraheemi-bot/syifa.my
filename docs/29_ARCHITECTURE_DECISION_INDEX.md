@@ -2,7 +2,7 @@
 
 ## Status
 
-Current as of SYIFA-090C.0.
+Current through Milestone M1: Public Product Complete.
 
 ## Purpose
 
@@ -36,6 +36,12 @@ This document is the governance index for architecture decisions and architectur
 | [ADR-022](./decisions/ADR-022-Public-Website-Experience-and-Design-System-V1.md) | Public Website Experience and Design System V1 | Active | Governs booking-first public experience, tokens, responsive components, five template personalities, accessibility, performance, quality review, and change control. |
 | [ADR-023](./decisions/ADR-023-Clinic-Public-Contact-Authority-V1.md) | Clinic Public Contact Authority V1 | Active | Assigns operational contact, operating time, and semantic location to Clinic; defines the internal ClinicContactProfile, explicit WhatsApp semantics, provider-neutral directions evidence, and the staged Website Branding compatibility transition. |
 | [ADR-025](./decisions/ADR-025-Official-Website-Design-Language.md) | Official Website Design Language | Active | Locks Syifa Essential Reference Template V1 as the canonical design language, token contract, and public component contract for all future SYIFA.my templates; freezes navigation, CTA hierarchy, and accessibility baseline; defers the shared variant-selection mechanism until a second real template exists. |
+| [ADR-026](./decisions/ADR-026-Public-Contact-Channel-Policy.md) | Public Contact Channel Policy | Active | Governs Phone/Email/WhatsApp as clinic-configured minimal data with Delivery-only public URL construction; locks the WhatsApp normalization format, the governed Delivery Intent vocabulary (localization-ready, no tenant-editable templates), and the Secondary-tier CTA rule ahead of Public Booking Contract. |
+| [ADR-027](./decisions/ADR-027-Public-Booking-Contract.md) | Public Booking Contract | Active, implemented in M1 | Governs the implemented Public Website–Booking Engine boundary, validation ownership, closed error vocabulary and public-safe BookingReference result. |
+| [ADR-028](./decisions/ADR-028-Public-Availability-Delivery-Contract.md) | Public Availability Delivery Contract | Active, implemented in M1 | Governs the implemented read-only availability projection, bounded cache and closed three-state vocabulary without capacity leakage. |
+| [ADR-029](./decisions/ADR-029-Public-Booking-Delivery-Implementation.md) | Public Booking Delivery Implementation | Active, implemented in M1; amended by ADR-030/031 | Implemented through finite public routes, thin Controllers, Delivery-owned ViewModels, trusted Website-to-Tenant resolution, session continuity, real Booking adapters and public-safe failure handling. |
+| [ADR-030](./decisions/ADR-030-Booking-Submission-Contract-Corrections.md) | Booking Submission Contract Corrections | Active, implemented in M1 | Consent persists in Booking history with the Website-source invariant; trusted Tenant input crosses the boundary as a primitive. |
+| [ADR-031](./decisions/ADR-031-Booking-Form-Configuration-Read-Contract-And-Success-Continuity.md) | Booking Form Configuration Read Contract and Success Continuity | Active, implemented in M1 | The narrow Booking-owned configuration query and expiring session-bound opaque Success Token are implemented and integration-tested. |
 
 ## Superseded ADRs
 
