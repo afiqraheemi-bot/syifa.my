@@ -6,6 +6,8 @@ namespace Tests\Integration\Modules\PlatformAdministration\Authorization;
 
 use App\Modules\PlatformAdministration\Application\Authorization\AuthorizePlatformActionService;
 use App\Modules\PlatformAdministration\Application\PlatformIdentity\GetPlatformIdentityService;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditCorrelationIdResolverInterface;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityData;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityLookupInterface;
 use App\Modules\PlatformAdministration\Domain\Authorization\PlatformAuthorizationService;
@@ -21,6 +23,8 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Psr\Log\NullLogger;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -223,13 +227,8 @@ final class PostgresPlatformAuthorizationPersistenceTest extends TestCase
     {
         $this->seedBaseline();
 
-        $service = new AuthorizePlatformActionService(
+        $service = $this->authorizationService(
             new GetPlatformIdentityService($this->identityLookup()),
-            $this->administratorLookup(),
-            $this->categoryLookup(),
-            $this->permissionLookup(),
-            $this->grantLookup(),
-            new PlatformAuthorizationService,
         );
 
         $allowed = $service->authorize(self::PLATFORM_IDENTITY_ID, self::CATEGORY_KEY, 'commercial_catalogue.manage', '2026-07-16T05:30:00Z');
@@ -267,18 +266,33 @@ final class PostgresPlatformAuthorizationPersistenceTest extends TestCase
         $this->seedCategory();
         $this->seedPermission('commercial_catalogue.manage');
 
-        $service = new AuthorizePlatformActionService(
+        $service = $this->authorizationService(
             new GetPlatformIdentityService($this->identityLookup('00000000-0000-4000-8000-000000000020')),
-            $this->administratorLookup(),
-            $this->categoryLookup(),
-            $this->permissionLookup(),
-            $this->grantLookup(),
-            new PlatformAuthorizationService,
         );
 
         $decision = $service->authorize('00000000-0000-4000-8000-000000000020', self::CATEGORY_KEY, 'commercial_catalogue.manage', '2026-07-16T05:30:00Z');
         self::assertFalse($decision->allowed);
         self::assertSame('administrator_profile_not_found', $decision->reason);
+    }
+
+    private function authorizationService(GetPlatformIdentityService $identities): AuthorizePlatformActionService
+    {
+        $auditEntries = $this->createStub(AuditEntryRecorderInterface::class);
+        $auditEntries->method('record')->willThrowException(new RuntimeException('Audit persistence is outside this authorization persistence test.'));
+        $correlationIds = $this->createStub(AuditCorrelationIdResolverInterface::class);
+        $correlationIds->method('resolve')->willReturn('00000000-0000-4000-8000-000000000099');
+
+        return new AuthorizePlatformActionService(
+            $identities,
+            $this->administratorLookup(),
+            $this->categoryLookup(),
+            $this->permissionLookup(),
+            $this->grantLookup(),
+            new PlatformAuthorizationService,
+            $auditEntries,
+            $correlationIds,
+            new NullLogger,
+        );
     }
 
     private function seedBaseline(): void

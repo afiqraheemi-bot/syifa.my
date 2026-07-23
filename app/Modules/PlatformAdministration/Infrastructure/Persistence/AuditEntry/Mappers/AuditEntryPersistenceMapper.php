@@ -13,6 +13,7 @@ use App\Modules\PlatformAdministration\Infrastructure\Persistence\AuditEntry\Exc
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\AuditEntry\Records\AuditEntryStorageRecord;
 use DateTimeImmutable;
 use DateTimeInterface;
+use DateTimeZone;
 use JsonException;
 use stdClass;
 
@@ -98,14 +99,14 @@ final class AuditEntryPersistenceMapper
         $value = $row->{$field} ?? null;
 
         if ($value instanceof DateTimeInterface) {
-            return DateTimeImmutable::createFromInterface($value);
+            return DateTimeImmutable::createFromInterface($value)->setTimezone(new DateTimeZone('UTC'));
         }
 
         if (! is_string($value)) {
             throw new InvalidAuditEntryStorageStateException($field.' must be an instant.');
         }
 
-        return new DateTimeImmutable($value);
+        return (new DateTimeImmutable($value))->setTimezone(new DateTimeZone('UTC'));
     }
 
     /**
