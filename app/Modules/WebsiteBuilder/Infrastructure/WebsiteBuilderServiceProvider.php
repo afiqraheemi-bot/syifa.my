@@ -19,8 +19,10 @@ use App\Modules\WebsiteBuilder\Contracts\Delivery\BookingSubmissionGatewayInterf
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicAvailabilityReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfigurationReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\WebsiteTenantResolverInterface;
+use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsitePublishedSnapshotReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteSeoSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
@@ -40,8 +42,10 @@ use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConf
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresClinicRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsiteRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\BookingClinicOperationalTimeAdapter;
+use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresClinicSummaryReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsitePublishedSnapshotReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteReadAdapter;
+use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteSeoSummaryReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteTenantResolver;
 use App\Modules\WebsiteBuilder\Infrastructure\Transactions\PostgresClinicTransaction;
 use Illuminate\Contracts\Foundation\Application;
@@ -78,6 +82,12 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
             ),
         );
         $this->app->singleton(
+            ClinicSummaryReadInterface::class,
+            static fn (Application $application): PostgresClinicSummaryReadAdapter => new PostgresClinicSummaryReadAdapter(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->singleton(
             ClinicTransactionInterface::class,
             static fn (Application $application): PostgresClinicTransaction => new PostgresClinicTransaction($application->make('db')->connection()),
         );
@@ -95,6 +105,12 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
         $this->app->singleton(
             WebsiteReadInterface::class,
             static fn (Application $application): PostgresWebsiteReadAdapter => new PostgresWebsiteReadAdapter($application->make('db')->connection()),
+        );
+        $this->app->singleton(
+            WebsiteSeoSummaryReadInterface::class,
+            static fn (Application $application): PostgresWebsiteSeoSummaryReadAdapter => new PostgresWebsiteSeoSummaryReadAdapter(
+                $application->make('db')->connection(),
+            ),
         );
         $this->app->singleton(
             WebsitePublishedSnapshotReadInterface::class,

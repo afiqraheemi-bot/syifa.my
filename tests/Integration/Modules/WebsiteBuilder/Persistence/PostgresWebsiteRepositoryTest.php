@@ -34,6 +34,12 @@ use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConf
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsiteRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsitePublishedSnapshotReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteReadAdapter;
+use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteSeoSummaryReadAdapter;
+use App\Support\Authorization\Application\AuthorizationContext;
+use App\Support\Dashboard\Application\Website\PublishStatusProvider;
+use App\Support\Dashboard\Application\Website\SeoStatusProvider;
+use App\Support\Dashboard\Application\Website\ThemeInformationProvider;
+use App\Support\Dashboard\Application\Website\WebsiteStatusProvider;
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Migrations\Migration;
@@ -371,6 +377,40 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         self::assertSame('+60123456789', $loaded->publishedSnapshot()?->sectionContents[7]->contactProjection?->whatsAppNumber);
         self::assertSame('Rawatan Kesihatan Am', $loaded->publishedSnapshot()?->sectionContents[2]->publishedServices[0]->displayName);
         self::assertInstanceOf(GallerySectionContent::class, $loaded->publishedSnapshot()?->sectionContents[5]->content);
+        $contentSummary = (new PostgresWebsitePublishedSnapshotReadAdapter($this->db()))->latest($website->id->value);
+        self::assertNotNull($contentSummary);
+        self::assertCount(9, $contentSummary->sections);
+        self::assertSame(
+            ['HERO', 'ABOUT', 'SERVICES', 'DOCTORS', 'TESTIMONIALS', 'GALLERY', 'FAQ', 'CONTACT', 'BOOKING_CTA'],
+            array_column($contentSummary->sections, 'type'),
+        );
+        self::assertSame(1, $contentSummary->sections[2]->itemCount);
+        self::assertNotContains(false, array_column($contentSummary->sections, 'renderable'));
+        self::assertSame([
+            ['Trusted healthcare'],
+            ['About us'],
+            ['Rawatan Kesihatan Am'],
+            ['Dr Syifa'],
+            ['Patient'],
+            ['Ruang menunggu utama'],
+            ['When are you open?'],
+            ['Kuala Lumpur', '+6012'],
+        ], array_map(
+            static fn ($section): array => $section->highlights,
+            array_slice($contentSummary->sections, 0, 8),
+        ));
+
+        $context = new AuthorizationContext('clinic_owner', 'owner-1', $this->uuid(1), 'clinic_owner', 'Owner', 'shared.authenticated-route', []);
+        $websiteRead = new PostgresWebsiteReadAdapter($this->db());
+        $snapshotRead = new PostgresWebsitePublishedSnapshotReadAdapter($this->db());
+        $seoRead = new PostgresWebsiteSeoSummaryReadAdapter($this->db());
+
+        $websiteStatus = (new WebsiteStatusProvider($websiteRead))->provide($context)->data;
+        self::assertSame('Published', $websiteStatus['value']);
+        self::assertSame('hello@clinic.test · +6012 · Kuala Lumpur', $websiteStatus['detail']);
+        self::assertSame('Published', (new PublishStatusProvider($websiteRead, $snapshotRead))->provide($context)->data['value']);
+        self::assertSame('SYIFA_ESSENTIAL', (new ThemeInformationProvider($websiteRead))->provide($context)->data['value']);
+        self::assertSame('Indexing enabled', (new SeoStatusProvider($websiteRead, $seoRead))->provide($context)->data['value']);
     }
 
     public function test_public_reader_uses_snapshot_only_and_ignores_later_draft_mutation(): void
