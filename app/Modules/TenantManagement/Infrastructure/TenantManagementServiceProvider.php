@@ -16,6 +16,7 @@ use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionStoreInterf
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolverInterface;
 use App\Modules\TenantManagement\Contracts\TenantRouting\TenantAdminRoutingLookupInterface;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Repositories\TenantRepositoryInterface;
+use App\Modules\TenantManagement\Infrastructure\Authentication\ClinicOwnerUserProvider;
 use App\Modules\TenantManagement\Infrastructure\Authentication\LaravelAuthenticationSignalDispatcher;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Lookups\PostgresTenantAdminRoutingLookup;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Mappers\TenantPersistenceMapper;
@@ -108,6 +109,18 @@ final class TenantManagementServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(database_path('migrations/tenant_management'));
+
+        // Registers the "clinic_owner" auth.providers driver named in
+        // config/auth.php. Completes retrieveById/retrieveByToken (session
+        // reload, remember-me) for the native Guard — the primary login path
+        // never calls Auth::attempt() against it (see
+        // ClinicOwnerAuthenticatable's own docblock for why).
+        $this->app->make('auth')->provider(
+            'clinic_owner',
+            fn (Application $application): ClinicOwnerUserProvider => new ClinicOwnerUserProvider(
+                $application->make(ClinicOwnerCredentialVerificationInterface::class),
+            ),
+        );
     }
 
     /** @return list<string> */

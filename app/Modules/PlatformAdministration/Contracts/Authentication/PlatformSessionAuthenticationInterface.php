@@ -13,5 +13,6 @@ interface PlatformSessionAuthenticationInterface
         string $email,
         #[SensitiveParameter] string $plainPassword,
         DateTimeImmutable $attemptedAt,
+        bool $remember = false,
     ): ?PlatformPrincipal;
 }

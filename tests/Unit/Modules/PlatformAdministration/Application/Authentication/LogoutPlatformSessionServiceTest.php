@@ -142,7 +142,7 @@ final class InMemoryLogoutPlatformSessionStore implements PlatformSessionStoreIn
 {
     public int $invalidateCount = 0;
 
-    public function establish(PlatformPrincipal $principal, DateTimeImmutable $authenticatedAt): PlatformSessionState
+    public function establish(PlatformPrincipal $principal, DateTimeImmutable $authenticatedAt, bool $remember = false): PlatformSessionState
     {
         throw new RuntimeException('Not expected in this test.');
     }

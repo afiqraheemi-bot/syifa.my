@@ -15,7 +15,6 @@ use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionA
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionStoreInterface;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityData;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityLookupInterface;
-use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\CredentialVerificationInterface;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialData;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialLookupInterface;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActorType;
@@ -24,14 +23,28 @@ use App\Modules\PlatformAdministration\Domain\PlatformIdentity\PlatformIdentityR
 use App\Modules\PlatformAdministration\Domain\PlatformIdentity\PlatformIdentityStatus;
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use SensitiveParameter;
 use Throwable;
 
+/**
+ * The real verification entry point is now Laravel's native, stateful Guard
+ * (`Auth::guard('platform_identity')->attempt()`) — never a bespoke password
+ * check. The Guard's own UserProvider (`PlatformIdentityUserProvider`)
+ * delegates the actual hash comparison, lockout, and timing-safe unknown-email
+ * handling to the pre-existing `CredentialVerificationInterface` Infrastructure
+ * adapter, so none of that hardening is duplicated or re-implemented here —
+ * this service only adds the business rules `attempt()` cannot know about
+ * (email verification, identity status, role allow-list) and audits every
+ * branch exactly as before.
+ */
 final readonly class AuthenticatePlatformSessionService implements PlatformSessionAuthenticationInterface
 {
     public function __construct(
-        private CredentialVerificationInterface $credentials,
+        private AuthFactory $auth,
         private PlatformWorkforceCredentialLookupInterface $credentialLookup,
         private PlatformIdentityLookupInterface $identities,
         private PlatformSessionStoreInterface $sessions,
@@ -44,13 +57,22 @@ final readonly class AuthenticatePlatformSessionService implements PlatformSessi
         string $email,
         #[SensitiveParameter] string $plainPassword,
         DateTimeImmutable $attemptedAt,
+        bool $remember = false,
     ): ?PlatformPrincipal {
-        $verification = $this->credentials->verify($email, $plainPassword, $attemptedAt);
         $attemptedAtUtc = $this->utc($attemptedAt);
         $correlationId = $this->correlationIds->resolve();
         $credential = $this->credentialLookup->findByNormalizedEmail($email);
 
-        if (! $verification->verified || ! is_string($verification->platformIdentityId)) {
+        // The Guard's own credential lookup (`retrieveByCredentials`) is
+        // deliberately fed by the Contracts-level lookup rather than a real
+        // Eloquent row, so this call is never remembered here — Laravel's
+        // recaller cookie needs a genuine password_hash, which only exists on
+        // a real row. `establish()` resolves that real row and finishes the
+        // "remember" registration itself, once verification has succeeded.
+        $guard = $this->guard();
+        $verified = $guard->attempt(['email' => $email, 'password' => $plainPassword]);
+
+        if (! $verified) {
             $reasonCode = $this->failureReason($credential, $attemptedAtUtc);
             $this->auditAuthenticationFailure(
                 $correlationId,
@@ -64,6 +86,7 @@ final readonly class AuthenticatePlatformSessionService implements PlatformSessi
         }
 
         if ($credential === null) {
+            $guard->logout();
             $this->auditAuthenticationFailure(
                 $correlationId,
                 $attemptedAtUtc,
@@ -76,7 +99,8 @@ final readonly class AuthenticatePlatformSessionService implements PlatformSessi
         }
 
         if ($credential->emailVerified === false) {
-            $identity = $this->identities->findById($verification->platformIdentityId);
+            $guard->logout();
+            $identity = $this->identities->findById($credential->platformIdentityId);
             $this->auditAuthenticationFailure(
                 $correlationId,
                 $attemptedAtUtc,
@@ -88,9 +112,10 @@ final readonly class AuthenticatePlatformSessionService implements PlatformSessi
             return null;
         }
 
-        $identity = $this->identities->findById($verification->platformIdentityId);
+        $identity = $this->identities->findById($credential->platformIdentityId);
 
         if ($identity === null || $identity->status !== PlatformIdentityStatus::Active->value) {
+            $guard->logout();
             $this->auditAuthenticationFailure(
                 $correlationId,
                 $attemptedAtUtc,
@@ -106,6 +131,7 @@ final readonly class AuthenticatePlatformSessionService implements PlatformSessi
             PlatformIdentityRole::WebsiteDesigner->value,
             PlatformIdentityRole::SuperAdmin->value,
         ], true)) {
+            $guard->logout();
             $this->auditAuthenticationFailure(
                 $correlationId,
                 $attemptedAtUtc,
@@ -123,19 +149,33 @@ final readonly class AuthenticatePlatformSessionService implements PlatformSessi
             $identity->name,
         );
 
-        if (! $this->auditAuthenticationSuccess($correlationId, $attemptedAtUtc, $identity)) {
+        if (! $this->auditAuthenticationSuccess($correlationId, $attemptedAtUtc, $identity, $remember)) {
+            $guard->logout();
+
             return null;
         }
 
-        $this->sessions->establish($principal, $attemptedAt);
+        $this->sessions->establish($principal, $attemptedAt, $remember);
 
         return $principal;
+    }
+
+    private function guard(): StatefulGuard
+    {
+        $guard = $this->auth->guard('platform_identity');
+
+        if (! $guard instanceof StatefulGuard) {
+            throw new RuntimeException('The platform_identity guard must be a stateful (session) guard.');
+        }
+
+        return $guard;
     }
 
     private function auditAuthenticationSuccess(
         string $correlationId,
         DateTimeImmutable $occurredAt,
         PlatformIdentityData $identity,
+        bool $remember,
     ): bool {
         try {
             $this->auditEntries->record(new AuditEntryData(
@@ -143,7 +183,7 @@ final readonly class AuthenticatePlatformSessionService implements PlatformSessi
                 $occurredAt,
                 new AuditActorData(AuditActorType::PlatformIdentity->value, $identity->id),
                 null,
-                'platform.authentication.login',
+                $remember ? 'platform.authentication.remember_me_login' : 'platform.authentication.login',
                 new AuditTargetData('platform_session', $identity->id),
                 new AuditOutcomeData(AuditOutcomeType::Succeeded->value, null),
                 $correlationId,

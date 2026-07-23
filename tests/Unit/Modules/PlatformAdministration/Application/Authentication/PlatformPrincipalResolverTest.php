@@ -81,7 +81,7 @@ final class InMemoryResolvablePlatformSessionStore implements PlatformSessionSto
 
     public function __construct(private ?PlatformSessionState $state) {}
 
-    public function establish(PlatformPrincipal $principal, DateTimeImmutable $authenticatedAt): PlatformSessionState
+    public function establish(PlatformPrincipal $principal, DateTimeImmutable $authenticatedAt, bool $remember = false): PlatformSessionState
     {
         return $this->state ?? throw new \LogicException('Not expected in this test.');
     }

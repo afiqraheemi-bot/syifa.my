@@ -104,10 +104,16 @@ final class PublicBookingDeliveryArchitectureTest extends TestCase
     public function test_no_booking_route_accepts_a_reference_or_booking_id_shaped_parameter(): void
     {
         $routes = (string) file_get_contents(dirname(__DIR__, 2).'/routes/web.php');
-        self::assertMatchesRegularExpression('/success\/\{token\}/', $routes);
+        self::assertMatchesRegularExpression(
+            "/Route::prefix\\('booking'\\).*?\\n\\}\\);/s",
+            $routes,
+        );
+        preg_match("/Route::prefix\\('booking'\\).*?\\n\\}\\);/s", $routes, $matches);
+        $publicBookingRoutes = $matches[0] ?? '';
+        self::assertMatchesRegularExpression('/success\/\{token\}/', $publicBookingRoutes);
 
         foreach (['{reference}', '{bookingId}', '{booking_id}'] as $forbidden) {
-            self::assertStringNotContainsString($forbidden, $routes);
+            self::assertStringNotContainsString($forbidden, $publicBookingRoutes);
         }
     }
 

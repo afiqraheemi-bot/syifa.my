@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\TenantManagement;
 
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryData;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticatedPrincipal;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticationCommand;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticationInterface;
@@ -14,7 +16,10 @@ use App\Modules\TenantManagement\Contracts\Authentication\Signals\ClinicOwnerAut
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextData;
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolutionData;
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolverInterface;
+use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryData;
+use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryReadInterface;
 use Illuminate\Support\Facades\Route;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 final class ClinicOwnerSessionEndpointsTest extends TestCase
@@ -27,6 +32,20 @@ final class ClinicOwnerSessionEndpointsTest extends TestCase
         config()->set('session.driver', 'array');
         config()->set('request_protection.profiles.clinic_owner_session.max_attempts', 2);
         $this->app->bind(TenantContextResolverInterface::class, static fn (): TenantContextResolverInterface => new AcceptingContextResolver);
+        $this->app->instance(ClinicSummaryReadInterface::class, new class implements ClinicSummaryReadInterface
+        {
+            public function summary(string $trustedTenantId): ?ClinicSummaryData
+            {
+                return new ClinicSummaryData('clinic-1', 'Asia/Kuala_Lumpur', true);
+            }
+        });
+        $this->app->instance(SubscriptionSummaryReadInterface::class, new class implements SubscriptionSummaryReadInterface
+        {
+            public function summary(string $trustedTenantId): ?SubscriptionSummaryData
+            {
+                return null;
+            }
+        });
     }
 
     public function test_login_current_and_logout_follow_the_exact_public_contract(): void
@@ -58,6 +77,17 @@ final class ClinicOwnerSessionEndpointsTest extends TestCase
         $this->getJson('https://clinic.app.syifa.my/api/v1/sessions/current')
             ->assertOk()
             ->assertJsonPath('data.tenant.id', self::TENANT_ID);
+
+        $this->get('https://clinic.app.syifa.my/dashboard')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('TenantManagement/Dashboard/ClinicOwnerDashboardOverview', false)
+                    ->where('pageTitle', 'Dashboard')
+                    ->has('summaries', 3)
+                    ->has('quickActions', 3)
+                    ->where('recentActivity', []),
+            );
 
         $this->deleteJson('https://clinic.app.syifa.my/api/v1/sessions/current')->assertNoContent();
         $this->deleteJson('https://clinic.app.syifa.my/api/v1/sessions/current')->assertNoContent();

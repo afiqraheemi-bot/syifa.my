@@ -26,6 +26,7 @@ final readonly class PlatformSessionController
             $credentials['email'],
             $credentials['password'],
             new DateTimeImmutable,
+            $request->boolean('remember'),
         );
 
         if (! $principal instanceof PlatformPrincipal) {

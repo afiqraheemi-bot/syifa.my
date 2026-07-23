@@ -42,6 +42,16 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        'platform_identity' => [
+            'driver' => 'session',
+            'provider' => 'platform_identities',
+        ],
+
+        'clinic_owner' => [
+            'driver' => 'session',
+            'provider' => 'clinic_owners',
+        ],
     ],
 
     /*
@@ -65,6 +75,14 @@ return [
         'users' => [
             'driver' => 'database',
             'table' => 'users',
+        ],
+
+        'platform_identities' => [
+            'driver' => 'platform_identity',
+        ],
+
+        'clinic_owners' => [
+            'driver' => 'clinic_owner',
         ],
     ],
 
@@ -94,6 +112,13 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
+
+        'platform_identities' => [
+            'provider' => 'platform_identities',
+            'table' => 'platform_identity_password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
     ],
 
     /*
@@ -108,5 +133,18 @@ return [
     */
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Email Verification Link Expiration
+    |--------------------------------------------------------------------------
+    |
+    | The number of minutes a signed email verification link remains valid.
+    |
+    */
+
+    'verification' => [
+        'expire' => (int) env('AUTH_VERIFICATION_EXPIRE_MINUTES', 60),
+    ],
 
 ];

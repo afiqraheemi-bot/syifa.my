@@ -25,6 +25,7 @@ final class PlatformSessionLoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
+            'remember' => ['sometimes', 'boolean'],
             'correlation_id' => ['nullable', 'uuid'],
         ];
     }

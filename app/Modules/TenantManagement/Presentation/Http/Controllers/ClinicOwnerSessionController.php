@@ -6,7 +6,7 @@ namespace App\Modules\TenantManagement\Presentation\Http\Controllers;
 
 use App\Modules\TenantManagement\Application\Session\CreateClinicOwnerSessionService;
 use App\Modules\TenantManagement\Application\Session\DeleteClinicOwnerSessionService;
-use App\Modules\TenantManagement\Application\Session\GetCurrentClinicOwnerSessionService;
+use App\Modules\TenantManagement\Contracts\Session\AuthenticatedClinicOwnerSessionData;
 use App\Modules\TenantManagement\Presentation\Http\Requests\CreateClinicOwnerSessionRequest;
 use App\Modules\TenantManagement\Presentation\Http\Resources\ClinicOwnerSessionResource;
 use App\Modules\TenantManagement\Presentation\Http\Responses\ProblemDetailsResponse;
@@ -43,10 +43,11 @@ final readonly class ClinicOwnerSessionController
         return (new ClinicOwnerSessionResource($session))->response()->setStatusCode(201);
     }
 
-    public function show(Request $request, GetCurrentClinicOwnerSessionService $sessions): JsonResponse
+    public function show(Request $request): JsonResponse
     {
-        $session = $sessions->execute(new DateTimeImmutable);
-        if ($session === null) {
+        $session = $request->attributes->get('clinic_owner_session');
+
+        if (! $session instanceof AuthenticatedClinicOwnerSessionData) {
             return ProblemDetailsResponse::make(
                 $request,
                 'session_invalid',

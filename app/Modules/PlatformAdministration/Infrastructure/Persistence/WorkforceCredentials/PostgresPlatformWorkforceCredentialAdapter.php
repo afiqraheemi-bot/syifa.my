@@ -8,6 +8,8 @@ use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\Credential
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\CredentialVerificationResult;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialData;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialLookupInterface;
+use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialPasswordWriterInterface;
+use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialStateWriterInterface;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\WorkforceCredentials\Exceptions\InvalidPlatformWorkforceCredentialStorageStateException;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\WorkforceCredentials\Exceptions\StalePlatformWorkforceCredentialWriteException;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\WorkforceCredentials\Mappers\PlatformWorkforceCredentialPersistenceMapper;
@@ -18,7 +20,7 @@ use Illuminate\Database\ConnectionInterface;
 use SensitiveParameter;
 use stdClass;
 
-final class PostgresPlatformWorkforceCredentialAdapter implements CredentialVerificationInterface, PlatformWorkforceCredentialLookupInterface
+final class PostgresPlatformWorkforceCredentialAdapter implements CredentialVerificationInterface, PlatformWorkforceCredentialLookupInterface, PlatformWorkforceCredentialPasswordWriterInterface, PlatformWorkforceCredentialStateWriterInterface
 {
     private const int FAILED_ATTEMPT_LIMIT = 5;
 
@@ -183,6 +185,45 @@ final class PostgresPlatformWorkforceCredentialAdapter implements CredentialVeri
         }
 
         return $reloaded;
+    }
+
+    public function updatePassword(
+        string $platformIdentityId,
+        #[SensitiveParameter] string $newPlainPassword,
+        DateTimeImmutable $updatedAt,
+    ): void {
+        $this->connection->transaction(function () use ($platformIdentityId, $newPlainPassword, $updatedAt): void {
+            $row = $this->connection
+                ->table('platform_workforce_credentials')
+                ->where('platform_identity_id', $platformIdentityId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $row instanceof stdClass) {
+                throw new InvalidPlatformWorkforceCredentialStorageStateException(
+                    'Cannot update the password of an unknown platform identity.',
+                );
+            }
+
+            $record = $this->mapper->fromRow($row);
+            $affected = $this->connection
+                ->table('platform_workforce_credentials')
+                ->where('platform_identity_id', $platformIdentityId)
+                ->where('version', $record->version)
+                ->update([
+                    'password_hash' => $this->hasher->make($newPlainPassword),
+                    'failed_attempt_count' => 0,
+                    'lockout_until' => null,
+                    'version' => $record->version + 1,
+                    'updated_at' => $this->timestamp($updatedAt),
+                ]);
+
+            if ($affected !== 1) {
+                throw new StalePlatformWorkforceCredentialWriteException(
+                    'Platform workforce credential password write rejected because its version is stale.',
+                );
+            }
+        });
     }
 
     private function updateAttemptState(

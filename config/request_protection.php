@@ -35,6 +35,16 @@ return [
             'key_parts' => ['host', 'actor', 'session', 'network'],
         ],
 
+        'platform_password_reset' => [
+            'limiter' => 'platform.password-reset',
+            'max_attempts' => (int) env('REQUEST_PROTECTION_PLATFORM_PASSWORD_RESET_MAX_ATTEMPTS', 5),
+            'decay_seconds' => (int) env('REQUEST_PROTECTION_PLATFORM_PASSWORD_RESET_DECAY_SECONDS', 60),
+            'type' => 'password_reset_temporarily_unavailable',
+            'title' => 'Password Reset Temporarily Unavailable',
+            'detail' => 'Password reset is temporarily unavailable. Please try again later.',
+            'key_parts' => ['host', 'email', 'network'],
+        ],
+
         'platform_administration' => [
             'limiter' => 'platform.admin',
             'max_attempts' => (int) env('REQUEST_PROTECTION_PLATFORM_ADMINISTRATION_MAX_ATTEMPTS', 240),

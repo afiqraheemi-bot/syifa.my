@@ -6,18 +6,44 @@ namespace App\Modules\TenantManagement\Infrastructure\Session;
 
 use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionState;
 use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionStoreInterface;
+use App\Modules\TenantManagement\Infrastructure\Authentication\ClinicOwnerAuthenticatable;
 use DateTimeImmutable;
+use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Contracts\Session\Session;
+use RuntimeException;
 use Throwable;
 
+/**
+ * `AuthenticateClinicOwnerService` (Application layer) is architecturally
+ * locked to keep calling `ClinicOwnerCredentialVerificationInterface`
+ * directly (see `ClinicOwnerAuthenticationOrchestrationArchitectureTest`) —
+ * native Guard registration therefore happens only here, as a side effect
+ * of establishing the (already-verified) session. This never re-verifies a
+ * password, and deliberately never queries Eloquent either: the session
+ * state already carries every identifier the Guard needs
+ * (`getAuthIdentifier()`), so a minimally-hydrated, non-persisted instance
+ * is enough — exactly as for `PlatformIdentityUserProvider::retrieveByCredentials()`.
+ * A real row is only ever fetched for "remember me", which needs the
+ * genuine `password_hash` for Laravel's recaller cookie (not yet wired here).
+ */
 final readonly class LaravelClinicOwnerSessionStore implements ClinicOwnerSessionStoreInterface
 {
     private const KEY = 'clinic_owner_authentication';
 
-    public function __construct(private Session $session) {}
+    public function __construct(
+        private Session $session,
+        private AuthFactory $auth,
+    ) {}
 
     public function establish(ClinicOwnerSessionState $state): void
     {
+        $this->guard()->login((new ClinicOwnerAuthenticatable)->forceFill([
+            'id' => $state->authorityId,
+            'tenant_id' => $state->tenantId,
+            'clinic_owner_identity_id' => $state->clinicOwnerIdentityId,
+        ]));
+
         $this->session->migrate(true);
         $this->session->regenerateToken();
         $this->session->put(self::KEY, [
@@ -77,7 +103,19 @@ final readonly class LaravelClinicOwnerSessionStore implements ClinicOwnerSessio
 
     public function invalidate(): void
     {
+        $this->guard()->logout();
         $this->session->invalidate();
         $this->session->regenerateToken();
+    }
+
+    private function guard(): StatefulGuard
+    {
+        $guard = $this->auth->guard('clinic_owner');
+
+        if (! $guard instanceof StatefulGuard) {
+            throw new RuntimeException('The clinic_owner guard must be a stateful (session) guard.');
+        }
+
+        return $guard;
     }
 }

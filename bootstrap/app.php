@@ -10,6 +10,8 @@ use App\Modules\SubscriptionBilling\Presentation\Contracts\ErrorResponseMapperIn
 use App\Modules\SubscriptionBilling\Presentation\Http\Support\CommercialCatalogueProblemDetailsResponseFactory;
 use App\Modules\TenantManagement\Presentation\Http\Middleware\AttachRequestIdentifiers;
 use App\Modules\TenantManagement\Presentation\Http\Responses\ProblemDetailsResponse;
+use App\Support\Authorization\Http\Middleware\AuthorizeRequest;
+use App\Support\Identity\Http\Middleware\EnsureGuestForGuard;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -32,6 +34,11 @@ return Application::configure(basePath: dirname(__DIR__))
             prepend: [AttachRequestIdentifiers::class],
             append: [InertiaMiddleware::class],
         );
+
+        $middleware->alias([
+            'authorize.context' => AuthorizeRequest::class,
+            'guest.guard' => EnsureGuestForGuard::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $correlationId = static function (Request $request): string {

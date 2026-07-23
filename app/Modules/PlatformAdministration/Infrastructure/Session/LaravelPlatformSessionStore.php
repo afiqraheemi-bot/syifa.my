@@ -7,10 +7,14 @@ namespace App\Modules\PlatformAdministration\Infrastructure\Session;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipal;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionState;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionStoreInterface;
+use App\Modules\PlatformAdministration\Infrastructure\Authentication\PlatformIdentityAuthenticatable;
 use DateInterval;
 use DateTimeImmutable;
+use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 final readonly class LaravelPlatformSessionStore implements PlatformSessionStoreInterface
@@ -19,12 +23,36 @@ final readonly class LaravelPlatformSessionStore implements PlatformSessionStore
 
     public function __construct(
         private Session $session,
+        private AuthFactory $auth,
         private int $idleMinutes,
         private int $absoluteLifetimeMinutes,
     ) {}
 
-    public function establish(PlatformPrincipal $principal, DateTimeImmutable $authenticatedAt): PlatformSessionState
+    /**
+     * The native Guard is already logged in by this point (`Auth::attempt()`
+     * ran inside `AuthenticatePlatformSessionService`) — session regeneration
+     * here retains that login across the new session ID, satisfying both
+     * "session regeneration after login" and Phase 4's native-middleware
+     * requirement in one step.
+     *
+     * `$remember` re-logs in with a freshly-queried, real Eloquent row —
+     * Laravel's recaller cookie embeds a hash derived from the genuine
+     * `password_hash`, which the minimally-hydrated object `Auth::attempt()`
+     * used for verification deliberately never carries (Application layer
+     * never sees Eloquent). This is the only place that row is fetched.
+     */
+    public function establish(PlatformPrincipal $principal, DateTimeImmutable $authenticatedAt, bool $remember = false): PlatformSessionState
     {
+        if ($remember) {
+            $user = PlatformIdentityAuthenticatable::query()
+                ->where('platform_identity_id', $principal->platformIdentityId)
+                ->first();
+
+            if ($user instanceof PlatformIdentityAuthenticatable) {
+                $this->guard()->login($user, true);
+            }
+        }
+
         $this->session->migrate(true);
         $this->session->regenerateToken();
 
@@ -113,8 +141,20 @@ final readonly class LaravelPlatformSessionStore implements PlatformSessionStore
 
     public function invalidate(): void
     {
+        $this->guard()->logout();
         $this->session->invalidate();
         $this->session->regenerateToken();
+    }
+
+    private function guard(): StatefulGuard
+    {
+        $guard = $this->auth->guard('platform_identity');
+
+        if (! $guard instanceof StatefulGuard) {
+            throw new RuntimeException('The platform_identity guard must be a stateful (session) guard.');
+        }
+
+        return $guard;
     }
 
     /**

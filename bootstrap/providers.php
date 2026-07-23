@@ -11,6 +11,7 @@ use App\Modules\SubscriptionBilling\Infrastructure\SubscriptionBillingServicePro
 use App\Modules\TenantManagement\Infrastructure\TenantManagementServiceProvider;
 use App\Modules\WebsiteBuilder\Infrastructure\WebsiteBuilderServiceProvider;
 use App\Providers\AppServiceProvider;
+use App\Support\Identity\IdentityServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -22,4 +23,5 @@ return [
     PlatformAdministrationServiceProvider::class,
     SubscriptionBillingServiceProvider::class,
     BookingServiceProvider::class,
+    IdentityServiceProvider::class,
 ];

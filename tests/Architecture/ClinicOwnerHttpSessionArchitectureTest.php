@@ -62,8 +62,24 @@ final class ClinicOwnerHttpSessionArchitectureTest extends TestCase
         self::assertSame(1, substr_count($routes, "Route::post('/sessions'"));
         self::assertSame(1, substr_count($routes, "Route::get('/sessions/current'"));
         self::assertSame(1, substr_count($routes, "Route::delete('/sessions/current'"));
+
+        // Scoped to the Clinic Owner session block specifically — Sprint 3A adds
+        // password reset / email verification for Platform Identity elsewhere in
+        // this file, which is legitimate and does not loosen this guard's intent
+        // (Clinic Owner itself still has none of these routes).
+        self::assertMatchesRegularExpression(
+            "/Route::prefix\('api\/v1'\)\s*->group\(function \(\): void \{.*?\}\);/s",
+            $routes,
+        );
+        preg_match(
+            "/Route::prefix\('api\/v1'\)\s*->group\(function \(\): void \{(.*?)\}\);/s",
+            $routes,
+            $matches,
+        );
+        $clinicOwnerBlock = strtolower($matches[1] ?? '');
+        self::assertNotSame('', $clinicOwnerBlock);
         foreach (['password', 'reset', 'mfa', 'verification', 'register', 'permission', 'rbac'] as $forbidden) {
-            self::assertStringNotContainsString($forbidden, strtolower($routes));
+            self::assertStringNotContainsString($forbidden, $clinicOwnerBlock);
         }
     }
 

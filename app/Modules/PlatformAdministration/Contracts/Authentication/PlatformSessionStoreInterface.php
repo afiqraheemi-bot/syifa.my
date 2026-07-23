@@ -8,7 +8,7 @@ use DateTimeImmutable;
 
 interface PlatformSessionStoreInterface
 {
-    public function establish(PlatformPrincipal $principal, DateTimeImmutable $authenticatedAt): PlatformSessionState;
+    public function establish(PlatformPrincipal $principal, DateTimeImmutable $authenticatedAt, bool $remember = false): PlatformSessionState;
 
     public function current(DateTimeImmutable $at): ?PlatformSessionState;
 
