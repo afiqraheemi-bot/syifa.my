@@ -45,6 +45,7 @@ final readonly class SuperAdminOnboardingPage
             'filters' => ['status' => $status, 'search' => $search],
             'assignUrlTemplate' => route('dashboard.onboarding-management.assign', ['jobId' => '__JOB_ID__']),
             'reassignUrlTemplate' => route('dashboard.onboarding-management.reassign', ['jobId' => '__JOB_ID__']),
+            'lifecycleUrlTemplate' => route('dashboard.onboarding-management.lifecycle', ['jobId' => '__JOB_ID__']),
             'ownerUrlTemplate' => route('dashboard.onboarding-management.owner', ['tenantId' => '__TENANT_ID__']),
         ]);
     }

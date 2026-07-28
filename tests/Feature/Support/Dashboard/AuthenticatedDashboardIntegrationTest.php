@@ -1115,6 +1115,49 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         )->assertForbidden();
     }
 
+    public function test_only_super_admin_can_cancel_and_reopen_an_onboarding_job(): void
+    {
+        $jobId = '00000000-0000-4000-8000-000000000101';
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $this->postJson('/dashboard/onboarding-management/'.$jobId.'/lifecycle', [
+            'operation' => 'cancel',
+            'reason' => 'Testing forbidden access.',
+            'expected_version' => 1,
+        ])->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'super_admin',
+                identityId: '00000000-0000-4000-8000-000000000090',
+            ),
+        );
+        $this->postJson('/dashboard/onboarding-management/'.$jobId.'/lifecycle', [
+            'operation' => 'cancel',
+            'reason' => 'Customer requested cancellation.',
+            'expected_version' => 1,
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'cancelled')
+            ->assertJsonPath('version', 2);
+        $this->postJson('/dashboard/onboarding-management/'.$jobId.'/lifecycle', [
+            'operation' => 'reopen',
+            'reason' => 'Customer resumed onboarding.',
+            'expected_version' => 2,
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'reopened')
+            ->assertJsonPath('version', 3);
+    }
+
     public function test_only_the_tenant_clinic_owner_can_approve_the_designer_submission(): void
     {
         $jobId = '00000000-0000-4000-8000-000000000101';

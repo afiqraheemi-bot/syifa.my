@@ -19,6 +19,7 @@ const props = defineProps({
     filters: { type: Object, required: true },
     assignUrlTemplate: { type: String, required: true },
     reassignUrlTemplate: { type: String, required: true },
+    lifecycleUrlTemplate: { type: String, required: true },
     ownerUrlTemplate: { type: String, required: true },
 });
 
@@ -109,6 +110,53 @@ async function establishOwner(job) {
     }
 
     success.value = 'Clinic Owner setup email issued successfully.';
+    router.reload({ only: ['onboarding'] });
+}
+
+function lifecycleOperations(job) {
+    if (job.status === 'ready_for_launch') return ['complete', 'cancel'];
+    if (['completed', 'cancelled'].includes(job.status)) return ['reopen'];
+    return ['cancel'];
+}
+
+function lifecycleLabel(operation) {
+    return { complete: 'Complete', cancel: 'Cancel', reopen: 'Reopen' }[operation];
+}
+
+async function manageLifecycle(job, operation) {
+    if (busyJob.value) return;
+    if (!window.confirm(`${lifecycleLabel(operation)} onboarding for ${job.clinicName}?`)) return;
+    const reason =
+        operation === 'complete'
+            ? null
+            : window.prompt(`Reason to ${operation} this Onboarding Job:`)?.trim();
+    if (operation !== 'complete' && (!reason || reason.length < 5)) {
+        error.value = 'A clear reason of at least five characters is required.';
+        return;
+    }
+
+    busyJob.value = `lifecycle:${job.id}`;
+    error.value = '';
+    success.value = '';
+    const response = await browserHttpRequest(
+        props.lifecycleUrlTemplate.replace('__JOB_ID__', job.id),
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                operation,
+                reason,
+                expected_version: job.version,
+            }),
+        },
+    );
+    busyJob.value = null;
+
+    if (!response.ok) {
+        error.value = response.body?.message ?? 'The Onboarding Job could not be updated.';
+        return;
+    }
+    success.value = response.body?.message ?? 'Onboarding Job updated successfully.';
     router.reload({ only: ['onboarding'] });
 }
 </script>
@@ -256,6 +304,29 @@ async function establishOwner(job) {
                             {{ busyJob === `owner:${job.id}` ? 'Sending…' : 'Set up owner' }}
                         </button>
                     </div>
+                </div>
+                <div class="mt-5 flex flex-wrap gap-2 border-t border-slate-200 pt-5">
+                    <button
+                        v-for="operation in lifecycleOperations(job)"
+                        :key="operation"
+                        type="button"
+                        :disabled="busyJob !== null"
+                        class="min-h-10 rounded-xl border px-4 text-sm font-semibold disabled:opacity-50"
+                        :class="
+                            operation === 'complete'
+                                ? 'border-emerald-700 text-emerald-800'
+                                : operation === 'cancel'
+                                  ? 'border-red-300 text-red-700'
+                                  : 'border-slate-400 text-slate-800'
+                        "
+                        @click="manageLifecycle(job, operation)"
+                    >
+                        {{
+                            busyJob === `lifecycle:${job.id}`
+                                ? 'Updating…'
+                                : `${lifecycleLabel(operation)} job`
+                        }}
+                    </button>
                 </div>
             </article>
         </div>

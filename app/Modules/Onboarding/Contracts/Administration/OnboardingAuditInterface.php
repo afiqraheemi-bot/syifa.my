@@ -33,4 +33,16 @@ interface OnboardingAuditInterface
         string $correlationId,
         DateTimeImmutable $occurredAt,
     ): void;
+
+    public function recordJobLifecycleChange(
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $operation,
+        ?string $reason,
+        int $previousVersion,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void;
 }

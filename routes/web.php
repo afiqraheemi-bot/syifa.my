@@ -129,6 +129,10 @@ Route::post('/dashboard/onboarding-management/{jobId}/reassignment', [SuperAdmin
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.onboarding-management.reassign');
+Route::post('/dashboard/onboarding-management/{jobId}/lifecycle', [SuperAdminOnboardingController::class, 'lifecycle'])
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.onboarding-management.lifecycle');
 Route::post('/dashboard/onboarding-management/tenants/{tenantId}/owner', [SuperAdminOnboardingController::class, 'establishOwner'])
     ->whereUuid('tenantId')
     ->middleware('authorize.context:platform_identity,super_admin')

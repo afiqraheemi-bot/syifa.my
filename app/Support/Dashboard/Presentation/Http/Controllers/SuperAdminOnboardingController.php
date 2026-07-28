@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Support\Dashboard\Presentation\Http\Controllers;
 
 use App\Modules\Onboarding\Application\Administration\AssignWebsiteDesignerService;
+use App\Modules\Onboarding\Application\Administration\ManageOnboardingJobLifecycleService;
 use App\Modules\Onboarding\Application\Administration\ReassignWebsiteDesignerService;
 use App\Modules\Onboarding\Contracts\Administration\AssignWebsiteDesignerCommand;
+use App\Modules\Onboarding\Contracts\Administration\ManageOnboardingJobLifecycleCommand;
 use App\Modules\Onboarding\Contracts\Administration\ReassignWebsiteDesignerCommand;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidOnboardingJobLifecycleTransitionException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidWebsiteDesignerAssignmentTransitionException;
 use App\Modules\TenantManagement\Application\Administration\EstablishClinicOwnerService;
 use App\Modules\TenantManagement\Contracts\Administration\EstablishClinicOwnerCommand;
@@ -131,5 +134,47 @@ final readonly class SuperAdminOnboardingController
         }
 
         return response()->json(['authorityId' => $authorityId], 201);
+    }
+
+    public function lifecycle(
+        string $jobId,
+        Request $request,
+        ManageOnboardingJobLifecycleService $lifecycle,
+    ): JsonResponse {
+        /** @var array{operation: string, reason?: string|null, expected_version: int} $validated */
+        $validated = $request->validate([
+            'operation' => ['required', 'in:complete,cancel,reopen'],
+            'reason' => ['nullable', 'required_unless:operation,complete', 'string', 'min:5', 'max:1000'],
+            'expected_version' => ['required', 'integer', 'min:1'],
+        ]);
+        $context = $request->attributes->get(AuthorizationContext::class);
+        if (! $context instanceof AuthorizationContext) {
+            return response()->json(['message' => 'Super Admin authorization context is unavailable.'], 403);
+        }
+
+        try {
+            $job = $lifecycle->execute(new ManageOnboardingJobLifecycleCommand(
+                $jobId,
+                $validated['operation'],
+                $validated['reason'] ?? null,
+                $validated['expected_version'],
+                $context->identityId,
+                (string) Str::uuid(),
+                new DateTimeImmutable,
+            ));
+        } catch (InvalidOnboardingJobLifecycleTransitionException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        }
+
+        return response()->json([
+            'message' => match ($validated['operation']) {
+                'complete' => 'Onboarding Job completed successfully.',
+                'cancel' => 'Onboarding Job cancelled successfully.',
+                'reopen' => 'Onboarding Job reopened successfully.',
+                default => 'Onboarding Job updated successfully.',
+            },
+            'status' => $job->status()->value,
+            'version' => $job->version(),
+        ]);
     }
 }

@@ -87,6 +87,39 @@ final readonly class OnboardingPlatformAuditAdapter implements OnboardingAuditIn
         ));
     }
 
+    public function recordJobLifecycleChange(
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $operation,
+        ?string $reason,
+        int $previousVersion,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $this->audit->record(new AuditEntryData(
+            $this->identifier($jobId, $correlationId.':'.$operation),
+            $occurredAt,
+            new AuditActorData(AuditActorType::PlatformIdentity->value, $actorPlatformIdentityId),
+            $tenantId,
+            'onboarding.job.'.$operation,
+            new AuditTargetData('onboarding_job', $jobId),
+            new AuditOutcomeData(AuditOutcomeType::Succeeded->value, null),
+            $correlationId,
+            [
+                'resource_type' => 'onboarding_job',
+                'target_label' => sprintf(
+                    'operation=%s;reason=%s;version=%d->%d',
+                    $operation,
+                    $reason === null ? 'not_required' : $reason,
+                    $previousVersion,
+                    $resultingVersion,
+                ),
+            ],
+        ));
+    }
+
     public function recordWebsiteApprovalRequested(
         string $actorId,
         string $tenantId,

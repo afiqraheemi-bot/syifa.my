@@ -5,16 +5,24 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Onboarding\Application;
 
 use App\Modules\Onboarding\Application\Administration\AssignWebsiteDesignerService;
+use App\Modules\Onboarding\Application\Administration\ManageOnboardingJobLifecycleService;
 use App\Modules\Onboarding\Application\Administration\ReassignWebsiteDesignerService;
 use App\Modules\Onboarding\Contracts\Administration\AssignWebsiteDesignerCommand;
+use App\Modules\Onboarding\Contracts\Administration\ManageOnboardingJobLifecycleCommand;
 use App\Modules\Onboarding\Contracts\Administration\OnboardingAuditInterface;
 use App\Modules\Onboarding\Contracts\Administration\ReassignWebsiteDesignerCommand;
 use App\Modules\Onboarding\Contracts\Administration\WebsiteDesignerEligibilityInterface;
+use App\Modules\Onboarding\Contracts\WebsiteApproval\OnboardingWorkflowTransactionInterface;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidWebsiteDesignerAssignmentTransitionException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Repositories\OnboardingJobRepositoryInterface;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\ClinicOwnerAuthorityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobStatus;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteId;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
@@ -122,6 +130,52 @@ final class AssignWebsiteDesignerServiceTest extends TestCase
         self::assertSame(1, $audit->reassignmentCalls);
     }
 
+    public function test_super_admin_completes_only_a_launch_ready_job_with_audited_version_change(): void
+    {
+        $job = OnboardingJob::create(
+            new OnboardingJobId($this->uuid(1)),
+            new TenantId($this->uuid(2)),
+            new WebsiteId($this->uuid(3)),
+            new DateTimeImmutable('2026-09-01T00:00:00Z'),
+        );
+        $job->assignWebsiteDesigner(
+            new WebsiteDesignerAssignmentId($this->uuid(10)),
+            new PlatformIdentityId($this->uuid(4)),
+            new DateTimeImmutable('2026-09-01T00:01:00Z'),
+        );
+        $job->requestWebsiteApproval(
+            new WebsiteApprovalId($this->uuid(11)),
+            new PlatformIdentityId($this->uuid(4)),
+            2,
+            3,
+            new DateTimeImmutable('2026-09-01T00:02:00Z'),
+        );
+        $job->approveWebsite(
+            new ClinicOwnerAuthorityId($this->uuid(12)),
+            new DateTimeImmutable('2026-09-01T00:03:00Z'),
+        );
+        $job->synchronizePersistenceVersion(1);
+        $audit = new InMemoryOnboardingAuditRecorder;
+
+        $completed = (new ManageOnboardingJobLifecycleService(
+            new InMemoryAdminOnboardingJobRepository($job),
+            $audit,
+            new ImmediateAdminOnboardingTransaction,
+        ))->execute(new ManageOnboardingJobLifecycleCommand(
+            $job->id->value,
+            'complete',
+            null,
+            1,
+            $this->uuid(5),
+            $this->uuid(6),
+            new DateTimeImmutable('2026-09-01T00:04:00Z'),
+        ));
+
+        self::assertSame(OnboardingJobStatus::Completed, $completed->status());
+        self::assertNull($completed->activeWebsiteDesignerAssignment());
+        self::assertSame(1, $audit->lifecycleCalls);
+    }
+
     private function uuid(int $suffix): string
     {
         return sprintf('00000000-0000-4000-8000-%012d', $suffix);
@@ -166,6 +220,8 @@ final class InMemoryOnboardingAuditRecorder implements OnboardingAuditInterface
 {
     public int $reassignmentCalls = 0;
 
+    public int $lifecycleCalls = 0;
+
     public function recordDesignerAssignment(
         string $auditEntryId,
         string $actorPlatformIdentityId,
@@ -192,5 +248,27 @@ final class InMemoryOnboardingAuditRecorder implements OnboardingAuditInterface
         DateTimeImmutable $occurredAt,
     ): void {
         $this->reassignmentCalls++;
+    }
+
+    public function recordJobLifecycleChange(
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $operation,
+        ?string $reason,
+        int $previousVersion,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $this->lifecycleCalls++;
+    }
+}
+
+final readonly class ImmediateAdminOnboardingTransaction implements OnboardingWorkflowTransactionInterface
+{
+    public function run(callable $operation): mixed
+    {
+        return $operation();
     }
 }
