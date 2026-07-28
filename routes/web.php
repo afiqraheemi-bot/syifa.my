@@ -112,6 +112,9 @@ Route::prefix('/dashboard/commercial')
             ->name('.plans.create');
         Route::get('/billing-options/create', [SuperAdminCommercialManagementController::class, 'createBillingOption'])
             ->name('.billing-options.create');
+        Route::get('/billing-options/{billingOptionId}/edit', [SuperAdminCommercialManagementController::class, 'editBillingOption'])
+            ->whereUuid('billingOptionId')
+            ->name('.billing-options.edit');
         Route::get('/plans/{planId}/edit', [SuperAdminCommercialManagementController::class, 'editPlan'])
             ->whereUuid('planId')
             ->name('.plans.edit');
@@ -131,6 +134,9 @@ Route::prefix('/dashboard/commercial')
             ->name('.plans.store');
         Route::post('/billing-options', [SuperAdminCommercialBillingOptionOperationController::class, 'store'])
             ->name('.billing-options.store');
+        Route::patch('/billing-options/{billingOptionId}', [SuperAdminCommercialBillingOptionOperationController::class, 'update'])
+            ->whereUuid('billingOptionId')
+            ->name('.billing-options.update');
         Route::patch('/plans/{planId}', [SuperAdminCommercialPlanOperationController::class, 'update'])
             ->whereUuid('planId')
             ->name('.plans.update');

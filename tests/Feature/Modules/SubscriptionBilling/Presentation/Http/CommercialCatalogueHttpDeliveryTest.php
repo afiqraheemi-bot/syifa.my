@@ -180,7 +180,7 @@ final class CommercialCatalogueHttpDeliveryTest extends LaravelTestCase
                         return $this->result;
                     }
                 },
-                ['billing_option_id' => '22222222-2222-4222-8222-222222222222', 'code' => 'annual', 'name' => 'Annual', 'availability' => 'available', 'recurrence_classification' => 'recurring', 'interval_unit' => 'year', 'interval_count' => 1, 'effective_start' => '2026-07-01', 'display_order' => 1],
+                ['billing_option_id' => '22222222-2222-4222-8222-222222222222', 'code' => 'annual', 'name' => 'Annual', 'availability' => 'available', 'recurrence_classification' => 'recurring', 'interval_unit' => 'year', 'interval_count' => 1, 'effective_start' => '2026-07-01', 'display_order' => 1, 'version' => 1],
             ],
             'capabilities' => [
                 self::BASE.'/capabilities',

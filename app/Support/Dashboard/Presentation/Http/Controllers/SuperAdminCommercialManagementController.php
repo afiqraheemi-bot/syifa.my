@@ -39,6 +39,19 @@ final readonly class SuperAdminCommercialManagementController
         return inertia($view->component, $view->props);
     }
 
+    public function editBillingOption(
+        Request $request,
+        string $billingOptionId,
+        SuperAdminCommercialMutationPage $page,
+    ): Response {
+        $view = $page->editBillingOption(
+            $request->attributes->get(AuthorizationContext::class),
+            $billingOptionId,
+        );
+
+        return inertia($view->component, $view->props);
+    }
+
     public function editPlan(
         Request $request,
         string $planId,

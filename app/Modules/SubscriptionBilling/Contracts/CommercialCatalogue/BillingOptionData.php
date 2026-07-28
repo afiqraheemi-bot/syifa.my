@@ -22,5 +22,6 @@ final readonly class BillingOptionData
         public string $effectiveStart,
         public ?string $effectiveEnd,
         public int $displayOrder,
+        public int $version = 1,
     ) {}
 }

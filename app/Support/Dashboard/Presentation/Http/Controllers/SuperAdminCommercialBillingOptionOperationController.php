@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Support\Dashboard\Presentation\Http\Controllers;
 
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\CreateBillingOptionService;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\Exceptions\CommercialCatalogueResourceNotFoundException;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\Exceptions\CommercialCatalogueVersionMismatchException;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\UpdateBillingOptionService;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CreateBillingOptionCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\UpdateBillingOptionCommand;
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\Exceptions\InvalidCommercialCatalogueValueException;
 use App\Support\Authorization\Application\AuthorizationContext;
 use DateTimeImmutable;
@@ -52,6 +56,46 @@ final readonly class SuperAdminCommercialBillingOptionOperationController
             ->setStatusCode(303);
     }
 
+    public function update(
+        Request $request,
+        string $billingOptionId,
+        UpdateBillingOptionService $service,
+    ): RedirectResponse {
+        try {
+            $input = $this->input($request, true);
+            $service->execute(new UpdateBillingOptionCommand(
+                $billingOptionId,
+                $input['name'],
+                $input['availability'],
+                $input['recurrence_classification'],
+                $input['interval_unit'],
+                $input['interval_count'],
+                $input['effective_start'],
+                $input['effective_end'],
+                $input['display_order'],
+                $input['expected_version'],
+                (new DateTimeImmutable)->format('Y-m-d\TH:i:s\Z'),
+                $this->actorId($request),
+                (string) Str::uuid(),
+            ));
+        } catch (ValidationException $exception) {
+            return back()
+                ->withErrors($exception->errors(), 'commercial')
+                ->withInput($request->input())
+                ->setStatusCode(303);
+        } catch (CommercialCatalogueResourceNotFoundException|CommercialCatalogueVersionMismatchException|InvalidCommercialCatalogueValueException $exception) {
+            return back()
+                ->withInput()
+                ->with('commercial_error', $exception->getMessage())
+                ->setStatusCode(303);
+        }
+
+        return redirect()
+            ->route('dashboard.commercial')
+            ->with('operation', 'billing_option_updated')
+            ->setStatusCode(303);
+    }
+
     /**
      * @return array{
      *   code: string,
@@ -61,23 +105,15 @@ final readonly class SuperAdminCommercialBillingOptionOperationController
      *   interval_count: ?int,
      *   effective_start: string,
      *   effective_end: ?string,
-     *   display_order: int
+     *   display_order: int,
+     *   availability: string,
+     *   expected_version: int
      * }
      */
-    private function input(Request $request): array
+    private function input(Request $request, bool $updating = false): array
     {
-        /** @var array{
-         *   code: string,
-         *   name: string,
-         *   recurrence_classification: string,
-         *   interval_unit?: string|null,
-         *   interval_count?: int|null,
-         *   effective_start: string,
-         *   effective_end?: string|null,
-         *   display_order: int
-         * } $validated
-         */
-        $validated = $request->validateWithBag('commercial', [
+        /** @var array<string, list<string>> $rules */
+        $rules = [
             'code' => ['required', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:100'],
             'recurrence_classification' => ['required', 'in:recurring,non_recurring'],
@@ -86,10 +122,31 @@ final readonly class SuperAdminCommercialBillingOptionOperationController
             'effective_start' => ['required', 'date_format:Y-m-d'],
             'effective_end' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:effective_start'],
             'display_order' => ['required', 'integer', 'min:0'],
-        ]);
+        ];
+        if ($updating) {
+            $rules['availability'] = ['required', 'in:available,unavailable'];
+            $rules['expected_version'] = ['required', 'integer', 'min:1'];
+        }
+
+        /** @var array{
+         *   code: string,
+         *   name: string,
+         *   recurrence_classification: string,
+         *   interval_unit?: string|null,
+         *   interval_count?: int|null,
+         *   effective_start: string,
+         *   effective_end?: string|null,
+         *   display_order: int,
+         *   availability?: string,
+         *   expected_version?: int
+         * } $validated
+         */
+        $validated = $request->validateWithBag('commercial', $rules);
 
         return [
             ...$validated,
+            'availability' => $validated['availability'] ?? 'available',
+            'expected_version' => (int) ($validated['expected_version'] ?? 0),
             'interval_unit' => $validated['interval_unit'] ?? null,
             'interval_count' => isset($validated['interval_count']) ? (int) $validated['interval_count'] : null,
             'effective_end' => $validated['effective_end'] ?? null,

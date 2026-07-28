@@ -203,6 +203,12 @@ function askForConfirmation(action) {
                             Effective {{ option.effectiveStart }} –
                             {{ option.effectiveEnd ?? 'No end date' }}
                         </p>
+                        <a
+                            :href="option.editUrl"
+                            class="mt-4 inline-flex min-h-10 items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                        >
+                            Edit Billing Option
+                        </a>
                     </article>
                 </div>
                 <DashboardEmptyState

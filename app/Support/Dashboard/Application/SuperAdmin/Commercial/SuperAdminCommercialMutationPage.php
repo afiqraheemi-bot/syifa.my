@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Dashboard\Application\SuperAdmin\Commercial;
 
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\GetBillingOptionService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\GetPlanOfferingService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\GetPlanService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ListBillingOptionsService;
@@ -24,6 +25,7 @@ final readonly class SuperAdminCommercialMutationPage
     public function __construct(
         private GetPlanService $plan,
         private GetPlanOfferingService $offering,
+        private GetBillingOptionService $billingOption,
         private ListBillingOptionsService $billingOptions,
         private PricingHistoryReadInterface $pricingHistory,
     ) {}
@@ -36,6 +38,18 @@ final readonly class SuperAdminCommercialMutationPage
     public function createBillingOption(mixed $context): DashboardPageView
     {
         return $this->view($this->authorization($context), 'billing-option-create');
+    }
+
+    public function editBillingOption(mixed $context, string $billingOptionId): DashboardPageView
+    {
+        $billingOption = $this->billingOption->execute($billingOptionId)
+            ?? throw new NotFoundHttpException('Billing Option was not found.');
+
+        return $this->view(
+            $this->authorization($context),
+            'billing-option-edit',
+            billingOption: $billingOption,
+        );
     }
 
     public function editPlan(mixed $context, string $planId): DashboardPageView
@@ -75,6 +89,7 @@ final readonly class SuperAdminCommercialMutationPage
         string $formKind,
         ?PlanData $plan = null,
         ?PlanOfferingData $offering = null,
+        ?BillingOptionData $billingOption = null,
     ): DashboardPageView {
         $isPlan = str_starts_with($formKind, 'plan-');
         $isBillingOption = str_starts_with($formKind, 'billing-option-');
@@ -97,7 +112,7 @@ final readonly class SuperAdminCommercialMutationPage
             'contextLabel' => 'Super Admin workspace',
             'csrfToken' => csrf_token(),
             'formKind' => $formKind,
-            'action' => $this->action($formKind, $plan, $offering),
+            'action' => $this->action($formKind, $plan, $offering, $billingOption),
             'cancelUrl' => $cancelUrl,
             'error' => session('commercial_error'),
             'validationErrors' => $this->validationErrors(),
@@ -133,6 +148,19 @@ final readonly class SuperAdminCommercialMutationPage
                 'displayOrder' => $offering->displayOrder,
                 'version' => $this->pricingHistory->forPlanOffering($offering->planOfferingId)[0]->version ?? 0,
             ],
+            'billingOption' => $billingOption === null ? null : [
+                'id' => $billingOption->billingOptionId,
+                'code' => $billingOption->code,
+                'name' => $billingOption->name,
+                'availability' => $billingOption->availability,
+                'recurrence' => $billingOption->recurrenceClassification,
+                'intervalUnit' => $billingOption->intervalUnit,
+                'intervalCount' => $billingOption->intervalCount,
+                'effectiveStart' => $billingOption->effectiveStart,
+                'effectiveEnd' => $billingOption->effectiveEnd,
+                'displayOrder' => $billingOption->displayOrder,
+                'version' => $billingOption->version,
+            ],
             'billingOptions' => array_map(static fn (BillingOptionData $option): array => [
                 'id' => $option->billingOptionId,
                 'label' => $option->name,
@@ -151,10 +179,12 @@ final readonly class SuperAdminCommercialMutationPage
         string $formKind,
         ?PlanData $plan,
         ?PlanOfferingData $offering,
+        ?BillingOptionData $billingOption = null,
     ): string {
         return match ($formKind) {
             'plan-create' => route('dashboard.commercial.plans.store'),
             'billing-option-create' => route('dashboard.commercial.billing-options.store'),
+            'billing-option-edit' => route('dashboard.commercial.billing-options.update', $billingOption?->billingOptionId),
             'plan-edit' => route('dashboard.commercial.plans.update', $plan?->planId),
             'offering-create' => route('dashboard.commercial.offerings.store'),
             'offering-edit' => route('dashboard.commercial.offerings.update', $offering?->planOfferingId),

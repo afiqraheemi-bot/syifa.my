@@ -211,6 +211,7 @@ final readonly class PostgresCommercialCatalogueQueryAdapter implements BillingO
             $this->dateString($this->value($row, 'effective_start')),
             $this->nullableDateString($this->value($row, 'effective_end')),
             $this->integer($row, 'display_order'),
+            $this->integer($row, 'version'),
         );
     }
 

@@ -18,6 +18,7 @@ const props = defineProps({
     oldInput: { type: Object, required: true },
     plan: { type: Object, default: null },
     offering: { type: Object, default: null },
+    billingOption: { type: Object, default: null },
     billingOptions: { type: Array, required: true },
 });
 
@@ -27,7 +28,9 @@ let submissionStarted = false;
 const isPlan = computed(() => props.formKind.startsWith('plan-'));
 const isBillingOption = computed(() => props.formKind.startsWith('billing-option-'));
 const isEdit = computed(() => props.formKind.endsWith('-edit'));
-const recurrence = ref(fieldValue('recurrence_classification', 'recurring'));
+const recurrence = ref(
+    fieldValue('recurrence_classification', props.billingOption?.recurrence ?? 'recurring'),
+);
 const amountMyr = ref(formatMyr(fieldValue('amount_minor', props.offering?.amountMinor)));
 const amountMinor = computed(() => {
     if (amountMyr.value.trim() === '') return '';
@@ -166,12 +169,20 @@ function beginSubmit(event) {
                 @submit="beginSubmit"
             >
                 <input type="hidden" name="_token" :value="csrfToken" />
+                <input v-if="isEdit" type="hidden" name="_method" value="patch" />
+                <input
+                    v-if="isEdit"
+                    type="hidden"
+                    name="expected_version"
+                    :value="billingOption.version"
+                />
                 <label class="grid gap-1 text-sm font-semibold">
                     Billing option code
                     <input
                         name="code"
                         maxlength="50"
-                        :value="fieldValue('code')"
+                        :value="fieldValue('code', billingOption?.code)"
+                        :readonly="isEdit"
                         class="min-h-11 rounded-xl border border-slate-300 px-3"
                     />
                 </label>
@@ -180,9 +191,35 @@ function beginSubmit(event) {
                     <input
                         name="name"
                         maxlength="100"
-                        :value="fieldValue('name')"
+                        :value="fieldValue('name', billingOption?.name)"
                         class="min-h-11 rounded-xl border border-slate-300 px-3"
                     />
+                </label>
+                <label v-if="isEdit" class="grid gap-1 text-sm font-semibold">
+                    Availability
+                    <select
+                        name="availability"
+                        class="min-h-11 rounded-xl border border-slate-300 bg-white px-3"
+                    >
+                        <option
+                            value="available"
+                            :selected="
+                                fieldValue('availability', billingOption?.availability) ===
+                                'available'
+                            "
+                        >
+                            Available
+                        </option>
+                        <option
+                            value="unavailable"
+                            :selected="
+                                fieldValue('availability', billingOption?.availability) ===
+                                'unavailable'
+                            "
+                        >
+                            Unavailable
+                        </option>
+                    </select>
                 </label>
                 <label class="grid gap-1 text-sm font-semibold">
                     Billing type
@@ -203,13 +240,23 @@ function beginSubmit(event) {
                     >
                         <option
                             value="month"
-                            :selected="fieldValue('interval_unit', 'year') === 'month'"
+                            :selected="
+                                fieldValue(
+                                    'interval_unit',
+                                    billingOption?.intervalUnit ?? 'year',
+                                ) === 'month'
+                            "
                         >
                             Month
                         </option>
                         <option
                             value="year"
-                            :selected="fieldValue('interval_unit', 'year') === 'year'"
+                            :selected="
+                                fieldValue(
+                                    'interval_unit',
+                                    billingOption?.intervalUnit ?? 'year',
+                                ) === 'year'
+                            "
                         >
                             Year
                         </option>
@@ -221,7 +268,7 @@ function beginSubmit(event) {
                         name="interval_count"
                         type="number"
                         min="1"
-                        :value="fieldValue('interval_count', 1)"
+                        :value="fieldValue('interval_count', billingOption?.intervalCount ?? 1)"
                         class="min-h-11 rounded-xl border border-slate-300 px-3"
                     />
                 </label>
@@ -230,7 +277,7 @@ function beginSubmit(event) {
                     <input
                         name="effective_start"
                         type="date"
-                        :value="fieldValue('effective_start')"
+                        :value="fieldValue('effective_start', billingOption?.effectiveStart)"
                         class="min-h-11 rounded-xl border border-slate-300 px-3"
                     />
                 </label>
@@ -239,7 +286,7 @@ function beginSubmit(event) {
                     <input
                         name="effective_end"
                         type="date"
-                        :value="fieldValue('effective_end')"
+                        :value="fieldValue('effective_end', billingOption?.effectiveEnd)"
                         class="min-h-11 rounded-xl border border-slate-300 px-3"
                     />
                 </label>
@@ -249,7 +296,7 @@ function beginSubmit(event) {
                         name="display_order"
                         type="number"
                         min="0"
-                        :value="fieldValue('display_order', 0)"
+                        :value="fieldValue('display_order', billingOption?.displayOrder ?? 0)"
                         class="min-h-11 rounded-xl border border-slate-300 px-3"
                     />
                 </label>
@@ -265,7 +312,13 @@ function beginSubmit(event) {
                         class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:opacity-60"
                         :disabled="submitting"
                     >
-                        {{ submitting ? 'Creating…' : 'Create Billing Option' }}
+                        {{
+                            submitting
+                                ? 'Saving…'
+                                : isEdit
+                                  ? 'Save Billing Option'
+                                  : 'Create Billing Option'
+                        }}
                     </button>
                 </div>
             </form>

@@ -117,6 +117,7 @@ final readonly class SuperAdminCommercialManagementPage
                 'intervalCount' => $item->intervalCount,
                 'effectiveStart' => $item->effectiveStart,
                 'effectiveEnd' => $item->effectiveEnd,
+                'editUrl' => route('dashboard.commercial.billing-options.edit', $item->billingOptionId),
             ], $billingOptions),
             'capabilities' => array_map(static fn (CapabilityDefinitionData $item): array => [
                 'id' => $item->capabilityId,

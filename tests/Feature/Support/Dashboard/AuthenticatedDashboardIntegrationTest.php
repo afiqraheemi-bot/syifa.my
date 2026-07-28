@@ -559,6 +559,13 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                         route('dashboard.commercial.billing-options.create'),
                     )
                     ->where('billingOptions.0.code', 'annual')
+                    ->where(
+                        'billingOptions.0.editUrl',
+                        route(
+                            'dashboard.commercial.billing-options.edit',
+                            '10000000-0000-4000-8000-000000000002',
+                        ),
+                    )
                     ->missing('validationErrors')
                     ->missing('oldInput')
                     ->where('selectedPlan', null);
@@ -579,6 +586,21 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 ->where('formKind', 'billing-option-create')
                 ->where('action', route('dashboard.commercial.billing-options.store'))
                 ->where('validationErrors', []));
+
+        $this->get('/dashboard/commercial/billing-options/10000000-0000-4000-8000-000000000002/edit')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Commercial/SuperAdminCommercialMutationForm', false)
+                ->where('formKind', 'billing-option-edit')
+                ->where('billingOption.name', 'Annual')
+                ->where('billingOption.version', 1)
+                ->where(
+                    'action',
+                    route(
+                        'dashboard.commercial.billing-options.update',
+                        '10000000-0000-4000-8000-000000000002',
+                    ),
+                ));
 
         $this->get("/dashboard/commercial/plans/{$planId}/edit")
             ->assertOk()
@@ -639,8 +661,10 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->getJson('/dashboard/commercial')->assertForbidden();
         $this->getJson('/dashboard/commercial/plans/create')->assertForbidden();
         $this->getJson('/dashboard/commercial/billing-options/create')->assertForbidden();
+        $this->getJson('/dashboard/commercial/billing-options/10000000-0000-4000-8000-000000000002/edit')->assertForbidden();
         $this->postJson('/dashboard/commercial/plans')->assertForbidden();
         $this->postJson('/dashboard/commercial/billing-options')->assertForbidden();
+        $this->patchJson('/dashboard/commercial/billing-options/10000000-0000-4000-8000-000000000002')->assertForbidden();
         $this->postJson('/dashboard/commercial/offerings')->assertForbidden();
 
         $this->app->instance(
