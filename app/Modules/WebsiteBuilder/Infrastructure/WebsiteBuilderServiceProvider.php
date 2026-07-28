@@ -15,12 +15,16 @@ use App\Modules\WebsiteBuilder\Application\Delivery\PublicAvailabilityCacheInter
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContextFactoryInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteDocumentFactory;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteRenderModelProviderInterface;
+use App\Modules\WebsiteBuilder\Application\Provisioning\ProvisionWebsiteFoundationService;
+use App\Modules\WebsiteBuilder\Application\Provisioning\ReserveProvisionedWebsiteAddressService;
 use App\Modules\WebsiteBuilder\Application\WebsiteAddress\WebsiteSubdomainPolicy;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\WebsiteDraftSectionCodec;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\BookingSubmissionGatewayInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicAvailabilityReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfigurationReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\WebsiteTenantResolverInterface;
+use App\Modules\WebsiteBuilder\Contracts\Provisioning\ProvisionWebsiteFoundationInterface;
+use App\Modules\WebsiteBuilder\Contracts\Provisioning\ReserveProvisionedWebsiteAddressInterface;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ActiveServiceReferenceReadInterface;
@@ -84,6 +88,8 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
             WebsitePublicAddressRepositoryInterface::class,
             WebsitePublicAddressReadInterface::class,
         );
+        $this->app->singleton(ProvisionWebsiteFoundationInterface::class, ProvisionWebsiteFoundationService::class);
+        $this->app->singleton(ReserveProvisionedWebsiteAddressInterface::class, ReserveProvisionedWebsiteAddressService::class);
         $this->app->singleton(
             PublicSiteContextFactoryInterface::class,
             static fn (Application $application): PostgresPublicSiteContextFactory => new PostgresPublicSiteContextFactory(

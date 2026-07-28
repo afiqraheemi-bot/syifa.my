@@ -179,6 +179,7 @@ async function cancel() {
                         Alamat klinik
                         <input
                             v-model="form.clinicAddress"
+                            required
                             maxlength="1000"
                             class="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 font-normal"
                         />

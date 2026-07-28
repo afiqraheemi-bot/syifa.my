@@ -13,6 +13,7 @@ use App\Modules\ClinicRegistration\Contracts\Data\ClinicRegistrationData;
 use App\Modules\ClinicRegistration\Contracts\Events\ClinicRegistrationEventPublisherInterface;
 use App\Modules\ClinicRegistration\Contracts\Repositories\ClinicRegistrationRepositoryInterface;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\ProvisionedTenantReference;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
 
 final readonly class CompleteClinicRegistrationFromTrustedHandoffService implements TrustedClinicRegistrationCompletionInterface
 {
@@ -34,6 +35,17 @@ final readonly class CompleteClinicRegistrationFromTrustedHandoffService impleme
 
         if ($registration === null) {
             throw new ClinicRegistrationNotFoundException('Clinic registration was not found.');
+        }
+
+        if ($registration->status === RegistrationStatus::Provisioned) {
+            $expectedTenant = $command->provisionedTenantReference;
+            if ($registration->provisionedTenant?->value !== $expectedTenant) {
+                throw new UntrustedClinicRegistrationCompletionException(
+                    'Clinic registration provisioning lineage conflicts with the trusted handoff.',
+                );
+            }
+
+            return $this->data->fromDomain($registration);
         }
 
         $registration->markProvisioned(

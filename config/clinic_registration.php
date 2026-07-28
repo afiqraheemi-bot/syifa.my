@@ -22,6 +22,7 @@ return [
 
     'trusted_completion_sources' => [
         'tenant_management',
+        'provisioning_orchestrator',
     ],
 
     'language' => [

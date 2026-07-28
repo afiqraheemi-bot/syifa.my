@@ -10,10 +10,12 @@ use App\Modules\ClinicRegistration\Application\ClinicRegistrationIdentifierGener
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationTenantIdGenerator;
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationTenantIdGeneratorInterface;
 use App\Modules\ClinicRegistration\Application\CompleteClinicRegistrationFromTrustedHandoffService;
+use App\Modules\ClinicRegistration\Application\Provisioning\ClinicRegistrationProvisioningReadService;
 use App\Modules\ClinicRegistration\Application\TrustedCompletionSources;
 use App\Modules\ClinicRegistration\Contracts\Completion\TrustedClinicRegistrationCompletionInterface;
 use App\Modules\ClinicRegistration\Contracts\Events\ClinicRegistrationEventPublisherInterface;
 use App\Modules\ClinicRegistration\Contracts\Language\ClinicRegistrationLanguageRegistryInterface;
+use App\Modules\ClinicRegistration\Contracts\Provisioning\ClinicRegistrationProvisioningReadInterface;
 use App\Modules\ClinicRegistration\Contracts\Queries\ClinicRegistrationQueryInterface;
 use App\Modules\ClinicRegistration\Contracts\Repositories\ClinicRegistrationRepositoryInterface;
 use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialInterface;
@@ -70,6 +72,10 @@ final class ClinicRegistrationServiceProvider extends ServiceProvider
         $this->app->singleton(
             TrustedClinicRegistrationCompletionInterface::class,
             CompleteClinicRegistrationFromTrustedHandoffService::class,
+        );
+        $this->app->singleton(
+            ClinicRegistrationProvisioningReadInterface::class,
+            ClinicRegistrationProvisioningReadService::class,
         );
     }
 

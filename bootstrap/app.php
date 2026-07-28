@@ -13,6 +13,7 @@ use App\Modules\TenantManagement\Presentation\Http\Middleware\AttachRequestIdent
 use App\Modules\TenantManagement\Presentation\Http\Responses\ProblemDetailsResponse;
 use App\Support\Authorization\Http\Middleware\AuthorizeRequest;
 use App\Support\Identity\Http\Middleware\EnsureGuestForGuard;
+use App\Support\Provisioning\Infrastructure\Jobs\ProcessProvisioningWorkflowsJob;
 use App\Support\Provisioning\Infrastructure\Jobs\PublishSubscriptionProvisioningOutboxJob;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -111,6 +112,9 @@ return Application::configure(basePath: dirname(__DIR__))
             ->onOneServer()
             ->everyMinute();
         $schedule->job(new PublishSubscriptionProvisioningOutboxJob, 'provisioning-outbox', 'redis')
+            ->onOneServer()
+            ->everyMinute();
+        $schedule->job(new ProcessProvisioningWorkflowsJob, 'provisioning', 'redis')
             ->onOneServer()
             ->everyMinute();
     })

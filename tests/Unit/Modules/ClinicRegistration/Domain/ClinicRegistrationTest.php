@@ -54,6 +54,20 @@ final class ClinicRegistrationTest extends TestCase
         self::assertContainsOnlyInstancesOf(ClinicRegistrationSubmitted::class, $registration->releaseEvents());
     }
 
+    public function test_submit_requires_the_address_needed_by_automatic_website_provisioning(): void
+    {
+        $registration = $this->registration();
+        $registration->updateDraft(
+            new ClinicRegistrationProfile('Klinik Syifa', 'owner@clinic.test', '+60123456789', null),
+            [new DeclarationAcceptance('terms.acceptance', '2026-07-20', $this->occurredAt())],
+            new CommercialSelectionReference('offering-basic-monthly', 'monthly', 'catalogue-v1'),
+        );
+
+        $this->expectException(InvalidClinicRegistrationTransitionException::class);
+
+        $registration->submit($this->tenantId(), $this->occurredAt());
+    }
+
     public function test_submit_reserves_the_supplied_tenant_id_exactly_once(): void
     {
         $registration = $this->submittableRegistration();

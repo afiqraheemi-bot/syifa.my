@@ -7,6 +7,7 @@ namespace Tests\Unit\Support\Provisioning;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivatedIntegrationEvent;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxClaim;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxRepositoryInterface;
+use App\Support\Provisioning\Application\ClaimedProvisioningWorkflow;
 use App\Support\Provisioning\Application\ProvisioningWorkflowData;
 use App\Support\Provisioning\Application\ProvisioningWorkflowRepositoryInterface;
 use App\Support\Provisioning\Application\RegisterProvisioningWorkflowService;
@@ -144,5 +145,30 @@ final class ProvisioningWorkflowRepositoryStub implements ProvisioningWorkflowRe
     public function findBySourceEvent(string $sourceEventId): ?ProvisioningWorkflowData
     {
         return null;
+    }
+
+    public function claimNext(DateTimeImmutable $now): ?ClaimedProvisioningWorkflow
+    {
+        return null;
+    }
+
+    public function advance(string $workflowId, string $claimToken, string $nextStep, DateTimeImmutable $now): bool
+    {
+        return false;
+    }
+
+    public function releaseForRetry(
+        string $workflowId,
+        string $claimToken,
+        DateTimeImmutable $retryAt,
+        string $safeFailureLabel,
+        DateTimeImmutable $now,
+    ): bool {
+        return false;
+    }
+
+    public function complete(string $workflowId, string $claimToken, DateTimeImmutable $now): bool
+    {
+        return false;
     }
 }

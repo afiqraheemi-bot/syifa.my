@@ -43,7 +43,7 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
         self::assertStringNotContainsString('name="amount_minor"', $component);
         self::assertStringContainsString("getBag('commercial')", $mutationPage);
         self::assertStringContainsString('validationErrors', $mutationComponent);
-        self::assertSame(3, substr_count($mutationComponent, ':disabled="submitting"'));
+        self::assertSame(4, substr_count($mutationComponent, ':disabled="submitting"'));
         self::assertStringContainsString('Price (RM)', $mutationComponent);
         self::assertStringContainsString('name="amount_minor" :value="amountMinor"', $mutationComponent);
 

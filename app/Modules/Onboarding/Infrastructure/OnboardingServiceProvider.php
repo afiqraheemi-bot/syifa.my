@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Onboarding\Infrastructure;
 
+use App\Modules\Onboarding\Application\Provisioning\ProvisionOnboardingJobService;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
+use App\Modules\Onboarding\Contracts\Provisioning\ProvisionOnboardingJobInterface;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Repositories\OnboardingJobRepositoryInterface;
 use App\Modules\Onboarding\Infrastructure\Persistence\Mappers\OnboardingJobPersistenceMapper;
 use App\Modules\Onboarding\Infrastructure\Persistence\Repositories\PostgresOnboardingJobRepository;
@@ -16,6 +18,7 @@ final class OnboardingServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(ProvisionOnboardingJobInterface::class, ProvisionOnboardingJobService::class);
         $this->app->singleton(
             OnboardingJobRepositoryInterface::class,
             static function (Application $application): PostgresOnboardingJobRepository {

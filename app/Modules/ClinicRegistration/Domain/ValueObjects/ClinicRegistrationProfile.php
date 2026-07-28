@@ -34,6 +34,7 @@ final readonly class ClinicRegistrationProfile
     {
         return $this->clinicName !== null
             && $this->clinicEmail !== null
-            && $this->clinicPhone !== null;
+            && $this->clinicPhone !== null
+            && $this->clinicAddress !== null;
     }
 }
