@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Onboarding\Application\Administration;
 
+use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
 use App\Modules\Onboarding\Contracts\Administration\AssignWebsiteDesignerCommand;
 use App\Modules\Onboarding\Contracts\Administration\OnboardingAuditInterface;
 use App\Modules\Onboarding\Contracts\Administration\WebsiteDesignerEligibilityInterface;
@@ -19,6 +20,7 @@ final readonly class AssignWebsiteDesignerService
         private OnboardingJobRepositoryInterface $jobs,
         private WebsiteDesignerEligibilityInterface $designers,
         private OnboardingAuditInterface $audit,
+        private ?TransactionalNotificationGatewayInterface $notifications = null,
     ) {}
 
     public function execute(AssignWebsiteDesignerCommand $command): string
@@ -52,6 +54,11 @@ final readonly class AssignWebsiteDesignerService
             $job->version(),
             $command->correlationId,
             $command->occurredAt,
+        );
+        $this->notifications?->designerAssigned(
+            $job->tenantId->value,
+            $job->id->value,
+            $command->platformIdentityId,
         );
 
         return $assignmentId;

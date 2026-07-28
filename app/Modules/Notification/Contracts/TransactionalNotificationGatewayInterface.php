@@ -12,4 +12,12 @@ interface TransactionalNotificationGatewayInterface
         string $bookingReference,
         ?string $patientEmail,
     ): void;
+
+    public function designerAssigned(
+        string $tenantId,
+        string $onboardingJobId,
+        string $platformIdentityId,
+    ): void;
+
+    public function websitePublished(string $tenantId, string $websiteId): void;
 }

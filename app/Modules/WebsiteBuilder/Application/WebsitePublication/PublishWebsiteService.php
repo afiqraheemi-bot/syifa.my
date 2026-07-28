@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\WebsiteBuilder\Application\WebsitePublication;
 
+use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Application\Exceptions\WebsiteOperationForbiddenException;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorization;
@@ -38,6 +39,7 @@ final readonly class PublishWebsiteService
         private WebsitePublicationReadinessEvaluator $readiness,
         private WebsitePublicationContentFactory $content,
         private WebsitePublicationApprovalReadInterface $approval,
+        private ?TransactionalNotificationGatewayInterface $notifications = null,
     ) {}
 
     public function handle(PublishWebsiteCommand $command): PublishedWebsiteResult
@@ -52,7 +54,7 @@ final readonly class PublishWebsiteService
         $websiteId = new WebsiteId($command->websiteId);
         $this->authorization->assertCanUpdate($command->authorization, $tenantId);
 
-        return $this->transaction->run(
+        $result = $this->transaction->run(
             $tenantId->value,
             $websiteId->value,
             function () use ($command, $tenantId, $websiteId): PublishedWebsiteResult {
@@ -128,5 +130,9 @@ final readonly class PublishWebsiteService
                 );
             },
         );
+
+        $this->notifications?->websitePublished($command->tenantId, $command->websiteId);
+
+        return $result;
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Notification\Infrastructure;
 
+use App\Modules\ClinicRegistration\Domain\Events\ClinicRegistrationDecisionRecorded;
+use App\Modules\ClinicRegistration\Domain\Events\ClinicRegistrationSubmitted;
 use App\Modules\Notification\Application\PrepareNotificationService;
 use App\Modules\Notification\Contracts\NotificationDeliveryDispatcherInterface;
 use App\Modules\Notification\Contracts\NotificationIdentifierGeneratorInterface;
@@ -12,12 +14,16 @@ use App\Modules\Notification\Contracts\NotificationRepositoryInterface;
 use App\Modules\Notification\Contracts\NotificationTemplateReadInterface;
 use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
 use App\Modules\Notification\Infrastructure\Delivery\LaravelNotificationDeliveryDispatcher;
+use App\Modules\Notification\Infrastructure\Integration\ClinicRegistrationNotificationListener;
+use App\Modules\Notification\Infrastructure\Integration\PaymentNotificationListener;
 use App\Modules\Notification\Infrastructure\Integration\TransactionalNotificationGateway;
 use App\Modules\Notification\Infrastructure\Persistence\PostgresNotificationReadAdapter;
 use App\Modules\Notification\Infrastructure\Persistence\PostgresNotificationRepository;
 use App\Modules\Notification\Infrastructure\Persistence\PostgresNotificationTemplateReadAdapter;
 use App\Modules\Notification\Infrastructure\Support\UuidNotificationIdentifierGenerator;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentIntegrationOutboxEvent;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Psr\Log\LoggerInterface;
 
@@ -59,5 +65,14 @@ final class NotificationServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(database_path('migrations/notification'));
+        Event::listen(
+            ClinicRegistrationSubmitted::class,
+            [ClinicRegistrationNotificationListener::class, 'submitted'],
+        );
+        Event::listen(
+            ClinicRegistrationDecisionRecorded::class,
+            [ClinicRegistrationNotificationListener::class, 'decided'],
+        );
+        Event::listen(PaymentIntegrationOutboxEvent::class, PaymentNotificationListener::class);
     }
 }
