@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\ClinicRegistration\Domain;
 
 use App\Modules\ClinicRegistration\Domain\Events\ClinicRegistrationCancelled;
+use App\Modules\ClinicRegistration\Domain\Events\ClinicRegistrationDecisionRecorded;
 use App\Modules\ClinicRegistration\Domain\Events\ClinicRegistrationExpired;
 use App\Modules\ClinicRegistration\Domain\Events\ClinicRegistrationProvisioned;
+use App\Modules\ClinicRegistration\Domain\Events\ClinicRegistrationResubmitted;
+use App\Modules\ClinicRegistration\Domain\Events\ClinicRegistrationReviewStarted;
 use App\Modules\ClinicRegistration\Domain\Events\ClinicRegistrationStarted;
 use App\Modules\ClinicRegistration\Domain\Events\ClinicRegistrationSubmitted;
 use App\Modules\ClinicRegistration\Domain\Exceptions\InvalidClinicRegistrationTransitionException;
@@ -15,6 +18,7 @@ use App\Modules\ClinicRegistration\Domain\ValueObjects\CommercialSelectionRefere
 use App\Modules\ClinicRegistration\Domain\ValueObjects\DeclarationAcceptance;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\ProvisionedTenantReference;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationDecisionOutcome;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\TenantId;
@@ -24,6 +28,7 @@ final class ClinicRegistration
 {
     /**
      * @param  list<DeclarationAcceptance>  $declarations
+     * @param  list<RegistrationDecision>  $decisions
      * @param  list<object>  $recordedEvents
      */
     public function __construct(
@@ -40,6 +45,7 @@ final class ClinicRegistration
         public ?DateTimeImmutable $provisionedAt,
         public ?DateTimeImmutable $cancelledAt,
         public ?DateTimeImmutable $expiredAt,
+        public array $decisions = [],
         private int $version = 0,
         private array $recordedEvents = [],
     ) {}
@@ -63,6 +69,7 @@ final class ClinicRegistration
             provisionedAt: null,
             cancelledAt: null,
             expiredAt: null,
+            decisions: [],
         );
         $registration->record(new ClinicRegistrationStarted($id->value, $platformIdentity->value, $occurredAt));
 
@@ -109,7 +116,12 @@ final class ClinicRegistration
 
     public function cancel(DateTimeImmutable $occurredAt): void
     {
-        if (! in_array($this->status, [RegistrationStatus::Draft, RegistrationStatus::Submitted], true)) {
+        if (! in_array($this->status, [
+            RegistrationStatus::Draft,
+            RegistrationStatus::Submitted,
+            RegistrationStatus::UnderReview,
+            RegistrationStatus::CorrectionRequested,
+        ], true)) {
             throw new InvalidClinicRegistrationTransitionException('Only active registrations may be cancelled.');
         }
 
@@ -120,7 +132,12 @@ final class ClinicRegistration
 
     public function expire(DateTimeImmutable $occurredAt): void
     {
-        if (! in_array($this->status, [RegistrationStatus::Draft, RegistrationStatus::Submitted], true)) {
+        if (! in_array($this->status, [
+            RegistrationStatus::Draft,
+            RegistrationStatus::Submitted,
+            RegistrationStatus::UnderReview,
+            RegistrationStatus::CorrectionRequested,
+        ], true)) {
             throw new InvalidClinicRegistrationTransitionException('Only active registrations may expire.');
         }
 
@@ -131,8 +148,8 @@ final class ClinicRegistration
 
     public function markProvisioned(?ProvisionedTenantReference $tenantReference, DateTimeImmutable $occurredAt): void
     {
-        if ($this->status !== RegistrationStatus::Submitted) {
-            throw new InvalidClinicRegistrationTransitionException('Only submitted registrations may be provisioned.');
+        if ($this->status !== RegistrationStatus::Approved) {
+            throw new InvalidClinicRegistrationTransitionException('Only approved registrations may be provisioned.');
         }
 
         $this->status = RegistrationStatus::Provisioned;
@@ -145,6 +162,87 @@ final class ClinicRegistration
             $tenantReference?->value,
             $occurredAt,
         ));
+    }
+
+    public function startReview(string $reviewerPlatformIdentityId, DateTimeImmutable $occurredAt): void
+    {
+        if ($this->status !== RegistrationStatus::Submitted) {
+            throw new InvalidClinicRegistrationTransitionException('Only submitted registrations may enter review.');
+        }
+
+        $this->status = RegistrationStatus::UnderReview;
+        $this->record(new ClinicRegistrationReviewStarted($this->id->value, $reviewerPlatformIdentityId, $occurredAt));
+    }
+
+    public function decide(
+        string $decisionId,
+        RegistrationDecisionOutcome $outcome,
+        string $reasonCategory,
+        ?string $correctionInstructions,
+        string $reviewerPlatformIdentityId,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        if ($this->status !== RegistrationStatus::UnderReview) {
+            throw new InvalidClinicRegistrationTransitionException('Only registrations under review may receive a decision.');
+        }
+
+        $decision = new RegistrationDecision(
+            $decisionId,
+            $outcome,
+            trim($reasonCategory),
+            $correctionInstructions === null ? null : trim($correctionInstructions),
+            $reviewerPlatformIdentityId,
+            $occurredAt,
+        );
+        $this->decisions[] = $decision;
+        $this->status = match ($outcome) {
+            RegistrationDecisionOutcome::Approved => RegistrationStatus::Approved,
+            RegistrationDecisionOutcome::Rejected => RegistrationStatus::Rejected,
+            RegistrationDecisionOutcome::CorrectionRequested => RegistrationStatus::CorrectionRequested,
+        };
+        $this->record(new ClinicRegistrationDecisionRecorded(
+            $this->id->value,
+            $decisionId,
+            $outcome->value,
+            $reviewerPlatformIdentityId,
+            $occurredAt,
+        ));
+    }
+
+    /** @param list<DeclarationAcceptance> $declarations */
+    public function resubmitCorrection(
+        ClinicRegistrationProfile $profile,
+        array $declarations,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        if ($this->status !== RegistrationStatus::CorrectionRequested) {
+            throw new InvalidClinicRegistrationTransitionException('Only a registration awaiting correction may be resubmitted.');
+        }
+
+        if (! $profile->isSubmittable() || $declarations === []) {
+            throw new InvalidClinicRegistrationTransitionException('Corrected registration is missing required information.');
+        }
+
+        $this->profile = $profile;
+        $this->declarations = $declarations;
+        $current = $this->currentDecision();
+        if ($current === null || $current->outcome !== RegistrationDecisionOutcome::CorrectionRequested) {
+            throw new InvalidClinicRegistrationTransitionException('A current correction decision is required before resubmission.');
+        }
+        $current->supersede($occurredAt);
+        $this->status = RegistrationStatus::UnderReview;
+        $this->record(new ClinicRegistrationResubmitted($this->id->value, $occurredAt));
+    }
+
+    public function currentDecision(): ?RegistrationDecision
+    {
+        foreach (array_reverse($this->decisions) as $decision) {
+            if ($decision->supersededAt === null) {
+                return $decision;
+            }
+        }
+
+        return null;
     }
 
     public function assertOwnedBy(PlatformIdentityReference $platformIdentity): void

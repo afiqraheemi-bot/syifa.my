@@ -18,12 +18,12 @@ final readonly class ClinicRegistrationProvisioningReadService implements Clinic
         private ClinicRegistrationDataAssembler $data,
     ) {}
 
-    public function submitted(string $registrationId): ?ClinicRegistrationData
+    public function approved(string $registrationId): ?ClinicRegistrationData
     {
         $registration = $this->registrations->find(new RegistrationId($registrationId));
         if ($registration === null || ! in_array(
             $registration->status,
-            [RegistrationStatus::Submitted, RegistrationStatus::Provisioned],
+            [RegistrationStatus::Approved, RegistrationStatus::Provisioned],
             true,
         )) {
             return null;

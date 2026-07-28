@@ -10,6 +10,7 @@ use App\Modules\ClinicRegistration\Domain\ValueObjects\ClinicRegistrationProfile
 use App\Modules\ClinicRegistration\Domain\ValueObjects\CommercialSelectionReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\DeclarationAcceptance;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationDecisionOutcome;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\TenantId;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Mappers\ClinicRegistrationPersistenceMapper;
@@ -37,6 +38,8 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
 
     private ?Migration $tenantIdMigration = null;
 
+    private ?Migration $reviewMigration = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -59,6 +62,7 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
         ]);
         DB::purge(self::CONNECTION_NAME);
         $this->connection = DB::connection(self::CONNECTION_NAME);
+        Schema::dropIfExists('clinic_registration_decisions');
         Schema::dropIfExists('clinic_registration_declaration_acceptances');
         Schema::dropIfExists('clinic_registrations');
 
@@ -76,6 +80,13 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
         $this->tenantIdMigration = $tenantIdMigration;
         $this->tenantIdMigration->up();
 
+        $reviewMigration = require base_path(
+            'database/migrations/clinic_registration/2026_09_02_000001_add_registration_review_decisions.php',
+        );
+        self::assertInstanceOf(Migration::class, $reviewMigration);
+        $this->reviewMigration = $reviewMigration;
+        $this->reviewMigration->up();
+
         $mapper = new ClinicRegistrationPersistenceMapper;
         $this->repository = new PostgresClinicRegistrationRepository($this->connection, $mapper);
         $this->query = new PostgresClinicRegistrationQueryAdapter($this->connection);
@@ -83,6 +94,11 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->reviewMigration !== null) {
+            $this->connection?->table('clinic_registrations')->delete();
+            $this->reviewMigration->down();
+        }
+
         if ($this->tenantIdMigration !== null) {
             $this->tenantIdMigration->down();
         }
@@ -119,14 +135,68 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
         $reloaded = $this->repository()->findByCorrelationReference($registration->correlationReference);
         self::assertNotNull($reloaded);
         self::assertSame($this->tenantId()->value, $reloaded->reservedTenantId?->value);
+        $reloaded->startReview($this->uuid(8), $this->time());
+        $reloaded->decide(
+            $this->uuid(9),
+            RegistrationDecisionOutcome::Approved,
+            'eligible_clinic',
+            null,
+            $this->uuid(8),
+            $this->time(),
+        );
+        $this->repository()->save($reloaded);
         $reloaded->markProvisioned(null, $this->time());
         $this->repository()->save($reloaded);
 
         $provisioned = $this->repository()->find($registration->id);
         self::assertNotNull($provisioned);
         self::assertSame('provisioned', $provisioned->status->value);
-        self::assertSame(2, $provisioned->version());
+        self::assertSame(3, $provisioned->version());
         self::assertSame($this->tenantId()->value, $provisioned->reservedTenantId?->value);
+    }
+
+    public function test_decision_history_and_current_decision_survive_correction_cycle(): void
+    {
+        $registration = $this->submittableRegistration();
+        $registration->submit($this->tenantId(), $this->time());
+        $registration->startReview($this->uuid(8), $this->time());
+        $registration->decide(
+            $this->uuid(9),
+            RegistrationDecisionOutcome::CorrectionRequested,
+            'contact_correction',
+            'Confirm the operational phone number.',
+            $this->uuid(8),
+            $this->time(),
+        );
+        $this->repository()->save($registration);
+
+        $reloaded = $this->repository()->find($registration->id);
+        self::assertNotNull($reloaded);
+        self::assertSame('correction_requested', $reloaded->status->value);
+        self::assertSame('Confirm the operational phone number.', $reloaded->currentDecision()?->correctionInstructions);
+
+        $reloaded->resubmitCorrection(
+            new ClinicRegistrationProfile('Klinik Syifa', 'owner@clinic.test', '+60129999999', '1 Jalan Klinik'),
+            [new DeclarationAcceptance('terms.acceptance', '2026-07-20', $this->time())],
+            $this->time()->modify('+1 minute'),
+        );
+        $reloaded->decide(
+            $this->uuid(10),
+            RegistrationDecisionOutcome::Approved,
+            'eligible_clinic',
+            null,
+            $this->uuid(8),
+            $this->time()->modify('+2 minutes'),
+        );
+        $this->repository()->save($reloaded);
+
+        $approved = $this->repository()->find($registration->id);
+        self::assertNotNull($approved);
+        self::assertSame('approved', $approved->status->value);
+        self::assertCount(2, $approved->decisions);
+        self::assertNotNull($approved->decisions[0]->supersededAt);
+        self::assertSame('approved', $approved->currentDecision()?->outcome->value);
+        self::assertSame(2, $this->connection()->table('clinic_registration_decisions')->count());
     }
 
     public function test_newly_submitted_registration_persists_a_non_null_tenant_id(): void

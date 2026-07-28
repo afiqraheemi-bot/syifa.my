@@ -346,7 +346,7 @@ final class FixedClinicRegistrationQuery implements ClinicRegistrationQueryInter
         return new ClinicRegistrationData(
             $this->registrationId,
             $platformIdentityId,
-            'submitted',
+            'approved',
             null,
             null,
             null,

@@ -8,5 +8,5 @@ use App\Modules\ClinicRegistration\Contracts\Data\ClinicRegistrationData;
 
 interface ClinicRegistrationProvisioningReadInterface
 {
-    public function submitted(string $registrationId): ?ClinicRegistrationData;
+    public function approved(string $registrationId): ?ClinicRegistrationData;
 }

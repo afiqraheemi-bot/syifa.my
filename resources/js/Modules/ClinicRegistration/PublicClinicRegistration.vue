@@ -7,6 +7,7 @@ const props = defineProps({
     offers: { type: Array, required: true },
     updateUrl: { type: String, required: true },
     submitUrl: { type: String, required: true },
+    resubmitUrl: { type: String, required: true },
     cancelUrl: { type: String, required: true },
     offersUrl: { type: String, required: true },
     homeUrl: { type: String, required: true },
@@ -39,7 +40,15 @@ const loading = ref('');
 const message = ref('');
 const error = ref('');
 const errorPanel = ref(null);
-const editable = computed(() => registration.value.status === 'draft');
+const editable = computed(() =>
+    ['draft', 'correction_requested'].includes(registration.value.status),
+);
+const currentDecision = computed(
+    () =>
+        [...(registration.value.decisions ?? [])]
+            .reverse()
+            .find((decision) => decision.supersededAt === null) ?? null,
+);
 const selectedOffer = computed(() =>
     props.offers.find((offer) => offer.planOfferingId === form.offeringId),
 );
@@ -105,20 +114,29 @@ async function save() {
 async function submit() {
     if (loading.value || !editable.value) return;
     loading.value = 'submit';
-    if (
+    if (registration.value.status === 'correction_requested') {
+        if (await request(props.resubmitUrl, 'POST', payload())) {
+            message.value = 'Pembetulan telah dihantar semula untuk semakan.';
+        }
+    } else if (
         (await request(props.updateUrl, 'PATCH', payload())) &&
         (await request(props.submitUrl, 'POST', {
             expected_version: registration.value.version,
         }))
     ) {
-        message.value = 'Pendaftaran klinik telah dihantar.';
-        window.location.assign(props.offersUrl);
+        message.value = 'Pendaftaran klinik telah dihantar untuk semakan.';
     }
     loading.value = '';
 }
 
 async function cancel() {
-    if (loading.value || !['draft', 'submitted'].includes(registration.value.status)) return;
+    if (
+        loading.value ||
+        !['draft', 'submitted', 'under_review', 'correction_requested'].includes(
+            registration.value.status,
+        )
+    )
+        return;
     if (!window.confirm('Batalkan pendaftaran klinik ini?')) return;
     loading.value = 'cancel';
     if (
@@ -143,6 +161,13 @@ async function cancel() {
 
             <div class="mt-6 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900">
                 Status: <strong class="capitalize">{{ registration.status }}</strong>
+            </div>
+            <div
+                v-if="registration.status === 'correction_requested' && currentDecision"
+                class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"
+            >
+                <strong>Pembetulan diperlukan:</strong>
+                {{ currentDecision.correctionInstructions }}
             </div>
 
             <form v-if="editable" class="mt-8 space-y-6" @submit.prevent="save">
@@ -236,6 +261,7 @@ async function cancel() {
 
                 <div class="flex flex-col gap-3 sm:flex-row">
                     <button
+                        v-if="registration.status === 'draft'"
                         type="submit"
                         :disabled="Boolean(loading)"
                         class="min-h-12 rounded-xl bg-slate-900 px-6 font-bold text-white disabled:opacity-60"
@@ -248,7 +274,13 @@ async function cancel() {
                         class="min-h-12 rounded-xl bg-emerald-700 px-6 font-bold text-white disabled:opacity-60"
                         @click="submit"
                     >
-                        {{ loading === 'submit' ? 'Menghantar…' : 'Hantar pendaftaran' }}
+                        {{
+                            loading === 'submit'
+                                ? 'Menghantar…'
+                                : registration.status === 'correction_requested'
+                                  ? 'Hantar semula pembetulan'
+                                  : 'Hantar pendaftaran'
+                        }}
                     </button>
                     <button
                         type="button"
@@ -262,8 +294,30 @@ async function cancel() {
             </form>
 
             <div v-else class="mt-8">
-                <p class="text-lg font-semibold">Pendaftaran ini tidak lagi boleh diedit.</p>
-                <p class="mt-2 text-slate-600">Status semasa anda dipaparkan di atas.</p>
+                <template v-if="registration.status === 'approved'">
+                    <p class="text-lg font-semibold">Pendaftaran anda telah diluluskan.</p>
+                    <p class="mt-2 text-slate-600">
+                        Teruskan ke pilihan komersial yang telah diluluskan untuk pembayaran.
+                    </p>
+                    <a
+                        :href="offersUrl"
+                        class="mt-5 inline-flex min-h-12 items-center rounded-xl bg-emerald-700 px-6 font-bold text-white"
+                    >
+                        Teruskan ke pembayaran
+                    </a>
+                </template>
+                <template v-else>
+                    <p class="text-lg font-semibold">
+                        {{
+                            registration.status === 'rejected'
+                                ? 'Pendaftaran tidak diluluskan.'
+                                : 'Pendaftaran sedang menunggu semakan.'
+                        }}
+                    </p>
+                    <p class="mt-2 text-slate-600">
+                        Status berautoriti pendaftaran anda dipaparkan di atas.
+                    </p>
+                </template>
             </div>
 
             <a

@@ -5,16 +5,19 @@ declare(strict_types=1);
 namespace App\Modules\ClinicRegistration\Infrastructure\Persistence\Mappers;
 
 use App\Modules\ClinicRegistration\Domain\ClinicRegistration;
+use App\Modules\ClinicRegistration\Domain\RegistrationDecision;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\ClinicRegistrationProfile;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\CommercialSelectionReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\DeclarationAcceptance;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\ProvisionedTenantReference;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationDecisionOutcome;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\TenantId;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Records\ClinicRegistrationStorageRecord;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Records\DeclarationAcceptanceStorageRecord;
+use App\Modules\ClinicRegistration\Infrastructure\Persistence\Records\RegistrationDecisionStorageRecord;
 
 final class ClinicRegistrationPersistenceMapper
 {
@@ -56,8 +59,29 @@ final class ClinicRegistrationPersistenceMapper
         );
     }
 
-    /** @param list<DeclarationAcceptanceStorageRecord> $declarations */
-    public function toDomain(ClinicRegistrationStorageRecord $record, array $declarations): ClinicRegistration
+    /** @return list<RegistrationDecisionStorageRecord> */
+    public function decisionRecords(ClinicRegistration $registration): array
+    {
+        return array_map(
+            static fn (RegistrationDecision $decision): RegistrationDecisionStorageRecord => new RegistrationDecisionStorageRecord(
+                $decision->id,
+                $registration->id->value,
+                $decision->outcome->value,
+                $decision->reasonCategory,
+                $decision->correctionInstructions,
+                $decision->decidedByPlatformIdentityId,
+                $decision->decidedAt,
+                $decision->supersededAt,
+            ),
+            $registration->decisions,
+        );
+    }
+
+    /**
+     * @param  list<DeclarationAcceptanceStorageRecord>  $declarations
+     * @param  list<RegistrationDecisionStorageRecord>  $decisions
+     */
+    public function toDomain(ClinicRegistrationStorageRecord $record, array $declarations, array $decisions = []): ClinicRegistration
     {
         return new ClinicRegistration(
             id: new RegistrationId($record->id),
@@ -84,6 +108,18 @@ final class ClinicRegistrationPersistenceMapper
             provisionedAt: $record->provisionedAt,
             cancelledAt: $record->cancelledAt,
             expiredAt: $record->expiredAt,
+            decisions: array_map(
+                static fn (RegistrationDecisionStorageRecord $decision): RegistrationDecision => new RegistrationDecision(
+                    $decision->id,
+                    RegistrationDecisionOutcome::from($decision->outcome),
+                    $decision->reasonCategory,
+                    $decision->correctionInstructions,
+                    $decision->decidedByPlatformIdentityId,
+                    $decision->decidedAt,
+                    $decision->supersededAt,
+                ),
+                $decisions,
+            ),
             version: $record->version,
         );
     }

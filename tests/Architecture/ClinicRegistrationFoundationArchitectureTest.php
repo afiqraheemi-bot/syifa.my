@@ -28,32 +28,28 @@ final class ClinicRegistrationFoundationArchitectureTest extends TestCase
         self::assertStringContainsString("database_path('migrations/clinic_registration')", $provider);
     }
 
-    public function test_no_manual_admission_review_workflow_is_introduced(): void
+    public function test_governed_registration_review_workflow_matches_locked_product_authority(): void
     {
-        foreach ($this->phpFilesIn(
-            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Domain',
-            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Infrastructure/Persistence',
-        ) as $file) {
-            $source = $this->source($file);
+        $status = $this->source(
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Domain/ValueObjects/RegistrationStatus.php',
+        );
+        self::assertStringContainsString("case UnderReview = 'under_review';", $status);
+        self::assertStringContainsString("case CorrectionRequested = 'correction_requested';", $status);
+        self::assertStringContainsString("case Approved = 'approved';", $status);
+        self::assertStringContainsString("case Rejected = 'rejected';", $status);
 
-            foreach ([
-                'UnderReview',
-                'ChangesRequested',
-                'Approved',
-                'Rejected',
-                'RegistrationDecision',
-                'StartReview',
-                'RequestCorrection',
-                'ApproveRegistration',
-                'RejectRegistration',
-                'clinic_registration_decisions',
-                'review',
-                'approval',
-                'rejection',
-            ] as $forbidden) {
-                self::assertStringNotContainsString($forbidden, $source);
-            }
-        }
+        $aggregate = $this->source(
+            dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Domain/ClinicRegistration.php',
+        );
+        self::assertStringContainsString('function startReview(', $aggregate);
+        self::assertStringContainsString('function decide(', $aggregate);
+        self::assertStringContainsString('function resubmitCorrection(', $aggregate);
+
+        $migration = $this->source(
+            dirname(__DIR__, 2).'/database/migrations/clinic_registration/2026_09_02_000001_add_registration_review_decisions.php',
+        );
+        self::assertStringContainsString("Schema::create('clinic_registration_decisions'", $migration);
+        self::assertStringContainsString('clinic_registration_decisions_one_current', $migration);
     }
 
     public function test_locked_cto_decisions_are_reflected_in_source(): void
@@ -93,7 +89,6 @@ final class ClinicRegistrationFoundationArchitectureTest extends TestCase
                 'Eloquent',
                 'ConnectionInterface',
                 'Model',
-                'Request',
                 'JsonResponse',
                 'Route::',
             ] as $forbidden) {

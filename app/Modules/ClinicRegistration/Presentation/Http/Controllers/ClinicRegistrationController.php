@@ -7,11 +7,13 @@ namespace App\Modules\ClinicRegistration\Presentation\Http\Controllers;
 use App\Modules\ClinicRegistration\Application\CancelClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\Exceptions\ClinicRegistrationNotFoundException;
 use App\Modules\ClinicRegistration\Application\Exceptions\ClinicRegistrationVersionMismatchException;
+use App\Modules\ClinicRegistration\Application\ResubmitClinicRegistrationCorrectionService;
 use App\Modules\ClinicRegistration\Application\StartClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\SubmitClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\UpdateClinicRegistrationDraftService;
 use App\Modules\ClinicRegistration\Application\ViewCurrentClinicRegistrationService;
 use App\Modules\ClinicRegistration\Contracts\Commands\CancelClinicRegistrationCommand;
+use App\Modules\ClinicRegistration\Contracts\Commands\ResubmitClinicRegistrationCorrectionCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\StartClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\SubmitClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\UpdateClinicRegistrationDraftCommand;
@@ -138,6 +140,38 @@ final readonly class ClinicRegistrationController
                 $request->expectedVersion(),
                 new DateTimeImmutable,
                 $this->correlationId($request),
+            ));
+        } catch (ClinicRegistrationNotFoundException) {
+            return $this->notFound($request);
+        } catch (ClinicRegistrationVersionMismatchException) {
+            return $this->conflict($request, 'clinic_registration.concurrency_conflict', 'Clinic registration version does not match.');
+        } catch (InvalidClinicRegistrationTransitionException $exception) {
+            return $this->conflict($request, 'clinic_registration.invalid_transition', $exception->getMessage());
+        }
+
+        return (new ClinicRegistrationResource($registration))->response();
+    }
+
+    public function resubmit(
+        UpdateClinicRegistrationDraftRequest $request,
+        ResubmitClinicRegistrationCorrectionService $registrations,
+    ): JsonResponse {
+        $credential = $this->tracking->current();
+        if ($credential === null) {
+            return $this->notFound($request);
+        }
+        $validated = $request->validated();
+
+        try {
+            $registration = $registrations->execute(new ResubmitClinicRegistrationCorrectionCommand(
+                $credential,
+                $validated['clinic_name'] ?? null,
+                $validated['clinic_email'] ?? null,
+                $validated['clinic_phone'] ?? null,
+                $validated['clinic_address'] ?? null,
+                $request->declarations(),
+                (int) $validated['expected_version'],
+                new DateTimeImmutable,
             ));
         } catch (ClinicRegistrationNotFoundException) {
             return $this->notFound($request);

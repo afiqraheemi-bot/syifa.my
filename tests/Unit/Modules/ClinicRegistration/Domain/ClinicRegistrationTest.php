@@ -14,6 +14,7 @@ use App\Modules\ClinicRegistration\Domain\ValueObjects\CommercialSelectionRefere
 use App\Modules\ClinicRegistration\Domain\ValueObjects\DeclarationAcceptance;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\ProvisionedTenantReference;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationDecisionOutcome;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\TenantId;
@@ -102,6 +103,7 @@ final class ClinicRegistrationTest extends TestCase
     {
         $registration = $this->submittableRegistration();
         $registration->submit($this->tenantId(), $this->occurredAt());
+        $this->approve($registration);
         $registration->releaseEvents();
 
         $registration->markProvisioned(new ProvisionedTenantReference('tenant-reference-1'), $this->occurredAt());
@@ -117,6 +119,7 @@ final class ClinicRegistrationTest extends TestCase
     {
         $registration = $this->submittableRegistration();
         $registration->submit($this->tenantId(), $this->occurredAt());
+        $this->approve($registration);
         $registration->markProvisioned(new ProvisionedTenantReference('tenant-reference-1'), $this->occurredAt());
 
         $this->expectException(InvalidClinicRegistrationTransitionException::class);
@@ -131,6 +134,42 @@ final class ClinicRegistrationTest extends TestCase
         $this->expectException(InvalidClinicRegistrationTransitionException::class);
 
         $registration->assertOwnedBy(new PlatformIdentityReference($this->uuid(9)));
+    }
+
+    public function test_review_correction_resubmission_and_approval_are_governed(): void
+    {
+        $registration = $this->submittableRegistration();
+        $registration->submit($this->tenantId(), $this->occurredAt());
+        $registration->startReview($this->uuid(8), $this->occurredAt());
+        $registration->decide(
+            $this->uuid(9),
+            RegistrationDecisionOutcome::CorrectionRequested,
+            'contact_correction',
+            'Confirm the operational phone number.',
+            $this->uuid(8),
+            $this->occurredAt(),
+        );
+
+        self::assertSame(RegistrationStatus::CorrectionRequested, $registration->status);
+
+        $registration->resubmitCorrection(
+            new ClinicRegistrationProfile('Klinik Syifa', 'owner@clinic.test', '+60129999999', '1 Jalan Klinik'),
+            [new DeclarationAcceptance('terms.acceptance', '2026-07-20', $this->occurredAt())],
+            $this->occurredAt()->modify('+1 minute'),
+        );
+        self::assertSame(RegistrationStatus::UnderReview, $registration->status);
+        self::assertNotNull($registration->decisions[0]->supersededAt);
+
+        $registration->decide(
+            $this->uuid(10),
+            RegistrationDecisionOutcome::Approved,
+            'eligible_clinic',
+            null,
+            $this->uuid(8),
+            $this->occurredAt()->modify('+2 minutes'),
+        );
+        self::assertSame(RegistrationStatus::Approved, $registration->status);
+        self::assertSame(RegistrationDecisionOutcome::Approved, $registration->currentDecision()?->outcome);
     }
 
     public function test_version_can_be_synchronized_for_optimistic_concurrency(): void
@@ -159,6 +198,19 @@ final class ClinicRegistrationTest extends TestCase
         return ClinicRegistration::start(
             new RegistrationId($this->uuid(1)),
             new PlatformIdentityReference($this->uuid(2)),
+            $this->occurredAt(),
+        );
+    }
+
+    private function approve(ClinicRegistration $registration): void
+    {
+        $registration->startReview($this->uuid(8), $this->occurredAt());
+        $registration->decide(
+            $this->uuid(9),
+            RegistrationDecisionOutcome::Approved,
+            'eligible_clinic',
+            null,
+            $this->uuid(8),
             $this->occurredAt(),
         );
     }

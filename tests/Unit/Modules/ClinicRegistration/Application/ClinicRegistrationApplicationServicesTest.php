@@ -10,10 +10,12 @@ use App\Modules\ClinicRegistration\Application\ClinicRegistrationDataAssembler;
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationIdentifierGeneratorInterface;
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationTenantIdGeneratorInterface;
 use App\Modules\ClinicRegistration\Application\CompleteClinicRegistrationFromTrustedHandoffService;
+use App\Modules\ClinicRegistration\Application\DecideClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\Exceptions\ClinicRegistrationNotFoundException;
 use App\Modules\ClinicRegistration\Application\Exceptions\ClinicRegistrationVersionMismatchException;
 use App\Modules\ClinicRegistration\Application\Exceptions\UntrustedClinicRegistrationCompletionException;
 use App\Modules\ClinicRegistration\Application\ExpireStaleClinicRegistrationService;
+use App\Modules\ClinicRegistration\Application\StartClinicRegistrationReviewService;
 use App\Modules\ClinicRegistration\Application\StartClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\SubmitClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\TrustedCompletionSources;
@@ -21,23 +23,28 @@ use App\Modules\ClinicRegistration\Application\UpdateClinicRegistrationDraftServ
 use App\Modules\ClinicRegistration\Application\ViewCurrentClinicRegistrationService;
 use App\Modules\ClinicRegistration\Contracts\Commands\CancelClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\CompleteClinicRegistrationFromTrustedHandoffCommand;
+use App\Modules\ClinicRegistration\Contracts\Commands\DecideClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\ExpireStaleClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\StartClinicRegistrationCommand;
+use App\Modules\ClinicRegistration\Contracts\Commands\StartClinicRegistrationReviewCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\SubmitClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\UpdateClinicRegistrationDraftCommand;
 use App\Modules\ClinicRegistration\Contracts\Data\DeclarationAcceptanceData;
 use App\Modules\ClinicRegistration\Contracts\Events\ClinicRegistrationEventPublisherInterface;
 use App\Modules\ClinicRegistration\Contracts\Repositories\ClinicRegistrationRepositoryInterface;
+use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationDecisionTransactionInterface;
+use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewAuditInterface;
 use App\Modules\ClinicRegistration\Domain\ClinicRegistration;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationDecisionOutcome;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
-use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\AuditEntry;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActorType;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditEntryId;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
+use Closure;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -154,6 +161,18 @@ final class ClinicRegistrationApplicationServicesTest extends TestCase
         (new SubmitClinicRegistrationService($repository, new SequentialTenantIdGenerator([$this->uuid(31)]), $assembler, $auditTrail, $events))->execute(
             new SubmitClinicRegistrationCommand($this->uuid(21), 2, $this->occurredAt(), $this->uuid(98)),
         );
+        $registration = $repository->find(new RegistrationId($this->uuid(12)));
+        self::assertNotNull($registration);
+        $registration->startReview($this->uuid(8), $this->occurredAt());
+        $registration->decide(
+            $this->uuid(9),
+            RegistrationDecisionOutcome::Approved,
+            'eligible_clinic',
+            null,
+            $this->uuid(8),
+            $this->occurredAt(),
+        );
+        $repository->save($registration);
 
         $completion = new CompleteClinicRegistrationFromTrustedHandoffService(
             $repository,
@@ -212,6 +231,64 @@ final class ClinicRegistrationApplicationServicesTest extends TestCase
             $stored = $repository->find(new RegistrationId($submitted->id));
             self::assertSame($this->uuid(40), $stored?->reservedTenantId?->value);
         }
+    }
+
+    public function test_super_admin_review_and_decision_services_enforce_version_and_record_audit(): void
+    {
+        $repository = new InMemoryClinicRegistrationRepository;
+        $audit = new RecordingAuditEntryRecorder;
+        $events = new RecordingClinicRegistrationEventPublisher;
+        $assembler = new ClinicRegistrationDataAssembler;
+        $auditTrail = new ClinicRegistrationAuditTrail($audit);
+        $this->startService($repository, $audit, $events)->execute(
+            new StartClinicRegistrationCommand($this->uuid(21), $this->occurredAt(), $this->uuid(97)),
+        );
+        (new UpdateClinicRegistrationDraftService($repository, $assembler, $auditTrail, $events))
+            ->execute($this->updateCommand(expectedVersion: 1));
+        (new SubmitClinicRegistrationService(
+            $repository,
+            new SequentialTenantIdGenerator([$this->uuid(31)]),
+            $assembler,
+            $auditTrail,
+            $events,
+        ))->execute(new SubmitClinicRegistrationCommand(
+            $this->uuid(21),
+            2,
+            $this->occurredAt(),
+            $this->uuid(98),
+        ));
+
+        $reviewAudit = new RecordingRegistrationReviewAudit;
+        $transaction = new ImmediateRegistrationDecisionTransaction;
+        $version = (new StartClinicRegistrationReviewService($repository, $transaction, $reviewAudit))
+            ->execute(new StartClinicRegistrationReviewCommand(
+                $this->uuid(12),
+                3,
+                $this->uuid(8),
+                $this->uuid(101),
+                $this->occurredAt(),
+            ));
+        self::assertSame(4, $version);
+
+        $version = (new DecideClinicRegistrationService($repository, $transaction, $reviewAudit))
+            ->execute(new DecideClinicRegistrationCommand(
+                $this->uuid(12),
+                $this->uuid(9),
+                'approved',
+                'eligible_clinic',
+                null,
+                4,
+                $this->uuid(8),
+                $this->uuid(102),
+                $this->occurredAt(),
+            ));
+        self::assertSame(5, $version);
+        self::assertSame('approved', $repository->find(new RegistrationId($this->uuid(12)))?->status->value);
+        self::assertSame([
+            'clinic_registration.review.start',
+            'clinic_registration.decision.record',
+        ], $reviewAudit->actions);
+        self::assertSame(2, $transaction->calls);
     }
 
     public function test_expire_stale_registration_by_identifier(): void
@@ -310,6 +387,37 @@ final class RecordingClinicRegistrationEventPublisher implements ClinicRegistrat
     }
 }
 
+final class ImmediateRegistrationDecisionTransaction implements ClinicRegistrationDecisionTransactionInterface
+{
+    public int $calls = 0;
+
+    public function run(Closure $operation): mixed
+    {
+        $this->calls++;
+
+        return $operation();
+    }
+}
+
+final class RecordingRegistrationReviewAudit implements ClinicRegistrationReviewAuditInterface
+{
+    /** @var list<string> */
+    public array $actions = [];
+
+    public function record(
+        string $auditEntryId,
+        string $actorPlatformIdentityId,
+        string $registrationId,
+        string $action,
+        string $outcome,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $this->actions[] = $action;
+    }
+}
+
 final class RecordingAuditEntryRecorder implements AuditEntryRecorderInterface
 {
     /** @var list<AuditEntryData> */
@@ -353,7 +461,6 @@ final class InMemoryClinicRegistrationRepository implements ClinicRegistrationRe
         foreach ($this->registrations as $registration) {
             if (
                 $registration->platformIdentity->value === $platformIdentity->value
-                && in_array($registration->status, [RegistrationStatus::Draft, RegistrationStatus::Submitted], true)
             ) {
                 return $registration;
             }

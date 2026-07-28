@@ -46,6 +46,17 @@ final class ClinicRegistrationResource extends JsonResource
                 ],
                 $registration->declarations,
             ),
+            'decisions' => array_map(
+                static fn ($decision): array => [
+                    'id' => $decision->id,
+                    'outcome' => $decision->outcome,
+                    'reasonCategory' => $decision->reasonCategory,
+                    'correctionInstructions' => $decision->correctionInstructions,
+                    'decidedAt' => $decision->decidedAt,
+                    'supersededAt' => $decision->supersededAt,
+                ],
+                $registration->decisions,
+            ),
         ];
     }
 }

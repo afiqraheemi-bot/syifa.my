@@ -130,7 +130,7 @@ final readonly class ProcessProvisioningWorkflowService
 
     private function registration(ProvisioningWorkflowData $workflow): ClinicRegistrationData
     {
-        $registration = $this->registrations->submitted($workflow->clinicRegistrationId);
+        $registration = $this->registrations->approved($workflow->clinicRegistrationId);
         if ($registration === null
             || $registration->reservedTenantId !== $workflow->tenantId
             || ($registration->provisionedTenantReference !== null

@@ -18,11 +18,15 @@ use App\Modules\ClinicRegistration\Contracts\Language\ClinicRegistrationLanguage
 use App\Modules\ClinicRegistration\Contracts\Provisioning\ClinicRegistrationProvisioningReadInterface;
 use App\Modules\ClinicRegistration\Contracts\Queries\ClinicRegistrationQueryInterface;
 use App\Modules\ClinicRegistration\Contracts\Repositories\ClinicRegistrationRepositoryInterface;
+use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationDecisionTransactionInterface;
+use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewReadInterface;
 use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialInterface;
 use App\Modules\ClinicRegistration\Infrastructure\Events\LaravelClinicRegistrationEventPublisher;
 use App\Modules\ClinicRegistration\Infrastructure\Language\ConfigClinicRegistrationLanguageRegistry;
+use App\Modules\ClinicRegistration\Infrastructure\Persistence\ClinicRegistrationDatabaseTransaction;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Mappers\ClinicRegistrationPersistenceMapper;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Queries\PostgresClinicRegistrationQueryAdapter;
+use App\Modules\ClinicRegistration\Infrastructure\Persistence\Queries\PostgresClinicRegistrationReviewReadAdapter;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Repositories\PostgresClinicRegistrationRepository;
 use App\Modules\ClinicRegistration\Infrastructure\Tracking\LaravelRegistrationTrackingCredential;
 use Illuminate\Contracts\Foundation\Application;
@@ -56,6 +60,18 @@ final class ClinicRegistrationServiceProvider extends ServiceProvider
         $this->app->singleton(ClinicRegistrationEventPublisherInterface::class, LaravelClinicRegistrationEventPublisher::class);
         $this->app->singleton(RegistrationTrackingCredentialInterface::class, LaravelRegistrationTrackingCredential::class);
         $this->app->singleton(ClinicRegistrationPersistenceMapper::class);
+        $this->app->singleton(
+            ClinicRegistrationDecisionTransactionInterface::class,
+            static fn (Application $application): ClinicRegistrationDatabaseTransaction => new ClinicRegistrationDatabaseTransaction(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->singleton(
+            ClinicRegistrationReviewReadInterface::class,
+            static fn (Application $application): PostgresClinicRegistrationReviewReadAdapter => new PostgresClinicRegistrationReviewReadAdapter(
+                $application->make('db')->connection(),
+            ),
+        );
         $this->app->singleton(
             ClinicRegistrationRepositoryInterface::class,
             static fn (Application $application): PostgresClinicRegistrationRepository => new PostgresClinicRegistrationRepository(

@@ -6,6 +6,7 @@ namespace App\Modules\ClinicRegistration\Application;
 
 use App\Modules\ClinicRegistration\Contracts\Data\ClinicRegistrationData;
 use App\Modules\ClinicRegistration\Contracts\Data\DeclarationAcceptanceData;
+use App\Modules\ClinicRegistration\Contracts\Data\RegistrationDecisionData;
 use App\Modules\ClinicRegistration\Domain\ClinicRegistration;
 use DateTimeInterface;
 
@@ -39,6 +40,18 @@ final class ClinicRegistrationDataAssembler
                     $declaration->acceptedAt->format(DateTimeInterface::ATOM),
                 ),
                 $registration->declarations,
+            ),
+            decisions: array_map(
+                static fn ($decision): RegistrationDecisionData => new RegistrationDecisionData(
+                    $decision->id,
+                    $decision->outcome->value,
+                    $decision->reasonCategory,
+                    $decision->correctionInstructions,
+                    $decision->decidedByPlatformIdentityId,
+                    $decision->decidedAt->format(DateTimeInterface::ATOM),
+                    $decision->supersededAt?->format(DateTimeInterface::ATOM),
+                ),
+                $registration->decisions,
             ),
         );
     }

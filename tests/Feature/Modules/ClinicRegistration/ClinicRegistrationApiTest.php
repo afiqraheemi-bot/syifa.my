@@ -13,8 +13,8 @@ use App\Modules\ClinicRegistration\Contracts\Repositories\ClinicRegistrationRepo
 use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialInterface;
 use App\Modules\ClinicRegistration\Domain\ClinicRegistration;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference;
+use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationDecisionOutcome;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
-use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
 use App\Modules\ClinicRegistration\Infrastructure\Tracking\LaravelRegistrationTrackingCredential;
 use App\Modules\Commercial\Contracts\ReferenceData\PlanOfferingQueryInterface;
 use App\Modules\Commercial\Contracts\ReferenceData\PlanOfferingReferenceData;
@@ -147,12 +147,13 @@ final class ClinicRegistrationApiTest extends TestCase
             ->values()
             ->all();
 
-        self::assertCount(5, $routes);
+        self::assertCount(6, $routes);
         self::assertSame('clinic-registration.store', $routes[0][2]);
         self::assertSame('clinic-registration.current.show', $routes[1][2]);
         self::assertSame('clinic-registration.current.update', $routes[2][2]);
         self::assertSame('clinic-registration.current.submit', $routes[3][2]);
-        self::assertSame('clinic-registration.current.cancel', $routes[4][2]);
+        self::assertSame('clinic-registration.current.resubmit', $routes[4][2]);
+        self::assertSame('clinic-registration.current.cancel', $routes[5][2]);
 
         foreach ($routes as $route) {
             self::assertContains('throttle:public.default', $route[3]);
@@ -255,13 +256,25 @@ final class ClinicRegistrationApiTest extends TestCase
         $this->postJson('/api/v1/clinic-registrations/current/submit', [
             'expected_version' => 2,
         ])->assertOk();
+        $registration = $this->repository->find(new RegistrationId($this->uuid(31)));
+        self::assertNotNull($registration);
+        $registration->startReview($this->uuid(81), new \DateTimeImmutable('2026-07-25T00:01:00Z'));
+        $registration->decide(
+            $this->uuid(82),
+            RegistrationDecisionOutcome::Approved,
+            'eligible_clinic',
+            null,
+            $this->uuid(81),
+            new \DateTimeImmutable('2026-07-25T00:02:00Z'),
+        );
+        $this->repository->save($registration);
 
         $this->get('/register/offers')
             ->assertOk()
             ->assertInertia(
                 fn ($page) => $page
                     ->component('ClinicRegistration/PublicCommercialOffers', false)
-                    ->where('registrationStatus', 'submitted')
+                    ->where('registrationStatus', 'approved')
                     ->where('clinicName', 'Klinik Syifa')
                     ->has('offers', 1)
                     ->where('offers.0.planOfferingId', $this->uuid(71))
@@ -427,7 +440,6 @@ final class ApiInMemoryClinicRegistrationRepository implements ClinicRegistratio
         foreach ($this->registrations as $registration) {
             if (
                 $registration->platformIdentity->value === $platformIdentity->value
-                && in_array($registration->status, [RegistrationStatus::Draft, RegistrationStatus::Submitted], true)
             ) {
                 return $registration;
             }

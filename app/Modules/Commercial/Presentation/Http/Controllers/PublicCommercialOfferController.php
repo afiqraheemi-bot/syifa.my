@@ -31,7 +31,7 @@ final readonly class PublicCommercialOfferController
         $credential = $this->tracking->current();
         $registration = $credential === null ? null : $registrations->execute($credential);
 
-        if ($registration === null || $registration->status !== 'submitted') {
+        if ($registration === null || $registration->status !== 'approved') {
             throw new NotFoundHttpException;
         }
 

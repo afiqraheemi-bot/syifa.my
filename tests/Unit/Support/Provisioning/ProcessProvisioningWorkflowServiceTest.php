@@ -42,7 +42,7 @@ final class ProcessProvisioningWorkflowServiceTest extends TestCase
         $registration = new ClinicRegistrationData(
             $workflow->clinicRegistrationId,
             $this->uuid(6),
-            'submitted',
+            'approved',
             'Klinik Syifa Baru',
             'owner@syifa.test',
             '+60123456789',
@@ -62,7 +62,7 @@ final class ProcessProvisioningWorkflowServiceTest extends TestCase
         );
 
         $registrations = $this->createMock(ClinicRegistrationProvisioningReadInterface::class);
-        $registrations->expects(self::exactly(6))->method('submitted')->with($workflow->clinicRegistrationId)->willReturn($registration);
+        $registrations->expects(self::exactly(6))->method('approved')->with($workflow->clinicRegistrationId)->willReturn($registration);
         $tenants = $this->createMock(ProvisionTenantInterface::class);
         $tenants->expects(self::once())->method('execute')->willReturn(new ProvisionedTenantData($workflow->tenantId, 'provisioning', 1, false));
         $websites = $this->createMock(ProvisionWebsiteFoundationInterface::class);

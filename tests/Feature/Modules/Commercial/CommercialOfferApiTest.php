@@ -164,7 +164,7 @@ final class FeatureClinicRegistrationQuery implements ClinicRegistrationQueryInt
         return new ClinicRegistrationData(
             $this->registrationId,
             $platformIdentityId,
-            'submitted',
+            'approved',
             null,
             null,
             null,

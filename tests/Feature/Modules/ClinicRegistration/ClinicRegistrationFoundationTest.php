@@ -39,7 +39,7 @@ final class ClinicRegistrationFoundationTest extends TestCase
             static fn ($route): bool => str_starts_with((string) $route->getName(), 'clinic-registration.'),
         );
 
-        self::assertCount(8, $clinicRegistrationRoutes);
+        self::assertCount(9, $clinicRegistrationRoutes);
         self::assertTrue(Route::has('clinic-registration.browser'));
         self::assertTrue(Route::has('clinic-registration.offers'));
     }

@@ -8,6 +8,7 @@ final readonly class ClinicRegistrationData
 {
     /**
      * @param  list<DeclarationAcceptanceData>  $declarations
+     * @param  list<RegistrationDecisionData>  $decisions
      */
     public function __construct(
         public string $id,
@@ -29,5 +30,6 @@ final readonly class ClinicRegistrationData
         public ?string $expiredAt,
         public int $version,
         public array $declarations,
+        public array $decisions = [],
     ) {}
 }

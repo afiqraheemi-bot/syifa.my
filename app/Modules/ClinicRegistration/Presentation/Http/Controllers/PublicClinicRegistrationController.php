@@ -45,6 +45,7 @@ final readonly class PublicClinicRegistrationController
             ], $offers->execute(new DateTimeImmutable)),
             'updateUrl' => route('clinic-registration.current.update'),
             'submitUrl' => route('clinic-registration.current.submit'),
+            'resubmitUrl' => route('clinic-registration.current.resubmit'),
             'cancelUrl' => route('clinic-registration.current.cancel'),
             'offersUrl' => route('clinic-registration.offers'),
             'homeUrl' => route('root'),

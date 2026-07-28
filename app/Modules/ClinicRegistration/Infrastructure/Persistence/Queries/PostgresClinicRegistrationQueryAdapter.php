@@ -6,8 +6,8 @@ namespace App\Modules\ClinicRegistration\Infrastructure\Persistence\Queries;
 
 use App\Modules\ClinicRegistration\Contracts\Data\ClinicRegistrationData;
 use App\Modules\ClinicRegistration\Contracts\Data\DeclarationAcceptanceData;
+use App\Modules\ClinicRegistration\Contracts\Data\RegistrationDecisionData;
 use App\Modules\ClinicRegistration\Contracts\Queries\ClinicRegistrationQueryInterface;
-use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Exceptions\InvalidClinicRegistrationStorageStateException;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -22,7 +22,6 @@ final readonly class PostgresClinicRegistrationQueryAdapter implements ClinicReg
     {
         $row = $this->connection->table('clinic_registrations')
             ->where('platform_identity_id', $platformIdentityId)
-            ->whereIn('status', [RegistrationStatus::Draft->value, RegistrationStatus::Submitted->value])
             ->orderByDesc('created_at')
             ->first();
 
@@ -33,7 +32,6 @@ final readonly class PostgresClinicRegistrationQueryAdapter implements ClinicReg
     {
         $row = $this->connection->table('clinic_registrations')
             ->where('platform_identity_id', $trackingCredential)
-            ->whereIn('status', [RegistrationStatus::Draft->value, RegistrationStatus::Submitted->value])
             ->orderByDesc('created_at')
             ->first();
 
@@ -57,6 +55,24 @@ final readonly class PostgresClinicRegistrationQueryAdapter implements ClinicReg
             );
         }
 
+        $decisionRows = $this->connection->table('clinic_registration_decisions')
+            ->where('clinic_registration_id', $registrationId)
+            ->orderBy('decided_at')
+            ->orderBy('id')
+            ->get();
+        $decisions = [];
+        foreach ($decisionRows as $decisionRow) {
+            $decisions[] = new RegistrationDecisionData(
+                $this->stringValue($decisionRow, 'id'),
+                $this->stringValue($decisionRow, 'outcome'),
+                $this->stringValue($decisionRow, 'reason_category'),
+                $this->nullableStringValue($decisionRow, 'correction_instructions'),
+                $this->stringValue($decisionRow, 'decided_by_platform_identity_id'),
+                $this->dateTimeValue($decisionRow->decided_at ?? null, 'decided_at')->format(DateTimeInterface::ATOM),
+                $this->instant($this->nullableDateTimeValue($decisionRow->superseded_at ?? null)),
+            );
+        }
+
         return new ClinicRegistrationData(
             $registrationId,
             $this->stringValue($row, 'platform_identity_id'),
@@ -77,6 +93,7 @@ final readonly class PostgresClinicRegistrationQueryAdapter implements ClinicReg
             $this->instant($this->nullableDateTimeValue($row->expired_at ?? null)),
             $this->integerValue($row, 'version'),
             $declarations,
+            $decisions,
         );
     }
 

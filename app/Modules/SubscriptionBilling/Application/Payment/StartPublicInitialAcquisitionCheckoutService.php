@@ -29,10 +29,10 @@ final readonly class StartPublicInitialAcquisitionCheckoutService implements Pub
         StartPublicInitialAcquisitionCheckoutCommand $command,
     ): PublicInitialAcquisitionCheckoutResult {
         $registration = $this->registrations->currentForTrackingCredential($command->trackingCredential);
-        if ($registration === null || $registration->status !== 'submitted'
+        if ($registration === null || $registration->status !== 'approved'
             || $registration->selectedPlanOfferingReference !== $command->planOfferingId
             || $registration->reservedTenantId === null) {
-            throw new ClinicRegistrationOwnershipMismatchException('Submitted Clinic Registration ownership could not be established.');
+            throw new ClinicRegistrationOwnershipMismatchException('Approved Clinic Registration ownership could not be established.');
         }
 
         $offer = $this->offers->executeForInitialAcquisition(new PrepareInitialCommercialOfferCommand(

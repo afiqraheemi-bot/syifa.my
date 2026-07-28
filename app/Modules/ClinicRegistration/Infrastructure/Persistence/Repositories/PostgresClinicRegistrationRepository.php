@@ -9,11 +9,11 @@ use App\Modules\ClinicRegistration\Domain\ClinicRegistration;
 use App\Modules\ClinicRegistration\Domain\Exceptions\StaleClinicRegistrationWriteException;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
-use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationStatus;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Exceptions\InvalidClinicRegistrationStorageStateException;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Mappers\ClinicRegistrationPersistenceMapper;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Records\ClinicRegistrationStorageRecord;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Records\DeclarationAcceptanceStorageRecord;
+use App\Modules\ClinicRegistration\Infrastructure\Persistence\Records\RegistrationDecisionStorageRecord;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Database\ConnectionInterface;
@@ -39,7 +39,6 @@ final class PostgresClinicRegistrationRepository implements ClinicRegistrationRe
     {
         $row = $this->connection->table('clinic_registrations')
             ->where('platform_identity_id', $platformIdentity->value)
-            ->whereIn('status', [RegistrationStatus::Draft->value, RegistrationStatus::Submitted->value])
             ->orderByDesc('created_at')
             ->first();
 
@@ -77,6 +76,7 @@ final class PostgresClinicRegistrationRepository implements ClinicRegistrationRe
             'updated_at' => $now,
         ]);
         $this->replaceDeclarations($registration);
+        $this->persistDecisions($registration);
 
         return 1;
     }
@@ -98,6 +98,7 @@ final class PostgresClinicRegistrationRepository implements ClinicRegistrationRe
         }
 
         $this->replaceDeclarations($registration);
+        $this->persistDecisions($registration);
 
         return $newVersion;
     }
@@ -184,7 +185,63 @@ final class PostgresClinicRegistrationRepository implements ClinicRegistrationRe
             );
         }
 
-        return $this->mapper->toDomain($record, $declarations);
+        $decisionRows = $this->connection->table('clinic_registration_decisions')
+            ->where('clinic_registration_id', $record->id)
+            ->orderBy('decided_at')
+            ->orderBy('id')
+            ->get();
+        $decisions = [];
+        foreach ($decisionRows as $decisionRow) {
+            $decisions[] = new RegistrationDecisionStorageRecord(
+                $this->stringValue($decisionRow, 'id'),
+                $record->id,
+                $this->stringValue($decisionRow, 'outcome'),
+                $this->stringValue($decisionRow, 'reason_category'),
+                $this->nullableStringValue($decisionRow, 'correction_instructions'),
+                $this->stringValue($decisionRow, 'decided_by_platform_identity_id'),
+                $this->dateTimeValue($decisionRow->decided_at ?? null, 'decided_at'),
+                $this->nullableDateTimeValue($decisionRow->superseded_at ?? null),
+            );
+        }
+
+        return $this->mapper->toDomain($record, $declarations, $decisions);
+    }
+
+    private function persistDecisions(ClinicRegistration $registration): void
+    {
+        foreach ($this->mapper->decisionRecords($registration) as $record) {
+            $existing = $this->connection->table('clinic_registration_decisions')
+                ->where('id', $record->id)
+                ->first();
+
+            if ($existing === null) {
+                $now = $this->databaseTimestamp(new DateTimeImmutable);
+                $this->connection->table('clinic_registration_decisions')->insert([
+                    'id' => $record->id,
+                    'clinic_registration_id' => $record->registrationId,
+                    'outcome' => $record->outcome,
+                    'reason_category' => $record->reasonCategory,
+                    'correction_instructions' => $record->correctionInstructions,
+                    'decided_by_platform_identity_id' => $record->decidedByPlatformIdentityId,
+                    'decided_at' => $this->databaseTimestamp($record->decidedAt),
+                    'superseded_at' => $this->nullableDatabaseTimestamp($record->supersededAt),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+                continue;
+            }
+
+            if ($record->supersededAt !== null && ($existing->superseded_at ?? null) === null) {
+                $this->connection->table('clinic_registration_decisions')
+                    ->where('id', $record->id)
+                    ->whereNull('superseded_at')
+                    ->update([
+                        'superseded_at' => $this->databaseTimestamp($record->supersededAt),
+                        'updated_at' => $this->databaseTimestamp(new DateTimeImmutable),
+                    ]);
+            }
+        }
     }
 
     private function stringValue(stdClass $row, string $field): string

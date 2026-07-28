@@ -82,12 +82,12 @@ final readonly class PrepareCommercialOfferService
                 $command->registrationTrackingCredential,
             );
 
-            if ($registration === null || $registration->status !== 'submitted') {
-                throw new ClinicRegistrationOwnershipMismatchException('Submitted Clinic Registration ownership could not be established.');
+            if ($registration === null || $registration->status !== 'approved') {
+                throw new ClinicRegistrationOwnershipMismatchException('Approved Clinic Registration ownership could not be established.');
             }
 
             if ($registration->selectedPlanOfferingReference !== $command->planOfferingId) {
-                throw new ClinicRegistrationOwnershipMismatchException('Commercial selection does not match the submitted Clinic Registration.');
+                throw new ClinicRegistrationOwnershipMismatchException('Commercial selection does not match the approved Clinic Registration.');
             }
 
             $clinicRegistration = new ClinicRegistrationReference($registration->id);

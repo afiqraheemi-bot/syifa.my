@@ -15,6 +15,7 @@ Route::prefix('api/v1/clinic-registrations')
         Route::get('/current', [ClinicRegistrationController::class, 'show'])->name('current.show');
         Route::patch('/current', [ClinicRegistrationController::class, 'update'])->name('current.update');
         Route::post('/current/submit', [ClinicRegistrationController::class, 'submit'])->name('current.submit');
+        Route::post('/current/resubmit', [ClinicRegistrationController::class, 'resubmit'])->name('current.resubmit');
         Route::post('/current/cancel', [ClinicRegistrationController::class, 'cancel'])->name('current.cancel');
     });
 
