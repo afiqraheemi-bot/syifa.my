@@ -23,6 +23,8 @@ use App\Modules\Booking\Domain\ValueObjects\ServiceId as BookingServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceName;
 use App\Modules\Booking\Domain\ValueObjects\SortOrder;
 use App\Modules\Booking\Domain\ValueObjects\TenantId as BookingTenantId;
+use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewReadInterface;
+use App\Modules\ClinicRegistration\Contracts\Review\RegistrationReviewItemData;
 use App\Modules\Onboarding\Contracts\Administration\SuperAdminOnboardingReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
@@ -263,8 +265,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         } else {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 6)
-                    ->where('navigation.1.key', 'tenants'),
+                    ->has('navigation', 7)
+                    ->where('navigation.1.key', 'registrations')
+                    ->where('navigation.2.key', 'tenants'),
             );
         }
     }
@@ -323,12 +326,13 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.1.available', true)
                     ->where('quickActions.2.href', route('dashboard.commercial'))
                     ->where('quickActions.2.available', true)
-                    ->has('navigation', 6)
-                    ->where('navigation.1.href', route('dashboard.tenants'))
-                    ->where('navigation.2.href', route('dashboard.onboarding-management'))
-                    ->where('navigation.3.href', route('dashboard.billing'))
-                    ->where('navigation.4.href', route('dashboard.commercial'))
-                    ->where('navigation.5.href', route('dashboard.payment-providers'))
+                    ->has('navigation', 7)
+                    ->where('navigation.1.href', route('dashboard.registrations'))
+                    ->where('navigation.2.href', route('dashboard.tenants'))
+                    ->where('navigation.3.href', route('dashboard.onboarding-management'))
+                    ->where('navigation.4.href', route('dashboard.billing'))
+                    ->where('navigation.5.href', route('dashboard.commercial'))
+                    ->where('navigation.6.href', route('dashboard.payment-providers'))
                     ->has('recentActivity', 1),
             );
     }
@@ -348,9 +352,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('contextLabel', 'Super Admin workspace')
                     ->where('providerEndpoints.index', route('payment-providers.index'))
                     ->where('providerEndpoints.health', route('payment-providers.health'))
-                    ->has('navigation', 6)
-                    ->where('navigation.5.key', 'payment-providers')
-                    ->where('navigation.5.current', true),
+                    ->has('navigation', 7)
+                    ->where('navigation.6.key', 'payment-providers')
+                    ->where('navigation.6.current', true),
             );
     }
 
@@ -379,7 +383,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('contextLabel', 'Super Admin workspace')
                     ->where('onboarding.jobs', [])
                     ->where('onboarding.designers', [])
-                    ->where('navigation.2.current', true),
+                    ->where('navigation.3.current', true),
             );
 
         $this->app->instance(
@@ -393,6 +397,75 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
         );
         $this->getJson('/dashboard/onboarding-management')->assertForbidden();
+    }
+
+    public function test_super_admin_can_review_registration_portfolio_but_other_roles_cannot(): void
+    {
+        $this->app->instance(
+            ClinicRegistrationReviewReadInterface::class,
+            new class implements ClinicRegistrationReviewReadInterface
+            {
+                public function list(?string $status, int $limit = 100): array
+                {
+                    return [new RegistrationReviewItemData(
+                        '00000000-0000-4000-8000-000000000701',
+                        'submitted',
+                        'Klinik Baharu',
+                        'owner@baharu.test',
+                        '+60123456789',
+                        '1 Jalan Klinik',
+                        '2026-09-02T00:00:00+00:00',
+                        3,
+                        null,
+                        null,
+                        null,
+                    )];
+                }
+            },
+        );
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+
+        $this->get('/dashboard/registrations')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('PlatformAdministration/Registrations/SuperAdminRegistrationReview', false)
+                    ->where('contextLabel', 'Super Admin workspace')
+                    ->has('registrations', 1)
+                    ->where('registrations.0.clinicName', 'Klinik Baharu')
+                    ->where('navigation.1.current', true),
+            );
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+        );
+        $this->getJson('/dashboard/registrations')->assertForbidden();
+        $this->postJson('/dashboard/registrations/00000000-0000-4000-8000-000000000701/review', [
+            'expected_version' => 3,
+        ])->assertForbidden();
+        $this->postJson('/dashboard/registrations/00000000-0000-4000-8000-000000000701/decision', [
+            'outcome' => 'approved',
+            'reason_category' => 'eligible_clinic',
+            'expected_version' => 3,
+        ])->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->getJson('/dashboard/registrations')->assertForbidden();
+        $this->postJson('/dashboard/registrations/00000000-0000-4000-8000-000000000701/review', [
+            'expected_version' => 3,
+        ])->assertForbidden();
+        $this->postJson('/dashboard/registrations/00000000-0000-4000-8000-000000000701/decision', [
+            'outcome' => 'approved',
+            'reason_category' => 'eligible_clinic',
+            'expected_version' => 3,
+        ])->assertForbidden();
     }
 
     public function test_non_super_admin_actors_cannot_open_payment_provider_administration_page(): void

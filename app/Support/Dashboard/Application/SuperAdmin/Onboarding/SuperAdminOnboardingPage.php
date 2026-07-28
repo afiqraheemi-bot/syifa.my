@@ -26,6 +26,7 @@ final readonly class SuperAdminOnboardingPage
         return new DashboardPageView('PlatformAdministration/Onboarding/SuperAdminOnboarding', [
             'navigation' => [
                 (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
+                (new DashboardNavigationItem('registrations', 'Registrations', route('dashboard.registrations'), false))->toArray(),
                 (new DashboardNavigationItem('tenants', 'Tenants', route('dashboard.tenants'), false))->toArray(),
                 (new DashboardNavigationItem('onboarding-management', 'Onboarding', route('dashboard.onboarding-management'), true))->toArray(),
                 (new DashboardNavigationItem('billing', 'Billing', route('dashboard.billing'), false))->toArray(),

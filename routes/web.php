@@ -39,6 +39,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialOffe
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialPlanOperationController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminOnboardingController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminPaymentProviderController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminRegistrationReviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionOperationController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminTenantOverviewController;
@@ -105,6 +106,17 @@ Route::prefix('/api/v1/platform/onboarding/{jobId}/website-draft')
 Route::get('/dashboard/tenants', SuperAdminTenantOverviewController::class)
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.tenants');
+Route::get('/dashboard/registrations', [SuperAdminRegistrationReviewController::class, 'index'])
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.registrations');
+Route::post('/dashboard/registrations/{registrationId}/review', [SuperAdminRegistrationReviewController::class, 'review'])
+    ->whereUuid('registrationId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.registrations.review');
+Route::post('/dashboard/registrations/{registrationId}/decision', [SuperAdminRegistrationReviewController::class, 'decide'])
+    ->whereUuid('registrationId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.registrations.decision');
 Route::get('/dashboard/onboarding-management', [SuperAdminOnboardingController::class, 'index'])
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.onboarding-management');

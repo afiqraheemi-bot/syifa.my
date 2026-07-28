@@ -98,6 +98,12 @@ final readonly class AuthenticatedDashboardPage
         if ($context->actorType === ActorType::PlatformIdentity->value && $context->role === 'super_admin') {
             $props['contextLabel'] = 'Super Admin workspace';
             $props['navigation'][] = (new DashboardNavigationItem(
+                'registrations',
+                'Registrations',
+                route('dashboard.registrations'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
                 'tenants',
                 'Tenants',
                 route('dashboard.tenants'),
