@@ -8,6 +8,7 @@ use App\Modules\Commercial\Infrastructure\CommercialServiceProvider;
 use App\Modules\Notification\Infrastructure\NotificationServiceProvider;
 use App\Modules\Onboarding\Infrastructure\OnboardingServiceProvider;
 use App\Modules\PlatformAdministration\Infrastructure\PlatformAdministrationServiceProvider;
+use App\Modules\ReportingAnalytics\Infrastructure\ReportingAnalyticsServiceProvider;
 use App\Modules\SubscriptionBilling\Infrastructure\SubscriptionBillingServiceProvider;
 use App\Modules\TenantManagement\Infrastructure\TenantManagementServiceProvider;
 use App\Modules\WebsiteBuilder\Infrastructure\WebsiteBuilderServiceProvider;
@@ -24,6 +25,7 @@ return [
     ClinicRegistrationServiceProvider::class,
     CommercialServiceProvider::class,
     PlatformAdministrationServiceProvider::class,
+    ReportingAnalyticsServiceProvider::class,
     SubscriptionBillingServiceProvider::class,
     BookingServiceProvider::class,
     IdentityServiceProvider::class,

@@ -79,6 +79,12 @@ final readonly class AuthenticatedDashboardPage
                 route('dashboard.notifications'),
                 false,
             ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'reports',
+                'Reports',
+                route('dashboard.reports'),
+                false,
+            ))->toArray();
 
             return new DashboardPageView(
                 'TenantManagement/Dashboard/ClinicOwnerDashboardOverview',
@@ -92,6 +98,12 @@ final readonly class AuthenticatedDashboardPage
                 'onboarding',
                 'Onboarding',
                 route('dashboard.onboarding'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'reports',
+                'Reports',
+                route('dashboard.reports'),
                 false,
             ))->toArray();
 
@@ -149,6 +161,12 @@ final readonly class AuthenticatedDashboardPage
                 'audit',
                 'Audit Activity',
                 route('dashboard.audit'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'reports',
+                'Reports',
+                route('dashboard.reports'),
                 false,
             ))->toArray();
 

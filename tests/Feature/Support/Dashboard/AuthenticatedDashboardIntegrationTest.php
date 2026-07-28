@@ -52,6 +52,7 @@ use App\Modules\PlatformAdministration\Domain\AuditEntry\AuditEntry;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActorType;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditEntryId;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
+use App\Modules\ReportingAnalytics\Contracts\ReportReadInterface;
 use App\Modules\SubscriptionBilling\Contracts\BillingOverview\BillingOverviewData;
 use App\Modules\SubscriptionBilling\Contracts\BillingOverview\BillingOverviewReadInterface;
 use App\Modules\SubscriptionBilling\Contracts\BillingOverview\RecentPaymentData;
@@ -192,6 +193,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->app->instance(AuditEntryRecorderInterface::class, new DashboardAuditRecorder);
         $this->app->instance(AuditEntryReadInterface::class, new DashboardFixedAuditRead);
         $this->app->instance(NotificationReadInterface::class, new DashboardFixedNotificationRead);
+        $this->app->instance(ReportReadInterface::class, new DashboardFixedReportRead);
         $this->app->instance(
             BookingFormConfigurationRepositoryInterface::class,
             new DashboardFixedBookingConfigurationRepository,
@@ -281,7 +283,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         if ($actorType === ActorType::ClinicOwner) {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 6)
+                    ->has('navigation', 7)
                     ->where('welcomeTitle', 'Welcome back, Authenticated User')
                     ->has('summaries', 4)
                     ->where('summaries.0.key', 'clinic')
@@ -303,13 +305,13 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         } elseif ($role === 'website_designer') {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 2)
+                    ->has('navigation', 3)
                     ->where('navigation.1.key', 'onboarding'),
             );
         } else {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 9)
+                    ->has('navigation', 10)
                     ->where('navigation.1.key', 'registrations')
                     ->where('navigation.2.key', 'tenants'),
             );
@@ -343,7 +345,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.0.available', false)
                     ->has('recentAssignments', 1)
                     ->where('recentAssignments.0.description', 'Website setup')
-                    ->has('navigation', 2),
+                    ->has('navigation', 3),
             );
     }
 
@@ -370,7 +372,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.1.available', true)
                     ->where('quickActions.2.href', route('dashboard.commercial'))
                     ->where('quickActions.2.available', true)
-                    ->has('navigation', 9)
+                    ->has('navigation', 10)
                     ->where('navigation.1.href', route('dashboard.registrations'))
                     ->where('navigation.2.href', route('dashboard.tenants'))
                     ->where('navigation.3.href', route('dashboard.onboarding-management'))
@@ -379,6 +381,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('navigation.6.href', route('dashboard.payment-providers'))
                     ->where('navigation.7.href', route('dashboard.notifications'))
                     ->where('navigation.8.href', route('dashboard.audit'))
+                    ->where('navigation.9.href', route('dashboard.reports'))
                     ->has('recentActivity', 1),
             );
     }
@@ -485,6 +488,35 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
         );
         $this->getJson('/dashboard/notifications')->assertForbidden();
+    }
+
+    public function test_reports_are_projected_for_each_authorized_role_scope(): void
+    {
+        foreach ([
+            [ActorType::ClinicOwner, 'clinic_owner', '00000000-0000-4000-8000-000000000002', 'tenant'],
+            [ActorType::PlatformIdentity, 'website_designer', null, 'designer_assignment'],
+            [ActorType::PlatformIdentity, 'super_admin', null, 'platform_portfolio'],
+        ] as [$actorType, $role, $tenantId, $scope]) {
+            $this->app->instance(
+                AuthorizationService::class,
+                $this->authorization(
+                    $actorType,
+                    $role,
+                    $tenantId,
+                    '00000000-0000-4000-8000-000000000010',
+                ),
+            );
+
+            $this->get('/dashboard/reports')
+                ->assertOk()
+                ->assertInertia(
+                    static fn (AssertableInertia $page): AssertableInertia => $page
+                        ->component('Shared/Reports/ReportsOverview', false)
+                        ->where('report.scope', $scope)
+                        ->has('report.definitions')
+                        ->has('report.metrics'),
+                );
+        }
     }
 
     public function test_super_admin_can_open_onboarding_management_but_other_roles_cannot(): void
@@ -3028,6 +3060,41 @@ final class DashboardRecordedBookingOperations implements ClinicOwnerBookingOper
     public function reschedule(string $tenantId, string $bookingId, string $localDate, string $localStart, string $actorId, string $actorRole): void
     {
         $this->calls[] = ['reschedule', $tenantId, $bookingId, $localDate, $localStart, $actorId, $actorRole];
+    }
+}
+
+final readonly class DashboardFixedReportRead implements ReportReadInterface
+{
+    public function clinic(string $tenantId): array
+    {
+        return $this->report('tenant', $tenantId);
+    }
+
+    public function designer(string $platformIdentityId): array
+    {
+        return $this->report('designer_assignment', $platformIdentityId);
+    }
+
+    public function portfolio(): array
+    {
+        return $this->report('platform_portfolio', null);
+    }
+
+    /** @return array<string, mixed> */
+    private function report(string $scope, ?string $scopeId): array
+    {
+        return [
+            'scope' => $scope,
+            'scopeId' => $scopeId,
+            'freshAt' => '2026-07-28T10:00:00+00:00',
+            'definitions' => [[
+                'key' => 'booking.total',
+                'label' => 'Total bookings',
+                'version' => 1,
+                'freshness' => 'live',
+            ]],
+            'metrics' => ['bookingTotal' => 1],
+        ];
     }
 }
 

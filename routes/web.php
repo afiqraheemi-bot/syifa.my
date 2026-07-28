@@ -33,6 +33,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteApprov
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteContentOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\NotificationHistoryController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ReportsController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminAuditViewerController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminBillingOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialBillingOptionOperationController;
@@ -115,6 +116,9 @@ Route::get('/dashboard/audit', SuperAdminAuditViewerController::class)
 Route::get('/dashboard/notifications', NotificationHistoryController::class)
     ->middleware('authorize.context:authenticated,clinic_owner,super_admin')
     ->name('dashboard.notifications');
+Route::get('/dashboard/reports', ReportsController::class)
+    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
+    ->name('dashboard.reports');
 Route::get('/dashboard/registrations', [SuperAdminRegistrationReviewController::class, 'index'])
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.registrations');
