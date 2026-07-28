@@ -628,11 +628,27 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     route('dashboard.commercial.plans.retire', $planId),
                 )
                 ->where(
+                    'actions.unavailablePlan',
+                    route('dashboard.commercial.plans.unavailable', $planId),
+                )
+                ->where(
+                    'actions.grandfatherPlan',
+                    route('dashboard.commercial.plans.grandfather', $planId),
+                )
+                ->where(
                     'actions.editOffering',
                     route('dashboard.commercial.plans.offerings.edit', [
                         'planId' => $planId,
                         'offeringId' => $offeringId,
                     ]),
+                )
+                ->where(
+                    'actions.unavailable',
+                    route('dashboard.commercial.offerings.unavailable', $offeringId),
+                )
+                ->where(
+                    'actions.grandfather',
+                    route('dashboard.commercial.offerings.grandfather', $offeringId),
                 )
                 ->where('feedback.success', 'Plan offering updated successfully.'));
 
@@ -676,7 +692,15 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertForbidden();
         $this->postJson('/dashboard/commercial/plans/10000000-0000-4000-8000-000000000001/retire')
             ->assertForbidden();
+        $this->postJson('/dashboard/commercial/plans/10000000-0000-4000-8000-000000000001/unavailable')
+            ->assertForbidden();
+        $this->postJson('/dashboard/commercial/plans/10000000-0000-4000-8000-000000000001/grandfather')
+            ->assertForbidden();
         $this->postJson('/dashboard/commercial/offerings/10000000-0000-4000-8000-000000000003/retire')->assertForbidden();
+        $this->postJson('/dashboard/commercial/offerings/10000000-0000-4000-8000-000000000003/unavailable')
+            ->assertForbidden();
+        $this->postJson('/dashboard/commercial/offerings/10000000-0000-4000-8000-000000000003/grandfather')
+            ->assertForbidden();
     }
 
     public function test_invalid_commercial_values_return_clear_validation_errors(): void

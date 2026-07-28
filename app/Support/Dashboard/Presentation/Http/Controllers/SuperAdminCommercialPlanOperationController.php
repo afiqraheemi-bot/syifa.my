@@ -8,10 +8,14 @@ use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ActivatePlan
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\CreatePlanService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\Exceptions\CommercialCatalogueResourceNotFoundException;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\Exceptions\CommercialCatalogueVersionMismatchException;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\GrandfatherPlanService;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\MakePlanUnavailableService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\RetirePlanService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\UpdatePlanDetailsService;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\ActivatePlanCommand;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CreatePlanCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\GrandfatherPlanCommand;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\MakePlanUnavailableCommand;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\RetirePlanCommand;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\UpdatePlanDetailsCommand;
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\Exceptions\InvalidCommercialCatalogueValueException;
@@ -124,6 +128,50 @@ final readonly class SuperAdminCommercialPlanOperationController
         return redirect()
             ->route('dashboard.commercial.plans.show', $planId)
             ->with('operation', 'plan_retired')
+            ->setStatusCode(303);
+    }
+
+    public function unavailable(Request $request, string $planId): RedirectResponse
+    {
+        try {
+            app(MakePlanUnavailableService::class)->execute(new MakePlanUnavailableCommand(
+                $planId,
+                $this->expectedVersion($request),
+                $this->now(),
+                $this->actorId($request),
+                (string) Str::uuid(),
+            ));
+        } catch (ValidationException $exception) {
+            return $this->validationFailure($request, $exception);
+        } catch (CommercialCatalogueResourceNotFoundException|CommercialCatalogueVersionMismatchException|InvalidCommercialCatalogueValueException $exception) {
+            return $this->failure($exception);
+        }
+
+        return redirect()
+            ->route('dashboard.commercial.plans.show', $planId)
+            ->with('operation', 'plan_unavailable')
+            ->setStatusCode(303);
+    }
+
+    public function grandfather(Request $request, string $planId): RedirectResponse
+    {
+        try {
+            app(GrandfatherPlanService::class)->execute(new GrandfatherPlanCommand(
+                $planId,
+                $this->expectedVersion($request),
+                $this->now(),
+                $this->actorId($request),
+                (string) Str::uuid(),
+            ));
+        } catch (ValidationException $exception) {
+            return $this->validationFailure($request, $exception);
+        } catch (CommercialCatalogueResourceNotFoundException|CommercialCatalogueVersionMismatchException|InvalidCommercialCatalogueValueException $exception) {
+            return $this->failure($exception);
+        }
+
+        return redirect()
+            ->route('dashboard.commercial.plans.show', $planId)
+            ->with('operation', 'plan_grandfathered')
             ->setStatusCode(303);
     }
 

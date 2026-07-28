@@ -148,6 +148,12 @@ final readonly class SuperAdminCommercialManagementPage
                 'retirePlan' => $selectedPlan === null
                     ? null
                     : route('dashboard.commercial.plans.retire', $selectedPlan->planId),
+                'unavailablePlan' => $selectedPlan === null
+                    ? null
+                    : route('dashboard.commercial.plans.unavailable', $selectedPlan->planId),
+                'grandfatherPlan' => $selectedPlan === null
+                    ? null
+                    : route('dashboard.commercial.plans.grandfather', $selectedPlan->planId),
                 'createOffering' => $selectedPlan === null
                     ? null
                     : route('dashboard.commercial.plans.offerings.create', $selectedPlan->planId),
@@ -163,6 +169,12 @@ final readonly class SuperAdminCommercialManagementPage
                 'retire' => $selectedOffering === null
                     ? null
                     : route('dashboard.commercial.offerings.retire', $selectedOffering->planOfferingId),
+                'unavailable' => $selectedOffering === null
+                    ? null
+                    : route('dashboard.commercial.offerings.unavailable', $selectedOffering->planOfferingId),
+                'grandfather' => $selectedOffering === null
+                    ? null
+                    : route('dashboard.commercial.offerings.grandfather', $selectedOffering->planOfferingId),
             ],
         ]);
     }
@@ -239,10 +251,14 @@ final readonly class SuperAdminCommercialManagementPage
             'plan_created' => 'Plan created successfully.',
             'plan_updated' => 'Plan updated successfully.',
             'plan_published' => 'Plan published successfully.',
+            'plan_unavailable' => 'Plan made unavailable successfully.',
+            'plan_grandfathered' => 'Plan grandfathered successfully.',
             'plan_retired' => 'Plan retired successfully.',
             'offering_created' => 'Plan offering created successfully.',
             'offering_updated' => 'Plan offering updated successfully.',
             'offering_activated' => 'Plan offering activated successfully.',
+            'offering_unavailable' => 'Plan offering made unavailable successfully.',
+            'offering_grandfathered' => 'Plan offering grandfathered successfully.',
             'offering_retired' => 'Plan offering retired successfully.',
             'billing_option_created' => 'Billing option created successfully.',
             default => null,

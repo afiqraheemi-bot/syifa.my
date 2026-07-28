@@ -30,8 +30,7 @@ const submitting = ref('');
 const confirmation = ref('');
 const confirmationButton = ref(null);
 const confirmationForm = computed(() => {
-    if (confirmation.value === 'publish') return 'publish-plan-form';
-    if (confirmation.value === 'retire-plan') return 'retire-plan-form';
+    if (confirmation.value.endsWith('-plan')) return `${confirmation.value}-form`;
 
     return `${confirmation.value}-offering-form`;
 });
@@ -274,7 +273,7 @@ function askForConfirmation(action) {
                     id="publish-plan-form"
                     :action="actions.publishPlan"
                     method="post"
-                    @submit="beginSubmit('publish', $event)"
+                    @submit="beginSubmit('publish-plan', $event)"
                 >
                     <input type="hidden" name="_token" :value="csrfToken" />
                     <input type="hidden" name="expected_version" :value="selectedPlan.version" />
@@ -282,9 +281,45 @@ function askForConfirmation(action) {
                         type="button"
                         class="min-h-11 rounded-xl bg-emerald-700 px-5 py-2 font-bold text-white disabled:opacity-60"
                         :disabled="Boolean(submitting)"
-                        @click="askForConfirmation('publish')"
+                        @click="askForConfirmation('publish-plan')"
                     >
                         Publish plan
+                    </button>
+                </form>
+                <form
+                    v-if="selectedPlan.status === 'active'"
+                    id="unavailable-plan-form"
+                    :action="actions.unavailablePlan"
+                    method="post"
+                    @submit="beginSubmit('unavailable-plan', $event)"
+                >
+                    <input type="hidden" name="_token" :value="csrfToken" />
+                    <input type="hidden" name="expected_version" :value="selectedPlan.version" />
+                    <button
+                        type="button"
+                        class="min-h-11 rounded-xl border border-amber-300 bg-white px-5 py-2 font-bold text-amber-900 disabled:opacity-60"
+                        :disabled="Boolean(submitting)"
+                        @click="askForConfirmation('unavailable-plan')"
+                    >
+                        Make unavailable
+                    </button>
+                </form>
+                <form
+                    v-if="selectedPlan.status === 'unavailable'"
+                    id="grandfather-plan-form"
+                    :action="actions.grandfatherPlan"
+                    method="post"
+                    @submit="beginSubmit('grandfather-plan', $event)"
+                >
+                    <input type="hidden" name="_token" :value="csrfToken" />
+                    <input type="hidden" name="expected_version" :value="selectedPlan.version" />
+                    <button
+                        type="button"
+                        class="min-h-11 rounded-xl border border-sky-300 bg-white px-5 py-2 font-bold text-sky-900 disabled:opacity-60"
+                        :disabled="Boolean(submitting)"
+                        @click="askForConfirmation('grandfather-plan')"
+                    >
+                        Grandfather plan
                     </button>
                 </form>
                 <form
@@ -405,6 +440,50 @@ function askForConfirmation(action) {
                                 @click="askForConfirmation('retire')"
                             >
                                 Retire offering
+                            </button>
+                        </form>
+                        <form
+                            v-if="selectedOffering.status === 'active'"
+                            id="unavailable-offering-form"
+                            :action="actions.unavailable"
+                            method="post"
+                            @submit="beginSubmit('unavailable', $event)"
+                        >
+                            <input type="hidden" name="_token" :value="csrfToken" />
+                            <input
+                                type="hidden"
+                                name="expected_version"
+                                :value="selectedOffering.version"
+                            />
+                            <button
+                                type="button"
+                                class="min-h-11 rounded-xl border border-amber-300 bg-white px-5 py-2 font-bold text-amber-900 disabled:opacity-60"
+                                :disabled="Boolean(submitting)"
+                                @click="askForConfirmation('unavailable')"
+                            >
+                                Make unavailable
+                            </button>
+                        </form>
+                        <form
+                            v-if="selectedOffering.status === 'unavailable'"
+                            id="grandfather-offering-form"
+                            :action="actions.grandfather"
+                            method="post"
+                            @submit="beginSubmit('grandfather', $event)"
+                        >
+                            <input type="hidden" name="_token" :value="csrfToken" />
+                            <input
+                                type="hidden"
+                                name="expected_version"
+                                :value="selectedOffering.version"
+                            />
+                            <button
+                                type="button"
+                                class="min-h-11 rounded-xl border border-sky-300 bg-white px-5 py-2 font-bold text-sky-900 disabled:opacity-60"
+                                :disabled="Boolean(submitting)"
+                                @click="askForConfirmation('grandfather')"
+                            >
+                                Grandfather offering
                             </button>
                         </form>
                     </div>

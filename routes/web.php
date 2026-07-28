@@ -143,6 +143,12 @@ Route::prefix('/dashboard/commercial')
         Route::post('/plans/{planId}/publish', [SuperAdminCommercialPlanOperationController::class, 'publish'])
             ->whereUuid('planId')
             ->name('.plans.publish');
+        Route::post('/plans/{planId}/unavailable', [SuperAdminCommercialPlanOperationController::class, 'unavailable'])
+            ->whereUuid('planId')
+            ->name('.plans.unavailable');
+        Route::post('/plans/{planId}/grandfather', [SuperAdminCommercialPlanOperationController::class, 'grandfather'])
+            ->whereUuid('planId')
+            ->name('.plans.grandfather');
         Route::post('/plans/{planId}/retire', [SuperAdminCommercialPlanOperationController::class, 'retire'])
             ->whereUuid('planId')
             ->name('.plans.retire');
@@ -154,6 +160,12 @@ Route::prefix('/dashboard/commercial')
         Route::post('/offerings/{offeringId}/activate', [SuperAdminCommercialOfferingOperationController::class, 'activate'])
             ->whereUuid('offeringId')
             ->name('.offerings.activate');
+        Route::post('/offerings/{offeringId}/unavailable', [SuperAdminCommercialOfferingOperationController::class, 'unavailable'])
+            ->whereUuid('offeringId')
+            ->name('.offerings.unavailable');
+        Route::post('/offerings/{offeringId}/grandfather', [SuperAdminCommercialOfferingOperationController::class, 'grandfather'])
+            ->whereUuid('offeringId')
+            ->name('.offerings.grandfather');
         Route::post('/offerings/{offeringId}/retire', [SuperAdminCommercialOfferingOperationController::class, 'retire'])
             ->whereUuid('offeringId')
             ->name('.offerings.retire');
