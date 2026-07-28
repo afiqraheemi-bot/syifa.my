@@ -92,7 +92,7 @@ return new class extends Migration
         DB::statement('ALTER TABLE website_drafts ADD CONSTRAINT website_drafts_version_check CHECK (version >= 1)');
         DB::statement("ALTER TABLE website_draft_section_contents ADD CONSTRAINT website_draft_content_type_check CHECK (section_type IN ('HERO','ABOUT','SERVICES','DOCTORS','TESTIMONIALS','GALLERY','FAQ','CONTACT','BOOKING_CTA'))");
         DB::unprepared(<<<'SQL'
-            CREATE FUNCTION create_website_draft_for_new_website() RETURNS trigger AS $$
+            CREATE OR REPLACE FUNCTION create_website_draft_for_new_website() RETURNS trigger AS $$
             BEGIN
                 INSERT INTO website_drafts (website_id, tenant_id, version, created_at, updated_at)
                 VALUES (NEW.id, NEW.tenant_id, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
@@ -103,7 +103,7 @@ return new class extends Migration
             AFTER INSERT ON websites
             FOR EACH ROW EXECUTE FUNCTION create_website_draft_for_new_website();
 
-            CREATE FUNCTION create_website_draft_section_for_new_section() RETURNS trigger AS $$
+            CREATE OR REPLACE FUNCTION create_website_draft_section_for_new_section() RETURNS trigger AS $$
             BEGIN
                 INSERT INTO website_draft_section_contents (website_id, section_id, section_type)
                 VALUES (NEW.website_id, NEW.id, NEW.section_type);
