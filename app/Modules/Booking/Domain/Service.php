@@ -67,6 +67,18 @@ final class Service
         $this->updatedAt = $occurredAt;
     }
 
+    public function revise(
+        ServiceName $name,
+        ?ServiceDescription $description,
+        SortOrder $sortOrder,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $this->name = $name;
+        $this->description = $description;
+        $this->sortOrder = $sortOrder;
+        $this->updatedAt = $occurredAt;
+    }
+
     public function status(): ServiceStatus
     {
         return $this->status;

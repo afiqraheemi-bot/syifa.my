@@ -29,6 +29,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\AuthenticatedDashboardCo
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerCustomDomainController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerServiceSetupController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerSubscriptionController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteApprovalController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteContentOverviewController;
@@ -281,6 +282,15 @@ Route::patch('/dashboard/website/content', [ClinicOwnerWebsiteContentOverviewCon
 Route::get('/dashboard/bookings', ClinicOwnerBookingOverviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.bookings');
+Route::prefix('/dashboard/services')
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.services')
+    ->group(function (): void {
+        Route::get('/', [ClinicOwnerServiceSetupController::class, 'index'])->name('');
+        Route::post('/', [ClinicOwnerServiceSetupController::class, 'store'])->name('.store');
+        Route::patch('/{serviceId}', [ClinicOwnerServiceSetupController::class, 'update'])->whereUuid('serviceId')->name('.update');
+        Route::patch('/{serviceId}/status', [ClinicOwnerServiceSetupController::class, 'status'])->whereUuid('serviceId')->name('.status');
+    });
 Route::get('/dashboard/subscription', ClinicOwnerSubscriptionController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.subscription');

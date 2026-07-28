@@ -86,6 +86,26 @@ final class ServiceTest extends TestCase
         self::assertSame($unchangedAt->format(DATE_ATOM), $service->updatedAt()->format(DATE_ATOM));
     }
 
+    public function test_revise_updates_only_mutable_presentation_fields(): void
+    {
+        $service = $this->service();
+        $occurredAt = $this->occurredAt()->modify('+1 day');
+
+        $service->revise(
+            new ServiceName('Updated Cleaning'),
+            new ServiceDescription('Updated public description'),
+            new SortOrder(4),
+            $occurredAt,
+        );
+
+        self::assertSame('Updated Cleaning', $service->name->value);
+        self::assertSame('Updated public description', $service->description?->value);
+        self::assertSame(4, $service->sortOrder->value);
+        self::assertSame($this->uuid(1), $service->id->value);
+        self::assertSame($this->uuid(2), $service->tenantId->value);
+        self::assertSame($occurredAt, $service->updatedAt());
+    }
+
     public function test_version_can_be_synchronized_for_optimistic_concurrency(): void
     {
         $service = $this->service();

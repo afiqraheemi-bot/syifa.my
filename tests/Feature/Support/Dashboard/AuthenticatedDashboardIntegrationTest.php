@@ -286,7 +286,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         if ($actorType === ActorType::ClinicOwner) {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 8)
+                    ->has('navigation', 9)
+                    ->where('navigation.4.key', 'services')
                     ->where('welcomeTitle', 'Welcome back, Authenticated User')
                     ->has('summaries', 4)
                     ->where('summaries.0.key', 'clinic')
@@ -1705,6 +1706,38 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             );
     }
 
+    public function test_clinic_owner_can_open_service_setup_but_other_roles_are_forbidden(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+            ),
+        );
+
+        $this->get(route('dashboard.services'))
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('TenantManagement/Booking/ClinicOwnerServiceSetup', false)
+                    ->where('pageTitle', 'Service Setup')
+                    ->where('navigation.4.key', 'services')
+                    ->where('services.0.name', 'Consultation')
+                    ->where('services.0.status', 'active')
+                    ->where('operationsUrl', route('dashboard.services')),
+            );
+
+        foreach ([
+            [ActorType::PlatformIdentity, 'website_designer'],
+            [ActorType::PlatformIdentity, 'super_admin'],
+        ] as [$actorType, $role]) {
+            $this->app->instance(AuthorizationService::class, $this->authorization($actorType, $role));
+            $this->getJson(route('dashboard.services'))->assertForbidden();
+        }
+    }
+
     public function test_website_designer_updates_the_assigned_booking_form_configuration(): void
     {
         $this->app->instance(
@@ -1884,7 +1917,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.0.key', 'edit')
                     ->where('quickActions.0.available', true)
                     ->where('quickActions.0.href', route('dashboard.website.content'))
-                    ->has('navigation', 5),
+                    ->has('navigation', 6),
             );
     }
 
@@ -1911,7 +1944,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('editableContent.branding.clinic_name', 'Klinik Aisyah')
                     ->where('editableContent.version', 1)
                     ->where('updateUrl', route('dashboard.website.content.update'))
-                    ->has('navigation', 5),
+                    ->has('navigation', 6),
             );
     }
 
@@ -1974,7 +2007,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             $this->authorization(ActorType::ClinicOwner, 'clinic_owner', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000010'),
         );
 
-        foreach (['/dashboard', '/dashboard/website', '/dashboard/website/content', '/dashboard/bookings'] as $uri) {
+        foreach (['/dashboard', '/dashboard/website', '/dashboard/website/content', '/dashboard/services', '/dashboard/bookings'] as $uri) {
             $this->get($uri)
                 ->assertOk()
                 ->assertInertia(
@@ -1983,7 +2016,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                         ->where('navigation.1.key', 'website')
                         ->where('navigation.2.key', 'content')
                         ->where('navigation.3.key', 'domain')
-                        ->where('navigation.4.key', 'bookings'),
+                        ->where('navigation.4.key', 'services')
+                        ->where('navigation.5.key', 'bookings'),
                 );
         }
     }
@@ -2034,7 +2068,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('manualBooking.sources.0.value', 'phone')
                     ->where('manualBooking.serviceSelectionEnabled', true)
                     ->where('manualBooking.services.0.name', 'Consultation')
-                    ->has('navigation', 5),
+                    ->has('navigation', 6),
             );
     }
 

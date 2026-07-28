@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Support\Provisioning;
 
+use App\Modules\Booking\Contracts\ServiceSetup\ServiceSetupAuditInterface;
 use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewAuditInterface;
 use App\Modules\Onboarding\Contracts\Administration\OnboardingAuditInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\WebsiteApprovalAuditInterface;
 use App\Modules\WebsiteBuilder\Contracts\Publication\WebsitePublicationApprovalReadInterface;
 use App\Support\Provisioning\Application\ProvisioningWorkflowRepositoryInterface;
+use App\Support\Provisioning\Infrastructure\BookingServiceSetupPlatformAuditAdapter;
 use App\Support\Provisioning\Infrastructure\ClinicRegistrationPlatformAuditAdapter;
 use App\Support\Provisioning\Infrastructure\OnboardingPlatformAuditAdapter;
 use App\Support\Provisioning\Infrastructure\OnboardingWebsitePublicationApprovalAdapter;
@@ -33,6 +35,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
             OnboardingWebsitePublicationApprovalAdapter::class,
         );
         $this->app->singleton(ClinicRegistrationReviewAuditInterface::class, ClinicRegistrationPlatformAuditAdapter::class);
+        $this->app->singleton(ServiceSetupAuditInterface::class, BookingServiceSetupPlatformAuditAdapter::class);
     }
 
     public function boot(): void

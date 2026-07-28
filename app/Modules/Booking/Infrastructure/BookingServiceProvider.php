@@ -17,6 +17,7 @@ use App\Modules\Booking\Application\ClinicOwnerBookingOperations;
 use App\Modules\Booking\Application\Provisioning\ProvisionBookingFoundationService;
 use App\Modules\Booking\Application\Queries\ActiveServiceReferenceReader;
 use App\Modules\Booking\Application\Queries\PublicBookingFormReader;
+use App\Modules\Booking\Application\ServiceSetup\ManageServiceSetupService;
 use App\Modules\Booking\Contracts\Capacity\SlotCapacityReservationInterface;
 use App\Modules\Booking\Contracts\Clock\BookingClockInterface;
 use App\Modules\Booking\Contracts\Operations\ClinicOwnerBookingOperationsInterface;
@@ -29,6 +30,7 @@ use App\Modules\Booking\Contracts\Repositories\BookingFormConfigurationRepositor
 use App\Modules\Booking\Contracts\Repositories\BookingHistoryRepositoryInterface;
 use App\Modules\Booking\Contracts\Repositories\BookingRepositoryInterface;
 use App\Modules\Booking\Contracts\Repositories\ServiceRepositoryInterface;
+use App\Modules\Booking\Contracts\ServiceSetup\ServiceSetupAuditInterface;
 use App\Modules\Booking\Contracts\Transactions\BookingTransactionInterface;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingFormConfigurationPersistenceMapper;
 use App\Modules\Booking\Infrastructure\Persistence\Mappers\BookingPersistenceMapper;
@@ -40,6 +42,7 @@ use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresBookingR
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresServiceRepository;
 use App\Modules\Booking\Infrastructure\Persistence\Repositories\PostgresSlotCapacityReservation;
 use App\Modules\Booking\Infrastructure\Transactions\PostgresBookingTransaction;
+use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementLookupInterface;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 
@@ -90,6 +93,16 @@ final class BookingServiceProvider extends ServiceProvider
             static fn (Application $application): PostgresServiceRepository => new PostgresServiceRepository(
                 $application->make('db')->connection(),
                 $application->make(ServicePersistenceMapper::class),
+            ),
+        );
+        $this->app->singleton(
+            ManageServiceSetupService::class,
+            static fn (Application $application): ManageServiceSetupService => new ManageServiceSetupService(
+                $application->make(ServiceRepositoryInterface::class),
+                $application->make(BookingTransactionInterface::class),
+                $application->make(ServiceSetupAuditInterface::class),
+                $application->make(SubscriptionEntitlementLookupInterface::class),
+                (string) config('commercial.capabilities.service_setup', 'service_setup'),
             ),
         );
         $this->app->singleton(BookingFormConfigurationPersistenceMapper::class);

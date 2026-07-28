@@ -39,6 +39,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
                 (new DashboardNavigationItem('website', 'Website', route('dashboard.website'), false))->toArray(),
                 (new DashboardNavigationItem('content', 'Content', route('dashboard.website.content'), true))->toArray(),
                 (new DashboardNavigationItem('domain', 'Custom domain', route('dashboard.website.domain'), false))->toArray(),
+                (new DashboardNavigationItem('services', 'Services', route('dashboard.services'), false))->toArray(),
                 (new DashboardNavigationItem('bookings', 'Bookings', route('dashboard.bookings'), false))->toArray(),
             ],
             'breadcrumbs' => [

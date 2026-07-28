@@ -13,6 +13,7 @@ return [
 
     'capabilities' => [
         'custom_domain' => env('COMMERCIAL_CUSTOM_DOMAIN_CAPABILITY_KEY', 'custom_domain'),
+        'service_setup' => env('COMMERCIAL_SERVICE_SETUP_CAPABILITY_KEY', 'service_setup'),
     ],
 
     'trusted_consumers' => [
