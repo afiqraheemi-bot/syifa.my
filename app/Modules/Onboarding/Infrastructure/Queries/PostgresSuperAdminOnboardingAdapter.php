@@ -25,6 +25,10 @@ final readonly class PostgresSuperAdminOnboardingAdapter implements SuperAdminOn
                     ->where('assignment.assignment_status', 'active');
             })
             ->leftJoin('platform_workforce_credentials as designer', 'designer.platform_identity_id', '=', 'assignment.platform_identity_id')
+            ->leftJoin('clinic_owner_authorities as owner', function ($join): void {
+                $join->on('owner.tenant_id', '=', 'job.tenant_id')
+                    ->where('owner.authority_status', 'active');
+            })
             ->when($status !== null, static fn ($query) => $query->where('job.status', $status))
             ->when($search !== null, static function ($query) use ($search): void {
                 $query->where(static function ($query) use ($search): void {
@@ -45,6 +49,10 @@ final readonly class PostgresSuperAdminOnboardingAdapter implements SuperAdminOn
                 'assignment.id as assignment_id',
                 'assignment.platform_identity_id as designer_id',
                 'designer.name as designer_name',
+                'owner.id as owner_authority_id',
+                'owner.name as owner_name',
+                'owner.email as owner_email',
+                'owner.email_verification_status as owner_verification_status',
             ])
             ->map(static fn (object $row): array => [
                 'id' => (string) $row->id,
@@ -57,6 +65,10 @@ final readonly class PostgresSuperAdminOnboardingAdapter implements SuperAdminOn
                 'assignmentId' => $row->assignment_id === null ? null : (string) $row->assignment_id,
                 'designerId' => $row->designer_id === null ? null : (string) $row->designer_id,
                 'designerName' => $row->designer_name === null ? null : (string) $row->designer_name,
+                'ownerAuthorityId' => $row->owner_authority_id === null ? null : (string) $row->owner_authority_id,
+                'ownerName' => $row->owner_name === null ? null : (string) $row->owner_name,
+                'ownerEmail' => $row->owner_email === null ? null : (string) $row->owner_email,
+                'ownerVerified' => (string) ($row->owner_verification_status ?? '') === 'verified',
             ])
             ->all();
 

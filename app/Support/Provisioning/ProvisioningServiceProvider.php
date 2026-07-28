@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Support\Provisioning;
 
+use App\Modules\Onboarding\Contracts\Administration\OnboardingAuditInterface;
 use App\Support\Provisioning\Application\ProvisioningWorkflowRepositoryInterface;
+use App\Support\Provisioning\Infrastructure\OnboardingPlatformAuditAdapter;
 use App\Support\Provisioning\Infrastructure\PostgresProvisioningWorkflowRepository;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
@@ -19,6 +21,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 $application->make('db')->connection(),
             ),
         );
+        $this->app->singleton(OnboardingAuditInterface::class, OnboardingPlatformAuditAdapter::class);
     }
 
     public function boot(): void

@@ -18,10 +18,12 @@ const props = defineProps({
     onboarding: { type: Object, required: true },
     filters: { type: Object, required: true },
     assignUrlTemplate: { type: String, required: true },
+    ownerUrlTemplate: { type: String, required: true },
 });
 
 const navigation = createDashboardNavigation(props.navigation);
 const selections = reactive({});
+const ownerForms = reactive({});
 const busyJob = ref(null);
 const error = ref('');
 const success = ref('');
@@ -56,6 +58,46 @@ async function assign(job) {
     }
 
     success.value = 'Website Designer assigned successfully.';
+    router.reload({ only: ['onboarding'] });
+}
+
+function ownerForm(job) {
+    ownerForms[job.id] ??= { name: '', email: '' };
+    return ownerForms[job.id];
+}
+
+async function establishOwner(job) {
+    const form = ownerForm(job);
+    if (!form.name || !form.email || busyJob.value) return;
+    if (
+        !window.confirm(
+            `Establish ${form.name} as the verified authority candidate for ${job.clinicName}?`,
+        )
+    )
+        return;
+
+    busyJob.value = `owner:${job.id}`;
+    error.value = '';
+    success.value = '';
+    const response = await browserHttpRequest(
+        props.ownerUrlTemplate.replace('__TENANT_ID__', job.tenantId),
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(form),
+        },
+    );
+    busyJob.value = null;
+
+    if (!response.ok) {
+        error.value =
+            response.body?.message ??
+            response.body?.errors?.email?.[0] ??
+            'Clinic Owner setup could not be started.';
+        return;
+    }
+
+    success.value = 'Clinic Owner setup email issued successfully.';
     router.reload({ only: ['onboarding'] });
 }
 </script>
@@ -151,6 +193,47 @@ async function assign(job) {
                             @click="assign(job)"
                         >
                             {{ busyJob === job.id ? 'Assigning…' : 'Assign' }}
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-5 border-t border-slate-200 pt-5">
+                    <div v-if="job.ownerAuthorityId" class="text-sm text-slate-700">
+                        <strong>{{ job.ownerName }}</strong>
+                        <span class="ml-2">{{ job.ownerEmail }}</span>
+                        <span
+                            class="ml-2 rounded-full px-2 py-1 text-xs font-bold"
+                            :class="
+                                job.ownerVerified
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-amber-100 text-amber-800'
+                            "
+                        >
+                            {{ job.ownerVerified ? 'Access active' : 'Setup pending' }}
+                        </span>
+                    </div>
+                    <div v-else class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                        <input
+                            v-model="ownerForm(job).name"
+                            maxlength="120"
+                            placeholder="Verified Clinic Owner name"
+                            class="min-h-11 rounded-xl border border-slate-300 px-3"
+                        />
+                        <input
+                            v-model="ownerForm(job).email"
+                            type="email"
+                            maxlength="254"
+                            placeholder="Verified Clinic Owner email"
+                            class="min-h-11 rounded-xl border border-slate-300 px-3"
+                        />
+                        <button
+                            type="button"
+                            :disabled="
+                                !ownerForm(job).name || !ownerForm(job).email || busyJob !== null
+                            "
+                            class="min-h-11 rounded-xl border border-emerald-700 px-5 font-semibold text-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                            @click="establishOwner(job)"
+                        >
+                            {{ busyJob === `owner:${job.id}` ? 'Sending…' : 'Set up owner' }}
                         </button>
                     </div>
                 </div>

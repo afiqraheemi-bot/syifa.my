@@ -9,6 +9,8 @@ use App\Modules\TenantManagement\Application\Authentication\VerifyClinicOwnerCre
 use App\Modules\TenantManagement\Application\Provisioning\ProvisionTenantService;
 use App\Modules\TenantManagement\Application\Session\CreateClinicOwnerSessionService;
 use App\Modules\TenantManagement\Application\Session\GetCurrentClinicOwnerSessionService;
+use App\Modules\TenantManagement\Contracts\Administration\ClinicOwnerSetupLinkIssuerInterface;
+use App\Modules\TenantManagement\Contracts\Administration\ClinicOwnerSetupTokenVerifierInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\AuthenticationSignalDispatcherInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticationInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerCredentialVerificationInterface;
@@ -21,6 +23,7 @@ use App\Modules\TenantManagement\Contracts\TenantRouting\TenantAdminRoutingLooku
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Repositories\TenantRepositoryInterface;
 use App\Modules\TenantManagement\Infrastructure\Authentication\ClinicOwnerUserProvider;
 use App\Modules\TenantManagement\Infrastructure\Authentication\LaravelAuthenticationSignalDispatcher;
+use App\Modules\TenantManagement\Infrastructure\Notifications\LaravelClinicOwnerSetupLinkIssuer;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Lookups\PostgresTenantAdminRoutingLookup;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Mappers\TenantPersistenceMapper;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Queries\PostgresTenantOverviewReadAdapter;
@@ -66,6 +69,14 @@ final class TenantManagementServiceProvider extends ServiceProvider
             VerifyClinicOwnerCredentialService::class,
         );
         $this->app->bind(ProvisionTenantInterface::class, ProvisionTenantService::class);
+        $this->app->singleton(
+            LaravelClinicOwnerSetupLinkIssuer::class,
+            static fn (Application $application): LaravelClinicOwnerSetupLinkIssuer => new LaravelClinicOwnerSetupLinkIssuer(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->alias(LaravelClinicOwnerSetupLinkIssuer::class, ClinicOwnerSetupLinkIssuerInterface::class);
+        $this->app->alias(LaravelClinicOwnerSetupLinkIssuer::class, ClinicOwnerSetupTokenVerifierInterface::class);
 
         $this->app->bind(ClinicOwnerAuthenticationInterface::class, AuthenticateClinicOwnerService::class);
         $this->app->bind(AuthenticationSignalDispatcherInterface::class, LaravelAuthenticationSignalDispatcher::class);

@@ -5,26 +5,20 @@ declare(strict_types=1);
 namespace App\Modules\Onboarding\Application\Administration;
 
 use App\Modules\Onboarding\Contracts\Administration\AssignWebsiteDesignerCommand;
+use App\Modules\Onboarding\Contracts\Administration\OnboardingAuditInterface;
 use App\Modules\Onboarding\Contracts\Administration\WebsiteDesignerEligibilityInterface;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidWebsiteDesignerAssignmentTransitionException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Repositories\OnboardingJobRepositoryInterface;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
-use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditActorData;
-use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
-use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
-use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditOutcomeData;
-use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditTargetData;
-use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActorType;
-use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 
 final readonly class AssignWebsiteDesignerService
 {
     public function __construct(
         private OnboardingJobRepositoryInterface $jobs,
         private WebsiteDesignerEligibilityInterface $designers,
-        private AuditEntryRecorderInterface $audit,
+        private OnboardingAuditInterface $audit,
     ) {}
 
     public function execute(AssignWebsiteDesignerCommand $command): string
@@ -48,25 +42,17 @@ final readonly class AssignWebsiteDesignerService
             $command->occurredAt,
         );
         $this->jobs->save($job);
-        $this->audit->record(new AuditEntryData(
+        $this->audit->recordDesignerAssignment(
             $this->identifier($assignmentId, $command->correlationId),
-            $command->occurredAt,
-            new AuditActorData(AuditActorType::PlatformIdentity->value, $command->actorPlatformIdentityId),
+            $command->actorPlatformIdentityId,
             $job->tenantId->value,
-            'onboarding.website_designer.assign',
-            new AuditTargetData('onboarding_job', $job->id->value),
-            new AuditOutcomeData(AuditOutcomeType::Succeeded->value, null),
+            $job->id->value,
+            $assignmentId,
+            $command->platformIdentityId,
+            $job->version(),
             $command->correlationId,
-            [
-                'resource_type' => 'website_designer_assignment',
-                'target_label' => sprintf(
-                    'assignment=%s;designer=%s;version=%d',
-                    $assignmentId,
-                    $command->platformIdentityId,
-                    $job->version(),
-                ),
-            ],
-        ));
+            $command->occurredAt,
+        );
 
         return $assignmentId;
     }

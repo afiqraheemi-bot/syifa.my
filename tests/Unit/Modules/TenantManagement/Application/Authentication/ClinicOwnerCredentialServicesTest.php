@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\TenantManagement\Application\Authentication;
 
+use App\Modules\TenantManagement\Application\Authentication\ActivateClinicOwnerAccessService;
 use App\Modules\TenantManagement\Application\Authentication\ChangeClinicOwnerPasswordService;
 use App\Modules\TenantManagement\Application\Authentication\ClinicOwnerPasswordPolicy;
 use App\Modules\TenantManagement\Application\Authentication\Exceptions\InvalidClinicOwnerPasswordException;
@@ -143,6 +144,51 @@ final class ClinicOwnerCredentialServicesTest extends TestCase
         } catch (InvalidClinicOwnerPasswordException) {
             self::assertSame(0, $this->repository->saveCount);
         }
+    }
+
+    public function test_owner_setup_atomically_verifies_email_and_initializes_the_password(): void
+    {
+        $tenant = Tenant::provision(new TenantId($this->uuid(1)), $this->time());
+        $tenant->establishClinicOwnerAuthority(
+            $this->authorityId(1),
+            new ClinicOwnerIdentity(
+                new ClinicOwnerIdentityId($this->uuid(21)),
+                new ClinicOwnerEmail('owner@example.test'),
+                new ClinicOwnerName('Clinic Owner'),
+            ),
+            $this->time(),
+        );
+        $tenant->activate($this->time());
+        $this->repository->add($tenant);
+        $blocklist = new class implements PasswordBlocklistInterface
+        {
+            public function contains(string $password): bool
+            {
+                return false;
+            }
+        };
+
+        (new ActivateClinicOwnerAccessService(
+            $this->repository,
+            $this->hasher,
+            new ClinicOwnerPasswordPolicy,
+            $blocklist,
+        ))->execute(
+            $tenant->id->value,
+            $this->authorityId(1)->value,
+            'Activated-Owner-Password-456',
+            $this->time(),
+        );
+
+        $state = $tenant->activeClinicOwnerAuthority()?->credentialState();
+        self::assertTrue($state?->isEmailVerified());
+        self::assertSame(1, $state?->credentialVersion);
+        self::assertTrue((new VerifyClinicOwnerCredentialService($this->repository, $this->hasher))->verify(
+            $tenant->id->value,
+            'owner@example.test',
+            'Activated-Owner-Password-456',
+            $this->time(),
+        )->verified);
     }
 
     private function tenant(int $suffix, string $password): Tenant

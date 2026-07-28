@@ -18,6 +18,7 @@ use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCata
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanController;
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanOfferingController;
 use App\Modules\TenantManagement\Presentation\Http\Controllers\ClinicOwnerSessionController;
+use App\Modules\TenantManagement\Presentation\Http\Controllers\ClinicOwnerSetupController;
 use App\Modules\TenantManagement\Presentation\Http\Middleware\AuthenticateClinicOwnerSessionMiddleware;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\AvailabilityController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\BookingController;
@@ -63,6 +64,12 @@ foreach (RootEntryController::appEntryHosts() as $appEntryHost) {
     Route::domain($appEntryHost)->get('/', RootEntryController::class)->name('root');
 }
 Route::get('/', PublicWebsiteController::class)->name('public-website.home');
+Route::get('/clinic-owner/setup/{token}', [ClinicOwnerSetupController::class, 'show'])
+    ->middleware('throttle:public.default')
+    ->name('clinic-owner.setup');
+Route::post('/clinic-owner/setup', [ClinicOwnerSetupController::class, 'complete'])
+    ->middleware('throttle:platform.password-reset')
+    ->name('clinic-owner.setup.complete');
 Route::get('/privacy', [PublicLegalDocumentController::class, 'privacy'])->name('public-website.privacy');
 Route::get('/terms', [PublicLegalDocumentController::class, 'terms'])->name('public-website.terms');
 Route::get('/dashboard', AuthenticatedDashboardController::class)
@@ -105,6 +112,10 @@ Route::post('/dashboard/onboarding-management/{jobId}/assignment', [SuperAdminOn
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.onboarding-management.assign');
+Route::post('/dashboard/onboarding-management/tenants/{tenantId}/owner', [SuperAdminOnboardingController::class, 'establishOwner'])
+    ->whereUuid('tenantId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.onboarding-management.owner');
 Route::get('/dashboard/billing', SuperAdminBillingOverviewController::class)
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.billing');

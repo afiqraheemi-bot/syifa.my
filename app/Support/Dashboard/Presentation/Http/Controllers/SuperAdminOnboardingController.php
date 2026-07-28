@@ -7,6 +7,9 @@ namespace App\Support\Dashboard\Presentation\Http\Controllers;
 use App\Modules\Onboarding\Application\Administration\AssignWebsiteDesignerService;
 use App\Modules\Onboarding\Contracts\Administration\AssignWebsiteDesignerCommand;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidWebsiteDesignerAssignmentTransitionException;
+use App\Modules\TenantManagement\Application\Administration\EstablishClinicOwnerService;
+use App\Modules\TenantManagement\Contracts\Administration\EstablishClinicOwnerCommand;
+use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Exceptions\InvalidClinicOwnerAuthorityTransitionException;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\SuperAdmin\Onboarding\SuperAdminOnboardingPage;
 use DateTimeImmutable;
@@ -15,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 final readonly class SuperAdminOnboardingController
 {
@@ -57,5 +61,40 @@ final readonly class SuperAdminOnboardingController
         }
 
         return response()->json(['assignmentId' => $assignmentId], 201);
+    }
+
+    public function establishOwner(
+        string $tenantId,
+        Request $request,
+        EstablishClinicOwnerService $owners,
+    ): JsonResponse {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email:rfc', 'max:254'],
+        ]);
+        $context = $request->attributes->get(AuthorizationContext::class);
+        if (! $context instanceof AuthorizationContext) {
+            return response()->json(['message' => 'Super Admin authorization context is unavailable.'], 403);
+        }
+        $correlationId = $request->attributes->get('correlation_id');
+
+        try {
+            $authorityId = $owners->execute(new EstablishClinicOwnerCommand(
+                $tenantId,
+                (string) $validated['name'],
+                (string) $validated['email'],
+                $context->identityId,
+                is_string($correlationId) && $correlationId !== '' ? $correlationId : (string) Str::uuid(),
+                new DateTimeImmutable,
+            ));
+        } catch (InvalidClinicOwnerAuthorityTransitionException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        } catch (Throwable) {
+            return response()->json([
+                'message' => 'Clinic Owner authority was established, but the secure setup email could not be confirmed. Retry this action.',
+            ], 503);
+        }
+
+        return response()->json(['authorityId' => $authorityId], 201);
     }
 }
