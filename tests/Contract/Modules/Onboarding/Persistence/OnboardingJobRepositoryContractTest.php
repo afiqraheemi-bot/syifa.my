@@ -20,7 +20,7 @@ final class OnboardingJobRepositoryContractTest extends TestCase
         ));
 
         $contract = new ReflectionClass(OnboardingJobRepositoryInterface::class);
-        self::assertSame(['find', 'save'], array_map(
+        self::assertSame(['find', 'findById', 'save'], array_map(
             static fn (ReflectionMethod $method): string => $method->getName(),
             $contract->getMethods(),
         ));

@@ -25,6 +25,7 @@ final readonly class SuperAdminBillingOverviewPage
             'navigation' => [
                 (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
                 (new DashboardNavigationItem('tenants', 'Tenants', route('dashboard.tenants'), false))->toArray(),
+                (new DashboardNavigationItem('onboarding-management', 'Onboarding', route('dashboard.onboarding-management'), false))->toArray(),
                 (new DashboardNavigationItem('billing', 'Billing', route('dashboard.billing'), true))->toArray(),
                 (new DashboardNavigationItem('commercial', 'Commercial', route('dashboard.commercial'), false))->toArray(),
                 (new DashboardNavigationItem('payment-providers', 'Payment Providers', route('dashboard.payment-providers'), false))->toArray(),

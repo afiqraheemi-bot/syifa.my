@@ -36,6 +36,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialCapa
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialManagementController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialOfferingOperationController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialPlanOperationController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminOnboardingController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminPaymentProviderController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionOperationController;
@@ -97,6 +98,13 @@ Route::prefix('/api/v1/platform/onboarding/{jobId}/website-draft')
 Route::get('/dashboard/tenants', SuperAdminTenantOverviewController::class)
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.tenants');
+Route::get('/dashboard/onboarding-management', [SuperAdminOnboardingController::class, 'index'])
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.onboarding-management');
+Route::post('/dashboard/onboarding-management/{jobId}/assignment', [SuperAdminOnboardingController::class, 'assign'])
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.onboarding-management.assign');
 Route::get('/dashboard/billing', SuperAdminBillingOverviewController::class)
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.billing');

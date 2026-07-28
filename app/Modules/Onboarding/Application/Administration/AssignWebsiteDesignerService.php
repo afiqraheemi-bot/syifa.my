@@ -1,0 +1,82 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Onboarding\Application\Administration;
+
+use App\Modules\Onboarding\Contracts\Administration\AssignWebsiteDesignerCommand;
+use App\Modules\Onboarding\Contracts\Administration\WebsiteDesignerEligibilityInterface;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidWebsiteDesignerAssignmentTransitionException;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Repositories\OnboardingJobRepositoryInterface;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditActorData;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditOutcomeData;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditTargetData;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActorType;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
+
+final readonly class AssignWebsiteDesignerService
+{
+    public function __construct(
+        private OnboardingJobRepositoryInterface $jobs,
+        private WebsiteDesignerEligibilityInterface $designers,
+        private AuditEntryRecorderInterface $audit,
+    ) {}
+
+    public function execute(AssignWebsiteDesignerCommand $command): string
+    {
+        $job = $this->jobs->findById(new OnboardingJobId($command->onboardingJobId));
+        if ($job === null || $job->version() !== $command->expectedVersion) {
+            throw new InvalidWebsiteDesignerAssignmentTransitionException(
+                'Onboarding Job changed since it was loaded.',
+            );
+        }
+        if (! $this->designers->isEligible($command->platformIdentityId)) {
+            throw new InvalidWebsiteDesignerAssignmentTransitionException(
+                'The selected Website Designer is not eligible for assignment.',
+            );
+        }
+
+        $assignmentId = $this->identifier($command->onboardingJobId, $command->platformIdentityId);
+        $job->assignWebsiteDesigner(
+            new WebsiteDesignerAssignmentId($assignmentId),
+            new PlatformIdentityId($command->platformIdentityId),
+            $command->occurredAt,
+        );
+        $this->jobs->save($job);
+        $this->audit->record(new AuditEntryData(
+            $this->identifier($assignmentId, $command->correlationId),
+            $command->occurredAt,
+            new AuditActorData(AuditActorType::PlatformIdentity->value, $command->actorPlatformIdentityId),
+            $job->tenantId->value,
+            'onboarding.website_designer.assign',
+            new AuditTargetData('onboarding_job', $job->id->value),
+            new AuditOutcomeData(AuditOutcomeType::Succeeded->value, null),
+            $command->correlationId,
+            [
+                'resource_type' => 'website_designer_assignment',
+                'target_label' => sprintf(
+                    'assignment=%s;designer=%s;version=%d',
+                    $assignmentId,
+                    $command->platformIdentityId,
+                    $job->version(),
+                ),
+            ],
+        ));
+
+        return $assignmentId;
+    }
+
+    private function identifier(string $left, string $right): string
+    {
+        $hex = substr(hash('sha256', $left.':'.$right), 0, 32);
+        $hex[12] = '5';
+        $hex[16] = dechex((hexdec($hex[16]) & 0x3) | 0x8);
+
+        return sprintf('%s-%s-%s-%s-%s', substr($hex, 0, 8), substr($hex, 8, 4), substr($hex, 12, 4), substr($hex, 16, 4), substr($hex, 20));
+    }
+}

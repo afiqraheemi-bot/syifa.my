@@ -255,6 +255,7 @@ final readonly class SuperAdminCommercialMutationPage
         return [
             (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
             (new DashboardNavigationItem('tenants', 'Tenants', route('dashboard.tenants'), false))->toArray(),
+            (new DashboardNavigationItem('onboarding-management', 'Onboarding', route('dashboard.onboarding-management'), false))->toArray(),
             (new DashboardNavigationItem('billing', 'Billing', route('dashboard.billing'), false))->toArray(),
             (new DashboardNavigationItem('commercial', 'Commercial', route('dashboard.commercial'), true))->toArray(),
             (new DashboardNavigationItem('payment-providers', 'Payment Providers', route('dashboard.payment-providers'), false))->toArray(),

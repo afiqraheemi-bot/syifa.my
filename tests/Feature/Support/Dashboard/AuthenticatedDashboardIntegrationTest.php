@@ -23,6 +23,7 @@ use App\Modules\Booking\Domain\ValueObjects\ServiceId as BookingServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceName;
 use App\Modules\Booking\Domain\ValueObjects\SortOrder;
 use App\Modules\Booking\Domain\ValueObjects\TenantId as BookingTenantId;
+use App\Modules\Onboarding\Contracts\Administration\SuperAdminOnboardingReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerJobDetailData;
@@ -262,7 +263,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         } else {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 5)
+                    ->has('navigation', 6)
                     ->where('navigation.1.key', 'tenants'),
             );
         }
@@ -322,11 +323,12 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.1.available', true)
                     ->where('quickActions.2.href', route('dashboard.commercial'))
                     ->where('quickActions.2.available', true)
-                    ->has('navigation', 5)
+                    ->has('navigation', 6)
                     ->where('navigation.1.href', route('dashboard.tenants'))
-                    ->where('navigation.2.href', route('dashboard.billing'))
-                    ->where('navigation.3.href', route('dashboard.commercial'))
-                    ->where('navigation.4.href', route('dashboard.payment-providers'))
+                    ->where('navigation.2.href', route('dashboard.onboarding-management'))
+                    ->where('navigation.3.href', route('dashboard.billing'))
+                    ->where('navigation.4.href', route('dashboard.commercial'))
+                    ->where('navigation.5.href', route('dashboard.payment-providers'))
                     ->has('recentActivity', 1),
             );
     }
@@ -346,10 +348,51 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('contextLabel', 'Super Admin workspace')
                     ->where('providerEndpoints.index', route('payment-providers.index'))
                     ->where('providerEndpoints.health', route('payment-providers.health'))
-                    ->has('navigation', 5)
-                    ->where('navigation.4.key', 'payment-providers')
-                    ->where('navigation.4.current', true),
+                    ->has('navigation', 6)
+                    ->where('navigation.5.key', 'payment-providers')
+                    ->where('navigation.5.current', true),
             );
+    }
+
+    public function test_super_admin_can_open_onboarding_management_but_other_roles_cannot(): void
+    {
+        $this->app->instance(
+            SuperAdminOnboardingReadInterface::class,
+            new class implements SuperAdminOnboardingReadInterface
+            {
+                public function overview(?string $status, ?string $search): array
+                {
+                    return ['jobs' => [], 'designers' => []];
+                }
+            },
+        );
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+
+        $this->get('/dashboard/onboarding-management')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('PlatformAdministration/Onboarding/SuperAdminOnboarding', false)
+                    ->where('contextLabel', 'Super Admin workspace')
+                    ->where('onboarding.jobs', [])
+                    ->where('onboarding.designers', [])
+                    ->where('navigation.2.current', true),
+            );
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+        );
+        $this->getJson('/dashboard/onboarding-management')->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->getJson('/dashboard/onboarding-management')->assertForbidden();
     }
 
     public function test_non_super_admin_actors_cannot_open_payment_provider_administration_page(): void

@@ -12,5 +12,7 @@ interface OnboardingJobRepositoryInterface
 {
     public function find(TenantId $tenantId, OnboardingJobId $onboardingJobId): ?OnboardingJob;
 
+    public function findById(OnboardingJobId $onboardingJobId): ?OnboardingJob;
+
     public function save(OnboardingJob $onboardingJob): void;
 }

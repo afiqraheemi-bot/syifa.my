@@ -104,6 +104,12 @@ final readonly class AuthenticatedDashboardPage
                 false,
             ))->toArray();
             $props['navigation'][] = (new DashboardNavigationItem(
+                'onboarding-management',
+                'Onboarding',
+                route('dashboard.onboarding-management'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
                 'billing',
                 'Billing',
                 route('dashboard.billing'),

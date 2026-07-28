@@ -56,6 +56,17 @@ final class PostgresOnboardingJobRepository implements OnboardingJobRepositoryIn
         );
     }
 
+    public function findById(OnboardingJobId $onboardingJobId): ?OnboardingJob
+    {
+        $tenantId = $this->connection->table('onboarding_jobs')
+            ->where('id', $onboardingJobId->value)
+            ->value('tenant_id');
+
+        return is_string($tenantId)
+            ? $this->find(new TenantId($tenantId), $onboardingJobId)
+            : null;
+    }
+
     public function save(OnboardingJob $onboardingJob): void
     {
         $persistedVersion = $this->connection->transaction(
