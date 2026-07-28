@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Onboarding\Application;
 
+use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
 use App\Modules\Onboarding\Application\WebsiteApproval\DecideWebsiteApprovalService;
 use App\Modules\Onboarding\Application\WebsiteApproval\RequestWebsiteApprovalService;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\DecideWebsiteApprovalCommand;
@@ -28,10 +29,15 @@ final class WebsiteApprovalWorkflowServiceTest extends TestCase
     {
         $repository = new ApprovalWorkflowJobRepository($this->assignedJob());
         $audit = new ApprovalWorkflowAudit;
+        $notifications = $this->createMock(TransactionalNotificationGatewayInterface::class);
+        $notifications->expects(self::once())
+            ->method('websiteReviewRequested')
+            ->with($this->uuid(2), $this->uuid(1));
         $request = new RequestWebsiteApprovalService(
             $repository,
             $audit,
             new ImmediateOnboardingWorkflowTransaction,
+            $notifications,
         );
         $requested = $request->execute(new RequestWebsiteApprovalCommand(
             $this->uuid(1),

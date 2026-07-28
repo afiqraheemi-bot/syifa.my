@@ -13,6 +13,14 @@ interface TransactionalNotificationGatewayInterface
         ?string $patientEmail,
     ): void;
 
+    public function bookingChanged(
+        string $tenantId,
+        string $bookingId,
+        string $bookingReference,
+        ?string $patientEmail,
+        string $change,
+    ): void;
+
     public function designerAssigned(
         string $tenantId,
         string $onboardingJobId,
@@ -20,4 +28,12 @@ interface TransactionalNotificationGatewayInterface
     ): void;
 
     public function websitePublished(string $tenantId, string $websiteId): void;
+
+    public function websiteReviewRequested(string $tenantId, string $onboardingJobId): void;
+
+    public function subscriptionActivated(
+        string $tenantId,
+        string $subscriptionId,
+        string $clinicRegistrationId,
+    ): void;
 }

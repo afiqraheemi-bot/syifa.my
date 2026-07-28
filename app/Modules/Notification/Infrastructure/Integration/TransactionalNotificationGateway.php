@@ -89,6 +89,32 @@ final readonly class TransactionalNotificationGateway implements TransactionalNo
         }
     }
 
+    public function bookingChanged(
+        string $tenantId,
+        string $bookingId,
+        string $bookingReference,
+        ?string $patientEmail,
+        string $change,
+    ): void {
+        if ($patientEmail === null || ! in_array($change, ['confirmed', 'rescheduled', 'cancelled'], true)) {
+            return;
+        }
+        try {
+            $this->prepareSafely(new PrepareNotificationCommand(
+                $tenantId,
+                'booking_'.$change,
+                'booking',
+                $bookingId,
+                $bookingId.':booking_'.$change.':patient',
+                'booking_contact:'.$bookingId,
+                $patientEmail,
+                ['booking_reference' => $bookingReference],
+            ));
+        } catch (Throwable $exception) {
+            $this->logFailure('booking', $bookingId, $exception);
+        }
+    }
+
     public function websitePublished(string $tenantId, string $websiteId): void
     {
         try {
@@ -113,6 +139,37 @@ final readonly class TransactionalNotificationGateway implements TransactionalNo
         }
     }
 
+    public function websiteReviewRequested(string $tenantId, string $onboardingJobId): void
+    {
+        $this->notifyClinicOwner($tenantId, 'website_review_requested', 'onboarding_job', $onboardingJobId);
+    }
+
+    public function subscriptionActivated(
+        string $tenantId,
+        string $subscriptionId,
+        string $clinicRegistrationId,
+    ): void {
+        try {
+            $email = $this->connection->table('clinic_registrations')
+                ->where('id', $clinicRegistrationId)
+                ->value('clinic_email');
+            if (is_string($email)) {
+                $this->prepareSafely(new PrepareNotificationCommand(
+                    $tenantId,
+                    'subscription_activated',
+                    'subscription',
+                    $subscriptionId,
+                    $subscriptionId.':subscription_activated:clinic_owner',
+                    'clinic_registration:'.$clinicRegistrationId,
+                    $email,
+                    [],
+                ));
+            }
+        } catch (Throwable $exception) {
+            $this->logFailure('subscription', $subscriptionId, $exception);
+        }
+    }
+
     private function prepareSafely(PrepareNotificationCommand $command): void
     {
         try {
@@ -124,6 +181,34 @@ final readonly class TransactionalNotificationGateway implements TransactionalNo
                 'trigger_id' => $command->triggerId,
                 'exception' => $exception,
             ]);
+        }
+    }
+
+    private function notifyClinicOwner(
+        string $tenantId,
+        string $category,
+        string $triggerType,
+        string $triggerId,
+    ): void {
+        try {
+            $owner = $this->connection->table('clinic_owner_authorities')
+                ->where('tenant_id', $tenantId)
+                ->where('authority_status', 'active')
+                ->first(['id', 'email']);
+            if ($owner !== null) {
+                $this->prepareSafely(new PrepareNotificationCommand(
+                    $tenantId,
+                    $category,
+                    $triggerType,
+                    $triggerId,
+                    $triggerId.':'.$category.':clinic_owner',
+                    'clinic_owner:'.(string) $owner->id,
+                    (string) $owner->email,
+                    [],
+                ));
+            }
+        } catch (Throwable $exception) {
+            $this->logFailure($triggerType, $triggerId, $exception);
         }
     }
 

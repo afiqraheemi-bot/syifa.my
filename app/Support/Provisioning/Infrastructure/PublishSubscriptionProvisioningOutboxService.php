@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Provisioning\Infrastructure;
 
+use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxRepositoryInterface;
 use App\Support\Provisioning\Application\RegisterProvisioningWorkflowService;
 use DateTimeImmutable;
@@ -17,6 +18,7 @@ final readonly class PublishSubscriptionProvisioningOutboxService
     public function __construct(
         private SubscriptionIntegrationOutboxRepositoryInterface $outbox,
         private RegisterProvisioningWorkflowService $workflows,
+        private ?TransactionalNotificationGatewayInterface $notifications = null,
     ) {}
 
     public function publishNext(): bool
@@ -47,6 +49,11 @@ final readonly class PublishSubscriptionProvisioningOutboxService
         if (! $this->outbox->completeDispatch($claim->event->eventId, $claim->leaseToken, $now)) {
             throw new RuntimeException('Subscription provisioning outbox completion lease became stale.');
         }
+        $this->notifications?->subscriptionActivated(
+            $claim->event->tenantId,
+            $claim->event->subscriptionId,
+            $claim->event->clinicRegistrationId,
+        );
 
         return true;
     }

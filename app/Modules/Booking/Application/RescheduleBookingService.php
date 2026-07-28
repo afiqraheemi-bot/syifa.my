@@ -19,6 +19,7 @@ use App\Modules\Booking\Domain\ScheduledAppointmentPair;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentDate;
 use App\Modules\Booking\Domain\ValueObjects\AppointmentTime;
 use App\Modules\Booking\Domain\ValueObjects\ScheduledAppointment;
+use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
 
 final readonly class RescheduleBookingService
 {
@@ -32,12 +33,14 @@ final readonly class RescheduleBookingService
         private BookingClockInterface $clock,
         private BookingHistoryIdentifierGeneratorInterface $identifiers,
         private BookingOwnerAuthorization $authorization,
+        private ?TransactionalNotificationGatewayInterface $notifications = null,
     ) {}
 
     public function execute(RescheduleBookingCommand $command): void
     {
         $this->authorization->assertClinicOwner($command->actorId, $command->actorRole);
-        $this->transactions->run(function () use ($command): void {
+        $notification = null;
+        $this->transactions->run(function () use ($command, &$notification): void {
             $booking = $this->bookings->findById($command->tenantId, $command->bookingId)
                 ?? throw new BookingOperationNotFoundException('Booking was not found.');
             $clinic = $this->clinic->forTrustedTenant($command->tenantId->value);
@@ -50,6 +53,10 @@ final readonly class RescheduleBookingService
             $this->bookings->save($booking);
             $this->history->append(BookingHistoryEntry::rescheduled($this->identifiers->generate(), $booking, new ScheduledAppointmentPair($old, $new), $command->actorId, $command->note, $at));
             $this->capacity->release($command->tenantId->value, new ReservationSlotData($old->startsAtUtc, $old->endsAtUtc));
+            $notification = [$booking->reference->value, $booking->patientEmail?->value];
         });
+        if ($notification !== null) {
+            $this->notifications?->bookingChanged($command->tenantId->value, $command->bookingId->value, $notification[0], $notification[1], 'rescheduled');
+        }
     }
 }

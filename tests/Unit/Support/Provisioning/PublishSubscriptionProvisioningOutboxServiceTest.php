@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Support\Provisioning;
 
+use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivatedIntegrationEvent;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxClaim;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxRepositoryInterface;
@@ -21,9 +22,18 @@ final class PublishSubscriptionProvisioningOutboxServiceTest extends TestCase
     {
         $outbox = new ProvisioningOutboxStub($this->event());
         $workflows = new ProvisioningWorkflowRepositoryStub;
+        $notifications = $this->createMock(TransactionalNotificationGatewayInterface::class);
+        $notifications->expects(self::once())
+            ->method('subscriptionActivated')
+            ->with(
+                '30000000-0000-4000-8000-000000000001',
+                '20000000-0000-4000-8000-000000000001',
+                '40000000-0000-4000-8000-000000000001',
+            );
         $publisher = new PublishSubscriptionProvisioningOutboxService(
             $outbox,
             new RegisterProvisioningWorkflowService($workflows),
+            $notifications,
         );
 
         self::assertTrue($publisher->publishNext());

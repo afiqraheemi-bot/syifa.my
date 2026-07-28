@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Onboarding\Application\WebsiteApproval;
 
+use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\OnboardingWorkflowTransactionInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\RequestWebsiteApprovalCommand;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\WebsiteApprovalAuditInterface;
@@ -20,11 +21,12 @@ final readonly class RequestWebsiteApprovalService
         private OnboardingJobRepositoryInterface $jobs,
         private WebsiteApprovalAuditInterface $audit,
         private OnboardingWorkflowTransactionInterface $transaction,
+        private ?TransactionalNotificationGatewayInterface $notifications = null,
     ) {}
 
     public function execute(RequestWebsiteApprovalCommand $command): OnboardingJob
     {
-        return $this->transaction->run(function () use ($command): OnboardingJob {
+        $job = $this->transaction->run(function () use ($command): OnboardingJob {
             $job = $this->jobs->findById(new OnboardingJobId($command->onboardingJobId));
             if ($job === null || $job->version() !== $command->expectedJobVersion) {
                 throw new InvalidOnboardingJobLifecycleTransitionException(
@@ -60,5 +62,8 @@ final readonly class RequestWebsiteApprovalService
 
             return $job;
         });
+        $this->notifications?->websiteReviewRequested($job->tenantId->value, $job->id->value);
+
+        return $job;
     }
 }

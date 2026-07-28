@@ -13,6 +13,7 @@ use App\Modules\Booking\Contracts\Repositories\BookingHistoryRepositoryInterface
 use App\Modules\Booking\Contracts\Repositories\BookingRepositoryInterface;
 use App\Modules\Booking\Contracts\Transactions\BookingTransactionInterface;
 use App\Modules\Booking\Domain\BookingHistoryEntry;
+use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
 
 final readonly class CancelBookingService
 {
@@ -24,12 +25,14 @@ final readonly class CancelBookingService
         private BookingClockInterface $clock,
         private BookingHistoryIdentifierGeneratorInterface $identifiers,
         private BookingOwnerAuthorization $authorization,
+        private ?TransactionalNotificationGatewayInterface $notifications = null,
     ) {}
 
     public function execute(BookingOwnerCommand $command): void
     {
         $this->authorization->assertClinicOwner($command->actorId, $command->actorRole);
-        $this->transactions->run(function () use ($command): void {
+        $notification = null;
+        $this->transactions->run(function () use ($command, &$notification): void {
             $booking = $this->bookings->findById($command->tenantId, $command->bookingId)
                 ?? throw new BookingOperationNotFoundException('Booking was not found.');
             $scheduled = $booking->scheduledAppointment();
@@ -38,6 +41,10 @@ final readonly class CancelBookingService
             $this->capacity->release($command->tenantId->value, new ReservationSlotData($scheduled->startsAtUtc, $scheduled->endsAtUtc));
             $this->bookings->save($booking);
             $this->history->append(BookingHistoryEntry::cancelled($this->identifiers->generate(), $booking, $command->actorId, $command->reason, $at));
+            $notification = [$booking->reference->value, $booking->patientEmail?->value];
         });
+        if ($notification !== null) {
+            $this->notifications?->bookingChanged($command->tenantId->value, $command->bookingId->value, $notification[0], $notification[1], 'cancelled');
+        }
     }
 }
