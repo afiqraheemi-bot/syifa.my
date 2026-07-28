@@ -91,6 +91,12 @@ final class PostgresSubmitBookingServiceTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->connection === null) {
+            parent::tearDown();
+
+            return;
+        }
+
         foreach ($this->migrations as $migration) {
             $migration->down();
         }

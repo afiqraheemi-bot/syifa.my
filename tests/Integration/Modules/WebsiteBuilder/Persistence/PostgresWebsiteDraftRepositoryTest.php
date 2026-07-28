@@ -135,6 +135,12 @@ final class PostgresWebsiteDraftRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->connection === null) {
+            parent::tearDown();
+
+            return;
+        }
+
         foreach (array_reverse($this->migrations) as $down) {
             $down();
         }

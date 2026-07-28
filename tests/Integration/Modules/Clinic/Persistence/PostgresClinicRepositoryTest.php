@@ -96,6 +96,12 @@ final class PostgresClinicRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->connection === null) {
+            parent::tearDown();
+
+            return;
+        }
+
         $this->contactMigration?->down();
         Schema::connection(self::CONNECTION)->dropIfExists('websites');
         $this->configurationMigration?->down();

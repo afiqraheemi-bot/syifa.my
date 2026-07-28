@@ -12,6 +12,8 @@ final class FailedJobsMigrationPostgresTest extends TestCase
 {
     private const CONNECTION = 'release_support_pgsql';
 
+    private bool $connectionConfigured = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,12 +34,19 @@ final class FailedJobsMigrationPostgresTest extends TestCase
             'search_path' => 'public',
             'sslmode' => 'prefer',
         ]);
+        $this->connectionConfigured = true;
         DB::purge(self::CONNECTION);
         Schema::connection(self::CONNECTION)->dropIfExists('failed_jobs');
     }
 
     protected function tearDown(): void
     {
+        if (! $this->connectionConfigured) {
+            parent::tearDown();
+
+            return;
+        }
+
         Schema::connection(self::CONNECTION)->dropIfExists('failed_jobs');
         DB::purge(self::CONNECTION);
 

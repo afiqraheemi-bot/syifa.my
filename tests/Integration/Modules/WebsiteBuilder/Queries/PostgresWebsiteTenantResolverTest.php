@@ -54,6 +54,12 @@ final class PostgresWebsiteTenantResolverTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->connection === null) {
+            parent::tearDown();
+
+            return;
+        }
+
         $this->websitesMigration?->down();
         Schema::connection(self::CONNECTION)->dropIfExists('tenants');
         DB::purge(self::CONNECTION);
