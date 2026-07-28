@@ -62,6 +62,12 @@ final readonly class AuthenticatedDashboardPage
                 false,
             ))->toArray();
             $props['navigation'][] = (new DashboardNavigationItem(
+                'domain',
+                'Custom domain',
+                route('dashboard.website.domain'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
                 'bookings',
                 'Bookings',
                 route('dashboard.bookings'),

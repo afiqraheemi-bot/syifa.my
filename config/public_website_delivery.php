@@ -7,6 +7,10 @@ return [
     'base_domain' => strtolower((string) env('PUBLIC_WEBSITE_BASE_DOMAIN', 'syifa.my')),
     'runtime_addressing' => env('APP_ENV') !== 'testing'
         && (bool) env('PUBLIC_WEBSITE_RUNTIME_ADDRESSING', true),
+    'custom_domain_targets' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('PUBLIC_WEBSITE_CUSTOM_DOMAIN_TARGETS', '')),
+    ))),
 
     // Local-development-only host-to-Website mapping. This can only ever be
     // non-empty when APP_ENV=local, regardless of what these env vars contain,

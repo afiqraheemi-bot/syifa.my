@@ -11,6 +11,10 @@ return [
 
     'offer_ttl_minutes' => 30,
 
+    'capabilities' => [
+        'custom_domain' => env('COMMERCIAL_CUSTOM_DOMAIN_CAPABILITY_KEY', 'custom_domain'),
+    ],
+
     'trusted_consumers' => [
         'payment',
     ],

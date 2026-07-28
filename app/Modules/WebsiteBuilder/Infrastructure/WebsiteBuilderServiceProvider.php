@@ -7,6 +7,8 @@ namespace App\Modules\WebsiteBuilder\Infrastructure;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeReaderInterface;
 use App\Modules\Booking\Contracts\Queries\AvailableSlotReaderInterface;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
+use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementLookupInterface;
+use App\Modules\WebsiteBuilder\Application\CustomDomain\ManageCustomDomainService;
 use App\Modules\WebsiteBuilder\Application\Delivery\AvailabilityDeliveryService;
 use App\Modules\WebsiteBuilder\Application\Delivery\BookingDeliveryService;
 use App\Modules\WebsiteBuilder\Application\Delivery\PlatformLegalContentProviderInterface;
@@ -19,6 +21,8 @@ use App\Modules\WebsiteBuilder\Application\Provisioning\ProvisionWebsiteFoundati
 use App\Modules\WebsiteBuilder\Application\Provisioning\ReserveProvisionedWebsiteAddressService;
 use App\Modules\WebsiteBuilder\Application\WebsiteAddress\WebsiteSubdomainPolicy;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\WebsiteDraftSectionCodec;
+use App\Modules\WebsiteBuilder\Contracts\CustomDomain\CustomDomainRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\CustomDomain\DomainControlVerifierInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\BookingSubmissionGatewayInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicAvailabilityReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfigurationReaderInterface;
@@ -37,6 +41,7 @@ use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteDraftRepositoryInte
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\WebsitePublicationTransactionInterface;
+use App\Modules\WebsiteBuilder\Infrastructure\CustomDomain\NativeDnsDomainControlVerifier;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingAvailableSlotReaderAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingFormConfigurationReaderAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingSubmissionGatewayAdapter;
@@ -51,6 +56,7 @@ use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersist
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSectionPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConfigurationPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresClinicRepository;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresCustomDomainRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsiteDraftRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsitePublicAddressRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsiteRepository;
@@ -70,6 +76,31 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(
+            CustomDomainRepositoryInterface::class,
+            static fn (Application $application): PostgresCustomDomainRepository => new PostgresCustomDomainRepository(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->singleton(
+            DomainControlVerifierInterface::class,
+            static fn (): NativeDnsDomainControlVerifier => new NativeDnsDomainControlVerifier(
+                array_values(array_filter(array_map(
+                    static fn (mixed $target): string => strtolower(rtrim(trim((string) $target), '.')),
+                    (array) config('public_website_delivery.custom_domain_targets', []),
+                ))),
+            ),
+        );
+        $this->app->singleton(
+            ManageCustomDomainService::class,
+            static fn (Application $application): ManageCustomDomainService => new ManageCustomDomainService(
+                $application->make(CustomDomainRepositoryInterface::class),
+                $application->make(DomainControlVerifierInterface::class),
+                $application->make(SubscriptionEntitlementLookupInterface::class),
+                $application->make(WebsiteReadInterface::class),
+                (string) config('commercial.capabilities.custom_domain', ''),
+            ),
+        );
         $this->app->singleton(ClinicPersistenceMapper::class);
         $this->app->singleton(WebsitePersistenceMapper::class);
         $this->app->singleton(WebsiteAssetPersistenceMapper::class);

@@ -28,6 +28,7 @@ use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\SuccessController;
 use App\Support\Dashboard\Presentation\Http\Controllers\AuthenticatedDashboardController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerCustomDomainController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerSubscriptionController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteApprovalController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteContentOverviewController;
@@ -258,6 +259,16 @@ Route::prefix('/dashboard/billing/subscriptions/{subscriptionId}')
 Route::get('/dashboard/website', ClinicOwnerWebsiteOverviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website');
+Route::prefix('/dashboard/website/domain')
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website.domain')
+    ->group(function (): void {
+        Route::get('/', [ClinicOwnerCustomDomainController::class, 'index'])->name('');
+        Route::post('/', [ClinicOwnerCustomDomainController::class, 'store'])->name('.store');
+        Route::post('/verify', [ClinicOwnerCustomDomainController::class, 'verify'])->name('.verify');
+        Route::post('/activate', [ClinicOwnerCustomDomainController::class, 'activate'])->name('.activate');
+        Route::post('/detach', [ClinicOwnerCustomDomainController::class, 'detach'])->name('.detach');
+    });
 Route::post('/dashboard/website/approval', ClinicOwnerWebsiteApprovalController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.approval');

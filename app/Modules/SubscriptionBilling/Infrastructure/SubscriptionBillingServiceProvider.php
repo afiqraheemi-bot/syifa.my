@@ -39,6 +39,7 @@ use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\P
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanOfferingCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CommercialCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PricingHistoryReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementLookupInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\InitialAcquisitionCheckoutStoreInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentApplicationJobDispatcherInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentApplicationTransactionInterface;
@@ -87,6 +88,7 @@ use App\Modules\SubscriptionBilling\Infrastructure\Audit\SubscriptionActivationA
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\CommercialCataloguePlatformAuthorizationAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\PaymentProviderAdministrationAuthorization;
 use App\Modules\SubscriptionBilling\Infrastructure\CommercialCatalogue\CommercialCatalogueTransactionalService;
+use App\Modules\SubscriptionBilling\Infrastructure\Entitlements\PostgresSubscriptionEntitlementLookup;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\ConfiguredProviderHealth;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\LaravelPaymentApplicationJobDispatcher;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\LaravelProviderVerificationJobDispatcher;
@@ -141,6 +143,12 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(
+            SubscriptionEntitlementLookupInterface::class,
+            static fn (Application $application): PostgresSubscriptionEntitlementLookup => new PostgresSubscriptionEntitlementLookup(
+                $application->make('db')->connection(),
+            ),
+        );
         $this->app->singleton(
             BillingOverviewReadInterface::class,
             static fn (Application $application): PostgresBillingOverviewReadAdapter => new PostgresBillingOverviewReadAdapter(

@@ -91,6 +91,7 @@ use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTim
 use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTimelineReadInterface;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewData;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\CustomDomain\CustomDomainRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfiguration;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfigurationReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingServiceOption;
@@ -114,6 +115,7 @@ use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface
 use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\WebsitePublicationTransactionInterface;
 use App\Modules\WebsiteBuilder\Domain\Clinic;
+use App\Modules\WebsiteBuilder\Domain\CustomDomain\CustomDomain;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\AboutSectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\BookingCtaSectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\ContactSectionContent;
@@ -162,6 +164,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->app->instance(ClinicSummaryReadInterface::class, new DashboardFixedClinicSummary);
         $this->app->instance(SubscriptionSummaryReadInterface::class, new DashboardFixedSubscriptionSummary);
         $this->app->instance(WebsiteReadInterface::class, new DashboardFixedWebsiteRead);
+        $this->app->instance(CustomDomainRepositoryInterface::class, new DashboardEmptyCustomDomainRepository);
         $this->app->instance(WebsitePublishedSnapshotReadInterface::class, new DashboardFixedWebsiteSnapshot);
         $this->app->instance(WebsiteSeoSummaryReadInterface::class, new DashboardFixedSeoSummary);
         $this->websiteRepository = new DashboardFixedWebsiteRepository;
@@ -283,7 +286,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         if ($actorType === ActorType::ClinicOwner) {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 7)
+                    ->has('navigation', 8)
                     ->where('welcomeTitle', 'Welcome back, Authenticated User')
                     ->has('summaries', 4)
                     ->where('summaries.0.key', 'clinic')
@@ -1881,7 +1884,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.0.key', 'edit')
                     ->where('quickActions.0.available', true)
                     ->where('quickActions.0.href', route('dashboard.website.content'))
-                    ->has('navigation', 4),
+                    ->has('navigation', 5),
             );
     }
 
@@ -1908,7 +1911,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('editableContent.branding.clinic_name', 'Klinik Aisyah')
                     ->where('editableContent.version', 1)
                     ->where('updateUrl', route('dashboard.website.content.update'))
-                    ->has('navigation', 4),
+                    ->has('navigation', 5),
             );
     }
 
@@ -1979,9 +1982,33 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                         ->where('navigation.0.key', 'dashboard')
                         ->where('navigation.1.key', 'website')
                         ->where('navigation.2.key', 'content')
-                        ->where('navigation.3.key', 'bookings'),
+                        ->where('navigation.3.key', 'domain')
+                        ->where('navigation.4.key', 'bookings'),
                 );
         }
+    }
+
+    public function test_clinic_owner_can_open_the_tenant_scoped_custom_domain_workspace(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+
+        $this->get('/dashboard/website/domain')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('TenantManagement/Website/ClinicOwnerCustomDomain', false)
+                    ->where('domain', null)
+                    ->where('operationsUrl', route('dashboard.website.domain'))
+                    ->where('navigation.3.key', 'domain'),
+            );
     }
 
     public function test_clinic_owner_receives_the_booking_overview_from_application_providers(): void
@@ -2007,7 +2034,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('manualBooking.sources.0.value', 'phone')
                     ->where('manualBooking.serviceSelectionEnabled', true)
                     ->where('manualBooking.services.0.name', 'Consultation')
-                    ->has('navigation', 4),
+                    ->has('navigation', 5),
             );
     }
 
@@ -2237,6 +2264,21 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             },
         );
     }
+}
+
+final class DashboardEmptyCustomDomainRepository implements CustomDomainRepositoryInterface
+{
+    public function currentForWebsite(string $tenantId, string $websiteId): ?CustomDomain
+    {
+        return null;
+    }
+
+    public function findOwned(string $tenantId, string $domainId): ?CustomDomain
+    {
+        return null;
+    }
+
+    public function save(CustomDomain $domain): void {}
 }
 
 final class DashboardOnboardingJobRepository implements OnboardingJobRepositoryInterface

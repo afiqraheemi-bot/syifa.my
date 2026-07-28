@@ -186,7 +186,33 @@ final readonly class PostgresWebsitePublicAddressRepository implements WebsitePu
             ->where('websites.lifecycle', 'published')
             ->first();
 
-        return $row instanceof stdClass ? $this->data($row) : null;
+        if ($row instanceof stdClass) {
+            return $this->data($row);
+        }
+
+        $custom = $this->connection->table('custom_domains')
+            ->join('websites', function ($join): void {
+                $join->on('websites.id', '=', 'custom_domains.website_id')
+                    ->on('websites.tenant_id', '=', 'custom_domains.tenant_id');
+            })
+            ->where('custom_domains.normalized_hostname', $normalized)
+            ->where('custom_domains.status', 'active')
+            ->where('websites.lifecycle', 'published')
+            ->first([
+                'custom_domains.website_id',
+                'custom_domains.tenant_id',
+                'custom_domains.normalized_hostname',
+            ]);
+
+        return $custom instanceof stdClass
+            ? new WebsitePublicAddressData(
+                (string) $custom->website_id,
+                (string) $custom->tenant_id,
+                (string) $custom->normalized_hostname,
+                'https://'.(string) $custom->normalized_hostname,
+                true,
+            )
+            : null;
     }
 
     private function baseQuery(): Builder
