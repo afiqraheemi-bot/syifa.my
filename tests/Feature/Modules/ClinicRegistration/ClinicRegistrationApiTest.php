@@ -241,6 +241,7 @@ final class ClinicRegistrationApiTest extends TestCase
             'clinic_name' => 'Klinik Syifa',
             'clinic_email' => 'owner@clinic.test',
             'clinic_phone' => '+60123456789',
+            'clinic_address' => '1 Jalan Klinik',
             'selected_plan_offering_reference' => $this->uuid(71),
             'selected_billing_option_reference' => 'annual',
             'commercial_snapshot_version' => 'catalogue-v1',
