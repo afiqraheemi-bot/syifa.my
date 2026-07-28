@@ -559,6 +559,18 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                         route('dashboard.commercial.billing-options.create'),
                     )
                     ->where('billingOptions.0.code', 'annual')
+                    ->where('capabilities.0.version', 1)
+                    ->where(
+                        'capabilities.0.editUrl',
+                        route(
+                            'dashboard.commercial.capabilities.edit',
+                            '10000000-0000-4000-8000-000000000004',
+                        ),
+                    )
+                    ->where(
+                        'actions.createCapability',
+                        route('dashboard.commercial.capabilities.create'),
+                    )
                     ->where(
                         'billingOptions.0.editUrl',
                         route(
@@ -586,6 +598,29 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 ->where('formKind', 'billing-option-create')
                 ->where('action', route('dashboard.commercial.billing-options.store'))
                 ->where('validationErrors', []));
+
+        $this->get('/dashboard/commercial/capabilities/create')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Commercial/SuperAdminCommercialMutationForm', false)
+                ->where('formKind', 'capability-create')
+                ->where('action', route('dashboard.commercial.capabilities.store'))
+                ->where('validationErrors', []));
+
+        $this->get('/dashboard/commercial/capabilities/10000000-0000-4000-8000-000000000004/edit')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Commercial/SuperAdminCommercialMutationForm', false)
+                ->where('formKind', 'capability-edit')
+                ->where('capability.name', 'Booking management')
+                ->where('capability.version', 1)
+                ->where(
+                    'action',
+                    route(
+                        'dashboard.commercial.capabilities.update',
+                        '10000000-0000-4000-8000-000000000004',
+                    ),
+                ));
 
         $this->get('/dashboard/commercial/billing-options/10000000-0000-4000-8000-000000000002/edit')
             ->assertOk()
@@ -677,9 +712,11 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->getJson('/dashboard/commercial')->assertForbidden();
         $this->getJson('/dashboard/commercial/plans/create')->assertForbidden();
         $this->getJson('/dashboard/commercial/billing-options/create')->assertForbidden();
+        $this->getJson('/dashboard/commercial/capabilities/create')->assertForbidden();
         $this->getJson('/dashboard/commercial/billing-options/10000000-0000-4000-8000-000000000002/edit')->assertForbidden();
         $this->postJson('/dashboard/commercial/plans')->assertForbidden();
         $this->postJson('/dashboard/commercial/billing-options')->assertForbidden();
+        $this->postJson('/dashboard/commercial/capabilities')->assertForbidden();
         $this->patchJson('/dashboard/commercial/billing-options/10000000-0000-4000-8000-000000000002')->assertForbidden();
         $this->postJson('/dashboard/commercial/offerings')->assertForbidden();
 

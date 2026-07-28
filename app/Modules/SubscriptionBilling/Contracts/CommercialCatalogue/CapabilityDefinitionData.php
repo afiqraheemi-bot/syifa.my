@@ -13,5 +13,6 @@ final readonly class CapabilityDefinitionData
         public string $description,
         public string $commercialMeaning,
         public string $status,
+        public int $version = 1,
     ) {}
 }

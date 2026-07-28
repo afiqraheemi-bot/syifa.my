@@ -78,6 +78,7 @@ final class CommercialCatalogueContractsTest extends TestCase
                 'effectiveStart',
                 'effectiveEnd',
                 'displayOrder',
+                'version',
             ],
             $this->propertyNames(BillingOptionData::class),
         );
@@ -98,7 +99,7 @@ final class CommercialCatalogueContractsTest extends TestCase
             $this->propertyNames(PlanOfferingData::class),
         );
         self::assertSame(
-            ['capabilityId', 'capabilityKey', 'name', 'description', 'commercialMeaning', 'status'],
+            ['capabilityId', 'capabilityKey', 'name', 'description', 'commercialMeaning', 'status', 'version'],
             $this->propertyNames(CapabilityDefinitionData::class),
         );
         self::assertSame(

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Support\Dashboard\Application\SuperAdmin\Commercial;
 
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\GetBillingOptionService;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\GetCapabilityDefinitionService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\GetPlanOfferingService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\GetPlanService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ListBillingOptionsService;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\BillingOptionData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CapabilityDefinitionData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\OffsetPaginationInput;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanOfferingData;
@@ -26,6 +28,7 @@ final readonly class SuperAdminCommercialMutationPage
         private GetPlanService $plan,
         private GetPlanOfferingService $offering,
         private GetBillingOptionService $billingOption,
+        private GetCapabilityDefinitionService $capability,
         private ListBillingOptionsService $billingOptions,
         private PricingHistoryReadInterface $pricingHistory,
     ) {}
@@ -38,6 +41,23 @@ final readonly class SuperAdminCommercialMutationPage
     public function createBillingOption(mixed $context): DashboardPageView
     {
         return $this->view($this->authorization($context), 'billing-option-create');
+    }
+
+    public function createCapability(mixed $context): DashboardPageView
+    {
+        return $this->view($this->authorization($context), 'capability-create');
+    }
+
+    public function editCapability(mixed $context, string $capabilityId): DashboardPageView
+    {
+        $capability = $this->capability->execute($capabilityId)
+            ?? throw new NotFoundHttpException('Feature definition was not found.');
+
+        return $this->view(
+            $this->authorization($context),
+            'capability-edit',
+            capability: $capability,
+        );
     }
 
     public function editBillingOption(mixed $context, string $billingOptionId): DashboardPageView
@@ -90,11 +110,15 @@ final readonly class SuperAdminCommercialMutationPage
         ?PlanData $plan = null,
         ?PlanOfferingData $offering = null,
         ?BillingOptionData $billingOption = null,
+        ?CapabilityDefinitionData $capability = null,
     ): DashboardPageView {
         $isPlan = str_starts_with($formKind, 'plan-');
         $isBillingOption = str_starts_with($formKind, 'billing-option-');
+        $isCapability = str_starts_with($formKind, 'capability-');
         $isCreate = str_ends_with($formKind, '-create');
-        $resourceLabel = $isPlan ? 'plan' : ($isBillingOption ? 'billing option' : 'offering');
+        $resourceLabel = $isPlan
+            ? 'plan'
+            : ($isBillingOption ? 'billing option' : ($isCapability ? 'feature definition' : 'offering'));
         $title = $isCreate ? 'Create '.$resourceLabel : 'Edit '.$resourceLabel;
         $cancelUrl = $offering === null
             ? ($plan === null ? route('dashboard.commercial') : route('dashboard.commercial.plans.show', $plan->planId))
@@ -112,7 +136,7 @@ final readonly class SuperAdminCommercialMutationPage
             'contextLabel' => 'Super Admin workspace',
             'csrfToken' => csrf_token(),
             'formKind' => $formKind,
-            'action' => $this->action($formKind, $plan, $offering, $billingOption),
+            'action' => $this->action($formKind, $plan, $offering, $billingOption, $capability),
             'cancelUrl' => $cancelUrl,
             'error' => session('commercial_error'),
             'validationErrors' => $this->validationErrors(),
@@ -129,6 +153,8 @@ final readonly class SuperAdminCommercialMutationPage
                 'effective_start' => old('effective_start'),
                 'effective_end' => old('effective_end'),
                 'capability_configuration_reference' => old('capability_configuration_reference'),
+                'capability_key' => old('capability_key'),
+                'commercial_meaning' => old('commercial_meaning'),
             ],
             'plan' => $plan === null ? null : [
                 'id' => $plan->planId,
@@ -161,6 +187,15 @@ final readonly class SuperAdminCommercialMutationPage
                 'displayOrder' => $billingOption->displayOrder,
                 'version' => $billingOption->version,
             ],
+            'capability' => $capability === null ? null : [
+                'id' => $capability->capabilityId,
+                'key' => $capability->capabilityKey,
+                'name' => $capability->name,
+                'description' => $capability->description,
+                'commercialMeaning' => $capability->commercialMeaning,
+                'status' => $capability->status,
+                'version' => $capability->version,
+            ],
             'billingOptions' => array_map(static fn (BillingOptionData $option): array => [
                 'id' => $option->billingOptionId,
                 'label' => $option->name,
@@ -180,11 +215,14 @@ final readonly class SuperAdminCommercialMutationPage
         ?PlanData $plan,
         ?PlanOfferingData $offering,
         ?BillingOptionData $billingOption = null,
+        ?CapabilityDefinitionData $capability = null,
     ): string {
         return match ($formKind) {
             'plan-create' => route('dashboard.commercial.plans.store'),
             'billing-option-create' => route('dashboard.commercial.billing-options.store'),
             'billing-option-edit' => route('dashboard.commercial.billing-options.update', $billingOption?->billingOptionId),
+            'capability-create' => route('dashboard.commercial.capabilities.store'),
+            'capability-edit' => route('dashboard.commercial.capabilities.update', $capability?->capabilityId),
             'plan-edit' => route('dashboard.commercial.plans.update', $plan?->planId),
             'offering-create' => route('dashboard.commercial.offerings.store'),
             'offering-edit' => route('dashboard.commercial.offerings.update', $offering?->planOfferingId),

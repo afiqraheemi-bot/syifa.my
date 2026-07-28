@@ -124,6 +124,13 @@ final readonly class SuperAdminCommercialManagementPage
                 'key' => $item->capabilityKey,
                 'name' => $item->name,
                 'status' => $item->status,
+                'description' => $item->description,
+                'commercialMeaning' => $item->commercialMeaning,
+                'version' => $item->version,
+                'editUrl' => route('dashboard.commercial.capabilities.edit', $item->capabilityId),
+                'activateUrl' => route('dashboard.commercial.capabilities.activate', $item->capabilityId),
+                'deprecateUrl' => route('dashboard.commercial.capabilities.deprecate', $item->capabilityId),
+                'retireUrl' => route('dashboard.commercial.capabilities.retire', $item->capabilityId),
             ], $capabilities),
             'pricingHistory' => $selectedOffering === null ? [] : array_map(
                 static fn (PricingHistoryData $item): array => [
@@ -139,6 +146,7 @@ final readonly class SuperAdminCommercialManagementPage
             'actions' => [
                 'createPlan' => route('dashboard.commercial.plans.create'),
                 'createBillingOption' => route('dashboard.commercial.billing-options.create'),
+                'createCapability' => route('dashboard.commercial.capabilities.create'),
                 'editPlan' => $selectedPlan === null
                     ? null
                     : route('dashboard.commercial.plans.edit', $selectedPlan->planId),
@@ -261,6 +269,11 @@ final readonly class SuperAdminCommercialManagementPage
             'offering_grandfathered' => 'Plan offering grandfathered successfully.',
             'offering_retired' => 'Plan offering retired successfully.',
             'billing_option_created' => 'Billing option created successfully.',
+            'capability_created' => 'Feature definition created successfully.',
+            'capability_updated' => 'Feature definition updated successfully.',
+            'capability_activated' => 'Feature definition activated successfully.',
+            'capability_deprecated' => 'Feature definition deprecated successfully.',
+            'capability_retired' => 'Feature definition retired successfully.',
             default => null,
         };
     }

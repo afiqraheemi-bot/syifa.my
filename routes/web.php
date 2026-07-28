@@ -32,6 +32,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteConten
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminBillingOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialBillingOptionOperationController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialCapabilityOperationController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialManagementController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialOfferingOperationController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialPlanOperationController;
@@ -112,6 +113,11 @@ Route::prefix('/dashboard/commercial')
             ->name('.plans.create');
         Route::get('/billing-options/create', [SuperAdminCommercialManagementController::class, 'createBillingOption'])
             ->name('.billing-options.create');
+        Route::get('/capabilities/create', [SuperAdminCommercialManagementController::class, 'createCapability'])
+            ->name('.capabilities.create');
+        Route::get('/capabilities/{capabilityId}/edit', [SuperAdminCommercialManagementController::class, 'editCapability'])
+            ->whereUuid('capabilityId')
+            ->name('.capabilities.edit');
         Route::get('/billing-options/{billingOptionId}/edit', [SuperAdminCommercialManagementController::class, 'editBillingOption'])
             ->whereUuid('billingOptionId')
             ->name('.billing-options.edit');
@@ -137,6 +143,20 @@ Route::prefix('/dashboard/commercial')
         Route::patch('/billing-options/{billingOptionId}', [SuperAdminCommercialBillingOptionOperationController::class, 'update'])
             ->whereUuid('billingOptionId')
             ->name('.billing-options.update');
+        Route::post('/capabilities', [SuperAdminCommercialCapabilityOperationController::class, 'store'])
+            ->name('.capabilities.store');
+        Route::patch('/capabilities/{capabilityId}', [SuperAdminCommercialCapabilityOperationController::class, 'update'])
+            ->whereUuid('capabilityId')
+            ->name('.capabilities.update');
+        Route::post('/capabilities/{capabilityId}/activate', [SuperAdminCommercialCapabilityOperationController::class, 'activate'])
+            ->whereUuid('capabilityId')
+            ->name('.capabilities.activate');
+        Route::post('/capabilities/{capabilityId}/deprecate', [SuperAdminCommercialCapabilityOperationController::class, 'deprecate'])
+            ->whereUuid('capabilityId')
+            ->name('.capabilities.deprecate');
+        Route::post('/capabilities/{capabilityId}/retire', [SuperAdminCommercialCapabilityOperationController::class, 'retire'])
+            ->whereUuid('capabilityId')
+            ->name('.capabilities.retire');
         Route::patch('/plans/{planId}', [SuperAdminCommercialPlanOperationController::class, 'update'])
             ->whereUuid('planId')
             ->name('.plans.update');

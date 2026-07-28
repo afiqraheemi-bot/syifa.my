@@ -224,6 +224,7 @@ final readonly class PostgresCommercialCatalogueQueryAdapter implements BillingO
             $this->string($row, 'description'),
             $this->string($row, 'commercial_meaning'),
             $this->string($row, 'status'),
+            $this->integer($row, 'version'),
         );
     }
 

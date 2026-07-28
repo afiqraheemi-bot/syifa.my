@@ -39,6 +39,30 @@ final readonly class SuperAdminCommercialManagementController
         return inertia($view->component, $view->props);
     }
 
+    public function createCapability(
+        Request $request,
+        SuperAdminCommercialMutationPage $page,
+    ): Response {
+        $view = $page->createCapability(
+            $request->attributes->get(AuthorizationContext::class),
+        );
+
+        return inertia($view->component, $view->props);
+    }
+
+    public function editCapability(
+        Request $request,
+        string $capabilityId,
+        SuperAdminCommercialMutationPage $page,
+    ): Response {
+        $view = $page->editCapability(
+            $request->attributes->get(AuthorizationContext::class),
+            $capabilityId,
+        );
+
+        return inertia($view->component, $view->props);
+    }
+
     public function editBillingOption(
         Request $request,
         string $billingOptionId,

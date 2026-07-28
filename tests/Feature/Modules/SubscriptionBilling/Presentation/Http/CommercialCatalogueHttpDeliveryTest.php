@@ -194,7 +194,7 @@ final class CommercialCatalogueHttpDeliveryTest extends LaravelTestCase
                         return $this->result;
                     }
                 },
-                ['capability_id' => '33333333-3333-4333-8333-333333333333', 'capability_key' => 'booking_management', 'name' => 'Booking Management', 'description' => 'Booking controls.', 'commercial_meaning' => 'Commercial meaning.', 'status' => 'active'],
+                ['capability_id' => '33333333-3333-4333-8333-333333333333', 'capability_key' => 'booking_management', 'name' => 'Booking Management', 'description' => 'Booking controls.', 'commercial_meaning' => 'Commercial meaning.', 'status' => 'active', 'version' => 1],
             ],
             'plan offerings' => [
                 self::BASE.'/plan-offerings',

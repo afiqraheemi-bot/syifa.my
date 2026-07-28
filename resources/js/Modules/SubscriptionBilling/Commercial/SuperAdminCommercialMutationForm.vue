@@ -19,6 +19,7 @@ const props = defineProps({
     plan: { type: Object, default: null },
     offering: { type: Object, default: null },
     billingOption: { type: Object, default: null },
+    capability: { type: Object, default: null },
     billingOptions: { type: Array, required: true },
 });
 
@@ -27,6 +28,7 @@ const submitting = ref(false);
 let submissionStarted = false;
 const isPlan = computed(() => props.formKind.startsWith('plan-'));
 const isBillingOption = computed(() => props.formKind.startsWith('billing-option-'));
+const isCapability = computed(() => props.formKind.startsWith('capability-'));
 const isEdit = computed(() => props.formKind.endsWith('-edit'));
 const recurrence = ref(
     fieldValue('recurrence_classification', props.billingOption?.recurrence ?? 'recurring'),
@@ -318,6 +320,84 @@ function beginSubmit(event) {
                                 : isEdit
                                   ? 'Save Billing Option'
                                   : 'Create Billing Option'
+                        }}
+                    </button>
+                </div>
+            </form>
+
+            <form
+                v-else-if="isCapability"
+                class="grid gap-4 sm:grid-cols-2"
+                :action="action"
+                method="post"
+                novalidate
+                @submit="beginSubmit"
+            >
+                <input type="hidden" name="_token" :value="csrfToken" />
+                <input v-if="isEdit" type="hidden" name="_method" value="patch" />
+                <input
+                    v-if="isEdit"
+                    type="hidden"
+                    name="expected_version"
+                    :value="capability.version"
+                />
+                <label class="grid gap-1 text-sm font-semibold">
+                    Feature key
+                    <input
+                        name="capability_key"
+                        maxlength="80"
+                        :value="fieldValue('capability_key', capability?.key)"
+                        :readonly="isEdit"
+                        class="min-h-11 rounded-xl border border-slate-300 px-3"
+                    />
+                </label>
+                <label class="grid gap-1 text-sm font-semibold">
+                    Feature name
+                    <input
+                        name="name"
+                        maxlength="100"
+                        :value="fieldValue('name', capability?.name)"
+                        class="min-h-11 rounded-xl border border-slate-300 px-3"
+                    />
+                </label>
+                <label class="grid gap-1 text-sm font-semibold sm:col-span-2">
+                    Description
+                    <textarea
+                        name="description"
+                        maxlength="1000"
+                        rows="4"
+                        :value="fieldValue('description', capability?.description)"
+                        class="rounded-xl border border-slate-300 px-3 py-2"
+                    />
+                </label>
+                <label class="grid gap-1 text-sm font-semibold sm:col-span-2">
+                    Commercial meaning
+                    <textarea
+                        name="commercial_meaning"
+                        maxlength="1000"
+                        rows="4"
+                        :value="fieldValue('commercial_meaning', capability?.commercialMeaning)"
+                        class="rounded-xl border border-slate-300 px-3 py-2"
+                    />
+                </label>
+                <div class="flex items-end gap-3 sm:col-span-2">
+                    <a
+                        :href="cancelUrl"
+                        class="inline-flex min-h-11 items-center rounded-xl border border-slate-300 px-5 py-2 font-bold text-slate-900"
+                    >
+                        Cancel
+                    </a>
+                    <button
+                        type="submit"
+                        class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:opacity-60"
+                        :disabled="submitting"
+                    >
+                        {{
+                            submitting
+                                ? 'Saving…'
+                                : isEdit
+                                  ? 'Save Feature Definition'
+                                  : 'Create Feature Definition'
                         }}
                     </button>
                 </div>
