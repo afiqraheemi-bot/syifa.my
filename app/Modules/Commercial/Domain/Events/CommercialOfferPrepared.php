@@ -10,7 +10,7 @@ final readonly class CommercialOfferPrepared
 {
     public function __construct(
         public string $commercialOfferId,
-        public string $platformIdentityId,
+        public ?string $platformIdentityId,
         public string $clinicRegistrationId,
         public DateTimeImmutable $occurredAt,
     ) {}

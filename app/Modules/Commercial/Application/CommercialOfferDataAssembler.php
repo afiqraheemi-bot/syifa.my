@@ -17,7 +17,7 @@ final readonly class CommercialOfferDataAssembler
 
         return new CommercialOfferData(
             id: $offer->id->value,
-            platformIdentityId: $offer->platformIdentity->value,
+            platformIdentityId: $offer->platformIdentity?->value,
             clinicRegistrationId: $offer->clinicRegistration->value,
             tenantId: $offer->tenantId?->value,
             status: $offer->status->value,

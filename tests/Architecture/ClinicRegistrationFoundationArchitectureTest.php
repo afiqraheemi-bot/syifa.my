@@ -102,7 +102,7 @@ final class ClinicRegistrationFoundationArchitectureTest extends TestCase
         }
     }
 
-    public function test_routes_expose_only_identity_bound_current_registration_endpoints(): void
+    public function test_routes_expose_public_tracking_bound_registration_endpoints(): void
     {
         $routes = $this->source(
             dirname(__DIR__, 2).'/app/Modules/ClinicRegistration/Infrastructure/routes/clinic_registration.php',
@@ -114,13 +114,22 @@ final class ClinicRegistrationFoundationArchitectureTest extends TestCase
             "Route::patch('/current'",
             "Route::post('/current/submit'",
             "Route::post('/current/cancel'",
-            'AuthenticatePlatformSessionMiddleware::class',
-            "'throttle:platform.session'",
+            "Route::get('/register'",
+            "Route::get('/register/offers'",
+            "'throttle:public.default'",
         ] as $expected) {
             self::assertStringContainsString($expected, $routes);
         }
 
-        foreach (['approve', 'reject', 'review', '{registrationId}', 'selected_add_on_references'] as $forbidden) {
+        foreach ([
+            'approve',
+            'reject',
+            'review',
+            '{registrationId}',
+            'selected_add_on_references',
+            'AuthenticatePlatformSessionMiddleware',
+            'throttle:platform.session',
+        ] as $forbidden) {
             self::assertStringNotContainsString($forbidden, $routes);
         }
     }

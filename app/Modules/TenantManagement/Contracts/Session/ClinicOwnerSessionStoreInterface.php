@@ -6,7 +6,7 @@ namespace App\Modules\TenantManagement\Contracts\Session;
 
 interface ClinicOwnerSessionStoreInterface
 {
-    public function establish(ClinicOwnerSessionState $state): void;
+    public function establish(ClinicOwnerSessionState $state, bool $remember = false): void;
 
     public function current(): ?ClinicOwnerSessionState;
 

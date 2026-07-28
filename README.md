@@ -21,4 +21,5 @@ To be defined.
 
 ## Getting Started
 
-To be defined.
+See [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) for installation, demo
+accounts, and running the application locally.

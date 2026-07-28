@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support\Dashboard\Application\Website\Content;
 
+use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
+use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\DashboardNavigationItem;
 use App\Support\Dashboard\Application\DashboardPageView;
@@ -11,7 +13,10 @@ use LogicException;
 
 final readonly class ClinicOwnerWebsiteContentOverviewPage
 {
-    public function __construct(private WebsiteContentOverviewProvider $content) {}
+    public function __construct(
+        private WebsiteContentOverviewProvider $content,
+        private ManageWebsiteContentService $editableContent,
+    ) {}
 
     public function fromTrustedContext(mixed $context): DashboardPageView
     {
@@ -20,6 +25,13 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
         }
 
         $content = $this->content->provide($context)->data;
+        if ($context->tenantId === null) {
+            throw new LogicException('Clinic Owner Website tenant context was not established.');
+        }
+        $editable = $this->editableContent->read(
+            $context->tenantId,
+            new WebsiteAuthorizationContext($context->identityId, $context->role, actorTenantId: $context->tenantId),
+        )->toArray();
 
         return new DashboardPageView('TenantManagement/Website/ClinicOwnerWebsiteContentOverview', [
             'navigation' => [
@@ -34,11 +46,13 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
                 ['key' => 'content', 'label' => 'Content'],
             ],
             'pageTitle' => 'Website content',
-            'pageDescription' => 'Review the completion of published Website content.',
+            'pageDescription' => 'Update the governed Website configuration used by your clinic.',
             'identityName' => $context->name,
             'contextLabel' => 'SYIFA.my workspace',
             'contentHealth' => $content['health'],
             'contentSections' => $content['sections'],
+            'editableContent' => $editable,
+            'updateUrl' => route('dashboard.website.content.update'),
         ]);
     }
 }

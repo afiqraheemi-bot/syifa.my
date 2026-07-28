@@ -9,6 +9,13 @@ use Tests\TestCase;
 
 final class ProductionOperationsFoundationTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Config::set('operations.runtime_checks.enabled', false);
+    }
+
     public function test_health_endpoint_returns_lightweight_json_contract(): void
     {
         $this->getJson('/operations/health')
@@ -61,6 +68,10 @@ final class ProductionOperationsFoundationTest extends TestCase
                             ],
                         ],
                     ],
+                    'dependencies' => [
+                        'status' => 'ready',
+                        'dependencies' => [],
+                    ],
                 ],
             ]);
     }
@@ -106,6 +117,65 @@ final class ProductionOperationsFoundationTest extends TestCase
             'laravel',
             'framework',
         ] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $content);
+        }
+    }
+
+    public function test_canonical_health_routes_preserve_liveness_and_readiness_semantics(): void
+    {
+        $this->getJson('/health/live')
+            ->assertOk()
+            ->assertJsonPath('status', 'alive')
+            ->assertJsonPath('checks', []);
+
+        $this->getJson('/health/ready')
+            ->assertOk()
+            ->assertJsonPath('status', 'ready')
+            ->assertJsonStructure([
+                'checks' => [
+                    'infrastructure',
+                    'dependencies',
+                ],
+            ]);
+    }
+
+    public function test_release_endpoints_expose_only_approved_build_metadata(): void
+    {
+        Config::set('operations.release', [
+            'version' => '1.0.0',
+            'build_id' => 'build-20260724-1',
+            'commit' => '0123456789abcdef',
+            'built_at' => '2026-07-24T10:00:00Z',
+        ]);
+
+        $this->getJson('/version')
+            ->assertOk()
+            ->assertExactJson([
+                'status' => 'ok',
+                'version' => '1.0.0',
+            ]);
+
+        $this->getJson('/build')
+            ->assertOk()
+            ->assertExactJson([
+                'status' => 'ok',
+                'build' => [
+                    'build_id' => 'build-20260724-1',
+                    'commit' => '0123456789abcdef',
+                    'built_at' => '2026-07-24T10:00:00Z',
+                ],
+            ]);
+
+        $response = $this->getJson('/release')
+            ->assertOk()
+            ->assertJsonPath('release.version', '1.0.0')
+            ->assertJsonPath('release.build.commit', '0123456789abcdef');
+
+        $content = $response->getContent();
+
+        self::assertIsString($content);
+
+        foreach (['APP_KEY', 'DB_PASSWORD', 'REDIS_PASSWORD', 'secret', 'token'] as $forbidden) {
             self::assertStringNotContainsString($forbidden, $content);
         }
     }

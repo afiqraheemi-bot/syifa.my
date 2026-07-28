@@ -80,11 +80,11 @@ final readonly class CreateBookingWorkflow
         });
     }
 
-    private function validatedServiceId(CreateBookingCommand $command, TenantId $tenantId, BookingFormConfiguration $configuration): ServiceId
+    private function validatedServiceId(CreateBookingCommand $command, TenantId $tenantId, BookingFormConfiguration $configuration): ?ServiceId
     {
         $this->validateOptionalField($configuration, BookingFormField::Service, $command->serviceId);
         if ($command->serviceId === null || trim($command->serviceId) === '') {
-            throw new RequiredBookingFieldMissingException('The required field "service" must be supplied.');
+            return null;
         }
         $serviceId = new ServiceId($command->serviceId);
         $service = $this->services->findById($tenantId, $serviceId);

@@ -25,7 +25,7 @@ final readonly class ClinicOwnerBookingOperationController
             $context->role,
         );
 
-        return to_route('dashboard.bookings', status: 303);
+        return $this->redirect($request, $bookingId);
     }
 
     public function cancel(
@@ -41,7 +41,7 @@ final readonly class ClinicOwnerBookingOperationController
             $context->role,
         );
 
-        return to_route('dashboard.bookings', status: 303);
+        return $this->redirect($request, $bookingId);
     }
 
     public function reschedule(
@@ -59,7 +59,7 @@ final readonly class ClinicOwnerBookingOperationController
             $context->role,
         );
 
-        return to_route('dashboard.bookings', status: 303);
+        return $this->redirect($request, $bookingId);
     }
 
     private function context(Request $request): AuthorizationContext
@@ -75,5 +75,14 @@ final readonly class ClinicOwnerBookingOperationController
         abort_if($context->tenantId === null, 403);
 
         return $context->tenantId;
+    }
+
+    private function redirect(Request $request, string $bookingId): RedirectResponse
+    {
+        if ($request->boolean('return_to_detail')) {
+            return to_route('dashboard.bookings.show', ['bookingId' => $bookingId], 303);
+        }
+
+        return to_route('dashboard.bookings', status: 303);
     }
 }

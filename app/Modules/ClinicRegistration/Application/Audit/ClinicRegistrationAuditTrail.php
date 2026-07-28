@@ -34,7 +34,7 @@ final readonly class ClinicRegistrationAuditTrail
         $this->auditEntries->record(new AuditEntryData(
             $this->auditEntryId($action, $registration->id->value, $occurredAt, $correlationId),
             $occurredAt,
-            new AuditActorData(AuditActorType::PlatformIdentity->value, $registration->platformIdentity->value),
+            new AuditActorData(AuditActorType::Anonymous->value, null),
             null,
             $action,
             new AuditTargetData(self::TARGET_TYPE, $registration->id->value),

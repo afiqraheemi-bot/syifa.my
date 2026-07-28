@@ -20,6 +20,7 @@ use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
 use App\Modules\WebsiteBuilder\Domain\Clinic;
+use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleClinicWriteException;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\IanaTimezone;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
@@ -84,6 +85,30 @@ final class UpdateClinicContactProfileServiceTest extends TestCase
         self::assertTrue($result->changed);
         self::assertSame('+60312345678', $result->profile->operationalPhone);
         self::assertSame(1, $this->saveCount);
+    }
+
+    public function test_assigned_designer_reads_profile_by_trusted_tenant(): void
+    {
+        $profile = $this->service()->read(
+            $this->uuid(2),
+            new WebsiteAuthorizationContext(
+                $this->uuid(11),
+                'website_designer',
+                assignedTenantId: $this->uuid(2),
+            ),
+        );
+
+        self::assertSame($this->uuid(1), $profile->clinicId);
+        self::assertSame(0, $profile->version);
+        self::assertNull($profile->operationalPhone);
+    }
+
+    public function test_stale_contact_profile_version_is_rejected_before_mutation(): void
+    {
+        $this->audit->expects(self::never())->method('record');
+        $this->expectException(StaleClinicWriteException::class);
+
+        $this->service()->handle($this->command($this->owner(), expectedVersion: 9));
     }
 
     /** @return iterable<string, array{WebsiteAuthorizationContext}> */
@@ -164,6 +189,7 @@ final class UpdateClinicContactProfileServiceTest extends TestCase
         ?OptionalContactValue $phone = null,
         ?OptionalContactValue $email = null,
         ?string $tenantId = null,
+        ?int $expectedVersion = null,
     ): UpdateClinicContactProfileCommand {
         return new UpdateClinicContactProfileCommand(
             $tenantId ?? $this->uuid(2),
@@ -177,6 +203,7 @@ final class UpdateClinicContactProfileServiceTest extends TestCase
             OptionalContactValue::omitted(),
             new DateTimeImmutable('2026-08-17T01:00:00Z'),
             $this->uuid(99),
+            $expectedVersion,
         );
     }
 

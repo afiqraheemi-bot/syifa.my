@@ -16,6 +16,7 @@ use App\Modules\Commercial\Contracts\ReferenceData\BillingCycleQueryInterface;
 use App\Modules\Commercial\Contracts\ReferenceData\PlanOfferingQueryInterface;
 use App\Modules\Commercial\Contracts\ReferenceData\PlanQueryInterface;
 use App\Modules\Commercial\Contracts\ReferenceData\PricingQueryInterface;
+use App\Modules\Commercial\Contracts\Renewal\PrepareRenewalOfferInterface;
 use App\Modules\Commercial\Contracts\Repositories\CommercialOfferRepositoryInterface;
 use App\Modules\Commercial\Contracts\Transactions\CommercialTransactionInterface;
 use App\Modules\Commercial\Infrastructure\Events\LaravelCommercialOfferEventPublisher;
@@ -25,7 +26,9 @@ use App\Modules\Commercial\Infrastructure\ReferenceData\SubscriptionBillingBilli
 use App\Modules\Commercial\Infrastructure\ReferenceData\SubscriptionBillingPlanOfferingQueryAdapter;
 use App\Modules\Commercial\Infrastructure\ReferenceData\SubscriptionBillingPlanQueryAdapter;
 use App\Modules\Commercial\Infrastructure\ReferenceData\SubscriptionBillingPricingQueryAdapter;
+use App\Modules\Commercial\Infrastructure\Renewal\PostgresPrepareRenewalOfferAdapter;
 use App\Modules\Commercial\Infrastructure\Transactions\PostgresCommercialTransaction;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\RenewalCommercialContextReadInterface;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
@@ -74,6 +77,14 @@ final class CommercialServiceProvider extends ServiceProvider
         $this->app->singleton(PricingQueryInterface::class, SubscriptionBillingPricingQueryAdapter::class);
         $this->app->singleton(PlanOfferingQueryInterface::class, SubscriptionBillingPlanOfferingQueryAdapter::class);
         $this->app->singleton(CommercialOfferCheckoutInterface::class, ClaimCommercialOfferService::class);
+        $this->app->singleton(
+            PrepareRenewalOfferInterface::class,
+            static fn (Application $application): PostgresPrepareRenewalOfferAdapter => new PostgresPrepareRenewalOfferAdapter(
+                $application->make('db')->connection(),
+                $application->make(RenewalCommercialContextReadInterface::class),
+                (int) config('commercial.offer_ttl_minutes', 30),
+            ),
+        );
 
         $this->app->when(PrepareCommercialOfferService::class)
             ->needs('$ttlMinutes')

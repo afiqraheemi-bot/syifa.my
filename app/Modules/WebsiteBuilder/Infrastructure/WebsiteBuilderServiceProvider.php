@@ -15,24 +15,31 @@ use App\Modules\WebsiteBuilder\Application\Delivery\PublicAvailabilityCacheInter
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContextFactoryInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteDocumentFactory;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteRenderModelProviderInterface;
+use App\Modules\WebsiteBuilder\Application\WebsiteAddress\WebsiteSubdomainPolicy;
+use App\Modules\WebsiteBuilder\Application\WebsiteDraft\WebsiteDraftSectionCodec;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\BookingSubmissionGatewayInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicAvailabilityReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfigurationReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\WebsiteTenantResolverInterface;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\Queries\ActiveServiceReferenceReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsitePublishedSnapshotReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteSeoSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteDraftRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
+use App\Modules\WebsiteBuilder\Contracts\Transactions\WebsitePublicationTransactionInterface;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingAvailableSlotReaderAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingFormConfigurationReaderAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingSubmissionGatewayAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\ConfiguredPlatformLegalContentProvider;
-use App\Modules\WebsiteBuilder\Infrastructure\Delivery\ConfiguredPublicSiteContextFactory;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\LaravelPublicAvailabilityCache;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\OriginPublicAssetUrlResolver;
+use App\Modules\WebsiteBuilder\Infrastructure\Delivery\PostgresPublicSiteContextFactory;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\PostgresPublicWebsiteRenderModelProvider;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\ClinicPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteAssetPersistenceMapper;
@@ -40,7 +47,10 @@ use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersist
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSectionPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConfigurationPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresClinicRepository;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsiteDraftRepository;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsitePublicAddressRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsiteRepository;
+use App\Modules\WebsiteBuilder\Infrastructure\Queries\BookingActiveServiceReferenceAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\BookingClinicOperationalTimeAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresClinicSummaryReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsitePublishedSnapshotReadAdapter;
@@ -48,6 +58,7 @@ use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteReadAdapter
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteSeoSummaryReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteTenantResolver;
 use App\Modules\WebsiteBuilder\Infrastructure\Transactions\PostgresClinicTransaction;
+use App\Modules\WebsiteBuilder\Infrastructure\Transactions\PostgresWebsitePublicationTransaction;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 
@@ -60,9 +71,26 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
         $this->app->singleton(WebsiteAssetPersistenceMapper::class);
         $this->app->singleton(WebsiteSectionPersistenceMapper::class);
         $this->app->singleton(WebsiteSeoConfigurationPersistenceMapper::class);
+        $this->app->singleton(WebsiteSubdomainPolicy::class, static fn (): WebsiteSubdomainPolicy => new WebsiteSubdomainPolicy(
+            (string) config('public_website_delivery.base_domain'),
+        ));
+        $this->app->singleton(
+            WebsitePublicAddressRepositoryInterface::class,
+            static fn (Application $application): PostgresWebsitePublicAddressRepository => new PostgresWebsitePublicAddressRepository(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->alias(
+            WebsitePublicAddressRepositoryInterface::class,
+            WebsitePublicAddressReadInterface::class,
+        );
         $this->app->singleton(
             PublicSiteContextFactoryInterface::class,
-            static fn (): ConfiguredPublicSiteContextFactory => new ConfiguredPublicSiteContextFactory((array) config('public_website_delivery.sites', [])),
+            static fn (Application $application): PostgresPublicSiteContextFactory => new PostgresPublicSiteContextFactory(
+                $application->make(WebsitePublicAddressReadInterface::class),
+                (array) config('public_website_delivery.sites', []),
+                (bool) config('public_website_delivery.runtime_addressing', true),
+            ),
         );
         $this->app->singleton(
             PublicAssetUrlResolverInterface::class,
@@ -92,6 +120,10 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
             static fn (Application $application): PostgresClinicTransaction => new PostgresClinicTransaction($application->make('db')->connection()),
         );
         $this->app->singleton(
+            WebsitePublicationTransactionInterface::class,
+            static fn (Application $application): PostgresWebsitePublicationTransaction => new PostgresWebsitePublicationTransaction($application->make('db')->connection()),
+        );
+        $this->app->singleton(
             WebsiteRepositoryInterface::class,
             static fn (Application $application): PostgresWebsiteRepository => new PostgresWebsiteRepository(
                 $application->make('db')->connection(),
@@ -100,6 +132,17 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
                 $application->make(WebsiteSeoConfigurationPersistenceMapper::class),
                 $application->make(WebsiteAssetPersistenceMapper::class),
             ),
+        );
+        $this->app->singleton(
+            WebsiteDraftRepositoryInterface::class,
+            static fn (Application $application): PostgresWebsiteDraftRepository => new PostgresWebsiteDraftRepository(
+                $application->make('db')->connection(),
+                $application->make(WebsiteDraftSectionCodec::class),
+            ),
+        );
+        $this->app->singleton(
+            ActiveServiceReferenceReadInterface::class,
+            BookingActiveServiceReferenceAdapter::class,
         );
         $this->app->alias(WebsiteRepositoryInterface::class, PostgresWebsiteRepository::class);
         $this->app->singleton(

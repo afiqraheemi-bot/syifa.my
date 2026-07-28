@@ -4,32 +4,47 @@ declare(strict_types=1);
 
 namespace App\Modules\SubscriptionBilling\Infrastructure;
 
+use App\Modules\ClinicRegistration\Contracts\Checkout\PublicInitialAcquisitionCheckoutInterface;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ActivatePlanOfferingService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ActivatePlanService;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\CommercialCatalogueIdentifierGenerator;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\CommercialCatalogueIdentifierGeneratorInterface;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\CreatePlanOfferingService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\CreatePlanService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\GrandfatherPlanService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\MakePlanUnavailableService;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\PlanOfferingAuditTrail;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\RetirePlanOfferingService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\RetirePlanService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\UpdatePlanDetailsService;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\UpdatePlanOfferingService;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentApplicationRetryPolicy;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentDataAssembler;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGenerator;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGeneratorInterface;
 use App\Modules\SubscriptionBilling\Application\Payment\ProviderVerificationRetryPolicy;
+use App\Modules\SubscriptionBilling\Application\Payment\StartPublicInitialAcquisitionCheckoutService;
 use App\Modules\SubscriptionBilling\Application\Subscription\AnnualTermCalculator;
+use App\Modules\SubscriptionBilling\Application\Subscription\ManageSubscriptionRenewalService;
+use App\Modules\SubscriptionBilling\Application\Subscription\RenewalCheckoutApplication;
+use App\Modules\SubscriptionBilling\Application\Subscription\RenewalOutcomeApplication;
 use App\Modules\SubscriptionBilling\Application\Subscription\SubscriptionActivationRetryPolicy;
 use App\Modules\SubscriptionBilling\Contracts\Authorization\CommercialCatalogueAuthorizationInterface;
 use App\Modules\SubscriptionBilling\Contracts\Authorization\PaymentProviderAdministrationAuthorizationInterface;
+use App\Modules\SubscriptionBilling\Contracts\BillingOverview\BillingOverviewReadInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\BillingOptionCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\CapabilityDefinitionCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanOfferingCatalogueQueryInterface;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CommercialCatalogueQueryInterface;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PricingHistoryReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\InitialAcquisitionCheckoutStoreInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentApplicationJobDispatcherInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentApplicationTransactionInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAttemptResolverInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAuditInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentIntegrationOutboxEvent;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentOutboxRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderConfigurationRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderRegistryInterface;
@@ -40,6 +55,17 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentVerificationApplica
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderVerificationClockInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderVerificationJobDispatcherInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookReceiptRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\CancelAutoRenewInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\ClinicOwnerRenewalCheckoutCommandFactoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\EnableAutoRenewInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\ManualRenewSubscriptionInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\PaymentSessionCreationInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\ProviderHealthInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\RenewalCheckoutCommandFactoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\RenewalCheckoutStoreInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\RenewalCommercialContextReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\RenewalOutcomeStoreInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\SubscriptionOperationsStoreInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\BillingOptionRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\CapabilityDefinitionRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Repositories\PlanOfferingRepositoryInterface;
@@ -52,19 +78,26 @@ use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivatio
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationTransactionInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\ClinicOwnerSubscriptionDetailReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\PaymentHistoryReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionDetailReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTimelineReadInterface;
 use App\Modules\SubscriptionBilling\Infrastructure\Audit\PaymentAuditAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Audit\SubscriptionActivationAuditAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\CommercialCataloguePlatformAuthorizationAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Authorization\PaymentProviderAdministrationAuthorization;
 use App\Modules\SubscriptionBilling\Infrastructure\CommercialCatalogue\CommercialCatalogueTransactionalService;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\ConfiguredProviderHealth;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\LaravelPaymentApplicationJobDispatcher;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\LaravelProviderVerificationJobDispatcher;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PaymentProviderRegistry;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresInitialAcquisitionCheckoutStore;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentApplicationTransaction;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentAttemptResolver;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentProviderConfigurationRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentTransaction;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresProviderWebhookReceiptRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\RegistryPaymentSessionCreator;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\Stripe\StripePaymentProvider;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\SystemProviderVerificationClock;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\ToyyibPay\ToyyibPayPaymentProvider;
@@ -73,7 +106,9 @@ use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\PaymentPe
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionActivationApplicationPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionIntegrationOutboxPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\SubscriptionPersistenceMapper;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresBillingOverviewReadAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresCommercialCatalogueQueryAdapter;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresSubscriptionDetailReadAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresSubscriptionSummaryReadAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresBillingOptionRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresCapabilityDefinitionRepository;
@@ -87,19 +122,31 @@ use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\Post
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionActivationReconciliationCaseRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionIntegrationOutboxRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Subscription\ApplyRenewalPaymentOutcomeListener;
+use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresRenewalCheckoutCommandFactory;
+use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresRenewalCheckoutStore;
+use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresRenewalOutcomeStore;
 use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresSubscriptionActivationEvidenceRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresSubscriptionActivationTransaction;
+use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresSubscriptionOperationsStore;
 use App\Modules\SubscriptionBilling\Presentation\Contracts\ErrorResponseMapperInterface;
 use App\Modules\SubscriptionBilling\Presentation\Http\Responses\CommercialCatalogueErrorResponseMapper;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 final class SubscriptionBillingServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(
+            BillingOverviewReadInterface::class,
+            static fn (Application $application): PostgresBillingOverviewReadAdapter => new PostgresBillingOverviewReadAdapter(
+                $application->make('db')->connection(),
+            ),
+        );
         $this->mergeConfigFrom(config_path('payment_providers.php'), 'payment_providers');
         $this->app->singleton(
             CommercialCatalogueAuthorizationInterface::class,
@@ -129,6 +176,7 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->alias(PostgresCommercialCatalogueQueryAdapter::class, BillingOptionCatalogueQueryInterface::class);
         $this->app->alias(PostgresCommercialCatalogueQueryAdapter::class, CapabilityDefinitionCatalogueQueryInterface::class);
         $this->app->alias(PostgresCommercialCatalogueQueryAdapter::class, PlanOfferingCatalogueQueryInterface::class);
+        $this->app->alias(PostgresCommercialCatalogueQueryAdapter::class, PricingHistoryReadInterface::class);
 
         $this->app->singleton(
             ConnectionInterface::class,
@@ -147,6 +195,43 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
                 $application->make('db')->connection(),
             ),
         );
+        $this->app->singleton(
+            PostgresSubscriptionDetailReadAdapter::class,
+            static fn (Application $application): PostgresSubscriptionDetailReadAdapter => new PostgresSubscriptionDetailReadAdapter(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->alias(PostgresSubscriptionDetailReadAdapter::class, SubscriptionDetailReadInterface::class);
+        $this->app->alias(PostgresSubscriptionDetailReadAdapter::class, ClinicOwnerSubscriptionDetailReadInterface::class);
+        $this->app->alias(PostgresSubscriptionDetailReadAdapter::class, SubscriptionTimelineReadInterface::class);
+        $this->app->alias(PostgresSubscriptionDetailReadAdapter::class, PaymentHistoryReadInterface::class);
+        $this->app->alias(PostgresSubscriptionDetailReadAdapter::class, RenewalCommercialContextReadInterface::class);
+        $this->app->singleton(
+            SubscriptionOperationsStoreInterface::class,
+            static fn (Application $application): PostgresSubscriptionOperationsStore => new PostgresSubscriptionOperationsStore(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->singleton(ManageSubscriptionRenewalService::class);
+        $this->app->alias(ManageSubscriptionRenewalService::class, ManualRenewSubscriptionInterface::class);
+        $this->app->alias(ManageSubscriptionRenewalService::class, EnableAutoRenewInterface::class);
+        $this->app->alias(ManageSubscriptionRenewalService::class, CancelAutoRenewInterface::class);
+        $this->app->singleton(RenewalCheckoutStoreInterface::class, PostgresRenewalCheckoutStore::class);
+        $this->app->singleton(RenewalOutcomeStoreInterface::class, PostgresRenewalOutcomeStore::class);
+        $this->app->singleton(PostgresRenewalCheckoutCommandFactory::class);
+        $this->app->alias(PostgresRenewalCheckoutCommandFactory::class, RenewalCheckoutCommandFactoryInterface::class);
+        $this->app->alias(PostgresRenewalCheckoutCommandFactory::class, ClinicOwnerRenewalCheckoutCommandFactoryInterface::class);
+        $this->app->singleton(PaymentSessionCreationInterface::class, RegistryPaymentSessionCreator::class);
+        $this->app->singleton(
+            InitialAcquisitionCheckoutStoreInterface::class,
+            PostgresInitialAcquisitionCheckoutStore::class,
+        );
+        $this->app->singleton(
+            PublicInitialAcquisitionCheckoutInterface::class,
+            StartPublicInitialAcquisitionCheckoutService::class,
+        );
+        $this->app->singleton(RenewalCheckoutApplication::class);
+        $this->app->singleton(RenewalOutcomeApplication::class);
         $this->app->singleton(SubscriptionIntegrationOutboxPersistenceMapper::class);
         $this->app->singleton(SubscriptionActivationApplicationPersistenceMapper::class);
         $this->app->singleton(AnnualTermCalculator::class);
@@ -209,6 +294,13 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
             ),
         );
         $this->app->singleton(
+            ProviderHealthInterface::class,
+            static fn (Application $application): ConfiguredProviderHealth => new ConfiguredProviderHealth(
+                [$application->make(StripePaymentProvider::class), $application->make(ToyyibPayPaymentProvider::class)],
+                $application->make(PaymentProviderConfigurationRepositoryInterface::class),
+            ),
+        );
+        $this->app->singleton(
             PaymentTransactionInterface::class,
             static fn (Application $application): PostgresPaymentTransaction => new PostgresPaymentTransaction(
                 $application->make('db')->connection(),
@@ -242,6 +334,48 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
                 $application->make('db')->connection(),
             ),
         );
+
+        $this->app->singleton(
+            CommercialCatalogueIdentifierGeneratorInterface::class,
+            CommercialCatalogueIdentifierGenerator::class,
+        );
+        $this->app->singleton(PlanOfferingAuditTrail::class);
+        foreach ([
+            CreatePlanOfferingService::class,
+            UpdatePlanOfferingService::class,
+            ActivatePlanOfferingService::class,
+            RetirePlanOfferingService::class,
+        ] as $serviceClass) {
+            $this->app->singleton(
+                $serviceClass,
+                static function (Application $application) use ($serviceClass): CommercialCatalogueTransactionalService {
+                    $service = match ($serviceClass) {
+                        CreatePlanOfferingService::class => new CreatePlanOfferingService(
+                            $application->make(CommercialCatalogueIdentifierGeneratorInterface::class),
+                            $application->make(PlanOfferingRepositoryInterface::class),
+                            $application->make(PlanOfferingAuditTrail::class),
+                        ),
+                        UpdatePlanOfferingService::class => new UpdatePlanOfferingService(
+                            $application->make(PlanOfferingRepositoryInterface::class),
+                            $application->make(PlanOfferingAuditTrail::class),
+                        ),
+                        ActivatePlanOfferingService::class => new ActivatePlanOfferingService(
+                            $application->make(PlanOfferingRepositoryInterface::class),
+                            $application->make(PlanOfferingAuditTrail::class),
+                        ),
+                        RetirePlanOfferingService::class => new RetirePlanOfferingService(
+                            $application->make(PlanOfferingRepositoryInterface::class),
+                            $application->make(PlanOfferingAuditTrail::class),
+                        ),
+                    };
+
+                    return new CommercialCatalogueTransactionalService(
+                        $application->make(ConnectionInterface::class),
+                        [$service, 'execute'],
+                    );
+                },
+            );
+        }
 
         $this->app->singleton(
             PlanRepositoryInterface::class,
@@ -386,5 +520,6 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(database_path('migrations/subscription_billing'));
         $this->loadRoutesFrom(__DIR__.'/routes/payment_providers.php');
+        Event::listen(PaymentIntegrationOutboxEvent::class, ApplyRenewalPaymentOutcomeListener::class);
     }
 }

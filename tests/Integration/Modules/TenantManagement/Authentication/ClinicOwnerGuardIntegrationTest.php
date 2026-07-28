@@ -33,13 +33,10 @@ use Tests\TestCase;
  * not a Unit-level fake — genuinely reflects state against a real Postgres
  * row once `LaravelClinicOwnerSessionStore::establish()` runs, and that
  * `invalidate()` genuinely clears it. `retrieveById` (the path a *following*
- * HTTP request takes to rehydrate the session) is exercised directly here
- * since `establish()` itself never queries the database (see that class's
- * own docblock) and a single request never forces a second Guard resolution.
- *
- * Clinic Owner has no "remember me": `CreateClinicOwnerSessionRequest`
- * already prohibits the field, so unlike the Platform Identity guard
- * Integration test there is nothing to prove here about recaller cookies.
+ * HTTP request takes to rehydrate the session) is exercised directly here.
+ * Normal session establishment does not query the database; remember-me
+ * establishment deliberately resolves the already-verified authority row so
+ * Laravel can persist a genuine recaller token.
  *
  * Row-level isolation, following the established pattern also used by
  * `PostgresTenantRepositoryTest`: this test owns its own schema lifecycle
@@ -149,6 +146,35 @@ final class ClinicOwnerGuardIntegrationTest extends TestCase
     public function test_user_provider_retrieve_by_id_returns_null_for_an_unknown_authority(): void
     {
         self::assertNull($this->userProvider()->retrieveById($this->uuid(999)));
+    }
+
+    public function test_remembered_establishment_persists_a_recaller_token_for_the_verified_tenant_authority(): void
+    {
+        $tenantId = $this->seedActiveClinicOwner(3, self::PASSWORD);
+        $authorityId = $this->uuid(13);
+        $store = new LaravelClinicOwnerSessionStore(
+            $this->app->make(Session::class),
+            $this->app->make(AuthFactory::class),
+        );
+
+        $store->establish(new ClinicOwnerSessionState(
+            tenantId: $tenantId,
+            authorityId: $authorityId,
+            clinicOwnerIdentityId: $this->uuid(23),
+            role: 'clinic_owner',
+            authenticatedAt: new DateTimeImmutable,
+            lastActivityAt: new DateTimeImmutable,
+            absoluteExpiresAt: (new DateTimeImmutable)->modify('+12 hours'),
+        ), true);
+
+        $rememberToken = $this->connection
+            ?->table('clinic_owner_authorities')
+            ->where('id', $authorityId)
+            ->where('tenant_id', $tenantId)
+            ->value('remember_token');
+
+        self::assertIsString($rememberToken);
+        self::assertNotSame('', $rememberToken);
     }
 
     private function guard(): StatefulGuard

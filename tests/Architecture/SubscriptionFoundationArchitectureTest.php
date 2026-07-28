@@ -15,6 +15,25 @@ use SplFileInfo;
 
 final class SubscriptionFoundationArchitectureTest extends TestCase
 {
+    public function test_renewal_checkout_foundation_is_provider_neutral_and_application_owned(): void
+    {
+        $root = $this->root();
+        $checkout = (string) file_get_contents($root.'/app/Modules/SubscriptionBilling/Application/Subscription/RenewalCheckoutApplication.php');
+        $outcome = (string) file_get_contents($root.'/app/Modules/SubscriptionBilling/Application/Subscription/RenewalOutcomeApplication.php');
+        $contracts = implode("\n", array_map(
+            static fn (string $file): string => (string) file_get_contents($file),
+            glob($root.'/app/Modules/SubscriptionBilling/Contracts/Renewal/*.php') ?: [],
+        ));
+
+        foreach (['Infrastructure\\', 'Illuminate\\', 'Stripe', 'ToyyibPay', 'ProviderPaymentResult', 'SDK'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $checkout);
+            self::assertStringNotContainsString($forbidden, $outcome);
+            self::assertStringNotContainsString($forbidden, $contracts);
+        }
+        self::assertStringContainsString('PaymentSessionCreationInterface', $checkout);
+        self::assertStringContainsString('RenewalOutcomeStoreInterface', $outcome);
+    }
+
     public function test_subscription_and_payment_are_the_only_new_aggregate_roots_and_internal_concepts_are_not_roots(): void
     {
         $aggregates = $this->root().'/app/Modules/SubscriptionBilling/Domain/Aggregates';
@@ -121,10 +140,16 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
             $this->root().'/database/migrations/subscription_billing/2026_07_27_000001_create_subscriptions_table.php',
             $this->root().'/database/migrations/subscription_billing/2026_07_28_000001_create_subscription_activation_tables.php',
             $this->root().'/database/migrations/subscription_billing/2026_07_29_000001_create_subscription_integration_outbox.php',
+            $this->root().'/database/migrations/subscription_billing/2026_07_30_000001_create_subscription_renewal_operations.php',
+            $this->root().'/database/migrations/subscription_billing/2026_07_31_000001_create_renewal_checkout_foundation.php',
+            $this->root().'/database/migrations/subscription_billing/2026_08_22_000001_add_billing_read_indexes.php',
+            $this->root().'/database/migrations/subscription_billing/2026_08_29_000001_support_initial_acquisition_payment_ownership.php',
+            $this->root().'/database/migrations/subscription_billing/2026_08_30_000001_create_initial_acquisition_checkout_sessions.php',
         ], glob($this->root().'/database/migrations/subscription_billing/*.php') ?: []);
         $routes = file_get_contents($this->root().'/routes/web.php');
         self::assertIsString($routes);
-        self::assertStringNotContainsString('/subscriptions', $routes);
+        self::assertStringNotContainsString("Route::prefix('/subscriptions", $routes);
+        self::assertStringNotContainsString("Route::prefix('api/v1/subscriptions", $routes);
     }
 
     public function test_existing_event_vocabulary_remains_exactly_eight_domain_facts(): void

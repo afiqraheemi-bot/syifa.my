@@ -28,6 +28,7 @@ final readonly class CreateClinicOwnerSessionService
         string $email,
         string $plainPassword,
         DateTimeImmutable $attemptedAt,
+        bool $remember = false,
     ): ?AuthenticatedClinicOwnerSessionData {
         $result = $this->authentication->authenticate(new ClinicOwnerAuthenticationCommand(
             $trustedHost,
@@ -55,7 +56,7 @@ final readonly class CreateClinicOwnerSessionService
             authenticatedAt: $attemptedAt,
             lastActivityAt: $attemptedAt,
             absoluteExpiresAt: $absoluteExpiresAt,
-        ));
+        ), $remember);
         $this->signals->dispatch($result->signal);
 
         return new AuthenticatedClinicOwnerSessionData(

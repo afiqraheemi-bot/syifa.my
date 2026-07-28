@@ -26,6 +26,7 @@ use App\Modules\PlatformAdministration\Contracts\Authorization\PlatformAdministr
 use App\Modules\PlatformAdministration\Contracts\Authorization\PlatformAuthorizationInterface;
 use App\Modules\PlatformAdministration\Contracts\Authorization\PlatformCategoryLookupInterface;
 use App\Modules\PlatformAdministration\Contracts\Authorization\PlatformPermissionLookupInterface;
+use App\Modules\PlatformAdministration\Contracts\Dashboard\PlatformDashboardReadInterface;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityLookupInterface;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\CredentialVerificationInterface;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialLookupInterface;
@@ -40,6 +41,7 @@ use App\Modules\PlatformAdministration\Infrastructure\Persistence\Authorization\
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\Authorization\PostgresPlatformAdministratorLookup;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\Authorization\PostgresPlatformCategoryLookup;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\Authorization\PostgresPlatformPermissionLookup;
+use App\Modules\PlatformAdministration\Infrastructure\Persistence\Dashboard\PostgresPlatformDashboardReadAdapter;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\PlatformIdentity\Mappers\PlatformIdentityPersistenceMapper;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\PlatformIdentity\PostgresPlatformIdentityLookup;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\WorkforceCredentials\Mappers\PlatformWorkforceCredentialPersistenceMapper;
@@ -61,6 +63,12 @@ final class PlatformAdministrationServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(
+            PlatformDashboardReadInterface::class,
+            static fn (Application $application): PostgresPlatformDashboardReadAdapter => new PostgresPlatformDashboardReadAdapter(
+                $application->make('db')->connection(),
+            ),
+        );
         $this->app->singleton(AuditEntryPersistenceMapper::class);
 
         $this->app->singleton(

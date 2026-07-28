@@ -105,13 +105,33 @@ final class AuthorizeRequestTest extends TestCase
         $middleware = new AuthorizeRequest($this->authorization());
 
         $response = $middleware->handle(
-            Request::create('/protected'),
+            Request::create('/protected', 'GET', server: ['HTTP_ACCEPT' => 'application/json']),
             static fn (): Response => new Response('must not run'),
             'platform_identity',
             'super_admin',
         );
 
         self::assertSame(403, $response->getStatusCode());
+    }
+
+    public function test_missing_context_redirects_browser_guests_to_login_entry(): void
+    {
+        $middleware = new AuthorizeRequest($this->authorization());
+        $request = Request::create('/dashboard', 'GET', server: [
+            'HTTP_ACCEPT' => 'text/html',
+        ]);
+
+        $response = $middleware->handle(
+            $request,
+            static fn (): Response => new Response('must not run'),
+            'authenticated',
+            'clinic_owner',
+            'website_designer',
+            'super_admin',
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringEndsWith('/', (string) $response->headers->get('Location'));
     }
 
     private function authorization(

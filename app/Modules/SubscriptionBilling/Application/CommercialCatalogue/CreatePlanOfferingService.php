@@ -18,9 +18,12 @@ final readonly class CreatePlanOfferingService
 {
     private const string CONFIGURATION_VERSION = '1';
 
+    private const string AUDIT_ACTION = 'commercial_catalogue.plan_offering.create';
+
     public function __construct(
         private CommercialCatalogueIdentifierGeneratorInterface $identifiers,
         private PlanOfferingRepositoryInterface $planOfferings,
+        private PlanOfferingAuditTrail $audit,
     ) {}
 
     public function execute(CreatePlanOfferingCommand $command): PlanOffering
@@ -38,6 +41,15 @@ final readonly class CreatePlanOfferingService
         );
 
         $this->planOfferings->save($planOffering);
+        $this->audit->record(
+            self::AUDIT_ACTION,
+            $planOffering,
+            0,
+            'none',
+            $command->occurredAt,
+            $command->actorPlatformIdentityId,
+            $command->correlationId,
+        );
 
         return $planOffering;
     }

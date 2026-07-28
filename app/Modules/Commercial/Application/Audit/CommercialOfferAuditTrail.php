@@ -27,7 +27,16 @@ final readonly class CommercialOfferAuditTrail
         DateTimeImmutable $occurredAt,
         string $correlationId,
     ): void {
-        $this->record($action, $offer, $occurredAt, $correlationId, AuditActorType::PlatformIdentity, $offer->platformIdentity->value);
+        $this->record($action, $offer, $occurredAt, $correlationId, AuditActorType::PlatformIdentity, $offer->platformIdentity?->value);
+    }
+
+    public function recordForClinicRegistration(
+        string $action,
+        CommercialOffer $offer,
+        DateTimeImmutable $occurredAt,
+        string $correlationId,
+    ): void {
+        $this->record($action, $offer, $occurredAt, $correlationId, AuditActorType::Anonymous, null);
     }
 
     public function recordForSystem(

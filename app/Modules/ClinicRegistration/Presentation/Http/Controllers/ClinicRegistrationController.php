@@ -15,30 +15,27 @@ use App\Modules\ClinicRegistration\Contracts\Commands\CancelClinicRegistrationCo
 use App\Modules\ClinicRegistration\Contracts\Commands\StartClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\SubmitClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\UpdateClinicRegistrationDraftCommand;
+use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialInterface;
 use App\Modules\ClinicRegistration\Domain\Exceptions\InvalidClinicRegistrationTransitionException;
 use App\Modules\ClinicRegistration\Presentation\Http\Requests\StartClinicRegistrationRequest;
 use App\Modules\ClinicRegistration\Presentation\Http\Requests\TransitionClinicRegistrationRequest;
 use App\Modules\ClinicRegistration\Presentation\Http\Requests\UpdateClinicRegistrationDraftRequest;
 use App\Modules\ClinicRegistration\Presentation\Http\Resources\ClinicRegistrationResource;
 use App\Modules\ClinicRegistration\Presentation\Http\Responses\ProblemDetailsResponse;
-use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipalResolverInterface;
 use DateTimeImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final readonly class ClinicRegistrationController
 {
-    public function __construct(private PlatformPrincipalResolverInterface $principals) {}
+    public function __construct(private RegistrationTrackingCredentialInterface $tracking) {}
 
     public function store(StartClinicRegistrationRequest $request, StartClinicRegistrationService $registrations): JsonResponse
     {
-        $principal = $this->principal($request);
-        if ($principal === null) {
-            return $this->unauthenticated($request);
-        }
+        $credential = $this->tracking->establish();
 
         $registration = $registrations->execute(new StartClinicRegistrationCommand(
-            $principal,
+            $credential,
             new DateTimeImmutable,
             $this->correlationId($request),
         ));
@@ -48,12 +45,12 @@ final readonly class ClinicRegistrationController
 
     public function show(Request $request, ViewCurrentClinicRegistrationService $registrations): JsonResponse
     {
-        $principal = $this->principal($request);
-        if ($principal === null) {
-            return $this->unauthenticated($request);
+        $credential = $this->tracking->current();
+        if ($credential === null) {
+            return $this->notFound($request);
         }
 
-        $registration = $registrations->execute($principal);
+        $registration = $registrations->execute($credential);
 
         if ($registration === null) {
             return ProblemDetailsResponse::make(
@@ -70,16 +67,16 @@ final readonly class ClinicRegistrationController
 
     public function update(UpdateClinicRegistrationDraftRequest $request, UpdateClinicRegistrationDraftService $registrations): JsonResponse
     {
-        $principal = $this->principal($request);
-        if ($principal === null) {
-            return $this->unauthenticated($request);
+        $credential = $this->tracking->current();
+        if ($credential === null) {
+            return $this->notFound($request);
         }
 
         $validated = $request->validated();
 
         try {
             $registration = $registrations->execute(new UpdateClinicRegistrationDraftCommand(
-                $principal,
+                $credential,
                 $validated['clinic_name'] ?? null,
                 $validated['clinic_email'] ?? null,
                 $validated['clinic_phone'] ?? null,
@@ -105,14 +102,14 @@ final readonly class ClinicRegistrationController
 
     public function submit(TransitionClinicRegistrationRequest $request, SubmitClinicRegistrationService $registrations): JsonResponse
     {
-        $principal = $this->principal($request);
-        if ($principal === null) {
-            return $this->unauthenticated($request);
+        $credential = $this->tracking->current();
+        if ($credential === null) {
+            return $this->notFound($request);
         }
 
         try {
             $registration = $registrations->execute(new SubmitClinicRegistrationCommand(
-                $principal,
+                $credential,
                 $request->expectedVersion(),
                 new DateTimeImmutable,
                 $this->correlationId($request),
@@ -130,14 +127,14 @@ final readonly class ClinicRegistrationController
 
     public function cancel(TransitionClinicRegistrationRequest $request, CancelClinicRegistrationService $registrations): JsonResponse
     {
-        $principal = $this->principal($request);
-        if ($principal === null) {
-            return $this->unauthenticated($request);
+        $credential = $this->tracking->current();
+        if ($credential === null) {
+            return $this->notFound($request);
         }
 
         try {
             $registration = $registrations->execute(new CancelClinicRegistrationCommand(
-                $principal,
+                $credential,
                 $request->expectedVersion(),
                 new DateTimeImmutable,
                 $this->correlationId($request),
@@ -153,27 +150,11 @@ final readonly class ClinicRegistrationController
         return (new ClinicRegistrationResource($registration))->response();
     }
 
-    private function principal(Request $request): ?string
-    {
-        return $this->principals->resolve(new DateTimeImmutable)?->platformIdentityId;
-    }
-
     private function correlationId(Request $request): string
     {
         $correlationId = $request->attributes->get('correlation_id');
 
         return is_string($correlationId) ? $correlationId : '00000000-0000-4000-8000-000000000000';
-    }
-
-    private function unauthenticated(Request $request): JsonResponse
-    {
-        return ProblemDetailsResponse::make(
-            $request,
-            'clinic_registration.authentication_required',
-            'Authentication Required',
-            401,
-            'An authenticated platform identity is required.',
-        );
     }
 
     private function notFound(Request $request): JsonResponse

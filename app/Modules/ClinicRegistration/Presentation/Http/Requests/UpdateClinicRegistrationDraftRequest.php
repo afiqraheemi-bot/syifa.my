@@ -34,6 +34,9 @@ final class UpdateClinicRegistrationDraftRequest extends FormRequest
             'declarations.*.accepted_at' => ['required', 'date'],
             'expected_version' => ['required', 'integer', 'min:1'],
             'tenant_id' => ['prohibited'],
+            'platform_identity_id' => ['prohibited'],
+            'registration_tracking_credential' => ['prohibited'],
+            'registration_correlation_reference' => ['prohibited'],
             'selected_add_on_references' => ['prohibited'],
         ];
     }

@@ -59,6 +59,17 @@ final readonly class ServicesSectionContent implements WebsiteSectionContentInte
         return array_map(static fn (ServicePresentationItem $item): string => $item->serviceId, $this->items);
     }
 
+    /** @param list<string> $eligibleServiceIds */
+    public function assertReferencesAreEligible(array $eligibleServiceIds): void
+    {
+        SectionContentRules::uniqueUuids($eligibleServiceIds, 'Eligible Service references');
+        if (array_diff($this->serviceReferences(), $eligibleServiceIds) !== []) {
+            throw new InvalidWebsiteValueException(
+                'Service presentation requires same-Tenant publication-eligible Services.',
+            );
+        }
+    }
+
     public function withFeaturedService(?string $serviceId): self
     {
         if ($serviceId !== null && ! in_array($serviceId, $this->serviceReferences(), true)) {

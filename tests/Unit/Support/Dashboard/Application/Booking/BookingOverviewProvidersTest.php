@@ -7,6 +7,7 @@ namespace Tests\Unit\Support\Dashboard\Application\Booking;
 use App\Modules\Booking\Contracts\Queries\BookingDetailData;
 use App\Modules\Booking\Contracts\Queries\ClinicOwnerBookingReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
+use App\Support\Dashboard\Application\Booking\BookingActionProvider;
 use App\Support\Dashboard\Application\Booking\BookingListProvider;
 use App\Support\Dashboard\Application\Booking\BookingOverviewCriteria;
 use App\Support\Dashboard\Application\Booking\BookingSourceSummaryProvider;
@@ -21,7 +22,7 @@ final class BookingOverviewProvidersTest extends TestCase
             $this->booking('booking-1', 'BOOK-001', 'WEBSITE', 'submitted'),
             $this->booking('booking-2', 'BOOK-002', 'PHONE', 'confirmed'),
             $this->booking('booking-3', 'BOOK-003', 'WALK_IN', 'completed'),
-        ]));
+        ]), new BookingActionProvider);
 
         $projection = $provider->provide(
             $this->context(),
@@ -80,7 +81,7 @@ final class BookingOverviewProvidersTest extends TestCase
 
     public function test_empty_query_result_projects_an_explicit_empty_list(): void
     {
-        $projection = (new BookingListProvider($this->reader([])))
+        $projection = (new BookingListProvider($this->reader([]), new BookingActionProvider))
             ->provide($this->context(), BookingOverviewCriteria::fromInput([]))
             ->data;
 
@@ -94,7 +95,7 @@ final class BookingOverviewProvidersTest extends TestCase
         $provider = new BookingListProvider($this->reader([
             $this->booking('booking-1', 'BOOK-001', 'WEBSITE', 'cancelled'),
             $this->booking('booking-2', 'BOOK-002', 'PHONE', 'completed'),
-        ]));
+        ]), new BookingActionProvider);
 
         $items = $provider->provide(
             $this->context(),
@@ -113,9 +114,10 @@ final class BookingOverviewProvidersTest extends TestCase
     private function booking(string $id, string $reference, string $source, string $status): BookingDetailData
     {
         return new BookingDetailData(
-            $id, 'tenant-1', 'service-1', $reference, $source, $status,
+            $id, 'tenant-1', 'service-1', 'Consultation', $reference, $source, $status,
+            'Patient Name', '+6012', 'patient@example.test', 'Booking notes',
             '2026-09-01', '09:00', '09:30', 'Asia/Kuala_Lumpur',
-            '2026-09-01T01:00:00Z', '2026-09-01T01:30:00Z', 30,
+            '2026-09-01T01:00:00Z', '2026-09-01T01:30:00Z', 30, '2026-08-31T01:00:00Z',
         );
     }
 

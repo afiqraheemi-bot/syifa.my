@@ -43,7 +43,7 @@ return [
             "frame-ancestors 'none'",
             "img-src 'self' data:",
             "object-src 'none'",
-            "script-src 'self' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-inline' http://localhost:* http://127.0.0.1:*",
             "style-src 'self' 'unsafe-inline'",
             "worker-src 'self' blob:",
         ]),
@@ -60,7 +60,15 @@ return [
 
     'x_content_type_options' => 'nosniff',
 
+    'x_permitted_cross_domain_policies' => 'none',
+
     'referrer_policy' => 'strict-origin-when-cross-origin',
+
+    'cross_origin_opener_policy' => 'same-origin',
+
+    'cross_origin_resource_policy' => 'same-origin',
+
+    'origin_agent_cluster' => '?1',
 
     'permissions_policy' => implode(', ', [
         'accelerometer=()',

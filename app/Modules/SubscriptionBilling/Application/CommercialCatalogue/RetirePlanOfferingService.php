@@ -19,7 +19,12 @@ use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\Plan
  */
 final readonly class RetirePlanOfferingService
 {
-    public function __construct(private PlanOfferingRepositoryInterface $planOfferings) {}
+    private const string AUDIT_ACTION = 'commercial_catalogue.plan_offering.retire';
+
+    public function __construct(
+        private PlanOfferingRepositoryInterface $planOfferings,
+        private PlanOfferingAuditTrail $audit,
+    ) {}
 
     public function execute(RetirePlanOfferingCommand $command): PlanOffering
     {
@@ -28,6 +33,15 @@ final readonly class RetirePlanOfferingService
 
         $updated = $planOffering->retire();
         $this->planOfferings->save($updated);
+        $this->audit->record(
+            self::AUDIT_ACTION,
+            $updated,
+            $planOffering->version(),
+            $planOffering->status->value,
+            $command->occurredAt,
+            $command->actorPlatformIdentityId,
+            $command->correlationId,
+        );
 
         return $updated;
     }

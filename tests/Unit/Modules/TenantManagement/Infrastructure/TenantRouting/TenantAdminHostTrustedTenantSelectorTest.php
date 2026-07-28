@@ -32,6 +32,80 @@ final class TenantAdminHostTrustedTenantSelectorTest extends TestCase
         self::assertSame(['klinik-zahra'], $lookup->resolvedLabels);
     }
 
+    public function test_localhost_resolves_only_the_server_configured_demo_routing_label_when_enabled(): void
+    {
+        $lookup = $this->recordingLookup(new TenantAdminRoutingData(
+            $this->uuid(1),
+            'demo-clinic',
+            'active',
+        ));
+        $selector = new TenantAdminHostTrustedTenantSelector(
+            new AdminHostParser(['app.syifa.my']),
+            $lookup,
+            true,
+            'localhost',
+            'demo-clinic',
+        );
+
+        $selection = $selector->select('localhost');
+
+        self::assertNotNull($selection);
+        self::assertSame($this->uuid(1), $selection->tenantId);
+        self::assertSame(['demo-clinic'], $lookup->resolvedLabels);
+    }
+
+    public function test_localhost_is_rejected_when_local_selection_is_disabled_for_production(): void
+    {
+        $lookup = $this->recordingLookup(new TenantAdminRoutingData(
+            $this->uuid(1),
+            'demo-clinic',
+            'active',
+        ));
+        $selector = new TenantAdminHostTrustedTenantSelector(
+            new AdminHostParser(['app.syifa.my']),
+            $lookup,
+            false,
+            'localhost',
+            'demo-clinic',
+        );
+
+        self::assertNull($selector->select('localhost'));
+        self::assertSame([], $lookup->resolvedLabels);
+    }
+
+    #[DataProvider('localSpoofingReferences')]
+    public function test_local_selection_rejects_every_browser_supplied_tenant_spoof(
+        string $selectorReference,
+    ): void {
+        $lookup = $this->recordingLookup(new TenantAdminRoutingData(
+            $this->uuid(1),
+            'demo-clinic',
+            'active',
+        ));
+        $selector = new TenantAdminHostTrustedTenantSelector(
+            new AdminHostParser(['app.syifa.my']),
+            $lookup,
+            true,
+            'localhost',
+            'demo-clinic',
+        );
+
+        self::assertNull($selector->select($selectorReference));
+        self::assertSame([], $lookup->resolvedLabels);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function localSpoofingReferences(): iterable
+    {
+        yield 'query tenant id' => ['localhost?tenant_id=00000000-0000-4000-8000-000000000099'];
+        yield 'query routing label' => ['localhost?tenant=other-clinic'];
+        yield 'header-like value' => ['localhost,other-clinic'];
+        yield 'cookie-like value' => ['localhost; tenant_id=other-clinic'];
+        yield 'IP alias is not configured host' => ['127.0.0.1'];
+        yield 'case variation' => ['LOCALHOST'];
+        yield 'whitespace' => [' localhost'];
+    }
+
     #[DataProvider('invalidHosts')]
     public function test_invalid_admin_host_fails_closed_without_lookup(string $host): void
     {

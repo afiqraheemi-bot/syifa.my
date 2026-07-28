@@ -18,7 +18,7 @@ final readonly class CreateManualBookingCommand
         public string $phone,
         public string $appointmentDate,
         public string $appointmentTime,
-        public string $serviceId,
+        public ?string $serviceId,
         public ?string $email = null,
         public ?string $notes = null,
     ) {}

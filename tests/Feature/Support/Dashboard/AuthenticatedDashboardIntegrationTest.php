@@ -6,14 +6,81 @@ namespace Tests\Feature\Support\Dashboard;
 
 use App\Modules\Booking\Contracts\Operations\ClinicOwnerBookingOperationsInterface;
 use App\Modules\Booking\Contracts\Queries\BookingDetailData;
+use App\Modules\Booking\Contracts\Queries\BookingHistoryData;
 use App\Modules\Booking\Contracts\Queries\ClinicOwnerBookingReadInterface;
+use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderData;
+use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
+use App\Modules\Booking\Contracts\Queries\PublicBookingFormServiceData;
+use App\Modules\Booking\Contracts\Repositories\BookingFormConfigurationRepositoryInterface;
+use App\Modules\Booking\Contracts\Repositories\ServiceRepositoryInterface;
+use App\Modules\Booking\Domain\BookingFormConfiguration;
+use App\Modules\Booking\Domain\Service;
+use App\Modules\Booking\Domain\ValueObjects\BookingFormField;
+use App\Modules\Booking\Domain\ValueObjects\FieldLabels;
+use App\Modules\Booking\Domain\ValueObjects\FieldOrder;
+use App\Modules\Booking\Domain\ValueObjects\RequiredFields;
+use App\Modules\Booking\Domain\ValueObjects\ServiceId as BookingServiceId;
+use App\Modules\Booking\Domain\ValueObjects\ServiceName;
+use App\Modules\Booking\Domain\ValueObjects\SortOrder;
+use App\Modules\Booking\Domain\ValueObjects\TenantId as BookingTenantId;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerJobDetailData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerQueueJobData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerRecentAssignmentData;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
+use App\Modules\PlatformAdministration\Contracts\Dashboard\PlatformDashboardActivityData;
+use App\Modules\PlatformAdministration\Contracts\Dashboard\PlatformDashboardData;
+use App\Modules\PlatformAdministration\Contracts\Dashboard\PlatformDashboardReadInterface;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\AuditEntry;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActorType;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditEntryId;
+use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
+use App\Modules\SubscriptionBilling\Contracts\BillingOverview\BillingOverviewData;
+use App\Modules\SubscriptionBilling\Contracts\BillingOverview\BillingOverviewReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\BillingOverview\RecentPaymentData;
+use App\Modules\SubscriptionBilling\Contracts\BillingOverview\SubscriptionOverviewData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\BillingOptionCatalogueQueryInterface;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\CapabilityDefinitionCatalogueQueryInterface;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanCatalogueQueryInterface;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\AdminQueries\PlanOfferingCatalogueQueryInterface;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\BillingOptionData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CapabilityDefinitionData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\CommercialCatalogueQueryInterface;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\OffsetPaginationInput;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\OffsetPaginationMeta;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\PaginatedBillingOptionData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\PaginatedCapabilityDefinitionData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\PaginatedPlanData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\PaginatedPlanOfferingData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanOfferingData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PricingHistoryData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PricingHistoryReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\AutoRenewCommand;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\AutoRenewOperationResult;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\CancelAutoRenewInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\EnableAutoRenewInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\ManualRenewSubscriptionCommand;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\ManualRenewSubscriptionInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\RenewalOperationResult;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryData;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\PaymentHistoryReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionDetailData;
+use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionDetailReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionPaymentData;
+use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTimelineData;
+use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTimelineReadInterface;
+use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewData;
+use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfiguration;
+use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfigurationReaderInterface;
+use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingServiceOption;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressData;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryData;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\PublishedWebsiteSectionSummaryData;
@@ -24,6 +91,32 @@ use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteSeoSummaryData;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteSeoSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteSummaryData;
+use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteDraftRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
+use App\Modules\WebsiteBuilder\Contracts\Transactions\WebsitePublicationTransactionInterface;
+use App\Modules\WebsiteBuilder\Domain\Clinic;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\AboutSectionContent;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\BookingCtaSectionContent;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\ContactSectionContent;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\DoctorsSectionContent;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\FaqSectionContent;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\GallerySectionContent;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\HeroSectionContent;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\ServicesSectionContent;
+use App\Modules\WebsiteBuilder\Domain\SectionContent\TestimonialsSectionContent;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicContactProfile;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\IanaTimezone;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteBranding;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\WeeklyOperatingHours;
+use App\Modules\WebsiteBuilder\Domain\Website;
+use App\Modules\WebsiteBuilder\Domain\WebsiteDraftContent;
 use App\Support\Authorization\Application\AuthorizationService;
 use App\Support\Identity\ActorType;
 use App\Support\Identity\AuthenticatedIdentity;
@@ -40,6 +133,12 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
 {
     private DashboardRecordedBookingOperations $bookingOperations;
 
+    private DashboardFixedWebsiteRepository $websiteRepository;
+
+    private DashboardFixedWebsiteDraftRepository $websiteDraftRepository;
+
+    private DashboardWebsitePublicAddressRepository $websiteAddresses;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -48,8 +147,59 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->app->instance(WebsiteReadInterface::class, new DashboardFixedWebsiteRead);
         $this->app->instance(WebsitePublishedSnapshotReadInterface::class, new DashboardFixedWebsiteSnapshot);
         $this->app->instance(WebsiteSeoSummaryReadInterface::class, new DashboardFixedSeoSummary);
+        $this->websiteRepository = new DashboardFixedWebsiteRepository;
+        $this->app->instance(WebsiteRepositoryInterface::class, $this->websiteRepository);
+        $this->websiteDraftRepository = new DashboardFixedWebsiteDraftRepository;
+        $this->app->instance(
+            WebsiteDraftRepositoryInterface::class,
+            $this->websiteDraftRepository,
+        );
+        $this->app->instance(
+            PublicBookingFormConfigurationReaderInterface::class,
+            new DashboardFixedPublicBookingConfiguration,
+        );
+        $this->app->instance(ClinicRepositoryInterface::class, new DashboardFixedClinicRepository);
+        $this->websiteAddresses = new DashboardWebsitePublicAddressRepository;
+        $this->app->instance(
+            WebsitePublicAddressRepositoryInterface::class,
+            $this->websiteAddresses,
+        );
+        $this->app->instance(
+            WebsitePublicAddressReadInterface::class,
+            $this->websiteAddresses,
+        );
+        $this->app->instance(ClinicTransactionInterface::class, new DashboardClinicTransaction);
+        $this->app->instance(
+            WebsitePublicationTransactionInterface::class,
+            new DashboardWebsitePublicationTransaction,
+        );
+        $this->app->instance(AuditEntryRecorderInterface::class, new DashboardAuditRecorder);
+        $this->app->instance(
+            BookingFormConfigurationRepositoryInterface::class,
+            new DashboardFixedBookingConfigurationRepository,
+        );
+        $this->app->instance(ServiceRepositoryInterface::class, new DashboardFixedBookingServiceRepository);
         $this->app->instance(ClinicOwnerBookingReadInterface::class, new DashboardFixedBookingRead);
+        $this->app->instance(PublicBookingFormReaderInterface::class, new DashboardFixedBookingFormRead);
         $this->app->instance(WebsiteDesignerDashboardReadInterface::class, new DashboardFixedDesignerRead);
+        $this->app->instance(PlatformDashboardReadInterface::class, new DashboardFixedPlatformRead);
+        $this->app->instance(TenantOverviewReadInterface::class, new DashboardFixedTenantOverviewRead);
+        $this->app->instance(BillingOverviewReadInterface::class, new DashboardFixedBillingOverviewRead);
+        $catalogue = new DashboardFixedCommercialCatalogue;
+        $this->app->instance(CommercialCatalogueQueryInterface::class, $catalogue);
+        $this->app->instance(PlanCatalogueQueryInterface::class, $catalogue);
+        $this->app->instance(PlanOfferingCatalogueQueryInterface::class, $catalogue);
+        $this->app->instance(BillingOptionCatalogueQueryInterface::class, $catalogue);
+        $this->app->instance(CapabilityDefinitionCatalogueQueryInterface::class, $catalogue);
+        $this->app->instance(PricingHistoryReadInterface::class, $catalogue);
+        $detail = new DashboardFixedSubscriptionDetailRead;
+        $this->app->instance(SubscriptionDetailReadInterface::class, $detail);
+        $this->app->instance(SubscriptionTimelineReadInterface::class, $detail);
+        $this->app->instance(PaymentHistoryReadInterface::class, $detail);
+        $operations = new DashboardRecordedSubscriptionOperations;
+        $this->app->instance(ManualRenewSubscriptionInterface::class, $operations);
+        $this->app->instance(EnableAutoRenewInterface::class, $operations);
+        $this->app->instance(CancelAutoRenewInterface::class, $operations);
         $this->bookingOperations = new DashboardRecordedBookingOperations;
         $this->app->instance(ClinicOwnerBookingOperationsInterface::class, $this->bookingOperations);
     }
@@ -84,16 +234,23 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         if ($actorType === ActorType::ClinicOwner) {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 4)
+                    ->has('navigation', 5)
                     ->where('welcomeTitle', 'Welcome back, Authenticated User')
-                    ->has('summaries', 3)
+                    ->has('summaries', 4)
                     ->where('summaries.0.key', 'clinic')
                     ->where('summaries.0.value', 'Asia/Kuala_Lumpur')
                     ->where('summaries.1.key', 'subscription')
                     ->where('summaries.1.value', 'Active')
                     ->where('summaries.2.key', 'bookings')
+                    ->where('summaries.2.value', '1')
+                    ->where('summaries.3.key', 'website')
                     ->has('quickActions', 3)
-                    ->where('quickActions.0.available', false)
+                    ->where('quickActions.0.available', true)
+                    ->where('quickActions.0.href', route('dashboard.website'))
+                    ->where('quickActions.1.available', true)
+                    ->where('quickActions.1.href', route('dashboard.bookings'))
+                    ->where('quickActions.2.available', true)
+                    ->where('quickActions.2.href', route('dashboard.subscription'))
                     ->where('recentActivity', []),
             );
         } elseif ($role === 'website_designer') {
@@ -104,7 +261,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             );
         } else {
             $response->assertInertia(
-                static fn (AssertableInertia $page): AssertableInertia => $page->has('navigation', 1),
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->has('navigation', 5)
+                    ->where('navigation.1.key', 'tenants'),
             );
         }
     }
@@ -113,7 +272,11 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
     {
         $this->app->instance(
             AuthorizationService::class,
-            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
         );
 
         $this->get('/dashboard')
@@ -134,6 +297,438 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('recentAssignments.0.description', 'Website setup')
                     ->has('navigation', 2),
             );
+    }
+
+    public function test_super_admin_receives_the_platform_dashboard_from_application_projections(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+
+        $this->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('PlatformAdministration/Dashboard/SuperAdminDashboardOverview', false)
+                    ->where('contextLabel', 'Super Admin workspace')
+                    ->has('summaries', 7)
+                    ->where('summaries.0.value', '12')
+                    ->where('summaries.6.value', 'Operational')
+                    ->has('quickActions', 3)
+                    ->where('quickActions.0.href', route('dashboard.tenants'))
+                    ->where('quickActions.0.available', true)
+                    ->where('quickActions.1.href', route('dashboard.billing'))
+                    ->where('quickActions.1.available', true)
+                    ->where('quickActions.2.href', route('dashboard.commercial'))
+                    ->where('quickActions.2.available', true)
+                    ->has('navigation', 5)
+                    ->where('navigation.1.href', route('dashboard.tenants'))
+                    ->where('navigation.2.href', route('dashboard.billing'))
+                    ->where('navigation.3.href', route('dashboard.commercial'))
+                    ->where('navigation.4.href', route('dashboard.payment-providers'))
+                    ->has('recentActivity', 1),
+            );
+    }
+
+    public function test_super_admin_can_open_payment_provider_administration_page(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+
+        $this->get('/dashboard/payment-providers')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('SubscriptionBilling/PaymentProviders/SuperAdminPaymentProviders', false)
+                    ->where('contextLabel', 'Super Admin workspace')
+                    ->where('providerEndpoints.index', route('payment-providers.index'))
+                    ->where('providerEndpoints.health', route('payment-providers.health'))
+                    ->has('navigation', 5)
+                    ->where('navigation.4.key', 'payment-providers')
+                    ->where('navigation.4.current', true),
+            );
+    }
+
+    public function test_non_super_admin_actors_cannot_open_payment_provider_administration_page(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $this->getJson('/dashboard/payment-providers')->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->getJson('/dashboard/payment-providers')->assertForbidden();
+    }
+
+    public function test_super_admin_can_search_and_filter_the_tenant_overview(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+
+        $this->get('/dashboard/tenants?search=tenant&status=active&per_page=10')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('PlatformAdministration/Tenants/SuperAdminTenantOverview', false)
+                    ->where('tenantOverview.search.value', 'tenant')
+                    ->where('tenantOverview.statusFilter.value', 'active')
+                    ->where('tenantOverview.items.0.id', 'tenant-1')
+                    ->where('tenantOverview.items.0.clinicName', 'Klinik Aisyah')
+                    ->where('tenantOverview.items.0.ownerName', 'Aisyah Rahman')
+                    ->where('tenantOverview.items.0.ownerEmail', 'aisyah@example.test')
+                    ->where('tenantOverview.items.0.subscriptionStatusLabel', 'Active')
+                    ->where('tenantOverview.items.0.websitePublicationStatus', 'Published')
+                    ->where('tenantOverview.items.0.websiteDesigner', 'Designer One'),
+            );
+    }
+
+    public function test_clinic_owner_and_website_designer_cannot_access_tenant_management(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->getJson('/dashboard/tenants')->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+        );
+        $this->getJson('/dashboard/tenants')->assertForbidden();
+    }
+
+    public function test_super_admin_can_search_and_filter_the_billing_overview(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+
+        $this->get('/dashboard/billing?search=tenant&status=active&per_page=10')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('SubscriptionBilling/Dashboard/SuperAdminBillingOverview', false)
+                    ->where('billingOverview.search.value', 'tenant')
+                    ->where('billingOverview.statusFilter.value', 'active')
+                    ->where('billingOverview.summary.0.value', 8)
+                    ->where('billingOverview.summary.3.value', 'MYR 1,234.56')
+                    ->where('billingOverview.subscriptions.0.tenantId', 'tenant-1')
+                    ->where('billingOverview.recentPayments.0.statusLabel', 'Succeeded')
+                    ->where('billingOverview.health.status', 'healthy'),
+            );
+    }
+
+    public function test_clinic_owner_and_website_designer_cannot_access_billing_overview(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->getJson('/dashboard/billing')->assertForbidden();
+        $this->getJson('/dashboard/billing/subscriptions/11111111-1111-4111-8111-111111111111')->assertForbidden();
+        $this->postJson('/dashboard/billing/subscriptions/11111111-1111-4111-8111-111111111111/renew')->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+        );
+        $this->getJson('/dashboard/billing')->assertForbidden();
+        $this->getJson('/dashboard/billing/subscriptions/11111111-1111-4111-8111-111111111111')->assertForbidden();
+        $this->postJson('/dashboard/billing/subscriptions/11111111-1111-4111-8111-111111111111/auto-renew/enable')->assertForbidden();
+    }
+
+    public function test_super_admin_can_view_read_only_subscription_detail(): void
+    {
+        $this->app->instance(AuthorizationService::class, $this->authorization(ActorType::PlatformIdentity, 'super_admin'));
+
+        $this->get('/dashboard/billing/subscriptions/11111111-1111-4111-8111-111111111111')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Dashboard/SuperAdminSubscriptionDetail', false)
+                ->where('subscription.status', 'Renewal Due')
+                ->where('subscription.autoRenewStatus', 'Not Configured')
+                ->has('timeline', 1)
+                ->where('payments.0.purpose', 'Initial Activation')
+                ->where(
+                    'actions.checkout.action',
+                    route('renewal-checkouts.start', '22222222-2222-4222-8222-222222222222'),
+                )
+                ->where('actions.checkout.label', 'Start Renewal Checkout'));
+
+        $this->withSession(['operation' => 'enabled'])
+            ->get('/dashboard/billing/subscriptions/11111111-1111-4111-8111-111111111111')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('feedback.success', 'Auto-renew enabled successfully.')
+                    ->where('feedback.error', null),
+            );
+    }
+
+    public function test_ineligible_subscription_does_not_expose_renewal_checkout(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+        $this->app->instance(
+            SubscriptionDetailReadInterface::class,
+            new class implements SubscriptionDetailReadInterface
+            {
+                public function detail(string $subscriptionId): ?SubscriptionDetailData
+                {
+                    return new SubscriptionDetailData(
+                        $subscriptionId,
+                        'tenant-1',
+                        'essential',
+                        'annual',
+                        120000,
+                        'MYR',
+                        '2026-01-01',
+                        '2026-12-31',
+                        'active',
+                        'not_due',
+                        'disabled',
+                        2,
+                    );
+                }
+            },
+        );
+
+        $this->get('/dashboard/billing/subscriptions/11111111-1111-4111-8111-111111111111')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('actions.checkout', null),
+            );
+    }
+
+    public function test_super_admin_can_delegate_subscription_operations(): void
+    {
+        $this->app->instance(AuthorizationService::class, $this->authorization(ActorType::PlatformIdentity, 'super_admin'));
+        $id = '11111111-1111-4111-8111-111111111111';
+
+        $this->post("/dashboard/billing/subscriptions/{$id}/renew", ['expected_version' => 2, 'idempotency_key' => 'renewal-key'])
+            ->assertRedirect()
+            ->assertSessionHas('operation', 'accepted');
+        $this->post("/dashboard/billing/subscriptions/{$id}/auto-renew/enable", ['expected_version' => 2])
+            ->assertRedirect()
+            ->assertSessionHas('operation', 'enabled');
+        $this->post("/dashboard/billing/subscriptions/{$id}/auto-renew/disable", ['expected_version' => 2])
+            ->assertRedirect()
+            ->assertSessionHas('operation', 'cancelled');
+
+        $this->from("/dashboard/billing/subscriptions/{$id}")
+            ->post("/dashboard/billing/subscriptions/{$id}/renew", [
+                'expected_version' => 0,
+                'idempotency_key' => '',
+            ])
+            ->assertRedirect("/dashboard/billing/subscriptions/{$id}")
+            ->assertSessionHasErrors(['expected_version', 'idempotency_key']);
+    }
+
+    public function test_super_admin_can_view_commercial_plans_offerings_features_and_pricing_history(): void
+    {
+        $this->app->instance(AuthorizationService::class, $this->authorization(ActorType::PlatformIdentity, 'super_admin'));
+        $planId = '10000000-0000-4000-8000-000000000001';
+        $offeringId = '10000000-0000-4000-8000-000000000003';
+
+        $this->get('/dashboard/commercial')
+            ->assertOk()
+            ->assertInertia(static function (AssertableInertia $page): AssertableInertia {
+                return $page
+                    ->component('SubscriptionBilling/Commercial/SuperAdminCommercialManagement', false)
+                    ->where('plans.0.name', 'Syifa Essential')
+                    ->where('actions.createPlan', route('dashboard.commercial.plans.create'))
+                    ->where(
+                        'actions.createBillingOption',
+                        route('dashboard.commercial.billing-options.create'),
+                    )
+                    ->where('billingOptions.0.code', 'annual')
+                    ->missing('validationErrors')
+                    ->missing('oldInput')
+                    ->where('selectedPlan', null);
+            });
+
+        $this->get('/dashboard/commercial/plans/create')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Commercial/SuperAdminCommercialMutationForm', false)
+                ->where('formKind', 'plan-create')
+                ->where('action', route('dashboard.commercial.plans.store'))
+                ->where('validationErrors', []));
+
+        $this->get('/dashboard/commercial/billing-options/create')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Commercial/SuperAdminCommercialMutationForm', false)
+                ->where('formKind', 'billing-option-create')
+                ->where('action', route('dashboard.commercial.billing-options.store'))
+                ->where('validationErrors', []));
+
+        $this->get("/dashboard/commercial/plans/{$planId}/edit")
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Commercial/SuperAdminCommercialMutationForm', false)
+                ->where('formKind', 'plan-edit')
+                ->where('plan.name', 'Syifa Essential'));
+
+        $this->withSession(['operation' => 'offering_updated'])
+            ->get("/dashboard/commercial/plans/{$planId}/offerings/{$offeringId}")
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->where('selectedPlan.name', 'Syifa Essential')
+                ->where('selectedPlan.version', 1)
+                ->where('selectedOffering.amount', 'MYR 1,200.00')
+                ->where('selectedOffering.version', 2)
+                ->where('capabilities.0.key', 'booking.manage')
+                ->where('pricingHistory.0.version', 2)
+                ->where(
+                    'actions.publishPlan',
+                    route('dashboard.commercial.plans.publish', $planId),
+                )
+                ->where(
+                    'actions.retirePlan',
+                    route('dashboard.commercial.plans.retire', $planId),
+                )
+                ->where(
+                    'actions.editOffering',
+                    route('dashboard.commercial.plans.offerings.edit', [
+                        'planId' => $planId,
+                        'offeringId' => $offeringId,
+                    ]),
+                )
+                ->where('feedback.success', 'Plan offering updated successfully.'));
+
+        $this->get("/dashboard/commercial/plans/{$planId}/offerings/create")
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Commercial/SuperAdminCommercialMutationForm', false)
+                ->where('formKind', 'offering-create')
+                ->where('plan.id', $planId));
+
+        $this->get("/dashboard/commercial/plans/{$planId}/offerings/{$offeringId}/edit")
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Commercial/SuperAdminCommercialMutationForm', false)
+                ->where('formKind', 'offering-edit')
+                ->where('offering.id', $offeringId)
+                ->where('offering.version', 2));
+    }
+
+    public function test_non_super_admin_roles_cannot_access_commercial_management(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->getJson('/dashboard/commercial')->assertForbidden();
+        $this->getJson('/dashboard/commercial/plans/create')->assertForbidden();
+        $this->getJson('/dashboard/commercial/billing-options/create')->assertForbidden();
+        $this->postJson('/dashboard/commercial/plans')->assertForbidden();
+        $this->postJson('/dashboard/commercial/billing-options')->assertForbidden();
+        $this->postJson('/dashboard/commercial/offerings')->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+        );
+        $this->getJson('/dashboard/commercial')->assertForbidden();
+        $this->postJson('/dashboard/commercial/plans/10000000-0000-4000-8000-000000000001/publish')
+            ->assertForbidden();
+        $this->postJson('/dashboard/commercial/plans/10000000-0000-4000-8000-000000000001/retire')
+            ->assertForbidden();
+        $this->postJson('/dashboard/commercial/offerings/10000000-0000-4000-8000-000000000003/retire')->assertForbidden();
+    }
+
+    public function test_invalid_commercial_values_return_clear_validation_errors(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+
+        $this->from('/dashboard/commercial/plans/10000000-0000-4000-8000-000000000001/offerings/create')
+            ->post('/dashboard/commercial/offerings', [
+                'plan_id' => '10000000-0000-4000-8000-000000000001',
+                'billing_option_id' => '10000000-0000-4000-8000-000000000002',
+                'amount_minor' => -1,
+                'effective_start' => '2026-01-01',
+                'effective_end' => null,
+                'capability_configuration_reference' => 'essential-v2',
+                'display_order' => 1,
+            ])
+            ->assertStatus(303)
+            ->assertRedirect('/dashboard/commercial/plans/10000000-0000-4000-8000-000000000001/offerings/create')
+            ->assertSessionHasErrors('amount_minor', errorBag: 'commercial');
+
+        $response = $this->from('/dashboard/commercial/plans/create')
+            ->post('/dashboard/commercial/plans', [
+                'code' => '',
+                'name' => '',
+                'description' => '',
+                'display_order' => -1,
+            ]);
+        $response
+            ->assertStatus(303)
+            ->assertRedirect('/dashboard/commercial/plans/create')
+            ->assertSessionHasErrors(
+                ['code', 'name', 'description', 'display_order'],
+                errorBag: 'commercial',
+            );
+
+        $this->get('/dashboard/commercial/plans/create')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Commercial/SuperAdminCommercialMutationForm', false)
+                ->where('validationErrors', [
+                    'The code field is required.',
+                    'The name field is required.',
+                    'The description field is required.',
+                    'The display order field must be at least 0.',
+                ])
+                ->where('oldInput.display_order', -1));
+
+        $this->get('/dashboard/commercial/plans/create')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->where('validationErrors', [])
+                ->where('oldInput.code', null));
+
+        $this->get('/dashboard/commercial')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->missing('validationErrors')
+                ->missing('oldInput'));
+
+    }
+
+    public function test_ordinary_commercial_get_has_no_validation_errors(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+
+        $this->get('/dashboard/commercial')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->missing('validationErrors')
+                ->missing('oldInput'));
     }
 
     public function test_website_designer_can_search_and_filter_the_assigned_onboarding_queue(): void
@@ -179,7 +774,11 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
     {
         $this->app->instance(
             AuthorizationService::class,
-            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
         );
         $jobId = '00000000-0000-4000-8000-000000000101';
 
@@ -195,8 +794,574 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('job.stages.1.state', 'current')
                     ->has('job.timeline', 3)
                     ->where('job.actions.0.available', true)
-                    ->where('job.actions.1.available', false),
+                    ->where('job.actions.1.available', true)
+                    ->where('websiteSetup.configuration.branding.clinic_name', 'Klinik Aisyah')
+                    ->where('websiteSetup.configuration.template_id', 'SYIFA_ESSENTIAL')
+                    ->has('websiteSetup.templateOptions', 5)
+                    ->where('bookingSetup.configuration.service_selection_enabled', false)
+                    ->where('bookingSetup.configuration.active_services.0.name', 'Consultation')
+                    ->where('clinicContact.configuration.operational_phone', '+60312345678')
+                    ->where('clinicContact.configuration.version', 1)
+                    ->where('websiteSetup.updateUrl', route('dashboard.onboarding.show', $jobId))
+                    ->where(
+                        'websiteSetup.previewUrl',
+                        route('dashboard.onboarding.preview', $jobId),
+                    )
+                    ->where('websiteSetup.configuration.lifecycle', 'draft')
+                    ->where('websiteSetup.canSubmitForReview', true)
+                    ->where('websiteDraft.draft.version', 1)
+                    ->where('websiteDraft.draft.sections.0.type', 'HERO')
+                    ->where('websiteDraft.draft.sections.1.type', 'ABOUT')
+                    ->where(
+                        'websiteDraft.updateUrl',
+                        route('website-designer.website-draft.update', $jobId),
+                    ),
             );
+    }
+
+    public function test_assigned_designer_submits_an_eligible_website_for_review_and_stale_retry_conflicts(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $jobId = '00000000-0000-4000-8000-000000000101';
+
+        $this->postJson('/dashboard/onboarding/'.$jobId.'/website-address', [
+            'subdomain' => 'klinik-aisyah',
+        ])->assertCreated();
+        $this->patchJson('/dashboard/onboarding/'.$jobId, [
+            'workspace' => 'ready_for_review',
+            'version' => 1,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.lifecycle', 'ready_for_review')
+            ->assertJsonPath('data.version', 2);
+
+        $this->patchJson('/dashboard/onboarding/'.$jobId, [
+            'workspace' => 'ready_for_review',
+            'version' => 1,
+        ])->assertConflict();
+
+        $this->get('/dashboard/onboarding/'.$jobId)
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('websiteSetup.configuration.lifecycle', 'ready_for_review')
+                    ->where('websiteSetup.canSubmitForReview', false)
+                    ->where('job.timeline.3.key', 'website_ready_for_review'),
+            );
+    }
+
+    public function test_clinic_owner_cannot_submit_a_website_for_review(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+
+        $this->patchJson(
+            '/dashboard/onboarding/00000000-0000-4000-8000-000000000101',
+            ['workspace' => 'ready_for_review', 'version' => 1],
+        )->assertForbidden();
+    }
+
+    public function test_assigned_designer_publishes_reviewed_website_once_and_refreshes_authoritative_detail(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $jobId = '00000000-0000-4000-8000-000000000101';
+
+        $this->postJson('/dashboard/onboarding/'.$jobId.'/website-address', [
+            'subdomain' => 'klinik-aisyah',
+        ])->assertCreated();
+        $this->patchJson('/dashboard/onboarding/'.$jobId, [
+            'workspace' => 'ready_for_review',
+            'version' => 1,
+        ])->assertOk();
+
+        $this->postJson('/dashboard/onboarding/'.$jobId.'/publish', [
+            'website_version' => 2,
+            'draft_version' => 1,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.lifecycle', 'published')
+            ->assertJsonPath('data.published_version', 1);
+
+        self::assertTrue($this->websiteRepository->hasPublishedSnapshot());
+        self::assertSame('Trusted healthcare', $this->websiteRepository
+            ->publishedHeadline());
+
+        $this->postJson('/dashboard/onboarding/'.$jobId.'/publish', [
+            'website_version' => 2,
+            'draft_version' => 1,
+        ])->assertConflict();
+
+        $this->get('/dashboard/onboarding/'.$jobId)
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('websiteSetup.configuration.lifecycle', 'published')
+                    ->where('websiteSetup.configuration.published_version', 1)
+                    ->where('websiteSetup.canPublish', false)
+                    ->where('websiteSetup.address.host', 'klinik-aisyah.syifa.my')
+                    ->where('websiteSetup.address.active', true)
+                    ->where('websiteSetup.address.url', 'https://klinik-aisyah.syifa.my')
+                    ->where('job.timeline.3.key', 'website_published'),
+            );
+    }
+
+    public function test_assigned_designer_checks_and_reserves_normalized_website_subdomain(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $url = '/dashboard/onboarding/00000000-0000-4000-8000-000000000101/website-address';
+
+        $this->getJson($url.'?subdomain=Klinik-Aisyah')
+            ->assertOk()
+            ->assertJsonPath('available', true);
+        $this->postJson($url, ['subdomain' => 'Klinik-Aisyah'])
+            ->assertCreated()
+            ->assertJsonPath('data.host', 'klinik-aisyah.syifa.my')
+            ->assertJsonPath('data.status', 'preparing')
+            ->assertJsonPath('data.active', false);
+        $this->postJson($url, ['subdomain' => 'not valid'])
+            ->assertUnprocessable();
+
+        $this->get('/dashboard/onboarding/00000000-0000-4000-8000-000000000101')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('websiteSetup.address.host', 'klinik-aisyah.syifa.my')
+                    ->where('websiteSetup.address.status', 'preparing')
+                    ->where('websiteSetup.canReserveAddress', true),
+            );
+    }
+
+    public function test_website_address_reservation_rejects_other_roles_and_unassigned_designers(): void
+    {
+        $url = '/dashboard/onboarding/00000000-0000-4000-8000-000000000101/website-address';
+
+        $this->postJson($url, ['subdomain' => 'clinic'])->assertForbidden();
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->postJson($url, ['subdomain' => 'clinic'])->assertForbidden();
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+        $this->postJson($url, ['subdomain' => 'clinic'])->assertForbidden();
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $this->postJson(
+            '/dashboard/onboarding/00000000-0000-4000-8000-000000000999/website-address',
+            ['subdomain' => 'clinic'],
+        )->assertNotFound();
+    }
+
+    public function test_publish_route_rejects_other_roles_and_unassigned_designers(): void
+    {
+        $url = '/dashboard/onboarding/00000000-0000-4000-8000-000000000101/publish';
+        $payload = ['website_version' => 1, 'draft_version' => 1];
+
+        $this->postJson($url, $payload)->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->postJson($url, $payload)->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+        $this->postJson($url, $payload)->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $this->postJson(
+            '/dashboard/onboarding/00000000-0000-4000-8000-000000000999/publish',
+            $payload,
+        )->assertNotFound();
+    }
+
+    public function test_publish_rejects_a_website_that_has_not_passed_readiness(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+
+        $this->postJson(
+            '/dashboard/onboarding/00000000-0000-4000-8000-000000000101/publish',
+            ['website_version' => 1, 'draft_version' => 1],
+        )->assertUnprocessable()->assertJsonPath(
+            'detail',
+            'Website is not ready to publish.',
+        );
+        self::assertFalse($this->websiteRepository->hasPublishedSnapshot());
+    }
+
+    public function test_publish_fails_closed_without_an_active_subscription_entitlement(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $jobId = '00000000-0000-4000-8000-000000000101';
+        $this->postJson('/dashboard/onboarding/'.$jobId.'/website-address', [
+            'subdomain' => 'klinik-aisyah',
+        ])->assertCreated();
+        $this->patchJson('/dashboard/onboarding/'.$jobId, [
+            'workspace' => 'ready_for_review',
+            'version' => 1,
+        ])->assertOk();
+        $this->app->instance(
+            SubscriptionSummaryReadInterface::class,
+            new DashboardInactiveSubscriptionSummary,
+        );
+
+        $this->postJson('/dashboard/onboarding/'.$jobId.'/publish', [
+            'website_version' => 2,
+            'draft_version' => 1,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath(
+                'detail',
+                'Website publication requires an active Subscription entitlement.',
+            );
+        self::assertFalse($this->websiteRepository->hasPublishedSnapshot());
+    }
+
+    public function test_assigned_designer_previews_current_draft_without_publication_mutation(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $jobId = '00000000-0000-4000-8000-000000000101';
+
+        $this->get('/dashboard/onboarding/'.$jobId.'/preview')
+            ->assertOk()
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertSee('Draft Preview')
+            ->assertSee('Trusted healthcare')
+            ->assertSee('data-template="syifa-essential"', false)
+            ->assertSee('<meta name="robots" content="noindex,nofollow,noarchive">', false)
+            ->assertDontSee('About Klinik');
+
+        self::assertSame('draft', $this->websiteRepository->lifecycle());
+        self::assertFalse($this->websiteRepository->hasPublishedSnapshot());
+
+        $this->websiteRepository->enableIncompleteAbout();
+        $this->websiteDraftRepository->replaceHero('Draft changes appear immediately');
+        $this->get('/dashboard/onboarding/'.$jobId.'/preview')
+            ->assertOk()
+            ->assertSee('Draft changes appear immediately')
+            ->assertDontSee('About Klinik');
+        self::assertSame('draft', $this->websiteRepository->lifecycle());
+        self::assertFalse($this->websiteRepository->hasPublishedSnapshot());
+    }
+
+    public function test_draft_preview_rejects_other_roles_public_visitors_and_unassigned_jobs(): void
+    {
+        $preview = '/dashboard/onboarding/00000000-0000-4000-8000-000000000101/preview';
+
+        $this->getJson($preview)->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->getJson($preview)->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $this->getJson(
+            '/dashboard/onboarding/00000000-0000-4000-8000-000000000999/preview',
+        )->assertNotFound();
+    }
+
+    public function test_website_designer_updates_the_assigned_website_setup(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $jobId = '00000000-0000-4000-8000-000000000101';
+
+        $this->patch('/dashboard/onboarding/'.$jobId, [
+            'version' => 1,
+            'template_id' => 'SYIFA_CARE',
+            'branding' => [
+                'clinic_name' => 'Klinik Designer',
+                'tagline' => 'Configured with care',
+                'primary_color' => '#AABBCC',
+                'secondary_color' => '#DDEEFF',
+                'contact_email' => 'designer@example.test',
+                'contact_phone' => '+60123456789',
+                'address' => 'Kuala Lumpur',
+                'social_links' => [
+                    'facebook' => 'https://facebook.com/klinik',
+                    'instagram' => null,
+                    'youtube' => null,
+                    'tiktok' => null,
+                    'linkedin' => null,
+                ],
+            ],
+            'seo' => [
+                'meta_title' => 'Klinik Designer SEO',
+                'meta_description' => 'Trusted healthcare configured by the assigned designer.',
+                'meta_keywords' => 'clinic, healthcare',
+                'canonical_url' => 'https://clinic.example.test',
+                'robots_directive' => 'index,nofollow',
+                'open_graph_title' => 'Klinik Designer',
+                'open_graph_description' => 'Trusted clinic information for social sharing.',
+                'indexing_enabled' => false,
+            ],
+            'sections' => [
+                'hero' => true,
+                'about' => false,
+                'services' => true,
+                'doctors' => true,
+                'testimonials' => true,
+                'gallery' => true,
+                'faq' => true,
+                'contact' => true,
+                'booking_cta' => true,
+            ],
+        ])->assertRedirect();
+
+        $this->get('/dashboard/onboarding/'.$jobId)
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('websiteSetup.configuration.branding.clinic_name', 'Klinik Designer')
+                    ->where('websiteSetup.configuration.template_id', 'SYIFA_CARE')
+                    ->where('websiteSetup.configuration.seo.meta_title', 'Klinik Designer SEO')
+                    ->where('websiteSetup.configuration.seo.canonical_url', 'https://clinic.example.test')
+                    ->where('websiteSetup.configuration.seo.robots_directive', 'index,nofollow')
+                    ->where('websiteSetup.configuration.seo.indexing_enabled', false)
+                    ->where('websiteSetup.configuration.sections.1.key', 'about')
+                    ->where('websiteSetup.configuration.sections.1.enabled', false)
+                    ->where('websiteSetup.configuration.version', 2),
+            );
+
+        $this->from('/dashboard/onboarding/'.$jobId)
+            ->patch('/dashboard/onboarding/'.$jobId, [
+                'version' => 2,
+                'template_id' => 'ARBITRARY_TEMPLATE',
+                'branding' => ['clinic_name' => ''],
+                'seo' => [
+                    'meta_title' => 'Valid title',
+                    'meta_description' => 'Valid description',
+                    'meta_keywords' => null,
+                    'canonical_url' => 'http://insecure.example.test',
+                    'robots_directive' => 'allow-everything',
+                    'open_graph_title' => 'Valid sharing title',
+                    'open_graph_description' => 'Valid sharing description',
+                    'indexing_enabled' => true,
+                ],
+            ])
+            ->assertRedirect('/dashboard/onboarding/'.$jobId)
+            ->assertSessionHasErrors([
+                'template_id',
+                'branding.clinic_name',
+                'seo.canonical_url',
+                'seo.robots_directive',
+                'sections',
+            ]);
+
+        $this->get('/dashboard/onboarding/'.$jobId)
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('websiteSetup.configuration.template_id', 'SYIFA_CARE')
+                    ->where('websiteSetup.configuration.seo.meta_title', 'Klinik Designer SEO')
+                    ->where('websiteSetup.configuration.seo.robots_directive', 'index,nofollow')
+                    ->where('websiteSetup.configuration.version', 2),
+            );
+    }
+
+    public function test_website_designer_updates_the_assigned_booking_form_configuration(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $jobId = '00000000-0000-4000-8000-000000000101';
+        $configuration = [
+            'workspace' => 'booking_configuration',
+            'version' => 1,
+            'service_selection_enabled' => true,
+            'service_required' => true,
+            'email_enabled' => true,
+            'email_required' => false,
+            'notes_enabled' => true,
+            'notes_required' => true,
+            'field_order' => [
+                'patient_name',
+                'phone',
+                'service',
+                'appointment_date',
+                'appointment_time',
+                'email',
+                'notes',
+            ],
+            'labels' => [
+                'patient_name' => 'Patient name',
+                'phone' => 'Phone number',
+                'appointment_date' => 'Appointment date',
+                'appointment_time' => 'Appointment time',
+                'service' => 'Choose a service',
+                'email' => 'Email',
+                'notes' => 'Additional notes',
+            ],
+        ];
+
+        $this->patch('/dashboard/onboarding/'.$jobId, $configuration)->assertRedirect();
+
+        $this->get('/dashboard/onboarding/'.$jobId)
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('bookingSetup.configuration.version', 2)
+                    ->where('bookingSetup.configuration.service_selection_enabled', true)
+                    ->where('bookingSetup.configuration.service_required', true)
+                    ->where('bookingSetup.configuration.notes_required', true)
+                    ->where('bookingSetup.configuration.labels.service', 'Choose a service')
+                    ->where('bookingSetup.configuration.active_services.0.name', 'Consultation'),
+            );
+
+        $configuration['version'] = 2;
+        $configuration['service_selection_enabled'] = false;
+        $this->from('/dashboard/onboarding/'.$jobId)
+            ->patch('/dashboard/onboarding/'.$jobId, $configuration)
+            ->assertRedirect('/dashboard/onboarding/'.$jobId)
+            ->assertSessionHasErrors('booking.configuration');
+
+        $this->get('/dashboard/onboarding/'.$jobId)
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('bookingSetup.configuration.version', 2)
+                    ->where('bookingSetup.configuration.service_selection_enabled', true),
+            );
+    }
+
+    public function test_website_designer_updates_the_assigned_clinic_contact_profile(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $jobId = '00000000-0000-4000-8000-000000000101';
+
+        $this->patch('/dashboard/onboarding/'.$jobId, [
+            'workspace' => 'clinic_contact',
+            'version' => 1,
+            'operational_phone' => '+60387654321',
+            'operational_email' => 'operations@aisyah.test',
+            'postal_address' => 'Petaling Jaya, Selangor',
+            'whatsapp_number' => '+60198765432',
+            'latitude' => 3.1073,
+            'longitude' => 101.6067,
+        ])->assertRedirect();
+
+        $this->get('/dashboard/onboarding/'.$jobId)
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('clinicContact.configuration.version', 2)
+                    ->where('clinicContact.configuration.operational_phone', '+60387654321')
+                    ->where('clinicContact.configuration.operational_email', 'operations@aisyah.test')
+                    ->where('clinicContact.configuration.whatsapp_number', '+60198765432')
+                    ->where('clinicContact.configuration.latitude', 3.1073)
+                    ->where('clinicContact.configuration.longitude', 101.6067),
+            );
+
+        $this->from('/dashboard/onboarding/'.$jobId)
+            ->patch('/dashboard/onboarding/'.$jobId, [
+                'workspace' => 'clinic_contact',
+                'version' => 2,
+                'whatsapp_number' => 'https://wa.me/60123456789',
+                'latitude' => 3.1073,
+                'longitude' => 101.6067,
+            ])
+            ->assertRedirect('/dashboard/onboarding/'.$jobId)
+            ->assertSessionHasErrors('clinic_contact.configuration');
+
+        $this->from('/dashboard/onboarding/'.$jobId)
+            ->patch('/dashboard/onboarding/'.$jobId, [
+                'workspace' => 'clinic_contact',
+                'version' => 2,
+                'latitude' => 91,
+                'longitude' => 181,
+            ])
+            ->assertRedirect('/dashboard/onboarding/'.$jobId)
+            ->assertSessionHasErrors(['latitude', 'longitude']);
     }
 
     public function test_unassigned_job_is_not_disclosed_and_other_roles_are_forbidden(): void
@@ -214,10 +1379,21 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         );
         $this->getJson('/dashboard/onboarding/00000000-0000-4000-8000-000000000101')
             ->assertForbidden();
+        $this->patchJson('/dashboard/onboarding/00000000-0000-4000-8000-000000000101')
+            ->assertForbidden();
     }
 
     public function test_clinic_owner_receives_the_website_overview_from_application_providers(): void
     {
+        $this->websiteAddresses->seed(
+            new WebsitePublicAddressData(
+                'website-1',
+                'tenant-1',
+                'klinik-aisyah.syifa.my',
+                'https://klinik-aisyah.syifa.my',
+                true,
+            ),
+        );
         $this->app->instance(
             AuthorizationService::class,
             $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
@@ -230,10 +1406,16 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->component('TenantManagement/Website/ClinicOwnerWebsiteOverview', false)
                     ->where('websiteStatus.value', 'Published')
                     ->where('publishStatus.value', 'Published')
-                    ->where('domainStatus.value', 'Not available')
+                    ->where('domainStatus.value', 'Live')
+                    ->where('domainStatus.detail', 'klinik-aisyah.syifa.my')
+                    ->where('domainStatus.url', 'https://klinik-aisyah.syifa.my')
+                    ->where('domainStatus.actionLabel', 'Open Website')
                     ->where('themeInformation.value', 'syifa-essential')
                     ->where('seoStatus.value', 'Indexing enabled')
-                    ->has('quickActions', 3)
+                    ->has('quickActions', 1)
+                    ->where('quickActions.0.key', 'edit')
+                    ->where('quickActions.0.available', true)
+                    ->where('quickActions.0.href', route('dashboard.website.content'))
                     ->has('navigation', 4),
             );
     }
@@ -242,7 +1424,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
     {
         $this->app->instance(
             AuthorizationService::class,
-            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000010'),
         );
 
         $this->get('/dashboard/website/content')
@@ -258,7 +1440,62 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('contentSections.2.title', 'Services')
                     ->where('contentSections.2.itemCount', 3)
                     ->where('contentSections.2.detail', 'Primary care · Vaccination · General practice')
+                    ->where('editableContent.branding.clinic_name', 'Klinik Aisyah')
+                    ->where('editableContent.version', 1)
+                    ->where('updateUrl', route('dashboard.website.content.update'))
                     ->has('navigation', 4),
+            );
+    }
+
+    public function test_clinic_owner_updates_their_current_website_configuration(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000010'),
+        );
+
+        $this->patch('/dashboard/website/content', [
+            'version' => 1,
+            'branding' => [
+                'clinic_name' => 'Klinik Baharu',
+                'tagline' => 'Trusted care',
+                'primary_color' => '#AABBCC',
+                'secondary_color' => '#DDEEFF',
+                'contact_email' => 'hello@example.test',
+                'contact_phone' => '+60123456789',
+                'address' => 'Kuala Lumpur',
+                'social_links' => ['facebook' => 'https://facebook.com/klinik'],
+            ],
+            'seo' => [
+                'meta_title' => 'Klinik Baharu',
+                'meta_description' => 'Trusted family healthcare.',
+                'meta_keywords' => null,
+                'canonical_url' => 'https://clinic.example.test',
+                'robots_directive' => 'index,follow',
+                'open_graph_title' => 'Klinik Baharu',
+                'open_graph_description' => 'Trusted family healthcare.',
+                'indexing_enabled' => true,
+            ],
+            'sections' => [
+                'hero' => true,
+                'about' => true,
+                'services' => true,
+                'doctors' => true,
+                'testimonials' => true,
+                'gallery' => true,
+                'faq' => true,
+                'contact' => true,
+                'booking_cta' => false,
+            ],
+        ])->assertRedirect();
+
+        $this->get('/dashboard/website/content')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('editableContent.branding.clinic_name', 'Klinik Baharu')
+                    ->where('editableContent.sections.8.enabled', false)
+                    ->where('editableContent.version', 2),
             );
     }
 
@@ -266,7 +1503,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
     {
         $this->app->instance(
             AuthorizationService::class,
-            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000010'),
         );
 
         foreach (['/dashboard', '/dashboard/website', '/dashboard/website/content', '/dashboard/bookings'] as $uri) {
@@ -301,8 +1538,107 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('bookingList.pagination.perPage', 10)
                     ->where('statusSummary.total', 1)
                     ->where('sourceSummary.items.0.count', 1)
+                    ->where('manualBooking.storeUrl', route('dashboard.bookings.store'))
+                    ->where('manualBooking.sources.0.value', 'phone')
+                    ->where('manualBooking.serviceSelectionEnabled', true)
+                    ->where('manualBooking.services.0.name', 'Consultation')
                     ->has('navigation', 4),
             );
+    }
+
+    public function test_clinic_owner_receives_tenant_scoped_booking_detail_and_history(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $bookingId = '00000000-0000-4000-8000-000000000001';
+
+        $this->get(route('dashboard.bookings.show', ['bookingId' => $bookingId]))
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('TenantManagement/Booking/ClinicOwnerBookingDetail', false)
+                    ->where('booking.reference', 'BOOK-001')
+                    ->where('booking.patientName', 'Patient Name')
+                    ->where('booking.serviceName', 'Consultation')
+                    ->where('booking.sourceLabel', 'Website')
+                    ->where('history.0.actorType', 'public_visitor')
+                    ->where('history.0.payload.source', 'WEBSITE'),
+            );
+
+        $this->get('/dashboard/bookings/00000000-0000-4000-8000-000000000099')
+            ->assertNotFound();
+    }
+
+    public function test_booking_detail_and_mutations_remain_clinic_owner_only_and_refresh_detail(): void
+    {
+        $bookingId = '00000000-0000-4000-8000-000000000001';
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+
+        $this->post(route('dashboard.bookings.confirm', ['bookingId' => $bookingId]), [
+            'return_to_detail' => true,
+        ])->assertStatus(303)
+            ->assertRedirect(route('dashboard.bookings.show', ['bookingId' => $bookingId]));
+        $this->patch(route('dashboard.bookings.reschedule', ['bookingId' => $bookingId]), [
+            'appointment_date' => '2026-09-02',
+            'appointment_time' => '10:30',
+            'return_to_detail' => true,
+        ])->assertStatus(303)
+            ->assertRedirect(route('dashboard.bookings.show', ['bookingId' => $bookingId]));
+        $this->post(route('dashboard.bookings.cancel', ['bookingId' => $bookingId]), [
+            'return_to_detail' => true,
+        ])->assertStatus(303)
+            ->assertRedirect(route('dashboard.bookings.show', ['bookingId' => $bookingId]));
+
+        self::assertSame([
+            ['confirm', 'tenant-1', $bookingId, 'identity-1', 'clinic_owner'],
+            ['reschedule', 'tenant-1', $bookingId, '2026-09-02', '10:30', 'identity-1', 'clinic_owner'],
+            ['cancel', 'tenant-1', $bookingId, 'identity-1', 'clinic_owner'],
+        ], $this->bookingOperations->calls);
+
+        foreach (['website_designer', 'super_admin'] as $role) {
+            $this->app->instance(
+                AuthorizationService::class,
+                $this->authorization(ActorType::PlatformIdentity, $role),
+            );
+            $this->getJson(route('dashboard.bookings.show', ['bookingId' => $bookingId]))
+                ->assertForbidden();
+        }
+    }
+
+    public function test_manual_booking_delivery_validates_approved_sources_and_remains_clinic_owner_only(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+
+        $this->post(route('dashboard.bookings.store'), [
+            'source' => 'telegram',
+            'patient_name' => 'Aisyah',
+            'phone' => '+6012',
+            'appointment_date' => '2026-09-02',
+            'appointment_time' => '10:30',
+        ])->assertSessionHasErrors('source');
+
+        foreach (['website_designer', 'super_admin'] as $role) {
+            $this->app->instance(
+                AuthorizationService::class,
+                $this->authorization(ActorType::PlatformIdentity, $role),
+            );
+
+            $this->postJson(route('dashboard.bookings.store'), [
+                'source' => 'phone',
+                'patient_name' => 'Aisyah',
+                'phone' => '+6012',
+                'appointment_date' => '2026-09-02',
+                'appointment_time' => '10:30',
+            ])->assertForbidden();
+        }
     }
 
     public function test_platform_identity_cannot_access_the_clinic_owner_website_overview(): void
@@ -388,7 +1724,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ActorType::PlatformIdentity,
             'super_admin',
             null,
-            'Shared/Dashboard/AuthenticatedDashboard',
+            'PlatformAdministration/Dashboard/SuperAdminDashboardOverview',
         ];
     }
 
@@ -396,12 +1732,13 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         ?ActorType $actorType = null,
         ?string $role = null,
         ?string $tenantId = null,
+        string $identityId = 'identity-1',
     ): AuthorizationService {
         $identity = $actorType === null || $role === null
             ? null
             : new AuthenticatedIdentity(
                 $actorType,
-                'identity-1',
+                $identityId,
                 $tenantId,
                 $role,
                 'Authenticated User',
@@ -442,6 +1779,113 @@ final readonly class DashboardFixedClinicSummary implements ClinicSummaryReadInt
     public function summary(string $trustedTenantId): ?ClinicSummaryData
     {
         return new ClinicSummaryData('clinic-1', 'Asia/Kuala_Lumpur', true);
+    }
+}
+
+final readonly class DashboardFixedPlatformRead implements PlatformDashboardReadInterface
+{
+    public function overview(): PlatformDashboardData
+    {
+        return new PlatformDashboardData(
+            12, 9, 3, 5, 8, 42, true,
+            [new PlatformDashboardActivityData(
+                'audit-1',
+                'tenant.activated',
+                'success',
+                new DateTimeImmutable('2026-08-25T10:00:00+08:00'),
+            )],
+        );
+    }
+}
+
+final readonly class DashboardFixedTenantOverviewRead implements TenantOverviewReadInterface
+{
+    public function list(?string $status, ?string $cursor, int $limit, ?string $search): array
+    {
+        return [
+            new TenantOverviewData(
+                'tenant-1',
+                'Klinik Aisyah',
+                'Aisyah Rahman',
+                'aisyah@example.test',
+                'active',
+                'active',
+                true,
+                'Designer One',
+            ),
+        ];
+    }
+}
+
+final readonly class DashboardFixedBillingOverviewRead implements BillingOverviewReadInterface
+{
+    public function summary(string $asOfDate): BillingOverviewData
+    {
+        return new BillingOverviewData(
+            8, 2, 3, 123456, 'MYR',
+            [new RecentPaymentData('payment-1', 'tenant-1', 10000, 'MYR', 'succeeded', '2026-08-25')],
+            1, 10, 2, 0,
+        );
+    }
+
+    public function subscriptions(?string $status, ?string $cursor, int $limit, ?string $search): array
+    {
+        return [
+            new SubscriptionOverviewData(
+                'subscription-1', 'tenant-1', 'essential', 'annual',
+                120000, 'MYR', '2026-01-01', '2026-12-31', 'active',
+            ),
+        ];
+    }
+}
+
+final readonly class DashboardFixedSubscriptionDetailRead implements PaymentHistoryReadInterface, SubscriptionDetailReadInterface, SubscriptionTimelineReadInterface
+{
+    public function detail(string $subscriptionId): ?SubscriptionDetailData
+    {
+        return new SubscriptionDetailData(
+            $subscriptionId,
+            'tenant-1',
+            'essential',
+            'annual',
+            120000,
+            'MYR',
+            '2026-01-01',
+            '2026-12-31',
+            'renewal_due',
+            'due',
+            'not_configured',
+            2,
+            '22222222-2222-4222-8222-222222222222',
+        );
+    }
+
+    public function list(string $subscriptionId, ?string $cursor, int $limit): array
+    {
+        return [new SubscriptionTimelineData('event-1', 'renewal_due', '2026-12-01')];
+    }
+
+    public function listForSubscription(string $subscriptionId, ?string $cursor, int $limit): array
+    {
+        return [new SubscriptionPaymentData('payment-1', 'initial_activation', 120000, 'MYR', 'succeeded', '2026-01-01')];
+    }
+}
+
+final class DashboardRecordedSubscriptionOperations implements CancelAutoRenewInterface, EnableAutoRenewInterface, ManualRenewSubscriptionInterface
+{
+    public function renew(ManualRenewSubscriptionCommand $command): RenewalOperationResult
+    {
+        return new RenewalOperationResult('accepted', 'renewal-1');
+    }
+
+    public function enable(AutoRenewCommand $command): AutoRenewOperationResult
+    {
+        return new AutoRenewOperationResult('enabled', $command->expectedVersion + 1);
+    }
+
+    public function cancel(AutoRenewCommand $command): AutoRenewOperationResult
+    {
+        return new AutoRenewOperationResult('cancelled', $command->expectedVersion + 1);
     }
 }
 
@@ -492,8 +1936,8 @@ final readonly class DashboardFixedDesignerRead implements WebsiteDesignerDashbo
         return new WebsiteDesignerJobDetailData(
             'assignment-1',
             $onboardingJobId,
-            'tenant-1',
-            'website-1',
+            '00000000-0000-4000-8000-000000000002',
+            '00000000-0000-4000-8000-000000000001',
             'in_progress',
             new DateTimeImmutable('2026-08-24T09:30:00+08:00'),
             new DateTimeImmutable('2026-08-25T10:00:00+08:00'),
@@ -511,6 +1955,401 @@ final readonly class DashboardFixedSubscriptionSummary implements SubscriptionSu
     public function summary(string $trustedTenantId): ?SubscriptionSummaryData
     {
         return new SubscriptionSummaryData('active', '2027-08-20');
+    }
+}
+
+final readonly class DashboardInactiveSubscriptionSummary implements SubscriptionSummaryReadInterface
+{
+    public function summary(string $trustedTenantId): ?SubscriptionSummaryData
+    {
+        return new SubscriptionSummaryData('expired', '2026-01-01');
+    }
+}
+
+final class DashboardWebsitePublicAddressRepository implements WebsitePublicAddressRepositoryInterface
+{
+    private ?WebsitePublicAddressData $address = null;
+
+    public function seed(WebsitePublicAddressData $address): void
+    {
+        $this->address = $address;
+    }
+
+    public function isAvailable(string $normalizedHost, string $websiteId): bool
+    {
+        return $this->address === null
+            || $this->address->host === $normalizedHost
+            || $this->address->websiteId === $websiteId;
+    }
+
+    public function reservePrimary(
+        string $addressId,
+        string $trustedTenantId,
+        string $websiteId,
+        string $normalizedHost,
+        DateTimeImmutable $at,
+    ): WebsitePublicAddressData {
+        return $this->address = new WebsitePublicAddressData(
+            $websiteId,
+            $trustedTenantId,
+            $normalizedHost,
+            'https://'.$normalizedHost,
+            false,
+        );
+    }
+
+    public function activatePrimary(
+        string $trustedTenantId,
+        string $websiteId,
+        DateTimeImmutable $at,
+    ): WebsitePublicAddressData {
+        if ($this->address === null
+            || $this->address->tenantId !== $trustedTenantId
+            || $this->address->websiteId !== $websiteId) {
+            throw new InvalidWebsiteValueException(
+                'Website publication requires a reserved primary public address.',
+            );
+        }
+
+        return $this->address = new WebsitePublicAddressData(
+            $websiteId,
+            $trustedTenantId,
+            $this->address->host,
+            $this->address->url,
+            true,
+        );
+    }
+
+    public function forWebsite(string $trustedTenantId, string $websiteId): ?WebsitePublicAddressData
+    {
+        return $this->address?->tenantId === $trustedTenantId
+            && $this->address->websiteId === $websiteId
+                ? $this->address
+                : null;
+    }
+
+    public function forTenant(string $trustedTenantId): ?WebsitePublicAddressData
+    {
+        return $this->address?->tenantId === $trustedTenantId ? $this->address : null;
+    }
+
+    public function resolveActiveHost(string $host): ?WebsitePublicAddressData
+    {
+        return $this->address?->active === true
+            && strtolower($host) === $this->address->host
+                ? $this->address
+                : null;
+    }
+}
+
+final class DashboardFixedBookingConfigurationRepository implements BookingFormConfigurationRepositoryInterface
+{
+    private BookingFormConfiguration $configuration;
+
+    public function __construct()
+    {
+        $tenant = new BookingTenantId('00000000-0000-4000-8000-000000000002');
+        $this->configuration = BookingFormConfiguration::create(
+            $tenant,
+            false,
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields([]),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+            ]),
+            new FieldLabels([]),
+            new DateTimeImmutable('2026-01-01T00:00:00Z'),
+        );
+        $this->configuration->synchronizeVersion(1);
+    }
+
+    public function findByTenant(BookingTenantId $tenantId): ?BookingFormConfiguration
+    {
+        return $tenantId->value === $this->configuration->tenantId->value
+            ? $this->configuration
+            : null;
+    }
+
+    public function save(BookingFormConfiguration $configuration): void
+    {
+        $configuration->synchronizeVersion($configuration->version() + 1);
+        $this->configuration = $configuration;
+    }
+}
+
+final readonly class DashboardFixedBookingServiceRepository implements ServiceRepositoryInterface
+{
+    /** @return list<Service> */
+    private function services(): array
+    {
+        $tenant = new BookingTenantId('00000000-0000-4000-8000-000000000002');
+
+        return [
+            Service::register(
+                new BookingServiceId('00000000-0000-4000-8000-000000000020'),
+                $tenant,
+                new ServiceName('Consultation'),
+                null,
+                new SortOrder(1),
+                new DateTimeImmutable('2026-01-01T00:00:00Z'),
+            ),
+        ];
+    }
+
+    public function findById(BookingTenantId $tenantId, BookingServiceId $serviceId): ?Service
+    {
+        return $this->services()[0];
+    }
+
+    public function findAll(BookingTenantId $tenantId): array
+    {
+        return $this->services();
+    }
+
+    public function findActive(BookingTenantId $tenantId): array
+    {
+        return $this->services();
+    }
+
+    public function existsByName(BookingTenantId $tenantId, string $name): bool
+    {
+        return $name === 'Consultation';
+    }
+
+    public function save(Service $service): void {}
+}
+
+final class DashboardFixedClinicRepository implements ClinicRepositoryInterface
+{
+    private Clinic $clinic;
+
+    public function __construct()
+    {
+        $this->clinic = Clinic::reconstitute(
+            new ClinicId('00000000-0000-4000-8000-000000000003'),
+            new TenantId('00000000-0000-4000-8000-000000000002'),
+            new IanaTimezone('Asia/Kuala_Lumpur'),
+            new WeeklyOperatingHours([]),
+            new DateTimeImmutable('2026-01-01T00:00:00Z'),
+            new DateTimeImmutable('2026-01-01T00:00:00Z'),
+            1,
+            contactProfile: new ClinicContactProfile(
+                '+60312345678',
+                'clinic@aisyah.test',
+                'Kuala Lumpur',
+                '+60123456789',
+                3.139,
+                101.6869,
+            ),
+        );
+    }
+
+    public function findById(TenantId $tenantId, ClinicId $clinicId): ?Clinic
+    {
+        return $tenantId->value === $this->clinic->tenantId->value
+            && $clinicId->value === $this->clinic->id->value
+            ? $this->clinic
+            : null;
+    }
+
+    public function findByTenantId(TenantId $tenantId): ?Clinic
+    {
+        return $tenantId->value === $this->clinic->tenantId->value ? $this->clinic : null;
+    }
+
+    public function save(Clinic $clinic): void
+    {
+        $clinic->synchronizeVersion($clinic->version() + 1);
+        $this->clinic = $clinic;
+    }
+}
+
+final readonly class DashboardClinicTransaction implements ClinicTransactionInterface
+{
+    public function run(callable $operation): mixed
+    {
+        return $operation();
+    }
+}
+
+final readonly class DashboardWebsitePublicationTransaction implements WebsitePublicationTransactionInterface
+{
+    public function run(string $tenantId, string $websiteId, callable $operation): mixed
+    {
+        return $operation();
+    }
+}
+
+final readonly class DashboardAuditRecorder implements AuditEntryRecorderInterface
+{
+    public function record(AuditEntryData $auditEntry): AuditEntry
+    {
+        return AuditEntry::record(
+            new AuditEntryId($auditEntry->auditEntryId),
+            $auditEntry->occurredAt,
+            AuditActorType::from($auditEntry->actor->type),
+            $auditEntry->actor->identityId,
+            $auditEntry->tenantId,
+            $auditEntry->action,
+            $auditEntry->target->type,
+            $auditEntry->target->id,
+            AuditOutcomeType::from($auditEntry->outcome->outcome),
+            $auditEntry->outcome->reasonCode,
+            $auditEntry->correlationId,
+            $auditEntry->safeMetadata,
+        );
+    }
+}
+
+final class DashboardFixedWebsiteRepository implements WebsiteRepositoryInterface
+{
+    private Website $website;
+
+    public function __construct()
+    {
+        $uuid = static fn (int $suffix): string => sprintf('00000000-0000-4000-8000-%012d', $suffix);
+        $this->website = Website::create(
+            new WebsiteId($uuid(1)),
+            new TenantId($uuid(2)),
+            TemplateId::SyifaEssential,
+            new WebsiteBranding('Klinik Aisyah', 'Trusted healthcare', '#112233', '#445566', null, null, 'hello@aisyah.test', '+60123456789', 'Kuala Lumpur'),
+            array_map(static fn (int $suffix): SectionId => new SectionId($uuid($suffix)), range(100, 108)),
+            new DateTimeImmutable('2026-01-01T00:00:00Z'),
+        );
+        foreach (array_slice($this->website->sections()->sections(), 1) as $section) {
+            $this->website->disableSection(
+                $section->id,
+                new DateTimeImmutable('2026-01-01T00:01:00Z'),
+            );
+        }
+        $this->website->synchronizeVersion(1);
+    }
+
+    public function findById(TenantId $tenantId, WebsiteId $websiteId): ?Website
+    {
+        return $tenantId->value === $this->website->tenantId->value
+            && $websiteId->value === $this->website->id->value ? $this->website : null;
+    }
+
+    public function findByTenant(TenantId $tenantId): ?Website
+    {
+        return $tenantId->value === $this->website->tenantId->value ? $this->website : null;
+    }
+
+    public function save(Website $website): void
+    {
+        $website->synchronizeVersion($website->version() + 1);
+    }
+
+    public function lifecycle(): string
+    {
+        return $this->website->lifecycle()->value;
+    }
+
+    public function hasPublishedSnapshot(): bool
+    {
+        return $this->website->publishedSnapshot() !== null;
+    }
+
+    public function publishedHeadline(): ?string
+    {
+        return $this->website->publishedSnapshot()
+            ?->sectionContents[0]
+            ->content instanceof HeroSectionContent
+                ? $this->website->publishedSnapshot()?->sectionContents[0]->content->headline
+                : null;
+    }
+
+    public function enableIncompleteAbout(): void
+    {
+        $this->website->enableSection(
+            $this->website->sections()->sections()[1]->id,
+            new DateTimeImmutable('2026-01-01T00:02:00Z'),
+        );
+    }
+}
+
+final class DashboardFixedWebsiteDraftRepository implements WebsiteDraftRepositoryInterface
+{
+    private WebsiteDraftContent $draft;
+
+    public function __construct()
+    {
+        $uuid = static fn (int $suffix): string => sprintf(
+            '00000000-0000-4000-8000-%012d',
+            $suffix,
+        );
+        $section = static fn (int $suffix): SectionId => new SectionId($uuid($suffix));
+        $this->draft = new WebsiteDraftContent(
+            new WebsiteId($uuid(1)),
+            new TenantId($uuid(2)),
+            1,
+            [
+                new HeroSectionContent($section(100), 'Trusted healthcare'),
+                new AboutSectionContent($section(101)),
+                new ServicesSectionContent($section(102)),
+                new DoctorsSectionContent($section(103)),
+                new TestimonialsSectionContent($section(104)),
+                new GallerySectionContent($section(105)),
+                new FaqSectionContent($section(106)),
+                new ContactSectionContent($section(107)),
+                new BookingCtaSectionContent($section(108)),
+            ],
+        );
+    }
+
+    public function find(TenantId $tenantId, WebsiteId $websiteId): ?WebsiteDraftContent
+    {
+        return $tenantId->value === $this->draft->tenantId->value
+            && $websiteId->value === $this->draft->websiteId->value
+                ? $this->draft
+                : null;
+    }
+
+    public function save(WebsiteDraftContent $draft, int $expectedVersion): WebsiteDraftContent
+    {
+        return $this->draft = new WebsiteDraftContent(
+            $draft->websiteId,
+            $draft->tenantId,
+            $expectedVersion + 1,
+            $draft->sections,
+        );
+    }
+
+    public function replaceHero(string $headline): void
+    {
+        $sections = $this->draft->sections;
+        $sections[0] = new HeroSectionContent($sections[0]->sectionId(), $headline);
+        $this->draft = new WebsiteDraftContent(
+            $this->draft->websiteId,
+            $this->draft->tenantId,
+            $this->draft->version + 1,
+            $sections,
+        );
+    }
+}
+
+final readonly class DashboardFixedPublicBookingConfiguration implements PublicBookingFormConfigurationReaderInterface
+{
+    public function forTrustedTenant(string $trustedTenantId): PublicBookingFormConfiguration
+    {
+        return new PublicBookingFormConfiguration(
+            false,
+            false,
+            false,
+            false,
+            [new PublicBookingServiceOption(
+                '00000000-0000-4000-8000-000000000201',
+                'Consultation',
+                false,
+            )],
+        );
     }
 }
 
@@ -570,17 +2409,17 @@ final readonly class DashboardFixedBookingRead implements ClinicOwnerBookingRead
 {
     public function detail(string $trustedTenantId, string $bookingId): ?BookingDetailData
     {
-        return null;
+        if ($bookingId !== '00000000-0000-4000-8000-000000000001') {
+            return null;
+        }
+
+        return $this->booking($trustedTenantId);
     }
 
     public function list(string $trustedTenantId, ?string $status, ?string $cursor, int $limit, ?string $search = null, ?string $source = null): array
     {
         return [
-            new BookingDetailData(
-                'booking-1', $trustedTenantId, 'service-1', 'BOOK-001', 'WEBSITE', 'submitted',
-                '2026-09-01', '09:00', '09:30', 'Asia/Kuala_Lumpur',
-                '2026-09-01T01:00:00Z', '2026-09-01T01:30:00Z', 30,
-            ),
+            $this->booking($trustedTenantId),
         ];
     }
 
@@ -596,7 +2435,66 @@ final readonly class DashboardFixedBookingRead implements ClinicOwnerBookingRead
 
     public function history(string $trustedTenantId, string $bookingId): array
     {
-        return [];
+        if ($this->detail($trustedTenantId, $bookingId) === null) {
+            return [];
+        }
+
+        return [new BookingHistoryData(
+            'history-1',
+            'BookingSubmitted',
+            'public_visitor',
+            null,
+            '2026-08-31T01:00:00Z',
+            [
+                'source' => 'WEBSITE',
+                'local_date' => '2026-09-01',
+                'local_start' => '09:00',
+                'local_end' => '09:30',
+                'timezone' => 'Asia/Kuala_Lumpur',
+                'starts_at_utc' => '2026-09-01T01:00:00Z',
+                'ends_at_utc' => '2026-09-01T01:30:00Z',
+                'duration_minutes' => 30,
+            ],
+        )];
+    }
+
+    private function booking(string $trustedTenantId): BookingDetailData
+    {
+        return new BookingDetailData(
+            '00000000-0000-4000-8000-000000000001',
+            $trustedTenantId,
+            'service-1',
+            'Consultation',
+            'BOOK-001',
+            'WEBSITE',
+            'submitted',
+            'Patient Name',
+            '+6012',
+            'patient@example.test',
+            'Booking notes',
+            '2026-09-01',
+            '09:00',
+            '09:30',
+            'Asia/Kuala_Lumpur',
+            '2026-09-01T01:00:00Z',
+            '2026-09-01T01:30:00Z',
+            30,
+            '2026-08-31T01:00:00Z',
+        );
+    }
+}
+
+final readonly class DashboardFixedBookingFormRead implements PublicBookingFormReaderInterface
+{
+    public function forTrustedTenant(string $trustedTenantId): PublicBookingFormReaderData
+    {
+        return new PublicBookingFormReaderData(
+            true,
+            true,
+            true,
+            true,
+            [new PublicBookingFormServiceData('00000000-0000-4000-8000-000000000004', 'Consultation')],
+        );
     }
 }
 
@@ -618,5 +2516,127 @@ final class DashboardRecordedBookingOperations implements ClinicOwnerBookingOper
     public function reschedule(string $tenantId, string $bookingId, string $localDate, string $localStart, string $actorId, string $actorRole): void
     {
         $this->calls[] = ['reschedule', $tenantId, $bookingId, $localDate, $localStart, $actorId, $actorRole];
+    }
+}
+
+final readonly class DashboardFixedCommercialCatalogue implements BillingOptionCatalogueQueryInterface, CapabilityDefinitionCatalogueQueryInterface, CommercialCatalogueQueryInterface, PlanCatalogueQueryInterface, PlanOfferingCatalogueQueryInterface, PricingHistoryReadInterface
+{
+    private const string PLAN_ID = '10000000-0000-4000-8000-000000000001';
+
+    private const string BILLING_OPTION_ID = '10000000-0000-4000-8000-000000000002';
+
+    private const string OFFERING_ID = '10000000-0000-4000-8000-000000000003';
+
+    private const string CAPABILITY_ID = '10000000-0000-4000-8000-000000000004';
+
+    public function findPlan(string $planId): ?PlanData
+    {
+        return $planId === self::PLAN_ID ? $this->plan() : null;
+    }
+
+    public function findBillingOption(string $billingOptionId): ?BillingOptionData
+    {
+        return $billingOptionId === self::BILLING_OPTION_ID ? $this->billingOption() : null;
+    }
+
+    public function findPlanOffering(string $planOfferingId): ?PlanOfferingData
+    {
+        return $planOfferingId === self::OFFERING_ID ? $this->offering() : null;
+    }
+
+    public function findCapability(string $capabilityId): ?CapabilityDefinitionData
+    {
+        return $capabilityId === self::CAPABILITY_ID ? $this->capability() : null;
+    }
+
+    public function listPlans(OffsetPaginationInput $pagination): PaginatedPlanData
+    {
+        return new PaginatedPlanData([$this->plan()], $this->meta($pagination));
+    }
+
+    public function listBillingOptions(OffsetPaginationInput $pagination): PaginatedBillingOptionData
+    {
+        return new PaginatedBillingOptionData([$this->billingOption()], $this->meta($pagination));
+    }
+
+    public function listCapabilityDefinitions(OffsetPaginationInput $pagination): PaginatedCapabilityDefinitionData
+    {
+        return new PaginatedCapabilityDefinitionData([$this->capability()], $this->meta($pagination));
+    }
+
+    public function listPlanOfferings(OffsetPaginationInput $pagination): PaginatedPlanOfferingData
+    {
+        return new PaginatedPlanOfferingData([$this->offering()], $this->meta($pagination));
+    }
+
+    public function forPlanOffering(string $planOfferingId): array
+    {
+        return $planOfferingId === self::OFFERING_ID
+            ? [new PricingHistoryData(2, 120000, 'MYR', '2026-01-01', null, 'essential-v2', '2026-07-01T00:00:00Z')]
+            : [];
+    }
+
+    private function plan(): PlanData
+    {
+        return new PlanData(
+            self::PLAN_ID,
+            'syifa-essential',
+            'Syifa Essential',
+            'Annual clinic website plan.',
+            'active',
+            1,
+            '2026-01-01T00:00:00Z',
+            '2026-07-01T00:00:00Z',
+        );
+    }
+
+    private function billingOption(): BillingOptionData
+    {
+        return new BillingOptionData(
+            self::BILLING_OPTION_ID,
+            'annual',
+            'Annual',
+            'available',
+            'recurring',
+            'year',
+            1,
+            '2026-01-01',
+            null,
+            1,
+        );
+    }
+
+    private function capability(): CapabilityDefinitionData
+    {
+        return new CapabilityDefinitionData(
+            self::CAPABILITY_ID,
+            'booking.manage',
+            'Booking management',
+            'Manage clinic bookings.',
+            'Included operational capability.',
+            'active',
+        );
+    }
+
+    private function offering(): PlanOfferingData
+    {
+        return new PlanOfferingData(
+            self::OFFERING_ID,
+            self::PLAN_ID,
+            self::BILLING_OPTION_ID,
+            120000,
+            'MYR',
+            'active',
+            '2026-01-01',
+            null,
+            '2',
+            'essential-v2',
+            1,
+        );
+    }
+
+    private function meta(OffsetPaginationInput $pagination): OffsetPaginationMeta
+    {
+        return new OffsetPaginationMeta(1, $pagination->perPage, 1, 1, 1, 1);
     }
 }

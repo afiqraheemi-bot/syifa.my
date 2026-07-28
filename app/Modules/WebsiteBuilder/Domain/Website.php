@@ -140,11 +140,8 @@ final class Website
     public function configureServicesPresentation(array $items, array $eligibleServiceIds, DateTimeImmutable $at): bool
     {
         $this->assertNotArchived();
-        $configuredIds = array_map(static fn (ServicePresentationItem $item): string => $item->serviceId, $items);
-        if (array_diff($configuredIds, $eligibleServiceIds) !== []) {
-            throw new InvalidWebsiteValueException('Service presentation requires same-Tenant publication-eligible Services.');
-        }
         $next = new ServicesSectionContent($this->servicesPresentation()->sectionId(), $items);
+        $next->assertReferencesAreEligible($eligibleServiceIds);
         if ($this->servicesPresentation()->equals($next)) {
             return false;
         }

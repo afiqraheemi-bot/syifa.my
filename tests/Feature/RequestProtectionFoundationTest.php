@@ -121,6 +121,8 @@ final class RequestProtectionFoundationTest extends TestCase
         self::assertRouteContainsMiddleware('DELETE', 'api/v1/platform/sessions/current', 'throttle:platform.session');
         self::assertRouteContainsMiddleware('GET', 'api/v1/platform/commercial-catalogue/plans', 'throttle:platform.admin');
         self::assertRouteContainsMiddleware('POST', 'api/v1/sessions', 'throttle:clinic-owner-session');
+        self::assertRouteContainsMiddleware('GET', 'booking/availability', 'throttle:public.default');
+        self::assertRouteContainsMiddleware('GET', 'operations/health', 'throttle:public.default');
     }
 
     private static function assertRouteContainsMiddleware(string $method, string $uri, string $middleware): void

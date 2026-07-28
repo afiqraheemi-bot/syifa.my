@@ -117,6 +117,8 @@ final class PlatformEdgeSecurityTest extends TestCase
         self::assertIsString($sessionConfig);
         self::assertStringContainsString("'secure' => env('APP_ENV', 'production') === 'production'", $sessionConfig);
         self::assertStringContainsString('? true', $sessionConfig);
+        self::assertStringContainsString("env('APP_ENV', 'production') === 'local'", $sessionConfig);
+        self::assertStringContainsString('? false', $sessionConfig);
         self::assertTrue((bool) config('session.encrypt'));
         self::assertTrue((bool) config('session.http_only'));
         self::assertSame('lax', config('session.same_site'));

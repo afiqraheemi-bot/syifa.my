@@ -29,6 +29,17 @@ final readonly class PostgresClinicRegistrationQueryAdapter implements ClinicReg
         return $row === null ? null : $this->dataFromRow($row);
     }
 
+    public function currentForTrackingCredential(string $trackingCredential): ?ClinicRegistrationData
+    {
+        $row = $this->connection->table('clinic_registrations')
+            ->where('platform_identity_id', $trackingCredential)
+            ->whereIn('status', [RegistrationStatus::Draft->value, RegistrationStatus::Submitted->value])
+            ->orderByDesc('created_at')
+            ->first();
+
+        return $row === null ? null : $this->dataFromRow($row);
+    }
+
     private function dataFromRow(stdClass $row): ClinicRegistrationData
     {
         $registrationId = $this->stringValue($row, 'id');

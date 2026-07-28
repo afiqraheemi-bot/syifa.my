@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 return [
     'asset_origin' => env('PUBLIC_WEBSITE_ASSET_ORIGIN', 'https://assets.syifa.my'),
+    'base_domain' => strtolower((string) env('PUBLIC_WEBSITE_BASE_DOMAIN', 'syifa.my')),
+    'runtime_addressing' => env('APP_ENV') !== 'testing'
+        && (bool) env('PUBLIC_WEBSITE_RUNTIME_ADDRESSING', true),
 
     // Local-development-only host-to-Website mapping. This can only ever be
     // non-empty when APP_ENV=local, regardless of what these env vars contain,
@@ -15,6 +18,8 @@ return [
         ]]
         : [],
 
+    // Legal documents fail closed until approved, versioned copy is supplied
+    // through an environment-specific configuration source.
     'legal' => [
         'privacy' => null,
         'terms' => null,

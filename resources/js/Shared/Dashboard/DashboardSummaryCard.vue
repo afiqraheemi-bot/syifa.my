@@ -16,6 +16,14 @@ defineProps({
         type: String,
         default: 'neutral',
     },
+    url: {
+        type: String,
+        default: null,
+    },
+    actionLabel: {
+        type: String,
+        default: null,
+    },
 });
 </script>
 
@@ -33,5 +41,15 @@ defineProps({
         </div>
         <p class="mt-3 text-xl font-bold tracking-tight text-slate-950">{{ value }}</p>
         <p class="mt-2 text-sm leading-6 text-slate-600">{{ detail }}</p>
+        <a
+            v-if="url && actionLabel"
+            :href="url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-4 inline-flex min-h-11 items-center rounded-lg font-bold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+        >
+            {{ actionLabel }}
+            <span class="sr-only"> (opens in a new tab)</span>
+        </a>
     </article>
 </template>

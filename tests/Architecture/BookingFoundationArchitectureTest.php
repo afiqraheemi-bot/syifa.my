@@ -159,6 +159,42 @@ final class BookingFoundationArchitectureTest extends TestCase
         self::assertStringNotContainsString('clinic_staff', strtolower($manual));
     }
 
+    public function test_manual_booking_http_delivery_delegates_to_the_existing_application_workflow(): void
+    {
+        $controller = $this->source(
+            $this->root().'/app/Modules/Booking/Presentation/Http/Controllers/ClinicOwnerManualBookingController.php',
+        );
+
+        self::assertStringContainsString('CreateManualBookingService', $controller);
+        self::assertStringContainsString('CreateManualBookingCommand', $controller);
+        self::assertStringContainsString('AuthorizationContext', $controller);
+        self::assertStringNotContainsString("input('tenant_id'", $controller);
+        self::assertStringNotContainsString('BookingRepositoryInterface', $controller);
+        self::assertStringNotContainsString('BookingHistoryRepositoryInterface', $controller);
+        self::assertStringNotContainsString('SlotCapacityReservationInterface', $controller);
+        self::assertStringNotContainsString('DB::', $controller);
+        self::assertStringNotContainsString('Schema::', $controller);
+    }
+
+    public function test_clinic_owner_booking_detail_uses_the_tenant_scoped_read_contract_only(): void
+    {
+        $page = $this->source(
+            $this->root().'/app/Support/Dashboard/Application/Booking/ClinicOwnerBookingDetailPage.php',
+        );
+        $controller = $this->source(
+            $this->root().'/app/Support/Dashboard/Presentation/Http/Controllers/ClinicOwnerBookingDetailController.php',
+        );
+
+        self::assertStringContainsString('ClinicOwnerBookingReadInterface', $page);
+        self::assertStringContainsString('detail($context->tenantId, $bookingId)', $page);
+        self::assertStringContainsString('history($context->tenantId, $bookingId)', $page);
+        self::assertStringContainsString('ClinicOwnerBookingDetailPage', $controller);
+        self::assertStringNotContainsString('BookingRepositoryInterface', $page.$controller);
+        self::assertStringNotContainsString('DB::', $page.$controller);
+        self::assertStringNotContainsString('Schema::', $page.$controller);
+        self::assertStringNotContainsString('AuthorizationService', $controller);
+    }
+
     public function test_booking_form_configuration_is_isolated_from_the_booking_aggregate(): void
     {
         self::assertFileExists($this->root().'/app/Modules/Booking/Domain/BookingFormConfiguration.php');
@@ -254,6 +290,7 @@ final class BookingFoundationArchitectureTest extends TestCase
                 $this->root().'/database/migrations/booking/2026_08_05_000002_create_booking_capacity_and_history.php',
                 $this->root().'/database/migrations/booking/2026_08_05_000003_remove_service_duration.php',
                 $this->root().'/database/migrations/booking/2026_08_06_000001_add_booking_source.php',
+                $this->root().'/database/migrations/booking/2026_08_22_000001_add_booking_management_read_indexes.php',
             ],
             glob($this->root().'/database/migrations/booking/*.php') ?: [],
         );

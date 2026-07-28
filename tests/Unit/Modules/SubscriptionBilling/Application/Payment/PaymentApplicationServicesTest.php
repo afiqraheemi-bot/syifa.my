@@ -9,12 +9,15 @@ use App\Modules\Commercial\Contracts\Commands\ClaimCommercialOfferCommand;
 use App\Modules\Commercial\Contracts\Data\CommercialOfferData;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipal;
 use App\Modules\SubscriptionBilling\Application\Payment\ClaimCommercialOfferService;
+use App\Modules\SubscriptionBilling\Application\Payment\CreateInitialAcquisitionPaymentService;
 use App\Modules\SubscriptionBilling\Application\Payment\CreatePaymentService;
 use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\CommercialOfferMissingTenantIdException;
+use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\CommercialOfferUnavailableForPaymentException;
 use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\UnauthorizedPaymentInitiationException;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentDataAssembler;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGeneratorInterface;
 use App\Modules\SubscriptionBilling\Application\Payment\StartPaymentService;
+use App\Modules\SubscriptionBilling\Contracts\Payment\CreateInitialAcquisitionPaymentCommand;
 use App\Modules\SubscriptionBilling\Contracts\Payment\CreatePaymentCommand;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAuditInterface;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentProviderInterface;
@@ -89,6 +92,63 @@ final class PaymentApplicationServicesTest extends TestCase
             );
     }
 
+    public function test_initial_acquisition_creates_and_reuses_registration_owned_payment_without_attempt(): void
+    {
+        $checkout = new InMemoryCommercialOfferCheckout($this->acquisitionOffer());
+        $repository = new InMemoryPaymentRepository;
+        $audit = new RecordingPaymentAudit;
+        $service = new CreateInitialAcquisitionPaymentService(
+            new SequentialPaymentIdentifierGenerator([$this->uuid(25)]),
+            $checkout,
+            new ClaimCommercialOfferService($checkout),
+            $repository,
+            new PaymentDataAssembler,
+            $audit,
+            new ImmediatePaymentTransaction,
+        );
+        $command = new CreateInitialAcquisitionPaymentCommand(
+            $this->uuid(3),
+            $this->uuid(11),
+            $this->uuid(6),
+            $this->time(),
+            $this->uuid(92),
+        );
+
+        $created = $service->execute($command);
+        $duplicate = $service->execute($command);
+
+        self::assertSame($created->paymentId, $duplicate->paymentId);
+        self::assertSame($this->uuid(3), $created->clinicRegistrationId);
+        self::assertNull($created->platformIdentityId);
+        self::assertSame($this->uuid(6), $created->tenantId);
+        self::assertSame(3000, $created->amountMinor);
+        self::assertSame('MYR', $created->currency);
+        self::assertSame(1, $checkout->claimCalls);
+        self::assertSame(['payment.create_initial_acquisition'], $audit->actions);
+        self::assertSame([], $repository->find(new PaymentId($created->paymentId))?->attempts);
+    }
+
+    public function test_initial_acquisition_rejects_foreign_registration(): void
+    {
+        $this->expectException(CommercialOfferUnavailableForPaymentException::class);
+
+        (new CreateInitialAcquisitionPaymentService(
+            new SequentialPaymentIdentifierGenerator([$this->uuid(25)]),
+            $checkout = new InMemoryCommercialOfferCheckout($this->acquisitionOffer()),
+            new ClaimCommercialOfferService($checkout),
+            new InMemoryPaymentRepository,
+            new PaymentDataAssembler,
+            new RecordingPaymentAudit,
+            new ImmediatePaymentTransaction,
+        ))->execute(new CreateInitialAcquisitionPaymentCommand(
+            $this->uuid(99),
+            $this->uuid(11),
+            $this->uuid(6),
+            $this->time(),
+            $this->uuid(93),
+        ));
+    }
+
     public function test_start_payment_uses_provider_neutral_contract_and_records_audit(): void
     {
         $checkout = new InMemoryCommercialOfferCheckout($this->offer());
@@ -154,6 +214,36 @@ final class PaymentApplicationServicesTest extends TestCase
         );
     }
 
+    private function acquisitionOffer(): CommercialOfferData
+    {
+        $offer = $this->offer();
+
+        return new CommercialOfferData(
+            id: $offer->id,
+            platformIdentityId: null,
+            clinicRegistrationId: $offer->clinicRegistrationId,
+            tenantId: $offer->tenantId,
+            status: $offer->status,
+            planOfferingId: $offer->planOfferingId,
+            planId: $offer->planId,
+            billingCycleId: $offer->billingCycleId,
+            billingPeriodStart: $offer->billingPeriodStart,
+            billingPeriodEnd: $offer->billingPeriodEnd,
+            offeringConfigurationVersion: $offer->offeringConfigurationVersion,
+            capabilityConfigurationReference: $offer->capabilityConfigurationReference,
+            subtotalAmountMinor: $offer->subtotalAmountMinor,
+            totalAmountMinor: $offer->totalAmountMinor,
+            currency: $offer->currency,
+            expiresAt: $offer->expiresAt,
+            claimedPaymentId: null,
+            claimedAt: null,
+            cancelledAt: null,
+            expiredAt: null,
+            version: $offer->version,
+            lineItems: $offer->lineItems,
+        );
+    }
+
     private function time(string $modifier = ''): DateTimeImmutable
     {
         $time = new DateTimeImmutable('2026-07-21T00:00:00Z');
@@ -191,6 +281,19 @@ final class InMemoryCommercialOfferCheckout implements CommercialOfferCheckoutIn
     public function offerForCheckout(string $commercialOfferId, string $trustedConsumer, DateTimeImmutable $occurredAt): ?CommercialOfferData
     {
         return $commercialOfferId === $this->offer->id ? $this->offer : null;
+    }
+
+    public function initialAcquisitionOfferForCheckout(
+        string $commercialOfferId,
+        string $clinicRegistrationReference,
+        string $trustedConsumer,
+        DateTimeImmutable $occurredAt,
+    ): ?CommercialOfferData {
+        return $commercialOfferId === $this->offer->id
+            && $clinicRegistrationReference === $this->offer->clinicRegistrationId
+            && $this->offer->platformIdentityId === null
+                ? $this->offer
+                : null;
     }
 
     public function claim(ClaimCommercialOfferCommand $command): CommercialOfferData

@@ -146,7 +146,7 @@ final readonly class PostgresPaymentRepository implements PaymentRepositoryInter
             id: $this->stringValue($row, 'id'),
             commercialOfferId: $this->stringValue($row, 'commercial_offer_id'),
             clinicRegistrationId: $this->stringValue($row, 'clinic_registration_id'),
-            platformIdentityId: $this->stringValue($row, 'platform_identity_id'),
+            platformIdentityId: $this->nullableStringValue($row->platform_identity_id ?? null, 'platform_identity_id'),
             tenantId: $this->nullableStringValue($row->tenant_id ?? null, 'tenant_id'),
             amountMinor: $this->integerValue($row, 'amount_minor'),
             currency: $this->stringValue($row, 'currency'),

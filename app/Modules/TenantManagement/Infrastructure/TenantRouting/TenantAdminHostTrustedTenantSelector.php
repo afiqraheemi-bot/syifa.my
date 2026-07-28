@@ -7,7 +7,9 @@ namespace App\Modules\TenantManagement\Infrastructure\TenantRouting;
 use App\Modules\TenantManagement\Contracts\Authentication\TrustedTenantSelectionData;
 use App\Modules\TenantManagement\Contracts\Authentication\TrustedTenantSelectorInterface;
 use App\Modules\TenantManagement\Contracts\TenantRouting\TenantAdminRoutingLookupInterface;
+use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Exceptions\InvalidTenantAdminRoutingLabelException;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Exceptions\InvalidTenantIdentityValueException;
+use App\Modules\TenantManagement\Domain\Aggregates\Tenant\ValueObjects\TenantAdminRoutingLabel;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\ValueObjects\TenantId;
 
 final readonly class TenantAdminHostTrustedTenantSelector implements TrustedTenantSelectorInterface
@@ -15,11 +17,15 @@ final readonly class TenantAdminHostTrustedTenantSelector implements TrustedTena
     public function __construct(
         private AdminHostParser $hostParser,
         private TenantAdminRoutingLookupInterface $routingLookup,
+        private bool $localSelectionEnabled = false,
+        private string $localHost = '',
+        private string $localRoutingLabel = '',
     ) {}
 
     public function select(string $selectorReference): ?TrustedTenantSelectionData
     {
-        $routingLabel = $this->hostParser->parse($selectorReference);
+        $routingLabel = $this->hostParser->parse($selectorReference)
+            ?? $this->localRoutingLabel($selectorReference);
 
         if ($routingLabel === null) {
             return null;
@@ -38,5 +44,20 @@ final readonly class TenantAdminHostTrustedTenantSelector implements TrustedTena
         }
 
         return new TrustedTenantSelectionData($tenantId->value);
+    }
+
+    private function localRoutingLabel(string $selectorReference): ?TenantAdminRoutingLabel
+    {
+        if (! $this->localSelectionEnabled
+            || $this->localHost === ''
+            || ! hash_equals($this->localHost, $selectorReference)) {
+            return null;
+        }
+
+        try {
+            return new TenantAdminRoutingLabel($this->localRoutingLabel);
+        } catch (InvalidTenantAdminRoutingLabelException) {
+            return null;
+        }
     }
 }

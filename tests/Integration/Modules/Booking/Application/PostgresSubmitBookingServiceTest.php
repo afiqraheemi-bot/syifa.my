@@ -148,11 +148,63 @@ final class PostgresSubmitBookingServiceTest extends TestCase
         self::assertSame($this->uuid(20), $history->actor_id);
         self::assertStringContainsString('WHATSAPP', (string) $history->payload);
         $reader = new PostgresClinicOwnerBookingReadAdapter($this->db());
-        self::assertSame('WHATSAPP', $reader->detail($this->uuid(1), $result->bookingId)?->source);
+        $detail = $reader->detail($this->uuid(1), $result->bookingId);
+        self::assertNotNull($detail);
+        self::assertSame('WHATSAPP', $detail->source);
+        self::assertSame('Aisyah', $detail->patientName);
+        self::assertSame('+6012', $detail->patientPhone);
+        self::assertSame('Consultation', $detail->serviceName);
+        self::assertSame('Asia/Kuala_Lumpur', $detail->timezone);
+        self::assertNull($reader->detail($this->uuid(9), $result->bookingId));
         self::assertCount(1, $reader->list($this->uuid(1), $result->status, null, 20, $result->reference, 'WHATSAPP'));
         self::assertSame([$result->status => 1], $reader->countByStatus($this->uuid(1)));
         self::assertSame(['WHATSAPP' => 1], $reader->countBySource($this->uuid(1)));
         self::assertSame([], $reader->countBySource($this->uuid(9)));
+    }
+
+    public function test_manual_booking_without_service_round_trips_when_service_selection_is_disabled(): void
+    {
+        $tenant = new TenantId($this->uuid(1));
+        $configurations = new PostgresBookingFormConfigurationRepository(
+            $this->db(),
+            new BookingFormConfigurationPersistenceMapper,
+        );
+        $configuration = $configurations->findByTenant($tenant);
+        self::assertNotNull($configuration);
+        $configuration->reconfigure(
+            false,
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields([]),
+            new FieldOrder([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+            ]),
+            new FieldLabels([]),
+            $this->now(),
+        );
+        $configurations->save($configuration);
+
+        $result = $this->manualApplication(13)->execute(new CreateManualBookingCommand(
+            $tenant,
+            $tenant,
+            $this->uuid(20),
+            'clinic_owner',
+            'STAFF',
+            'Aisyah',
+            '+6012',
+            '2026-08-10',
+            '10:00',
+            null,
+        ));
+
+        self::assertNull($this->db()->table('bookings')->where('id', $result->bookingId)->value('service_id'));
+        self::assertNull((new PostgresClinicOwnerBookingReadAdapter($this->db()))
+            ->detail($tenant->value, $result->bookingId)?->serviceId);
     }
 
     public function test_clinic_owner_operations_preserve_history_snapshots_and_capacity(): void

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\TenantManagement;
 
+use App\Modules\Booking\Contracts\Queries\BookingDetailData;
+use App\Modules\Booking\Contracts\Queries\ClinicOwnerBookingReadInterface;
+use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderData;
+use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryData;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticatedPrincipal;
@@ -13,11 +17,16 @@ use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticat
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticationResult;
 use App\Modules\TenantManagement\Contracts\Authentication\Signals\ClinicOwnerAuthenticationRejected;
 use App\Modules\TenantManagement\Contracts\Authentication\Signals\ClinicOwnerAuthenticationSucceeded;
+use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionState;
+use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionStoreInterface;
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextData;
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolutionData;
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolverInterface;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressData;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryData;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryReadInterface;
+use DateTimeImmutable;
 use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
@@ -42,6 +51,57 @@ final class ClinicOwnerSessionEndpointsTest extends TestCase
         $this->app->instance(SubscriptionSummaryReadInterface::class, new class implements SubscriptionSummaryReadInterface
         {
             public function summary(string $trustedTenantId): ?SubscriptionSummaryData
+            {
+                return null;
+            }
+        });
+        $this->app->instance(ClinicOwnerBookingReadInterface::class, new class implements ClinicOwnerBookingReadInterface
+        {
+            public function detail(string $trustedTenantId, string $bookingId): ?BookingDetailData
+            {
+                return null;
+            }
+
+            public function list(string $trustedTenantId, ?string $status, ?string $cursor, int $limit, ?string $search = null, ?string $source = null): array
+            {
+                return [];
+            }
+
+            public function countByStatus(string $trustedTenantId): array
+            {
+                return [];
+            }
+
+            public function countBySource(string $trustedTenantId): array
+            {
+                return [];
+            }
+
+            public function history(string $trustedTenantId, string $bookingId): array
+            {
+                return [];
+            }
+        });
+        $this->app->instance(PublicBookingFormReaderInterface::class, new class implements PublicBookingFormReaderInterface
+        {
+            public function forTrustedTenant(string $trustedTenantId): PublicBookingFormReaderData
+            {
+                return new PublicBookingFormReaderData(false, false, false, false, []);
+            }
+        });
+        $this->app->instance(WebsitePublicAddressReadInterface::class, new class implements WebsitePublicAddressReadInterface
+        {
+            public function forWebsite(string $trustedTenantId, string $websiteId): ?WebsitePublicAddressData
+            {
+                return null;
+            }
+
+            public function forTenant(string $trustedTenantId): ?WebsitePublicAddressData
+            {
+                return null;
+            }
+
+            public function resolveActiveHost(string $host): ?WebsitePublicAddressData
             {
                 return null;
             }
@@ -78,13 +138,19 @@ final class ClinicOwnerSessionEndpointsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.tenant.id', self::TENANT_ID);
 
+        $this->postJson('https://clinic.app.syifa.my/api/v1/platform/sessions', [
+            'email' => 'same-address@example.test',
+            'password' => 'a private passphrase',
+        ])->assertStatus(409)
+            ->assertJsonPath('type', 'already_authenticated');
+
         $this->get('https://clinic.app.syifa.my/dashboard')
             ->assertOk()
             ->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
                     ->component('TenantManagement/Dashboard/ClinicOwnerDashboardOverview', false)
                     ->where('pageTitle', 'Dashboard')
-                    ->has('summaries', 3)
+                    ->has('summaries', 4)
                     ->has('quickActions', 3)
                     ->where('recentActivity', []),
             );
@@ -95,6 +161,7 @@ final class ClinicOwnerSessionEndpointsTest extends TestCase
             ->assertUnauthorized()
             ->assertHeader('Content-Type', 'application/problem+json')
             ->assertJsonPath('type', 'session_invalid');
+
     }
 
     public function test_invalid_authentication_and_security_sensitive_inputs_fail_safely(): void
@@ -117,6 +184,59 @@ final class ClinicOwnerSessionEndpointsTest extends TestCase
             'password' => 'wrong',
             'tenant_id' => self::TENANT_ID,
             'remember_me' => true,
+        ])->assertUnprocessable()
+            ->assertJsonPath('type', 'validation_failed');
+    }
+
+    public function test_localhost_clinic_owner_login_reuses_the_session_api_without_browser_tenant_input(): void
+    {
+        $this->acceptAuthentication();
+
+        $this->postJson('http://localhost/api/v1/sessions', [
+            'email' => 'clinic@example.com',
+            'password' => 'password',
+        ])->assertCreated()
+            ->assertJsonPath('data.authenticated', true)
+            ->assertJsonPath('data.role', 'clinic_owner')
+            ->assertJsonPath('data.tenant.id', self::TENANT_ID);
+
+        $this->get('http://localhost/dashboard')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('TenantManagement/Dashboard/ClinicOwnerDashboardOverview', false),
+            );
+
+        $this->deleteJson('http://localhost/api/v1/sessions/current')->assertNoContent();
+    }
+
+    public function test_clinic_owner_login_accepts_and_applies_the_optional_remember_flag(): void
+    {
+        $this->acceptAuthentication();
+        $store = new RememberRecordingClinicOwnerSessionStore;
+        $this->app->instance(ClinicOwnerSessionStoreInterface::class, $store);
+
+        $this->postJson('http://localhost/api/v1/sessions', [
+            'email' => 'clinic@example.com',
+            'password' => 'password',
+            'remember' => true,
+        ])->assertCreated();
+
+        self::assertTrue($store->remember);
+        self::assertNotNull($store->state);
+
+        $this->deleteJson('http://localhost/api/v1/sessions/current')->assertNoContent();
+        self::assertTrue($store->invalidated);
+    }
+
+    public function test_clinic_owner_login_rejects_a_non_boolean_remember_value(): void
+    {
+        $this->acceptAuthentication();
+
+        $this->postJson('http://localhost/api/v1/sessions', [
+            'email' => 'clinic@example.com',
+            'password' => 'password',
+            'remember' => 'yes-please',
         ])->assertUnprocessable()
             ->assertJsonPath('type', 'validation_failed');
     }
@@ -184,7 +304,7 @@ final class SuccessfulAuthentication implements ClinicOwnerAuthenticationInterfa
 {
     public function authenticate(ClinicOwnerAuthenticationCommand $command): ClinicOwnerAuthenticationResult
     {
-        if ($command->trustedTenantSelectorReference !== 'clinic.app.syifa.my') {
+        if (! in_array($command->trustedTenantSelectorReference, ['clinic.app.syifa.my', 'localhost'], true)) {
             return (new RejectedAuthentication)->authenticate($command);
         }
 
@@ -226,5 +346,33 @@ final class AcceptingContextResolver implements TenantContextResolverInterface
     public function resolve(TenantContextResolutionData $resolution): ?TenantContextData
     {
         return new TenantContextData(null, $resolution->tenantId, 'clinic_owner', null);
+    }
+}
+
+final class RememberRecordingClinicOwnerSessionStore implements ClinicOwnerSessionStoreInterface
+{
+    public ?ClinicOwnerSessionState $state = null;
+
+    public bool $remember = false;
+
+    public bool $invalidated = false;
+
+    public function establish(ClinicOwnerSessionState $state, bool $remember = false): void
+    {
+        $this->state = $state;
+        $this->remember = $remember;
+    }
+
+    public function current(): ?ClinicOwnerSessionState
+    {
+        return $this->state;
+    }
+
+    public function updateLastActivity(DateTimeImmutable $lastActivityAt): void {}
+
+    public function invalidate(): void
+    {
+        $this->state = null;
+        $this->invalidated = true;
     }
 }

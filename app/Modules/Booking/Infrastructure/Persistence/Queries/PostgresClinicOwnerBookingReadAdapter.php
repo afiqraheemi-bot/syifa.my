@@ -9,6 +9,7 @@ use App\Modules\Booking\Contracts\Queries\BookingHistoryData;
 use App\Modules\Booking\Contracts\Queries\ClinicOwnerBookingReadInterface;
 use App\Modules\Booking\Infrastructure\Persistence\Exceptions\InvalidBookingStorageStateException;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Query\Builder;
 use JsonException;
 use stdClass;
 
@@ -18,7 +19,10 @@ final readonly class PostgresClinicOwnerBookingReadAdapter implements ClinicOwne
 
     public function detail(string $trustedTenantId, string $bookingId): ?BookingDetailData
     {
-        $row = $this->connection->table('bookings')->where('tenant_id', $trustedTenantId)->where('id', $bookingId)->first();
+        $row = $this->query()
+            ->where('bookings.tenant_id', $trustedTenantId)
+            ->where('bookings.id', $bookingId)
+            ->first();
 
         return $row === null ? null : $this->detailData($row);
     }
@@ -31,18 +35,21 @@ final readonly class PostgresClinicOwnerBookingReadAdapter implements ClinicOwne
         ?string $search = null,
         ?string $source = null,
     ): array {
-        $query = $this->connection->table('bookings')->where('tenant_id', $trustedTenantId)->orderBy('id')->limit(max(1, min(100, $limit)));
+        $query = $this->query()
+            ->where('bookings.tenant_id', $trustedTenantId)
+            ->orderBy('bookings.id')
+            ->limit(max(1, min(100, $limit)));
         if ($status !== null) {
-            $query->where('status', $status);
+            $query->where('bookings.status', $status);
         }
         if ($source !== null) {
-            $query->where('booking_source', $source);
+            $query->where('bookings.booking_source', $source);
         }
         if ($search !== null) {
-            $query->where('booking_reference', 'ilike', '%'.$search.'%');
+            $query->where('bookings.booking_reference', 'ilike', '%'.$search.'%');
         }
         if ($cursor !== null) {
-            $query->where('id', '>', $cursor);
+            $query->where('bookings.id', '>', $cursor);
         }
 
         return array_values(array_map(fn (stdClass $row): BookingDetailData => $this->detailData($row), $query->get()->all()));
@@ -80,13 +87,43 @@ final readonly class PostgresClinicOwnerBookingReadAdapter implements ClinicOwne
 
     private function detailData(stdClass $row): BookingDetailData
     {
-        foreach (['id', 'tenant_id', 'service_id', 'booking_reference', 'booking_source', 'status', 'appointment_on', 'appointment_time', 'local_end_time', 'timezone', 'starts_at_utc', 'ends_at_utc', 'appointment_duration_minutes'] as $field) {
+        foreach (['id', 'tenant_id', 'booking_reference', 'booking_source', 'status', 'patient_name', 'patient_phone', 'appointment_on', 'appointment_time', 'local_end_time', 'timezone', 'starts_at_utc', 'ends_at_utc', 'appointment_duration_minutes', 'domain_created_at'] as $field) {
             if (! isset($row->{$field})) {
                 throw new InvalidBookingStorageStateException(sprintf('Booking read field %s is missing.', $field));
             }
         }
 
-        return new BookingDetailData((string) $row->id, (string) $row->tenant_id, (string) $row->service_id, (string) $row->booking_reference, (string) $row->booking_source, (string) $row->status, substr((string) $row->appointment_on, 0, 10), substr((string) $row->appointment_time, 0, 5), substr((string) $row->local_end_time, 0, 5), (string) $row->timezone, (string) $row->starts_at_utc, (string) $row->ends_at_utc, (int) $row->appointment_duration_minutes);
+        return new BookingDetailData(
+            (string) $row->id,
+            (string) $row->tenant_id,
+            isset($row->service_id) ? (string) $row->service_id : null,
+            isset($row->service_name) ? (string) $row->service_name : null,
+            (string) $row->booking_reference,
+            (string) $row->booking_source,
+            (string) $row->status,
+            (string) $row->patient_name,
+            (string) $row->patient_phone,
+            isset($row->patient_email) ? (string) $row->patient_email : null,
+            isset($row->notes) ? (string) $row->notes : null,
+            substr((string) $row->appointment_on, 0, 10),
+            substr((string) $row->appointment_time, 0, 5),
+            substr((string) $row->local_end_time, 0, 5),
+            (string) $row->timezone,
+            (string) $row->starts_at_utc,
+            (string) $row->ends_at_utc,
+            (int) $row->appointment_duration_minutes,
+            (string) $row->domain_created_at,
+        );
+    }
+
+    private function query(): Builder
+    {
+        return $this->connection->table('bookings')
+            ->leftJoin('services', function ($join): void {
+                $join->on('services.id', '=', 'bookings.service_id')
+                    ->on('services.tenant_id', '=', 'bookings.tenant_id');
+            })
+            ->select('bookings.*', 'services.name as service_name');
     }
 
     /** @return array<string, int> */

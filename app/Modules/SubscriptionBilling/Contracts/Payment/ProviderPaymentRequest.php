@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\SubscriptionBilling\Contracts\Payment;
 
+use DateTimeImmutable;
+
 final readonly class ProviderPaymentRequest
 {
     public function __construct(
@@ -13,5 +15,6 @@ final readonly class ProviderPaymentRequest
         public string $idempotencyKey,
         public string $correlationId,
         public ?string $paymentAttemptReference = null,
+        public ?DateTimeImmutable $commercialOfferValidUntil = null,
     ) {}
 }

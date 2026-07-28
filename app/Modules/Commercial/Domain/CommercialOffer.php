@@ -25,7 +25,7 @@ final class CommercialOffer
      */
     public function __construct(
         public CommercialOfferId $id,
-        public PlatformIdentityReference $platformIdentity,
+        public ?PlatformIdentityReference $platformIdentity,
         public ClinicRegistrationReference $clinicRegistration,
         public ?TenantId $tenantId,
         public CommercialOfferStatus $status,
@@ -69,6 +69,34 @@ final class CommercialOffer
         return $offer;
     }
 
+    public static function prepareForClinicRegistration(
+        CommercialOfferId $id,
+        ClinicRegistrationReference $clinicRegistration,
+        ?TenantId $futureTenantId,
+        CheckoutSnapshot $checkoutSnapshot,
+        OfferExpiry $expiry,
+        DateTimeImmutable $occurredAt,
+        string $correlationId,
+    ): self {
+        $offer = new self(
+            id: $id,
+            platformIdentity: null,
+            clinicRegistration: $clinicRegistration,
+            tenantId: $futureTenantId,
+            status: CommercialOfferStatus::Prepared,
+            checkoutSnapshot: $checkoutSnapshot,
+            expiry: $expiry,
+            claimedPaymentId: null,
+            claimedAt: null,
+            cancelledAt: null,
+            expiredAt: null,
+            correlationId: $correlationId,
+        );
+        $offer->record(new CommercialOfferPrepared($id->value, null, $clinicRegistration->value, $occurredAt));
+
+        return $offer;
+    }
+
     public function cancel(PlatformIdentityReference $platformIdentity, DateTimeImmutable $occurredAt): void
     {
         $this->assertOwnedBy($platformIdentity);
@@ -76,7 +104,7 @@ final class CommercialOffer
 
         $this->status = CommercialOfferStatus::Cancelled;
         $this->cancelledAt = $occurredAt;
-        $this->record(new CommercialOfferCancelled($this->id->value, $this->platformIdentity->value, $occurredAt));
+        $this->record(new CommercialOfferCancelled($this->id->value, $this->platformIdentity?->value, $occurredAt));
     }
 
     public function expire(DateTimeImmutable $occurredAt): void
@@ -89,7 +117,7 @@ final class CommercialOffer
 
         $this->status = CommercialOfferStatus::Expired;
         $this->expiredAt = $occurredAt;
-        $this->record(new CommercialOfferExpired($this->id->value, $this->platformIdentity->value, $occurredAt));
+        $this->record(new CommercialOfferExpired($this->id->value, $this->platformIdentity?->value, $occurredAt));
     }
 
     public function claim(string $paymentId, DateTimeImmutable $occurredAt): void
@@ -116,7 +144,7 @@ final class CommercialOffer
 
     public function assertOwnedBy(PlatformIdentityReference $platformIdentity): void
     {
-        if ($this->platformIdentity->value !== $platformIdentity->value) {
+        if ($this->platformIdentity?->value !== $platformIdentity->value) {
             throw new InvalidCommercialOfferTransitionException('Commercial Offer does not belong to this platform identity.');
         }
     }

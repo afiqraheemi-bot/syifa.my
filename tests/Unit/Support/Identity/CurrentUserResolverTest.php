@@ -212,7 +212,7 @@ final class CurrentUserResolverInMemoryClinicOwnerSessionStore implements Clinic
 
     public function __construct(private readonly ?ClinicOwnerSessionState $state) {}
 
-    public function establish(ClinicOwnerSessionState $state): void {}
+    public function establish(ClinicOwnerSessionState $state, bool $remember = false): void {}
 
     public function current(): ?ClinicOwnerSessionState
     {

@@ -30,4 +30,19 @@ final readonly class OperationsController
     {
         return $this->responses->info();
     }
+
+    public function build(): JsonResponse
+    {
+        return $this->responses->build();
+    }
+
+    public function version(): JsonResponse
+    {
+        return $this->responses->version();
+    }
+
+    public function release(): JsonResponse
+    {
+        return $this->responses->release();
+    }
 }

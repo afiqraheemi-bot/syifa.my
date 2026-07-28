@@ -29,9 +29,18 @@ return [
 
     'expected_values' => [
         'app.debug' => false,
+        'edge_security.enabled' => true,
+        'edge_security.trusted_hosts.enabled' => true,
+        'http_security.enabled' => true,
+        'filesystems.disks.local.serve' => false,
+        'cache.default' => 'redis',
+        'queue.default' => 'redis',
+        'queue.connections.redis.after_commit' => true,
+        'session.driver' => 'redis',
         'session.encrypt' => true,
         'session.http_only' => true,
         'session.secure' => true,
+        'session.same_site' => 'lax',
     ],
 
     'required_url_schemes' => [

@@ -38,6 +38,7 @@
 /.phpstan.cache/
 /storage/framework/cache/phpstan/
 /coverage/
+/artifacts/
 
 # PostgreSQL local state and database dumps
 /.pgdata/

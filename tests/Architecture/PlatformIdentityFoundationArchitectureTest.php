@@ -48,7 +48,10 @@ final class PlatformIdentityFoundationArchitectureTest extends TestCase
         self::assertDirectoryDoesNotExist(
             $root.'/app/Modules/PlatformAdministration/Infrastructure/PlatformIdentity',
         );
-        self::assertSame([], glob($root.'/database/migrations/*.php') ?: []);
+        self::assertSame(
+            [$root.'/database/migrations/2026_08_23_000001_create_failed_jobs_table.php'],
+            glob($root.'/database/migrations/*.php') ?: [],
+        );
 
         foreach ($this->phpFilesIn($root.'/app/Modules/PlatformAdministration/Domain') as $file) {
             self::assertDoesNotMatchRegularExpression(

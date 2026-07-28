@@ -12,7 +12,10 @@ use LogicException;
 
 final readonly class BookingListProvider
 {
-    public function __construct(private ClinicOwnerBookingReadInterface $bookings) {}
+    public function __construct(
+        private ClinicOwnerBookingReadInterface $bookings,
+        private BookingActionProvider $actions,
+    ) {}
 
     public function provide(
         AuthorizationContext $context,
@@ -67,10 +70,11 @@ final readonly class BookingListProvider
     {
         return [
             'id' => $booking->id,
+            'detailHref' => route('dashboard.bookings.show', ['bookingId' => $booking->id]),
             'reference' => $booking->reference,
             'serviceId' => $booking->serviceId,
             'source' => $booking->source,
-            'sourceLabel' => ucwords(strtolower(str_replace('_', ' ', $booking->source))),
+            'sourceLabel' => $this->sourceLabel($booking->source),
             'status' => $booking->status,
             'statusLabel' => ucfirst($booking->status),
             'appointmentDate' => $booking->localDate,
@@ -78,46 +82,16 @@ final readonly class BookingListProvider
             'appointmentEnd' => $booking->localEnd,
             'timezone' => $booking->timezone,
             'durationMinutes' => $booking->durationMinutes,
-            'actions' => $this->actions($booking),
+            'actions' => $this->actions->for($booking),
         ];
     }
 
-    /** @return list<array{key: string, label: string, href: string, method: string, requiresSchedule: bool, confirmation: ?string, tone: string}> */
-    private function actions(BookingDetailData $booking): array
+    private function sourceLabel(string $source): string
     {
-        $actions = [];
-        if ($booking->status === 'submitted') {
-            $actions[] = [
-                'key' => 'confirm',
-                'label' => 'Confirm',
-                'href' => route('dashboard.bookings.confirm', ['bookingId' => $booking->id]),
-                'method' => 'post',
-                'requiresSchedule' => false,
-                'confirmation' => null,
-                'tone' => 'primary',
-            ];
-        }
-        if (in_array($booking->status, ['submitted', 'confirmed'], true)) {
-            $actions[] = [
-                'key' => 'reschedule',
-                'label' => 'Reschedule',
-                'href' => route('dashboard.bookings.reschedule', ['bookingId' => $booking->id]),
-                'method' => 'patch',
-                'requiresSchedule' => true,
-                'confirmation' => null,
-                'tone' => 'neutral',
-            ];
-            $actions[] = [
-                'key' => 'cancel',
-                'label' => 'Cancel',
-                'href' => route('dashboard.bookings.cancel', ['bookingId' => $booking->id]),
-                'method' => 'post',
-                'requiresSchedule' => false,
-                'confirmation' => 'Cancel this booking? This action cannot be undone.',
-                'tone' => 'danger',
-            ];
-        }
-
-        return $actions;
+        return match ($source) {
+            'WHATSAPP' => 'WhatsApp',
+            'WALK_IN' => 'Walk-in',
+            default => ucfirst(strtolower($source)),
+        };
     }
 }

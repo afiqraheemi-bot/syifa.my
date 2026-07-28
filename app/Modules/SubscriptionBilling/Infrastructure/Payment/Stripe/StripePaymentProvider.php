@@ -16,6 +16,7 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificatio
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationOutcome;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookEvent;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\ExpiryAuthority;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\Exceptions\PaymentProviderTransportException;
 use DateTimeImmutable;
 use Illuminate\Http\Client\ConnectionException;
@@ -79,11 +80,21 @@ final readonly class StripePaymentProvider implements PaymentProviderInterface
             ]);
 
         $id = $response->json('id');
-        if (! $response->successful() || ! is_string($id) || $id === '') {
+        $url = $response->json('url');
+        $expiresAt = $response->json('expires_at');
+        if (! $response->successful() || ! is_string($id) || $id === ''
+            || ! is_string($url) || ! is_int($expiresAt)
+            || ! $this->validRedirect($url)) {
             throw new PaymentProviderTransportException('Stripe Checkout Session creation failed.');
         }
 
-        return new ProviderPaymentResult('stripe', $id);
+        return new ProviderPaymentResult(
+            'stripe',
+            $id,
+            $url,
+            (new DateTimeImmutable)->setTimestamp($expiresAt),
+            ExpiryAuthority::Provider,
+        );
     }
 
     public function verify(ProviderPaymentVerificationRequest $request): ProviderPaymentVerification
@@ -206,5 +217,16 @@ final readonly class StripePaymentProvider implements PaymentProviderInterface
         }
 
         return '';
+    }
+
+    private function validRedirect(string $url): bool
+    {
+        $parts = parse_url($url);
+
+        return is_array($parts)
+            && ($parts['scheme'] ?? null) === 'https'
+            && ($parts['host'] ?? null) === 'checkout.stripe.com'
+            && ! isset($parts['user'])
+            && ! isset($parts['pass']);
     }
 }

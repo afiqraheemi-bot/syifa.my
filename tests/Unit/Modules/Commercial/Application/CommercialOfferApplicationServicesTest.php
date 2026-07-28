@@ -24,12 +24,14 @@ use App\Modules\Commercial\Application\ViewCurrentCommercialOfferService;
 use App\Modules\Commercial\Contracts\Commands\CancelCommercialOfferCommand;
 use App\Modules\Commercial\Contracts\Commands\ClaimCommercialOfferCommand;
 use App\Modules\Commercial\Contracts\Commands\PrepareCommercialOfferCommand;
+use App\Modules\Commercial\Contracts\Commands\PrepareInitialCommercialOfferCommand;
 use App\Modules\Commercial\Contracts\Events\CommercialOfferEventPublisherInterface;
 use App\Modules\Commercial\Contracts\ReferenceData\PlanOfferingQueryInterface;
 use App\Modules\Commercial\Contracts\ReferenceData\PlanOfferingReferenceData;
 use App\Modules\Commercial\Contracts\Repositories\CommercialOfferRepositoryInterface;
 use App\Modules\Commercial\Contracts\Transactions\CommercialTransactionInterface;
 use App\Modules\Commercial\Domain\CommercialOffer;
+use App\Modules\Commercial\Domain\ValueObjects\ClinicRegistrationReference;
 use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferId;
 use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferStatus;
 use App\Modules\Commercial\Domain\ValueObjects\PlatformIdentityReference;
@@ -141,6 +143,41 @@ final class CommercialOfferApplicationServicesTest extends TestCase
             new RecordingCommercialTransaction,
             30,
         ))->execute(new PrepareCommercialOfferCommand($this->uuid(2), $this->uuid(3), 'offering-basic-monthly', $this->time(), $this->uuid(97)));
+    }
+
+    public function test_initial_acquisition_is_owned_by_tracking_credential_and_clinic_registration(): void
+    {
+        $repository = new InMemoryCommercialOfferRepository;
+        $service = new PrepareCommercialOfferService(
+            new SequentialCommercialOfferIdentifierGenerator([$this->uuid(22)]),
+            $repository,
+            new ResolveCommercialSelectionService(new RecordingPlanOfferingQuery([$this->offering()])),
+            new FixedClinicRegistrationQuery(
+                $this->uuid(3),
+                null,
+                'offering-basic-monthly',
+            ),
+            new CommercialOfferDataAssembler,
+            new CommercialOfferAuditTrail(new RecordingCommercialAuditEntryRecorder),
+            new RecordingCommercialEventPublisher,
+            new RecordingCommercialTransaction,
+            30,
+        );
+        $command = new PrepareInitialCommercialOfferCommand(
+            'opaque-registration-tracking-credential',
+            'offering-basic-monthly',
+            $this->time(),
+            $this->uuid(99),
+        );
+
+        $offer = $service->executeForInitialAcquisition($command);
+        $reused = $service->executeForInitialAcquisition($command);
+
+        self::assertNull($offer->platformIdentityId);
+        self::assertSame($this->uuid(3), $offer->clinicRegistrationId);
+        self::assertNull($offer->tenantId);
+        self::assertSame($offer->id, $reused->id);
+        self::assertSame(1, $repository->saveCalls);
     }
 
     public function test_prepare_fails_closed_when_clinic_registration_does_not_match(): void
@@ -298,7 +335,11 @@ final class SequentialCommercialOfferIdentifierGenerator implements CommercialOf
 
 final class FixedClinicRegistrationQuery implements ClinicRegistrationQueryInterface
 {
-    public function __construct(private string $registrationId, private ?string $reservedTenantId) {}
+    public function __construct(
+        private string $registrationId,
+        private ?string $reservedTenantId,
+        private ?string $selectedPlanOfferingReference = null,
+    ) {}
 
     public function currentForPlatformIdentity(string $platformIdentityId): ?ClinicRegistrationData
     {
@@ -310,7 +351,7 @@ final class FixedClinicRegistrationQuery implements ClinicRegistrationQueryInter
             null,
             null,
             null,
-            null,
+            $this->selectedPlanOfferingReference,
             null,
             null,
             $this->registrationId,
@@ -323,6 +364,11 @@ final class FixedClinicRegistrationQuery implements ClinicRegistrationQueryInter
             1,
             [],
         );
+    }
+
+    public function currentForTrackingCredential(string $trackingCredential): ?ClinicRegistrationData
+    {
+        return $this->currentForPlatformIdentity($trackingCredential);
     }
 }
 
@@ -399,12 +445,37 @@ final class InMemoryCommercialOfferRepository implements CommercialOfferReposito
     public function findCurrentForPlatformIdentity(PlatformIdentityReference $platformIdentity): ?CommercialOffer
     {
         foreach ($this->offers as $offer) {
-            if ($offer->platformIdentity->value === $platformIdentity->value && $offer->status === CommercialOfferStatus::Prepared) {
+            if ($offer->platformIdentity?->value === $platformIdentity->value && $offer->status === CommercialOfferStatus::Prepared) {
                 return $offer;
             }
         }
 
         return null;
+    }
+
+    public function findCurrentForClinicRegistration(ClinicRegistrationReference $clinicRegistration): ?CommercialOffer
+    {
+        foreach ($this->offers as $offer) {
+            if ($offer->clinicRegistration->value === $clinicRegistration->value
+                && in_array($offer->status, [CommercialOfferStatus::Prepared, CommercialOfferStatus::Claimed], true)) {
+                return $offer;
+            }
+        }
+
+        return null;
+    }
+
+    public function findInitialAcquisitionForRegistration(
+        CommercialOfferId $commercialOfferId,
+        ClinicRegistrationReference $clinicRegistration,
+    ): ?CommercialOffer {
+        $offer = $this->offers[$commercialOfferId->value] ?? null;
+
+        return $offer !== null
+            && $offer->platformIdentity === null
+            && $offer->clinicRegistration->value === $clinicRegistration->value
+                ? $offer
+                : null;
     }
 
     public function save(CommercialOffer $commercialOffer): void

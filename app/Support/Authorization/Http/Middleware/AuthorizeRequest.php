@@ -8,6 +8,7 @@ use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Authorization\Application\AuthorizationService;
 use Closure;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -31,10 +32,14 @@ final readonly class AuthorizeRequest
         Closure $next,
         string $actorType,
         string ...$allowedRoles,
-    ): Response|JsonResponse {
+    ): Response|JsonResponse|RedirectResponse {
         $context = $this->authorization->resolve(self::CATEGORY);
 
         if (! $this->allows($context, $actorType, array_values($allowedRoles))) {
+            if ($context === null && ! $request->expectsJson()) {
+                return new RedirectResponse('/');
+            }
+
             return new JsonResponse([
                 'type' => 'forbidden',
                 'title' => 'Forbidden',

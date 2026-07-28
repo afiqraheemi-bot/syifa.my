@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import DashboardBreadcrumb from './DashboardBreadcrumb.vue';
 import DashboardPageHeader from './DashboardPageHeader.vue';
+import DashboardLogoutAction from './DashboardLogoutAction.vue';
 import DashboardSidebar from './DashboardSidebar.vue';
 import DashboardTopNavigation from './DashboardTopNavigation.vue';
 
@@ -74,7 +75,10 @@ const mobileOpen = ref(false);
                 :navigation-open="mobileOpen"
                 @open-navigation="mobileOpen = true"
             >
-                <template #actions><slot name="top-actions" /></template>
+                <template #actions>
+                    <slot name="top-actions" />
+                    <DashboardLogoutAction />
+                </template>
             </DashboardTopNavigation>
 
             <main

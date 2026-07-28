@@ -79,8 +79,31 @@ final class TrustedTenantSelectorArchitectureTest extends TestCase
         self::assertStringContainsString('TENANT_ADMIN_BASE_DOMAINS', $configuration);
         self::assertStringContainsString("'app.syifa.my'", $configuration);
         self::assertStringContainsString('TENANT_ADMIN_BASE_DOMAINS=app.syifa.my', $environmentExample);
+        self::assertStringContainsString('LOCAL_DEMO_TENANT_ROUTING_LABEL=demo-clinic', $environmentExample);
         self::assertStringNotContainsString('preg_', $configuration);
-        self::assertStringNotContainsString('localhost', $configuration);
+        self::assertStringNotContainsString('tenant_id', strtolower($configuration));
+    }
+
+    public function test_local_demo_selection_is_environment_gated_and_server_owned(): void
+    {
+        $root = $this->root();
+        $provider = file_get_contents(
+            $root.'/app/Modules/TenantManagement/Infrastructure/TenantManagementServiceProvider.php',
+        );
+        $selector = file_get_contents(
+            $root.'/app/Modules/TenantManagement/Infrastructure/TenantRouting/TenantAdminHostTrustedTenantSelector.php',
+        );
+
+        self::assertIsString($provider);
+        self::assertIsString($selector);
+        self::assertStringContainsString("environment(['local', 'testing'])", $provider);
+        self::assertStringContainsString('local_demo_tenant.enabled', $provider);
+        self::assertStringContainsString("localDemoTenantString(\$application, 'routing_label')", $provider);
+        self::assertStringContainsString('hash_equals($this->localHost, $selectorReference)', $selector);
+
+        foreach (['Request', 'Cookie', 'Header', 'query(', 'tenant_id'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $selector);
+        }
     }
 
     /** @return list<string> */

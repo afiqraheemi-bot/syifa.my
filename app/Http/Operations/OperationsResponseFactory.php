@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Operations;
 
 use App\Support\Infrastructure\InfrastructureReadinessValidator;
+use App\Support\Infrastructure\RuntimeDependencyHealthChecker;
 use Illuminate\Http\JsonResponse;
 
 final readonly class OperationsResponseFactory
 {
     public function __construct(
         private InfrastructureReadinessValidator $infrastructureReadiness,
+        private RuntimeDependencyHealthChecker $runtimeDependencies,
+        private ReleaseMetadata $releaseMetadata,
     ) {}
 
     public function health(): JsonResponse
@@ -21,17 +24,20 @@ final readonly class OperationsResponseFactory
     public function ready(): JsonResponse
     {
         $infrastructureReadiness = $this->infrastructureReadiness->validate();
+        $runtimeDependencies = $this->runtimeDependencies->check();
+        $ready = $infrastructureReadiness->isReady() && $runtimeDependencies->isReady();
 
         return response()->json([
-            'status' => $infrastructureReadiness->isReady() ? 'ready' : 'not_ready',
+            'status' => $ready ? 'ready' : 'not_ready',
             'type' => 'readiness',
-            'detail' => $infrastructureReadiness->isReady()
+            'detail' => $ready
                 ? 'Application is ready to receive traffic.'
                 : 'Application is not ready to receive traffic.',
             'checks' => [
                 'infrastructure' => $infrastructureReadiness->toArray(),
+                'dependencies' => $runtimeDependencies->toArray(),
             ],
-        ], $infrastructureReadiness->isReady() ? 200 : 503);
+        ], $ready ? 200 : 503);
     }
 
     public function live(): JsonResponse
@@ -48,6 +54,30 @@ final readonly class OperationsResponseFactory
                 'component' => $this->safeStringConfig('operations.application.component', 'modular-monolith'),
                 'api_version' => $this->safeStringConfig('operations.application.api_version', 'v1'),
             ],
+        ]);
+    }
+
+    public function build(): JsonResponse
+    {
+        return response()->json([
+            'status' => 'ok',
+            'build' => $this->releaseMetadata->build(),
+        ]);
+    }
+
+    public function version(): JsonResponse
+    {
+        return response()->json([
+            'status' => 'ok',
+            ...$this->releaseMetadata->version(),
+        ]);
+    }
+
+    public function release(): JsonResponse
+    {
+        return response()->json([
+            'status' => 'ok',
+            'release' => $this->releaseMetadata->release(),
         ]);
     }
 

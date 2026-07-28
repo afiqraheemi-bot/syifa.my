@@ -173,7 +173,9 @@ return [
 
     'secure' => env('APP_ENV', 'production') === 'production'
         ? true
-        : env('SESSION_SECURE_COOKIE', false),
+        : (env('APP_ENV', 'production') === 'local'
+            ? false
+            : env('SESSION_SECURE_COOKIE', false)),
 
     /*
     |--------------------------------------------------------------------------

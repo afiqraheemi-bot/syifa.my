@@ -25,7 +25,7 @@ final class CommercialOfferPersistenceMapper
 
         return new CommercialOfferStorageRecord(
             $offer->id->value,
-            $offer->platformIdentity->value,
+            $offer->platformIdentity?->value,
             $offer->clinicRegistration->value,
             $offer->tenantId?->value,
             $offer->status->value,
@@ -79,7 +79,9 @@ final class CommercialOfferPersistenceMapper
     {
         return new CommercialOffer(
             id: new CommercialOfferId($record->id),
-            platformIdentity: new PlatformIdentityReference($record->platformIdentityId),
+            platformIdentity: $record->platformIdentityId === null
+                ? null
+                : new PlatformIdentityReference($record->platformIdentityId),
             clinicRegistration: new ClinicRegistrationReference($record->clinicRegistrationId),
             tenantId: $record->tenantId === null ? null : new TenantId($record->tenantId),
             status: CommercialOfferStatus::from($record->status),

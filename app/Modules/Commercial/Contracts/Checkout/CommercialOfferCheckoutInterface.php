@@ -12,5 +12,12 @@ interface CommercialOfferCheckoutInterface
 {
     public function offerForCheckout(string $commercialOfferId, string $trustedConsumer, DateTimeImmutable $occurredAt): ?CommercialOfferData;
 
+    public function initialAcquisitionOfferForCheckout(
+        string $commercialOfferId,
+        string $clinicRegistrationReference,
+        string $trustedConsumer,
+        DateTimeImmutable $occurredAt,
+    ): ?CommercialOfferData;
+
     public function claim(ClaimCommercialOfferCommand $command): CommercialOfferData;
 }

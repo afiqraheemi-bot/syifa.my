@@ -40,7 +40,12 @@ final readonly class PaymentAuditAdapter implements PaymentAuditInterface
         $this->auditEntries->record(new AuditEntryData(
             auditEntryId: $this->auditEntryId($auditAction, $payment->id->value, $occurredAt, $correlationId),
             occurredAt: $occurredAt,
-            actor: new AuditActorData(AuditActorType::PlatformIdentity->value, $payment->platformIdentityId->value),
+            actor: new AuditActorData(
+                $payment->platformIdentityId === null
+                    ? AuditActorType::Anonymous->value
+                    : AuditActorType::PlatformIdentity->value,
+                $payment->platformIdentityId?->value,
+            ),
             tenantId: null,
             action: $auditAction,
             target: new AuditTargetData(self::TARGET_TYPE, $payment->id->value),

@@ -12,7 +12,7 @@ final readonly class PaymentStorageRecord
         public string $id,
         public string $commercialOfferId,
         public string $clinicRegistrationId,
-        public string $platformIdentityId,
+        public ?string $platformIdentityId,
         public ?string $tenantId,
         public int $amountMinor,
         public string $currency,

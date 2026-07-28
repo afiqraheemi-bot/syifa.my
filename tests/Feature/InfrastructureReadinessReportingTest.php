@@ -9,6 +9,13 @@ use Tests\TestCase;
 
 final class InfrastructureReadinessReportingTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Config::set('operations.runtime_checks.enabled', false);
+    }
+
     public function test_readiness_endpoint_reports_safe_infrastructure_status(): void
     {
         $response = $this->getJson('/operations/ready')

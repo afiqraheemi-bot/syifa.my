@@ -22,6 +22,7 @@ final class CreateClinicOwnerSessionRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email', 'max:254'],
             'password' => ['required', 'string', 'max:4096'],
+            'remember' => ['sometimes', 'boolean'],
             'tenant_id' => ['prohibited'],
             'authority_id' => ['prohibited'],
             'identity_id' => ['prohibited'],
@@ -39,7 +40,7 @@ final class CreateClinicOwnerSessionRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
-            $allowed = ['email', 'password', '_token'];
+            $allowed = ['email', 'password', 'remember', '_token'];
             foreach (array_keys($this->all()) as $field) {
                 if (! in_array($field, $allowed, true)) {
                     $validator->errors()->add($field, 'This field is not accepted.');

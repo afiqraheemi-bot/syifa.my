@@ -7,16 +7,12 @@ namespace App\Modules\Commercial\Presentation\Http\Controllers;
 use App\Modules\Commercial\Application\CancelCommercialOfferService;
 use App\Modules\Commercial\Application\Exceptions\CommercialOfferNotFoundException;
 use App\Modules\Commercial\Application\Exceptions\CommercialOfferVersionMismatchException;
-use App\Modules\Commercial\Application\Exceptions\CommercialSelectionUnavailableException;
 use App\Modules\Commercial\Application\GetCommercialOfferService;
 use App\Modules\Commercial\Application\ListAvailableCommercialOffersService;
-use App\Modules\Commercial\Application\PrepareCommercialOfferService;
 use App\Modules\Commercial\Application\ViewCurrentCommercialOfferService;
 use App\Modules\Commercial\Contracts\Commands\CancelCommercialOfferCommand;
-use App\Modules\Commercial\Contracts\Commands\PrepareCommercialOfferCommand;
 use App\Modules\Commercial\Domain\Exceptions\InvalidCommercialOfferTransitionException;
 use App\Modules\Commercial\Presentation\Http\Requests\CancelCommercialOfferRequest;
-use App\Modules\Commercial\Presentation\Http\Requests\PrepareCommercialOfferRequest;
 use App\Modules\Commercial\Presentation\Http\Resources\AvailableCommercialOfferResource;
 use App\Modules\Commercial\Presentation\Http\Resources\CommercialOfferResource;
 use App\Modules\Commercial\Presentation\Http\Responses\ProblemDetailsResponse;
@@ -41,30 +37,6 @@ final readonly class CommercialOfferController
                 $offers->execute(new DateTimeImmutable),
             ),
         ]);
-    }
-
-    public function store(PrepareCommercialOfferRequest $request, PrepareCommercialOfferService $offers): JsonResponse
-    {
-        $principal = $this->principal($request);
-        if ($principal === null) {
-            return $this->unauthenticated($request);
-        }
-
-        $validated = $request->validated();
-
-        try {
-            $offer = $offers->execute(new PrepareCommercialOfferCommand(
-                $principal,
-                (string) $validated['clinic_registration_id'],
-                (string) $validated['plan_offering_id'],
-                new DateTimeImmutable,
-                $this->correlationId($request),
-            ));
-        } catch (CommercialSelectionUnavailableException $exception) {
-            return ProblemDetailsResponse::make($request, 'commercial.selection_unavailable', 'Commercial Selection Unavailable', 422, $exception->getMessage());
-        }
-
-        return (new CommercialOfferResource($offer))->response()->setStatusCode(201);
     }
 
     public function current(Request $request, ViewCurrentCommercialOfferService $offers): JsonResponse

@@ -14,6 +14,7 @@ use App\Modules\Commercial\Contracts\Data\CommercialOfferData;
 use App\Modules\Commercial\Contracts\Events\CommercialOfferEventPublisherInterface;
 use App\Modules\Commercial\Contracts\Repositories\CommercialOfferRepositoryInterface;
 use App\Modules\Commercial\Contracts\Transactions\CommercialTransactionInterface;
+use App\Modules\Commercial\Domain\ValueObjects\ClinicRegistrationReference;
 use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferId;
 use DateTimeImmutable;
 
@@ -35,6 +36,28 @@ final readonly class ClaimCommercialOfferService implements CommercialOfferCheck
         }
 
         $offer = $this->offers->find(new CommercialOfferId($commercialOfferId));
+
+        if ($offer === null || $offer->isExpiredAt($occurredAt)) {
+            return null;
+        }
+
+        return $this->data->fromDomain($offer);
+    }
+
+    public function initialAcquisitionOfferForCheckout(
+        string $commercialOfferId,
+        string $clinicRegistrationReference,
+        string $trustedConsumer,
+        DateTimeImmutable $occurredAt,
+    ): ?CommercialOfferData {
+        if (! $this->trustedConsumers->trusts($trustedConsumer)) {
+            throw new UntrustedCommercialOfferConsumerException('Commercial Offer consumer is not trusted.');
+        }
+
+        $offer = $this->offers->findInitialAcquisitionForRegistration(
+            new CommercialOfferId($commercialOfferId),
+            new ClinicRegistrationReference($clinicRegistrationReference),
+        );
 
         if ($offer === null || $offer->isExpiredAt($occurredAt)) {
             return null;

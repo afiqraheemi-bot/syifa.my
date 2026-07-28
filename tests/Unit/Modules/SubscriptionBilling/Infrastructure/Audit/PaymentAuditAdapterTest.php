@@ -82,6 +82,26 @@ final class PaymentAuditAdapterTest extends TestCase
         self::assertSame(self::PLATFORM_IDENTITY_ID, $auditEntries->entries[0]->actorIdentityId);
     }
 
+    public function test_initial_acquisition_audit_uses_anonymous_prospect_actor_semantics(): void
+    {
+        [$adapter, $auditEntries] = $this->build();
+        $payment = Payment::createInitialAcquisition(
+            new PaymentId('payment-acquisition'),
+            new PaymentReference('offer-1'),
+            new PaymentReference('clinic-registration-1'),
+            new TenantId('00000000-0000-4000-8000-000000000014'),
+            new PaymentAmount(2550),
+            new PaymentCurrency('MYR'),
+            new IdempotencyKey('initial-acquisition-idempotency'),
+            $this->now(),
+        );
+
+        $adapter->record('payment.create_initial_acquisition', $payment, $this->now(), self::CORRELATION_ID);
+
+        self::assertSame('anonymous', $auditEntries->entries[0]->actorType->value);
+        self::assertNull($auditEntries->entries[0]->actorIdentityId);
+    }
+
     public function test_metadata_contains_only_allowlisted_keys(): void
     {
         [$adapter, $auditEntries] = $this->build();

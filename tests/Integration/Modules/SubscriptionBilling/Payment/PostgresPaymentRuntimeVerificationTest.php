@@ -29,12 +29,24 @@ use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActor
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditEntryId;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 use App\Modules\SubscriptionBilling\Application\Payment\ClaimCommercialOfferService as PaymentClaimCommercialOfferService;
+use App\Modules\SubscriptionBilling\Application\Payment\CreateInitialAcquisitionPaymentService;
 use App\Modules\SubscriptionBilling\Application\Payment\CreatePaymentService;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentDataAssembler;
 use App\Modules\SubscriptionBilling\Application\Payment\PaymentIdentifierGeneratorInterface;
+use App\Modules\SubscriptionBilling\Contracts\Payment\CreateInitialAcquisitionPaymentCommand;
 use App\Modules\SubscriptionBilling\Contracts\Payment\CreatePaymentCommand;
 use App\Modules\SubscriptionBilling\Contracts\Payment\PaymentAuditInterface;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\ExpiryAuthority;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\PaymentSession;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\RedirectAction;
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\Payment;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\IdempotencyKey;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentAmount;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentCurrency;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentId;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\PaymentReference;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\TenantId;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresInitialAcquisitionCheckoutStore;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentTransaction;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\PaymentPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentRepository;
@@ -86,6 +98,12 @@ final class PostgresPaymentRuntimeVerificationTest extends TestCase
 
     protected function tearDown(): void
     {
+        $this->connection?->table('initial_acquisition_checkout_sessions')->delete();
+        $this->connection?->table('payment_attempts')->delete();
+        $this->connection?->table('payments')->delete();
+        $this->connection?->table('commercial_offer_line_items')->delete();
+        $this->connection?->table('commercial_offers')->delete();
+
         foreach (array_reverse($this->migrations) as $migration) {
             $migration->down();
         }
@@ -112,6 +130,93 @@ final class PostgresPaymentRuntimeVerificationTest extends TestCase
         self::assertSame(1, $this->connection()->table('payments')->where('id', $payment->paymentId)->count());
         self::assertSame(['payment.create'], $paymentAudit->actions);
         self::assertCount(1, $events->published);
+    }
+
+    public function test_initial_acquisition_payment_persists_registration_ownership_and_reuses_payment(): void
+    {
+        $this->commercialOffers()->save($this->acquisitionOffer());
+        $events = new AfterCommitCommercialEventPublisher($this->connection());
+        $commercialClaim = new CommercialClaimCommercialOfferService(
+            $this->commercialOffers(),
+            new CommercialOfferDataAssembler,
+            new CommercialOfferAuditTrail(new RecordingAuditEntryRecorder),
+            $events,
+            new TrustedCommercialOfferConsumers(['payment']),
+            new PostgresCommercialTransaction($this->connection()),
+        );
+        $service = new CreateInitialAcquisitionPaymentService(
+            new FixedPaymentIdentifierGenerator($this->uuid(25)),
+            $commercialClaim,
+            new PaymentClaimCommercialOfferService($commercialClaim),
+            $this->payments(),
+            new PaymentDataAssembler,
+            new RecordingPaymentAudit,
+            new PostgresPaymentTransaction($this->connection()),
+        );
+        $command = new CreateInitialAcquisitionPaymentCommand(
+            $this->uuid(3),
+            $this->uuid(12),
+            $this->uuid(6),
+            $this->time(),
+            $this->uuid(95),
+        );
+
+        $created = $service->execute($command);
+        $reused = $service->execute($command);
+
+        self::assertSame($created->paymentId, $reused->paymentId);
+        self::assertSame(1, $this->connection()->table('payments')->count());
+        self::assertSame(0, $this->connection()->table('payment_attempts')->count());
+        $row = $this->connection()->table('payments')->where('id', $created->paymentId)->first();
+        self::assertNotNull($row);
+        self::assertNull($row->platform_identity_id);
+        self::assertSame($this->uuid(3), $row->clinic_registration_id);
+        self::assertSame($this->uuid(6), $row->tenant_id);
+        self::assertSame(3000, $row->amount_minor);
+        self::assertSame('MYR', $row->currency);
+    }
+
+    public function test_initial_acquisition_checkout_session_is_persisted_and_reused(): void
+    {
+        $this->commercialOffers()->save($this->acquisitionOffer());
+        $payment = Payment::createInitialAcquisition(
+            new PaymentId($this->uuid(25)),
+            new PaymentReference($this->uuid(12)),
+            new PaymentReference($this->uuid(3)),
+            new TenantId($this->uuid(6)),
+            new PaymentAmount(3000),
+            new PaymentCurrency('MYR'),
+            new IdempotencyKey('acquisition-session-test'),
+            $this->time(),
+        );
+        $this->payments()->save($payment);
+        $store = new PostgresInitialAcquisitionCheckoutStore($this->connection());
+        $pending = $store->begin(
+            $this->uuid(3),
+            $this->uuid(12),
+            $this->uuid(25),
+            $this->time()->modify('+30 minutes'),
+            $this->time(),
+        );
+        $session = new PaymentSession(
+            'session-1',
+            new RedirectAction('https://toyyibpay.com/bill-code-1'),
+            $this->time()->modify('+30 minutes'),
+            ExpiryAuthority::CommercialOffer,
+        );
+
+        $ready = $store->sessionReady($pending->applicationId, $this->uuid(25), $session, $this->time());
+        $reused = $store->begin(
+            $this->uuid(3),
+            $this->uuid(12),
+            $this->uuid(25),
+            $this->time()->modify('+30 minutes'),
+            $this->time(),
+        );
+
+        self::assertSame('session_ready', $ready->stage);
+        self::assertSame($session->sessionId, $reused->session?->sessionId);
+        self::assertSame(1, $this->connection()->table('initial_acquisition_checkout_sessions')->count());
     }
 
     public function test_payment_insert_failure_after_claim_begins_rolls_back_claim(): void
@@ -324,6 +429,7 @@ final class PostgresPaymentRuntimeVerificationTest extends TestCase
     private function dropTables(): void
     {
         Schema::connection(self::CONNECTION_NAME)->dropIfExists('payment_attempts');
+        Schema::connection(self::CONNECTION_NAME)->dropIfExists('initial_acquisition_checkout_sessions');
         Schema::connection(self::CONNECTION_NAME)->dropIfExists('payments');
         Schema::connection(self::CONNECTION_NAME)->dropIfExists('commercial_offer_line_items');
         Schema::connection(self::CONNECTION_NAME)->dropIfExists('commercial_offers');
@@ -336,6 +442,10 @@ final class PostgresPaymentRuntimeVerificationTest extends TestCase
             'database/migrations/subscription_billing/2026_07_21_000002_create_payment_core_tables.php',
             'database/migrations/commercial/2026_07_26_000001_add_tenant_id_to_commercial_offers.php',
             'database/migrations/subscription_billing/2026_07_26_000001_add_tenant_id_to_payments.php',
+            'database/migrations/commercial/2026_07_30_000001_add_renewal_offer_provenance.php',
+            'database/migrations/commercial/2026_08_28_000001_correct_initial_commercial_offer_ownership.php',
+            'database/migrations/subscription_billing/2026_08_29_000001_support_initial_acquisition_payment_ownership.php',
+            'database/migrations/subscription_billing/2026_08_30_000001_create_initial_acquisition_checkout_sessions.php',
         ] as $path) {
             $migration = require base_path($path);
             self::assertInstanceOf(Migration::class, $migration);
@@ -374,6 +484,19 @@ final class PostgresPaymentRuntimeVerificationTest extends TestCase
             OfferExpiry::fromPreparedAt($this->time(), 30),
             $this->time(),
             $this->uuid(91),
+        );
+    }
+
+    private function acquisitionOffer(): CommercialOffer
+    {
+        return CommercialOffer::prepareForClinicRegistration(
+            new CommercialOfferId($this->uuid(12)),
+            new ClinicRegistrationReference($this->uuid(3)),
+            new CommercialTenantId($this->uuid(6)),
+            $this->offer()->checkoutSnapshot,
+            OfferExpiry::fromPreparedAt($this->time(), 30),
+            $this->time(),
+            $this->uuid(96),
         );
     }
 

@@ -15,9 +15,33 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
         self::assertSame(1, substr_count($routes, "->name('operations.')"));
         self::assertStringContainsString('OperationsController::class', $routes);
 
-        foreach (['health', 'ready', 'live', 'info'] as $endpoint) {
+        foreach (['health', 'ready', 'live', 'info', 'build', 'version', 'release'] as $endpoint) {
             self::assertStringContainsString("operations.endpoints.$endpoint", $routes);
         }
+    }
+
+    public function test_canonical_release_support_routes_are_present(): void
+    {
+        $routes = $this->source(dirname(__DIR__, 2).'/routes/web.php');
+
+        foreach ([
+            "Route::prefix('health')",
+            "Route::get('/build'",
+            "Route::get('/version'",
+            "Route::get('/release'",
+        ] as $expected) {
+            self::assertStringContainsString($expected, $routes);
+        }
+    }
+
+    public function test_failed_job_storage_has_one_framework_level_migration(): void
+    {
+        $migration = dirname(__DIR__, 2).'/database/migrations/2026_08_23_000001_create_failed_jobs_table.php';
+        $source = $this->source($migration);
+
+        self::assertStringContainsString("Schema::create('failed_jobs'", $source);
+        self::assertStringContainsString("Schema::dropIfExists('failed_jobs')", $source);
+        self::assertStringNotContainsString('App\\Modules\\', $source);
     }
 
     public function test_operations_configuration_is_centralized(): void
@@ -32,6 +56,8 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
             'health',
             'readiness',
             'liveness',
+            'runtime_checks',
+            'release',
         ] as $expected) {
             self::assertStringContainsString($expected, $config);
         }
@@ -51,10 +77,6 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
                 'Application\\',
                 'Authentication\\',
                 'Authorization\\',
-                'DB::',
-                'Cache::',
-                'Queue::',
-                'Storage::',
                 'Prometheus',
                 'OpenTelemetry',
                 'Datadog',
@@ -69,6 +91,7 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
     public function test_operations_foundation_exposes_no_sensitive_information_keys(): void
     {
         $responseFactory = $this->source(dirname(__DIR__, 2).'/app/Http/Operations/OperationsResponseFactory.php');
+        $releaseMetadata = $this->source(dirname(__DIR__, 2).'/app/Http/Operations/ReleaseMetadata.php');
 
         foreach ([
             'APP_KEY',
@@ -82,6 +105,7 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
             'laravelVersion',
         ] as $forbidden) {
             self::assertStringNotContainsString($forbidden, $responseFactory);
+            self::assertStringNotContainsString($forbidden, $releaseMetadata);
         }
     }
 

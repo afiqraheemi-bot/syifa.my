@@ -23,7 +23,13 @@ final class HttpSecurityHeadersTest extends TestCase
         $response->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         $response->assertHeader('X-Frame-Options', 'DENY');
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response->assertHeader('X-Permitted-Cross-Domain-Policies', 'none');
         $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $response->assertHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        $response->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
+        $response->assertHeader('Origin-Agent-Cluster', '?1');
+        $response->assertHeader('Cache-Control', 'no-store, private');
+        $response->assertHeader('Pragma', 'no-cache');
         $response->assertHeader(
             'Permissions-Policy',
             'accelerometer=(), autoplay=(), camera=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=()',
@@ -39,7 +45,7 @@ final class HttpSecurityHeadersTest extends TestCase
 
         $response->assertHeader(
             'Content-Security-Policy',
-            "default-src 'self'; base-uri 'self'; connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:*; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:",
+            "default-src 'self'; base-uri 'self'; connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:*; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self' 'unsafe-inline' http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:",
         );
         $response->assertHeaderMissing('Strict-Transport-Security');
     }

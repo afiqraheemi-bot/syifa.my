@@ -8,10 +8,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('api/v1/commercial')
     ->name('commercial.')
-    ->middleware(['throttle:platform.session', AuthenticatePlatformSessionMiddleware::class])
+    ->middleware(['web', 'throttle:platform.session', AuthenticatePlatformSessionMiddleware::class])
     ->group(function (): void {
         Route::get('/available-offers', [CommercialOfferController::class, 'availableOffers'])->name('available-offers');
-        Route::post('/offers', [CommercialOfferController::class, 'store'])->name('offers.store');
         Route::get('/offers/current', [CommercialOfferController::class, 'current'])->name('offers.current');
         Route::get('/offers/{offerId}', [CommercialOfferController::class, 'show'])
             ->whereUuid('offerId')

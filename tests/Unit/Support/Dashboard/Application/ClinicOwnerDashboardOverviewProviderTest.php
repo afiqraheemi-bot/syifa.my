@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Support\Dashboard\Application;
 
+use App\Modules\Booking\Contracts\Queries\BookingDetailData;
+use App\Modules\Booking\Contracts\Queries\ClinicOwnerBookingReadInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryData;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressData;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryData;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
@@ -15,7 +19,8 @@ use App\Support\Dashboard\Application\ClinicSummaryProvider;
 use App\Support\Dashboard\Application\QuickActionsProvider;
 use App\Support\Dashboard\Application\RecentActivityProvider;
 use App\Support\Dashboard\Application\SubscriptionSummaryProvider;
-use PHPUnit\Framework\TestCase;
+use App\Support\Dashboard\Application\Website\DomainStatusProvider;
+use Tests\TestCase;
 
 final class ClinicOwnerDashboardOverviewProviderTest extends TestCase
 {
@@ -52,16 +57,26 @@ final class ClinicOwnerDashboardOverviewProviderTest extends TestCase
         self::assertSame('Not available', $missing->data['value']);
     }
 
-    public function test_incomplete_sections_are_explicit_placeholders(): void
+    public function test_available_quick_actions_use_named_routes_and_incomplete_sections_remain_explicit(): void
     {
-        $bookings = (new BookingSummaryProvider)->provide($this->context());
+        $bookings = (new BookingSummaryProvider($this->bookings([
+            'submitted' => 2,
+            'confirmed' => 1,
+        ])))->provide($this->context());
         $actions = (new QuickActionsProvider)->provide($this->context());
         $activity = (new RecentActivityProvider)->provide($this->context());
 
-        self::assertSame('Not available', $bookings->data['value']);
-        self::assertStringContainsString('not available', $bookings->data['detail']);
-        self::assertSame([false, false, false], array_column($actions->data, 'available'));
-        self::assertSame([null, null, null], array_column($actions->data, 'href'));
+        self::assertSame('3', $bookings->data['value']);
+        self::assertSame('2 awaiting confirmation · 1 confirmed.', $bookings->data['detail']);
+        self::assertSame([true, true, true], array_column($actions->data, 'available'));
+        self::assertSame([
+            route('dashboard.website'),
+            route('dashboard.bookings'),
+            route('dashboard.subscription'),
+        ], array_column($actions->data, 'href'));
+        self::assertSame('Manage your clinic website and content.', $actions->data[0]['description']);
+        self::assertSame('Review and manage patient bookings.', $actions->data[1]['description']);
+        self::assertSame('View your current plan and renewal status.', $actions->data[2]['description']);
         self::assertSame([], $activity->data);
     }
 
@@ -73,10 +88,13 @@ final class ClinicOwnerDashboardOverviewProviderTest extends TestCase
         )->for($this->context());
 
         self::assertSame('Welcome back, Aisyah', $overview['welcomeTitle']);
-        self::assertSame(['clinic', 'subscription', 'bookings'], array_column($overview['summaries'], 'key'));
+        self::assertSame(['clinic', 'subscription', 'bookings', 'website'], array_column($overview['summaries'], 'key'));
         self::assertSame('Asia/Kuala_Lumpur', $overview['summaries'][0]['value']);
         self::assertSame('Restricted', $overview['summaries'][1]['value']);
-        self::assertSame('Not available', $overview['summaries'][2]['value']);
+        self::assertSame('3', $overview['summaries'][2]['value']);
+        self::assertSame('Live', $overview['summaries'][3]['value']);
+        self::assertSame('klinik-aisyah.syifa.my', $overview['summaries'][3]['detail']);
+        self::assertSame('https://klinik-aisyah.syifa.my', $overview['summaries'][3]['url']);
         self::assertSame([], $overview['recentActivity']);
     }
 
@@ -87,7 +105,19 @@ final class ClinicOwnerDashboardOverviewProviderTest extends TestCase
         return new ClinicOwnerDashboardOverviewProvider(
             new ClinicSummaryProvider($this->clinics($clinic)),
             new SubscriptionSummaryProvider($this->subscriptions($subscription)),
-            new BookingSummaryProvider,
+            new BookingSummaryProvider($this->bookings([
+                'submitted' => 2,
+                'confirmed' => 1,
+            ])),
+            new DomainStatusProvider($this->addresses(
+                new WebsitePublicAddressData(
+                    'website-1',
+                    'tenant-1',
+                    'klinik-aisyah.syifa.my',
+                    'https://klinik-aisyah.syifa.my',
+                    true,
+                ),
+            )),
             new QuickActionsProvider,
             new RecentActivityProvider,
         );
@@ -128,6 +158,64 @@ final class ClinicOwnerDashboardOverviewProviderTest extends TestCase
             public function summary(string $trustedTenantId): ?SubscriptionSummaryData
             {
                 return $this->summary;
+            }
+        };
+    }
+
+    /** @param array<string, int> $counts */
+    private function bookings(array $counts): ClinicOwnerBookingReadInterface
+    {
+        return new class($counts) implements ClinicOwnerBookingReadInterface
+        {
+            /** @param array<string, int> $counts */
+            public function __construct(private readonly array $counts) {}
+
+            public function detail(string $trustedTenantId, string $bookingId): ?BookingDetailData
+            {
+                return null;
+            }
+
+            public function list(string $trustedTenantId, ?string $status, ?string $cursor, int $limit, ?string $search = null, ?string $source = null): array
+            {
+                return [];
+            }
+
+            public function countByStatus(string $trustedTenantId): array
+            {
+                return $this->counts;
+            }
+
+            public function countBySource(string $trustedTenantId): array
+            {
+                return [];
+            }
+
+            public function history(string $trustedTenantId, string $bookingId): array
+            {
+                return [];
+            }
+        };
+    }
+
+    private function addresses(?WebsitePublicAddressData $address): WebsitePublicAddressReadInterface
+    {
+        return new class($address) implements WebsitePublicAddressReadInterface
+        {
+            public function __construct(private readonly ?WebsitePublicAddressData $address) {}
+
+            public function forWebsite(string $trustedTenantId, string $websiteId): ?WebsitePublicAddressData
+            {
+                return $this->address;
+            }
+
+            public function forTenant(string $trustedTenantId): ?WebsitePublicAddressData
+            {
+                return $this->address;
+            }
+
+            public function resolveActiveHost(string $host): ?WebsitePublicAddressData
+            {
+                return $this->address;
             }
         };
     }

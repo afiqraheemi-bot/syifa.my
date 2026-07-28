@@ -51,6 +51,8 @@ const recentActivity = createDashboardActivity(props.recentActivity);
                     :value="summary.value"
                     :detail="summary.detail"
                     :tone="summary.tone"
+                    :url="summary.url"
+                    :action-label="summary.actionLabel"
                 />
             </section>
 

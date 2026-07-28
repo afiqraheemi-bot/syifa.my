@@ -54,6 +54,7 @@ final class RequestProtectionFoundationArchitectureTest extends TestCase
             'throttle:platform.session',
             'throttle:platform.admin',
             'throttle:clinic-owner-session',
+            'throttle:public.default',
         ] as $expected) {
             self::assertStringContainsString($expected, $routes);
         }
@@ -62,7 +63,6 @@ final class RequestProtectionFoundationArchitectureTest extends TestCase
             'throttle:platform'.'-login',
             'throttle:platform'.'-session',
             'throttle:platform'.'-administration',
-            'throttle:'.'public',
         ] as $oldLimiterName) {
             self::assertStringNotContainsString($oldLimiterName, $routes);
         }

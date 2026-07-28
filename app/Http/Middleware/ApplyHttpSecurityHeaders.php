@@ -25,7 +25,11 @@ final readonly class ApplyHttpSecurityHeaders
             'Content-Security-Policy' => $this->contentSecurityPolicy(),
             'X-Frame-Options' => $this->stringConfig('http_security.x_frame_options'),
             'X-Content-Type-Options' => $this->stringConfig('http_security.x_content_type_options'),
+            'X-Permitted-Cross-Domain-Policies' => $this->stringConfig('http_security.x_permitted_cross_domain_policies'),
             'Referrer-Policy' => $this->stringConfig('http_security.referrer_policy'),
+            'Cross-Origin-Opener-Policy' => $this->stringConfig('http_security.cross_origin_opener_policy'),
+            'Cross-Origin-Resource-Policy' => $this->stringConfig('http_security.cross_origin_resource_policy'),
+            'Origin-Agent-Cluster' => $this->stringConfig('http_security.origin_agent_cluster'),
             'Permissions-Policy' => $this->stringConfig('http_security.permissions_policy'),
         ];
 
@@ -39,7 +43,21 @@ final readonly class ApplyHttpSecurityHeaders
             $response->headers->set('Strict-Transport-Security', $this->strictTransportSecurity());
         }
 
+        if ($this->containsSensitiveAuthenticatedContent($request)) {
+            $response->headers->set('Cache-Control', 'no-store, private');
+            $response->headers->set('Pragma', 'no-cache');
+        }
+
         return $response;
+    }
+
+    private function containsSensitiveAuthenticatedContent(Request $request): bool
+    {
+        return $request->is('dashboard', 'dashboard/*')
+            || $request->is('api/v1/sessions*')
+            || $request->is('api/v1/platform/*')
+            || $request->is('api/v1/commercial*')
+            || $request->is('api/v1/clinic-registrations*');
     }
 
     private function enabled(): bool

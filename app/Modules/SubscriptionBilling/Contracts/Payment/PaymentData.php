@@ -10,7 +10,7 @@ final readonly class PaymentData
         public string $paymentId,
         public string $commercialOfferId,
         public string $clinicRegistrationId,
-        public string $platformIdentityId,
+        public ?string $platformIdentityId,
         public ?string $tenantId,
         public int $amountMinor,
         public string $currency,

@@ -20,5 +20,6 @@ final readonly class PlanData
         public int $displayOrder,
         public string $createdAt,
         public string $lastChangedAt,
+        public int $version = 1,
     ) {}
 }

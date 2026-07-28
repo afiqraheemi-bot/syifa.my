@@ -21,6 +21,9 @@ final class StartClinicRegistrationRequest extends FormRequest
     {
         return [
             'tenant_id' => ['prohibited'],
+            'platform_identity_id' => ['prohibited'],
+            'registration_tracking_credential' => ['prohibited'],
+            'registration_correlation_reference' => ['prohibited'],
             'selected_add_on_references' => ['prohibited'],
         ];
     }

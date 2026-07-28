@@ -9,6 +9,7 @@ use App\Modules\Commercial\Application\Audit\CommercialOfferAuditTrail;
 use App\Modules\Commercial\Application\Exceptions\ClinicRegistrationOwnershipMismatchException;
 use App\Modules\Commercial\Application\Exceptions\ClinicRegistrationTenantIdNotReservedException;
 use App\Modules\Commercial\Contracts\Commands\PrepareCommercialOfferCommand;
+use App\Modules\Commercial\Contracts\Commands\PrepareInitialCommercialOfferCommand;
 use App\Modules\Commercial\Contracts\Data\CommercialOfferData;
 use App\Modules\Commercial\Contracts\Events\CommercialOfferEventPublisherInterface;
 use App\Modules\Commercial\Contracts\Repositories\CommercialOfferRepositoryInterface;
@@ -55,36 +56,12 @@ final readonly class PrepareCommercialOfferService
             }
 
             $tenantId = $this->resolveReservedTenantId($command->platformIdentityId, $command->clinicRegistrationId);
-            $snapshotData = $this->selections->execute($command->planOfferingId, $command->occurredAt);
-            $snapshot = new CheckoutSnapshot(
-                $snapshotData->planOfferingId,
-                $snapshotData->planId,
-                $snapshotData->billingCycleId,
-                $snapshotData->billingPeriodStart,
-                $snapshotData->billingPeriodEnd,
-                $snapshotData->offeringConfigurationVersion,
-                $snapshotData->capabilityConfigurationReference,
-                array_map(
-                    static fn ($lineItem): CommercialOfferLineItem => new CommercialOfferLineItem(
-                        $lineItem->itemType,
-                        $lineItem->itemReference,
-                        $lineItem->description,
-                        $lineItem->quantity,
-                        new PriceSnapshot($lineItem->unitAmountMinor, $lineItem->currency),
-                        new PriceSnapshot($lineItem->totalAmountMinor, $lineItem->currency),
-                        $lineItem->catalogueSnapshotReference,
-                    ),
-                    $snapshotData->lineItems,
-                ),
-                new PriceSnapshot($snapshotData->subtotalAmountMinor, $snapshotData->currency),
-                new PriceSnapshot($snapshotData->totalAmountMinor, $snapshotData->currency),
-            );
             $offer = CommercialOffer::prepare(
                 new CommercialOfferId($this->identifiers->generate()),
                 $platformIdentity,
                 new ClinicRegistrationReference($command->clinicRegistrationId),
                 $tenantId,
-                $snapshot,
+                $this->checkoutSnapshot($command->planOfferingId, $command->occurredAt),
                 OfferExpiry::fromPreparedAt($command->occurredAt, $this->ttlMinutes),
                 $command->occurredAt,
                 $command->correlationId,
@@ -92,6 +69,64 @@ final readonly class PrepareCommercialOfferService
 
             $this->offers->save($offer);
             $this->audit->recordForPlatformIdentity('commercial.offer.prepare', $offer, $command->occurredAt, $command->correlationId);
+            $this->events->publish($offer->releaseEvents());
+
+            return $this->data->fromDomain($offer);
+        });
+    }
+
+    public function executeForInitialAcquisition(PrepareInitialCommercialOfferCommand $command): CommercialOfferData
+    {
+        return $this->transactions->run(function () use ($command): CommercialOfferData {
+            $registration = $this->clinicRegistrations->currentForTrackingCredential(
+                $command->registrationTrackingCredential,
+            );
+
+            if ($registration === null || $registration->status !== 'submitted') {
+                throw new ClinicRegistrationOwnershipMismatchException('Submitted Clinic Registration ownership could not be established.');
+            }
+
+            if ($registration->selectedPlanOfferingReference !== $command->planOfferingId) {
+                throw new ClinicRegistrationOwnershipMismatchException('Commercial selection does not match the submitted Clinic Registration.');
+            }
+
+            $clinicRegistration = new ClinicRegistrationReference($registration->id);
+            $existing = $this->offers->findCurrentForClinicRegistration($clinicRegistration);
+            if ($existing !== null && ! $existing->isExpiredAt($command->occurredAt)) {
+                return $this->data->fromDomain($existing);
+            }
+
+            if ($existing !== null) {
+                $existing->expire($command->occurredAt);
+                $this->offers->save($existing);
+                $this->audit->recordForClinicRegistration(
+                    'commercial.offer.expire',
+                    $existing,
+                    $command->occurredAt,
+                    $command->correlationId,
+                );
+                $this->events->publish($existing->releaseEvents());
+            }
+
+            $offer = CommercialOffer::prepareForClinicRegistration(
+                new CommercialOfferId($this->identifiers->generate()),
+                $clinicRegistration,
+                $registration->reservedTenantId === null
+                    ? null
+                    : new TenantId($registration->reservedTenantId),
+                $this->checkoutSnapshot($command->planOfferingId, $command->occurredAt),
+                OfferExpiry::fromPreparedAt($command->occurredAt, $this->ttlMinutes),
+                $command->occurredAt,
+                $command->correlationId,
+            );
+
+            $this->offers->save($offer);
+            $this->audit->recordForClinicRegistration(
+                'commercial.offer.prepare',
+                $offer,
+                $command->occurredAt,
+                $command->correlationId,
+            );
             $this->events->publish($offer->releaseEvents());
 
             return $this->data->fromDomain($offer);
@@ -111,5 +146,34 @@ final readonly class PrepareCommercialOfferService
         }
 
         return new TenantId($registration->reservedTenantId);
+    }
+
+    private function checkoutSnapshot(string $planOfferingId, \DateTimeImmutable $occurredAt): CheckoutSnapshot
+    {
+        $snapshotData = $this->selections->execute($planOfferingId, $occurredAt);
+
+        return new CheckoutSnapshot(
+            $snapshotData->planOfferingId,
+            $snapshotData->planId,
+            $snapshotData->billingCycleId,
+            $snapshotData->billingPeriodStart,
+            $snapshotData->billingPeriodEnd,
+            $snapshotData->offeringConfigurationVersion,
+            $snapshotData->capabilityConfigurationReference,
+            array_map(
+                static fn ($lineItem): CommercialOfferLineItem => new CommercialOfferLineItem(
+                    $lineItem->itemType,
+                    $lineItem->itemReference,
+                    $lineItem->description,
+                    $lineItem->quantity,
+                    new PriceSnapshot($lineItem->unitAmountMinor, $lineItem->currency),
+                    new PriceSnapshot($lineItem->totalAmountMinor, $lineItem->currency),
+                    $lineItem->catalogueSnapshotReference,
+                ),
+                $snapshotData->lineItems,
+            ),
+            new PriceSnapshot($snapshotData->subtotalAmountMinor, $snapshotData->currency),
+            new PriceSnapshot($snapshotData->totalAmountMinor, $snapshotData->currency),
+        );
     }
 }

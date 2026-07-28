@@ -11,9 +11,9 @@ final readonly class QuickActionsProvider implements DashboardSectionProviderInt
     public function provide(AuthorizationContext $context): DashboardSectionProjection
     {
         return new DashboardSectionProjection('quickActions', [
-            ['key' => 'website', 'label' => 'Manage website', 'description' => 'Website management is not available yet.', 'href' => null, 'available' => false],
-            ['key' => 'bookings', 'label' => 'View bookings', 'description' => 'Booking management is not available yet.', 'href' => null, 'available' => false],
-            ['key' => 'subscription', 'label' => 'View subscription', 'description' => 'Subscription management is not available yet.', 'href' => null, 'available' => false],
+            ['key' => 'website', 'label' => 'Manage website', 'description' => 'Manage your clinic website and content.', 'href' => route('dashboard.website'), 'available' => true],
+            ['key' => 'bookings', 'label' => 'View bookings', 'description' => 'Review and manage patient bookings.', 'href' => route('dashboard.bookings'), 'available' => true],
+            ['key' => 'subscription', 'label' => 'View subscription', 'description' => 'View your current plan and renewal status.', 'href' => route('dashboard.subscription'), 'available' => true],
         ]);
     }
 }

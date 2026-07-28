@@ -28,7 +28,8 @@ final class WebsiteDesignerJobDetailProviderTest extends TestCase
         self::assertSame(80, $job['progress']['value']);
         self::assertSame('current', $job['stages'][2]['state']);
         self::assertSame(['Job Created', 'Assigned', 'In Review'], array_column($job['timeline'], 'title'));
-        self::assertSame([true, false], array_column($job['actions'], 'available'));
+        self::assertSame([true, true], array_column($job['actions'], 'available'));
+        self::assertSame('#website-setup', $job['actions'][1]['href']);
     }
 }
 

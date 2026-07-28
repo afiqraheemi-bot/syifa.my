@@ -31,7 +31,7 @@ final class Payment
         public PaymentId $id,
         public PaymentReference $commercialOfferId,
         public PaymentReference $clinicRegistrationId,
-        public PaymentReference $platformIdentityId,
+        public ?PaymentReference $platformIdentityId,
         public ?TenantId $tenantId,
         public PaymentAmount $amount,
         public PaymentCurrency $currency,
@@ -63,6 +63,36 @@ final class Payment
             clinicRegistrationId: $clinicRegistrationId,
             platformIdentityId: $platformIdentityId,
             tenantId: $tenantId,
+            amount: $amount,
+            currency: $currency,
+            idempotencyKey: $idempotencyKey,
+            status: PaymentStatus::Draft,
+            providerReference: null,
+            failureReasonCode: null,
+            createdAt: $occurredAt,
+            lastChangedAt: $occurredAt,
+        );
+        $payment->record(new PaymentCreated($id->value, $commercialOfferId->value, $occurredAt));
+
+        return $payment;
+    }
+
+    public static function createInitialAcquisition(
+        PaymentId $id,
+        PaymentReference $commercialOfferId,
+        PaymentReference $clinicRegistrationId,
+        TenantId $futureTenantId,
+        PaymentAmount $amount,
+        PaymentCurrency $currency,
+        IdempotencyKey $idempotencyKey,
+        DateTimeImmutable $occurredAt,
+    ): self {
+        $payment = new self(
+            id: $id,
+            commercialOfferId: $commercialOfferId,
+            clinicRegistrationId: $clinicRegistrationId,
+            platformIdentityId: null,
+            tenantId: $futureTenantId,
             amount: $amount,
             currency: $currency,
             idempotencyKey: $idempotencyKey,

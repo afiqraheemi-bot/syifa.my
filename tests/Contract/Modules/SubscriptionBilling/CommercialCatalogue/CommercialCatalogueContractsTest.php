@@ -63,7 +63,7 @@ final class CommercialCatalogueContractsTest extends TestCase
         self::assertTrue((new ReflectionClass(ComputedSubscriptionEntitlementData::class))->isReadOnly());
 
         self::assertSame(
-            ['planId', 'code', 'name', 'description', 'status', 'displayOrder', 'createdAt', 'lastChangedAt'],
+            ['planId', 'code', 'name', 'description', 'status', 'displayOrder', 'createdAt', 'lastChangedAt', 'version'],
             $this->propertyNames(PlanData::class),
         );
         self::assertSame(

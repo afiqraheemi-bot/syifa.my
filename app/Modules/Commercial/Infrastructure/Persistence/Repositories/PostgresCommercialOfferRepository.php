@@ -7,6 +7,7 @@ namespace App\Modules\Commercial\Infrastructure\Persistence\Repositories;
 use App\Modules\Commercial\Contracts\Repositories\CommercialOfferRepositoryInterface;
 use App\Modules\Commercial\Domain\CommercialOffer;
 use App\Modules\Commercial\Domain\Exceptions\StaleCommercialOfferWriteException;
+use App\Modules\Commercial\Domain\ValueObjects\ClinicRegistrationReference;
 use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferId;
 use App\Modules\Commercial\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\Commercial\Infrastructure\Persistence\Exceptions\InvalidCommercialOfferStorageStateException;
@@ -40,6 +41,34 @@ final readonly class PostgresCommercialOfferRepository implements CommercialOffe
             ->where('platform_identity_id', $platformIdentity->value)
             ->where('status', 'prepared')
             ->orderByDesc('created_at')
+            ->first();
+
+        return $row === null ? null : $this->offerFromRow($row);
+    }
+
+    public function findCurrentForClinicRegistration(ClinicRegistrationReference $clinicRegistration): ?CommercialOffer
+    {
+        $row = $this->connection->table('commercial_offers')
+            ->where('clinic_registration_id', $clinicRegistration->value)
+            ->where('owner_kind', 'clinic_registration')
+            ->where('purpose', 'initial_checkout')
+            ->whereIn('status', ['prepared', 'claimed'])
+            ->orderByDesc('created_at')
+            ->first();
+
+        return $row === null ? null : $this->offerFromRow($row);
+    }
+
+    public function findInitialAcquisitionForRegistration(
+        CommercialOfferId $commercialOfferId,
+        ClinicRegistrationReference $clinicRegistration,
+    ): ?CommercialOffer {
+        $row = $this->connection->table('commercial_offers')
+            ->where('id', $commercialOfferId->value)
+            ->where('clinic_registration_id', $clinicRegistration->value)
+            ->where('owner_kind', 'clinic_registration')
+            ->where('purpose', 'initial_checkout')
+            ->whereIn('status', ['prepared', 'claimed'])
             ->first();
 
         return $row === null ? null : $this->offerFromRow($row);
@@ -99,6 +128,8 @@ final readonly class PostgresCommercialOfferRepository implements CommercialOffe
         return [
             'id' => $record->id,
             'platform_identity_id' => $record->platformIdentityId,
+            'owner_kind' => $record->platformIdentityId === null ? 'clinic_registration' : 'platform_identity',
+            'purpose' => 'initial_checkout',
             'clinic_registration_id' => $record->clinicRegistrationId,
             'tenant_id' => $record->tenantId,
             'status' => $record->status,
@@ -151,7 +182,7 @@ final readonly class PostgresCommercialOfferRepository implements CommercialOffe
     {
         $record = new CommercialOfferStorageRecord(
             $this->stringValue($row, 'id'),
-            $this->stringValue($row, 'platform_identity_id'),
+            $this->nullableStringValue($row->platform_identity_id ?? null, 'platform_identity_id'),
             $this->stringValue($row, 'clinic_registration_id'),
             $this->nullableStringValue($row->tenant_id ?? null, 'tenant_id'),
             $this->stringValue($row, 'status'),

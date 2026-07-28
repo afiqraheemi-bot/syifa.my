@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Dashboard\Application;
 
 use App\Support\Authorization\Application\AuthorizationContext;
+use App\Support\Dashboard\Application\SuperAdmin\SuperAdminDashboardOverviewProvider;
 use App\Support\Dashboard\Application\WebsiteDesigner\WebsiteDesignerDashboardOverviewProvider;
 use App\Support\Identity\ActorType;
 use LogicException;
@@ -14,6 +15,7 @@ final readonly class AuthenticatedDashboardPage
     public function __construct(
         private ClinicOwnerDashboardOverviewProvider $clinicOwnerOverview,
         private WebsiteDesignerDashboardOverviewProvider $websiteDesignerOverview,
+        private SuperAdminDashboardOverviewProvider $superAdminOverview,
     ) {}
 
     /**
@@ -65,6 +67,12 @@ final readonly class AuthenticatedDashboardPage
                 route('dashboard.bookings'),
                 false,
             ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'subscription',
+                'Subscription',
+                route('dashboard.subscription'),
+                false,
+            ))->toArray();
 
             return new DashboardPageView(
                 'TenantManagement/Dashboard/ClinicOwnerDashboardOverview',
@@ -84,6 +92,39 @@ final readonly class AuthenticatedDashboardPage
             return new DashboardPageView(
                 'PlatformAdministration/Dashboard/WebsiteDesignerDashboardOverview',
                 [...$props, ...$this->websiteDesignerOverview->for($context)],
+            );
+        }
+
+        if ($context->actorType === ActorType::PlatformIdentity->value && $context->role === 'super_admin') {
+            $props['contextLabel'] = 'Super Admin workspace';
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'tenants',
+                'Tenants',
+                route('dashboard.tenants'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'billing',
+                'Billing',
+                route('dashboard.billing'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'commercial',
+                'Commercial',
+                route('dashboard.commercial'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'payment-providers',
+                'Payment Providers',
+                route('dashboard.payment-providers'),
+                false,
+            ))->toArray();
+
+            return new DashboardPageView(
+                'PlatformAdministration/Dashboard/SuperAdminDashboardOverview',
+                [...$props, ...$this->superAdminOverview->for($context)],
             );
         }
 

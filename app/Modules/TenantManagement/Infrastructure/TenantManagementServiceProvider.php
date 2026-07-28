@@ -14,12 +14,14 @@ use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerCredentialV
 use App\Modules\TenantManagement\Contracts\Authentication\TrustedTenantSelectorInterface;
 use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionStoreInterface;
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolverInterface;
+use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewReadInterface;
 use App\Modules\TenantManagement\Contracts\TenantRouting\TenantAdminRoutingLookupInterface;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Repositories\TenantRepositoryInterface;
 use App\Modules\TenantManagement\Infrastructure\Authentication\ClinicOwnerUserProvider;
 use App\Modules\TenantManagement\Infrastructure\Authentication\LaravelAuthenticationSignalDispatcher;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Lookups\PostgresTenantAdminRoutingLookup;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Mappers\TenantPersistenceMapper;
+use App\Modules\TenantManagement\Infrastructure\Persistence\Queries\PostgresTenantOverviewReadAdapter;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Repositories\PostgresTenantRepository;
 use App\Modules\TenantManagement\Infrastructure\Session\LaravelClinicOwnerSessionStore;
 use App\Modules\TenantManagement\Infrastructure\TenantContext\ClinicOwnerTenantContextResolver;
@@ -34,6 +36,12 @@ final class TenantManagementServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(
+            TenantOverviewReadInterface::class,
+            static fn (Application $application): PostgresTenantOverviewReadAdapter => new PostgresTenantOverviewReadAdapter(
+                $application->make('db')->connection(),
+            ),
+        );
         $this->app->instance(
             AdminHostParser::class,
             new AdminHostParser(self::adminBaseDomains($this->app)),
@@ -94,6 +102,10 @@ final class TenantManagementServiceProvider extends ServiceProvider
                 return new TenantAdminHostTrustedTenantSelector(
                     $application->make(AdminHostParser::class),
                     $application->make(TenantAdminRoutingLookupInterface::class),
+                    $application->environment(['local', 'testing'])
+                        && self::localDemoTenantEnabled($application),
+                    self::localDemoTenantString($application, 'host'),
+                    self::localDemoTenantString($application, 'routing_label'),
                 );
             },
         );
@@ -145,5 +157,24 @@ final class TenantManagementServiceProvider extends ServiceProvider
         }
 
         return $adminBaseDomains;
+    }
+
+    private static function localDemoTenantString(
+        ApplicationContract $application,
+        string $key,
+    ): string {
+        $value = $application
+            ->make(ConfigRepository::class)
+            ->get('tenant_management.local_demo_tenant.'.$key, '');
+
+        return is_string($value) ? $value : '';
+    }
+
+    private static function localDemoTenantEnabled(
+        ApplicationContract $application,
+    ): bool {
+        return $application
+            ->make(ConfigRepository::class)
+            ->get('tenant_management.local_demo_tenant.enabled') === true;
     }
 }

@@ -55,7 +55,6 @@ final class InfrastructureReadinessFoundationArchitectureTest extends TestCase
                 'AWS',
                 'Docker',
                 'Kubernetes',
-                'Redis',
                 'Prometheus',
                 'OpenTelemetry',
             ] as $forbidden) {

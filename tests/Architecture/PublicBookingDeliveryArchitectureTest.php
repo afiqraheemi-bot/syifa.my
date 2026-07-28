@@ -105,10 +105,10 @@ final class PublicBookingDeliveryArchitectureTest extends TestCase
     {
         $routes = (string) file_get_contents(dirname(__DIR__, 2).'/routes/web.php');
         self::assertMatchesRegularExpression(
-            "/Route::prefix\\('booking'\\).*?\\n\\}\\);/s",
+            "/Route::prefix\\('booking'\\).*?\\n\\s*\\}\\);/s",
             $routes,
         );
-        preg_match("/Route::prefix\\('booking'\\).*?\\n\\}\\);/s", $routes, $matches);
+        preg_match("/Route::prefix\\('booking'\\).*?\\n\\s*\\}\\);/s", $routes, $matches);
         $publicBookingRoutes = $matches[0] ?? '';
         self::assertMatchesRegularExpression('/success\/\{token\}/', $publicBookingRoutes);
 

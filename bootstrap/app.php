@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Middleware\ApplyHttpSecurityHeaders;
 use App\Http\Middleware\ApplyPlatformEdgeSecurity;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Modules\PlatformAdministration\Presentation\Http\Responses\ProblemDetailsResponse as PlatformProblemDetailsResponse;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\Jobs\PublishPaymentOutboxJob;
 use App\Modules\SubscriptionBilling\Presentation\Contracts\ErrorResponseMapperInterface;
@@ -20,7 +21,6 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Inertia\Middleware as InertiaMiddleware;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -32,7 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(
             prepend: [AttachRequestIdentifiers::class],
-            append: [InertiaMiddleware::class],
+            append: [HandleInertiaRequests::class],
         );
 
         $middleware->alias([

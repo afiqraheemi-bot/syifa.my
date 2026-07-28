@@ -86,4 +86,56 @@ final class TenantAdminRoutingLookupContractTest extends TestCase
 
         $application->register(TenantManagementServiceProvider::class);
     }
+
+    public function test_provider_enables_local_selection_only_for_local_or_testing_environments(): void
+    {
+        foreach ([
+            'local' => true,
+            'testing' => true,
+            'staging' => false,
+            'production' => false,
+        ] as $environment => $expected) {
+            $application = new Application(base_path());
+            $application->detectEnvironment(static fn (): string => $environment);
+            $configuration = new Repository([
+                'tenant_management' => [
+                    'admin_base_domains' => ['app.syifa.my'],
+                    'local_demo_tenant' => [
+                        'enabled' => true,
+                        'host' => 'localhost',
+                        'routing_label' => 'demo-clinic',
+                    ],
+                ],
+            ]);
+            $application->instance('config', $configuration);
+            $application->instance(ConfigRepository::class, $configuration);
+            $application->register(TenantManagementServiceProvider::class);
+            $application->instance(
+                TenantAdminRoutingLookupInterface::class,
+                new class implements TenantAdminRoutingLookupInterface
+                {
+                    public function resolve(string $normalizedRoutingLabel): ?TenantAdminRoutingData
+                    {
+                        return $normalizedRoutingLabel === 'demo-clinic'
+                            ? new TenantAdminRoutingData(
+                                '00000000-0000-4000-8000-000000000001',
+                                'demo-clinic',
+                                'active',
+                            )
+                            : null;
+                    }
+                },
+            );
+
+            $selection = $application
+                ->make(TrustedTenantSelectorInterface::class)
+                ->select('localhost');
+
+            self::assertSame(
+                $expected,
+                $selection !== null,
+                sprintf('Unexpected local tenant selection in %s.', $environment),
+            );
+        }
+    }
 }

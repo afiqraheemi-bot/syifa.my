@@ -3,13 +3,16 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\OperationsController;
+use App\Http\Controllers\RootEntryController;
 use App\Modules\Booking\Presentation\Http\Controllers\ClinicOwnerBookingOperationController;
+use App\Modules\Booking\Presentation\Http\Controllers\ClinicOwnerManualBookingController;
 use App\Modules\PlatformAdministration\Presentation\Http\Controllers\PlatformEmailVerificationController;
 use App\Modules\PlatformAdministration\Presentation\Http\Controllers\PlatformPasswordConfirmationController;
 use App\Modules\PlatformAdministration\Presentation\Http\Controllers\PlatformPasswordResetController;
 use App\Modules\PlatformAdministration\Presentation\Http\Controllers\PlatformSessionController;
 use App\Modules\PlatformAdministration\Presentation\Http\Middleware\AuthenticatePlatformSessionMiddleware;
 use App\Modules\SubscriptionBilling\Presentation\ApiVersion;
+use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\ClinicOwnerRenewalHostedCheckoutController;
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCatalogueBillingOptionController;
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCatalogueCapabilityDefinitionController;
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanController;
@@ -22,13 +25,41 @@ use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicLegalDocument
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicWebsiteController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\SuccessController;
 use App\Support\Dashboard\Presentation\Http\Controllers\AuthenticatedDashboardController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerSubscriptionController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteContentOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminBillingOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialBillingOptionOperationController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialManagementController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialOfferingOperationController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialPlanOperationController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminPaymentProviderController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionDetailController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionOperationController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminTenantOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerDraftContentController;
+use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerDraftPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerJobDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerOnboardingQueueController;
+use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerPublishWebsiteController;
+use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerWebsiteAddressController;
 use Illuminate\Support\Facades\Route;
 
+// Application entry point (distinct from a tenant's public Website): only
+// the configured app host and the common local-development aliases match
+// here; every other host falls through to the tenant Website route below,
+// unchanged.
+foreach (RootEntryController::tenantAdminBaseDomains() as $tenantAdminBaseDomain) {
+    Route::domain('{tenantAdminLabel}.'.$tenantAdminBaseDomain)
+        ->get('/', RootEntryController::class)
+        ->where('tenantAdminLabel', '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?')
+        ->name('clinic-owner.login');
+}
+foreach (RootEntryController::appEntryHosts() as $appEntryHost) {
+    Route::domain($appEntryHost)->get('/', RootEntryController::class)->name('root');
+}
 Route::get('/', PublicWebsiteController::class)->name('public-website.home');
 Route::get('/privacy', [PublicLegalDocumentController::class, 'privacy'])->name('public-website.privacy');
 Route::get('/terms', [PublicLegalDocumentController::class, 'terms'])->name('public-website.terms');
@@ -38,19 +69,127 @@ Route::get('/dashboard', AuthenticatedDashboardController::class)
 Route::get('/dashboard/onboarding', WebsiteDesignerOnboardingQueueController::class)
     ->middleware('authorize.context:platform_identity,website_designer')
     ->name('dashboard.onboarding');
-Route::get('/dashboard/onboarding/{jobId}', WebsiteDesignerJobDetailController::class)
+Route::match(['get', 'patch'], '/dashboard/onboarding/{jobId}', WebsiteDesignerJobDetailController::class)
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,website_designer')
     ->name('dashboard.onboarding.show');
+Route::get('/dashboard/onboarding/{jobId}/preview', WebsiteDesignerDraftPreviewController::class)
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.preview');
+Route::post('/dashboard/onboarding/{jobId}/publish', WebsiteDesignerPublishWebsiteController::class)
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.publish');
+Route::match(['get', 'post'], '/dashboard/onboarding/{jobId}/website-address', WebsiteDesignerWebsiteAddressController::class)
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.website-address');
+Route::prefix('/api/v1/platform/onboarding/{jobId}/website-draft')
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('website-designer.website-draft.')
+    ->group(function (): void {
+        Route::get('/', [WebsiteDesignerDraftContentController::class, 'show'])->name('show');
+        Route::patch('/', [WebsiteDesignerDraftContentController::class, 'update'])->name('update');
+    });
+Route::get('/dashboard/tenants', SuperAdminTenantOverviewController::class)
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.tenants');
+Route::get('/dashboard/billing', SuperAdminBillingOverviewController::class)
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.billing');
+Route::get('/dashboard/payment-providers', SuperAdminPaymentProviderController::class)
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.payment-providers');
+Route::prefix('/dashboard/commercial')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.commercial')
+    ->group(function (): void {
+        Route::get('/', [SuperAdminCommercialManagementController::class, 'index'])
+            ->name('');
+        Route::get('/plans/create', [SuperAdminCommercialManagementController::class, 'createPlan'])
+            ->name('.plans.create');
+        Route::get('/billing-options/create', [SuperAdminCommercialManagementController::class, 'createBillingOption'])
+            ->name('.billing-options.create');
+        Route::get('/plans/{planId}/edit', [SuperAdminCommercialManagementController::class, 'editPlan'])
+            ->whereUuid('planId')
+            ->name('.plans.edit');
+        Route::get('/plans/{planId}/offerings/create', [SuperAdminCommercialManagementController::class, 'createOffering'])
+            ->whereUuid('planId')
+            ->name('.plans.offerings.create');
+        Route::get('/plans/{planId}/offerings/{offeringId}/edit', [SuperAdminCommercialManagementController::class, 'editOffering'])
+            ->whereUuid(['planId', 'offeringId'])
+            ->name('.plans.offerings.edit');
+        Route::get('/plans/{planId}', [SuperAdminCommercialManagementController::class, 'showPlan'])
+            ->whereUuid('planId')
+            ->name('.plans.show');
+        Route::get('/plans/{planId}/offerings/{offeringId}', [SuperAdminCommercialManagementController::class, 'showOffering'])
+            ->whereUuid(['planId', 'offeringId'])
+            ->name('.plans.offerings.show');
+        Route::post('/plans', [SuperAdminCommercialPlanOperationController::class, 'store'])
+            ->name('.plans.store');
+        Route::post('/billing-options', [SuperAdminCommercialBillingOptionOperationController::class, 'store'])
+            ->name('.billing-options.store');
+        Route::patch('/plans/{planId}', [SuperAdminCommercialPlanOperationController::class, 'update'])
+            ->whereUuid('planId')
+            ->name('.plans.update');
+        Route::post('/plans/{planId}/publish', [SuperAdminCommercialPlanOperationController::class, 'publish'])
+            ->whereUuid('planId')
+            ->name('.plans.publish');
+        Route::post('/plans/{planId}/retire', [SuperAdminCommercialPlanOperationController::class, 'retire'])
+            ->whereUuid('planId')
+            ->name('.plans.retire');
+        Route::post('/offerings', [SuperAdminCommercialOfferingOperationController::class, 'store'])
+            ->name('.offerings.store');
+        Route::patch('/offerings/{offeringId}', [SuperAdminCommercialOfferingOperationController::class, 'update'])
+            ->whereUuid('offeringId')
+            ->name('.offerings.update');
+        Route::post('/offerings/{offeringId}/activate', [SuperAdminCommercialOfferingOperationController::class, 'activate'])
+            ->whereUuid('offeringId')
+            ->name('.offerings.activate');
+        Route::post('/offerings/{offeringId}/retire', [SuperAdminCommercialOfferingOperationController::class, 'retire'])
+            ->whereUuid('offeringId')
+            ->name('.offerings.retire');
+    });
+Route::get('/dashboard/billing/subscriptions/{subscriptionId}', SuperAdminSubscriptionDetailController::class)
+    ->whereUuid('subscriptionId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.billing.subscriptions.show');
+Route::prefix('/dashboard/billing/subscriptions/{subscriptionId}')
+    ->whereUuid('subscriptionId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.billing.subscriptions.')
+    ->group(function (): void {
+        Route::post('/renew', [SuperAdminSubscriptionOperationController::class, 'renew'])->name('renew');
+        Route::post('/auto-renew/enable', [SuperAdminSubscriptionOperationController::class, 'enableAutoRenew'])->name('auto-renew.enable');
+        Route::post('/auto-renew/disable', [SuperAdminSubscriptionOperationController::class, 'disableAutoRenew'])->name('auto-renew.disable');
+    });
 Route::get('/dashboard/website', ClinicOwnerWebsiteOverviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website');
 Route::get('/dashboard/website/content', ClinicOwnerWebsiteContentOverviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.content');
+Route::patch('/dashboard/website/content', [ClinicOwnerWebsiteContentOverviewController::class, 'update'])
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website.content.update');
 Route::get('/dashboard/bookings', ClinicOwnerBookingOverviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.bookings');
+Route::get('/dashboard/subscription', ClinicOwnerSubscriptionController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.subscription');
+Route::post('/dashboard/subscription/renewal-checkout', ClinicOwnerRenewalHostedCheckoutController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.subscription.renewal-checkout');
+Route::post('/dashboard/bookings', ClinicOwnerManualBookingController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.bookings.store');
+Route::get('/dashboard/bookings/{bookingId}', ClinicOwnerBookingDetailController::class)
+    ->whereUuid('bookingId')
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.bookings.show');
 Route::prefix('/dashboard/bookings/{bookingId}')
     ->whereUuid('bookingId')
     ->middleware('authorize.context:clinic_owner,clinic_owner')
@@ -63,22 +202,26 @@ Route::prefix('/dashboard/bookings/{bookingId}')
 
 // Public Booking Delivery (ADR-029, amended by ADR-030/031) — finite, additive
 // route set. No wildcard, no reference/bookingId-shaped parameter anywhere.
-Route::prefix('booking')->name('public-website.booking.')->group(function (): void {
-    Route::get('/', [BookingController::class, 'landing'])->name('start');
-    Route::get('/service', [BookingController::class, 'service'])->name('service');
-    Route::post('/service', [BookingController::class, 'updateService'])->name('service.update');
-    Route::get('/date', [BookingController::class, 'date'])->name('date');
-    Route::post('/date', [BookingController::class, 'updateDate'])->name('date.update');
-    Route::get('/availability', [AvailabilityController::class, 'forDate'])->name('availability');
-    Route::get('/details', [BookingController::class, 'details'])->name('details');
-    Route::post('/details', [BookingController::class, 'updateDetails'])->name('details.update');
-    Route::get('/review', [BookingController::class, 'review'])->name('review');
-    Route::post('/', [BookingController::class, 'submit'])->middleware('throttle:booking-submission')->name('submit');
-    Route::get('/success/{token}', [SuccessController::class, 'show'])->name('success');
-});
+Route::prefix('booking')
+    ->middleware('throttle:public.default')
+    ->name('public-website.booking.')
+    ->group(function (): void {
+        Route::get('/', [BookingController::class, 'landing'])->name('start');
+        Route::get('/service', [BookingController::class, 'service'])->name('service');
+        Route::post('/service', [BookingController::class, 'updateService'])->name('service.update');
+        Route::get('/date', [BookingController::class, 'date'])->name('date');
+        Route::post('/date', [BookingController::class, 'updateDate'])->name('date.update');
+        Route::get('/availability', [AvailabilityController::class, 'forDate'])->name('availability');
+        Route::get('/details', [BookingController::class, 'details'])->name('details');
+        Route::post('/details', [BookingController::class, 'updateDetails'])->name('details.update');
+        Route::get('/review', [BookingController::class, 'review'])->name('review');
+        Route::post('/', [BookingController::class, 'submit'])->middleware('throttle:booking-submission')->name('submit');
+        Route::get('/success/{token}', [SuccessController::class, 'show'])->name('success');
+    });
 
 if ((bool) config('operations.enabled', true)) {
     Route::prefix((string) config('operations.prefix', 'operations'))
+        ->middleware('throttle:public.default')
         ->name('operations.')
         ->group(function (): void {
             Route::get((string) config('operations.endpoints.health', 'health'), [OperationsController::class, 'health'])
@@ -89,13 +232,40 @@ if ((bool) config('operations.enabled', true)) {
                 ->name('live');
             Route::get((string) config('operations.endpoints.info', 'info'), [OperationsController::class, 'info'])
                 ->name('info');
+            Route::get((string) config('operations.endpoints.build', 'build'), [OperationsController::class, 'build'])
+                ->name('build');
+            Route::get((string) config('operations.endpoints.version', 'version'), [OperationsController::class, 'version'])
+                ->name('version');
+            Route::get((string) config('operations.endpoints.release', 'release'), [OperationsController::class, 'release'])
+                ->name('release');
         });
+
+    Route::prefix('health')
+        ->middleware('throttle:public.default')
+        ->name('health.')
+        ->group(function (): void {
+            Route::get('/live', [OperationsController::class, 'live'])->name('live');
+            Route::get('/ready', [OperationsController::class, 'ready'])->name('ready');
+        });
+    Route::get('/build', [OperationsController::class, 'build'])
+        ->middleware('throttle:public.default')
+        ->name('build');
+    Route::get('/version', [OperationsController::class, 'version'])
+        ->middleware('throttle:public.default')
+        ->name('version');
+    Route::get('/release', [OperationsController::class, 'release'])
+        ->middleware('throttle:public.default')
+        ->name('release');
 }
 
 Route::prefix('api/v1')
     ->group(function (): void {
         Route::post('/sessions', [ClinicOwnerSessionController::class, 'store'])
-            ->middleware('throttle:clinic-owner-session');
+            ->middleware([
+                'guest.guard:clinic_owner',
+                'guest.guard:platform_identity',
+                'throttle:clinic-owner-session',
+            ]);
         Route::get('/sessions/current', [ClinicOwnerSessionController::class, 'show'])
             ->middleware([
                 AuthenticateClinicOwnerSessionMiddleware::class,
@@ -107,7 +277,11 @@ Route::prefix('api/v1')
 Route::prefix('api/v1/platform/sessions')
     ->group(function (): void {
         Route::post('/', [PlatformSessionController::class, 'store'])
-            ->middleware('throttle:platform.login');
+            ->middleware([
+                'guest.guard:platform_identity',
+                'guest.guard:clinic_owner',
+                'throttle:platform.login',
+            ]);
         Route::get('/current', [PlatformSessionController::class, 'show'])
             ->middleware([
                 'throttle:platform.session',

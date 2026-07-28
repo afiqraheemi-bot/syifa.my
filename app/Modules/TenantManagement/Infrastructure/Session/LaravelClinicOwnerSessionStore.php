@@ -24,8 +24,8 @@ use Throwable;
  * state already carries every identifier the Guard needs
  * (`getAuthIdentifier()`), so a minimally-hydrated, non-persisted instance
  * is enough — exactly as for `PlatformIdentityUserProvider::retrieveByCredentials()`.
- * A real row is only ever fetched for "remember me", which needs the
- * genuine `password_hash` for Laravel's recaller cookie (not yet wired here).
+ * A real row is only fetched for "remember me", which needs the genuine
+ * `password_hash` for Laravel's recaller cookie.
  */
 final readonly class LaravelClinicOwnerSessionStore implements ClinicOwnerSessionStoreInterface
 {
@@ -36,13 +36,29 @@ final readonly class LaravelClinicOwnerSessionStore implements ClinicOwnerSessio
         private AuthFactory $auth,
     ) {}
 
-    public function establish(ClinicOwnerSessionState $state): void
+    public function establish(ClinicOwnerSessionState $state, bool $remember = false): void
     {
-        $this->guard()->login((new ClinicOwnerAuthenticatable)->forceFill([
+        $user = (new ClinicOwnerAuthenticatable)->forceFill([
             'id' => $state->authorityId,
             'tenant_id' => $state->tenantId,
             'clinic_owner_identity_id' => $state->clinicOwnerIdentityId,
-        ]));
+        ]);
+
+        if ($remember) {
+            $persistedUser = ClinicOwnerAuthenticatable::query()
+                ->where('id', $state->authorityId)
+                ->where('tenant_id', $state->tenantId)
+                ->where('clinic_owner_identity_id', $state->clinicOwnerIdentityId)
+                ->first();
+
+            if ($persistedUser instanceof ClinicOwnerAuthenticatable) {
+                $user = $persistedUser;
+            } else {
+                $remember = false;
+            }
+        }
+
+        $this->guard()->login($user, $remember);
 
         $this->session->migrate(true);
         $this->session->regenerateToken();

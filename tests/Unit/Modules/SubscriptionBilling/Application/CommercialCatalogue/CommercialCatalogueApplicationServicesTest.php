@@ -35,6 +35,7 @@ use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ListPlanOffe
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ListPlansService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\MakePlanOfferingUnavailableService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\MakePlanUnavailableService;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\PlanOfferingAuditTrail;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ResolveSubscriptionOfferingService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\RetireCapabilityDefinitionService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\RetirePlanOfferingService;
@@ -141,7 +142,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $plan = (new CreatePlanService($identifierGenerator, $planRepository, $createAudit))->execute($this->createPlanCommand());
         $billingOption = (new CreateBillingOptionService($identifierGenerator, $billingOptionRepository))->execute($this->createBillingOptionCommand());
         $capability = (new CreateCapabilityDefinitionService($identifierGenerator, $capabilityRepository))->execute($this->createCapabilityCommand());
-        $planOffering = (new CreatePlanOfferingService($identifierGenerator, $planOfferingRepository))->execute(
+        $planOffering = (new CreatePlanOfferingService($identifierGenerator, $planOfferingRepository, $this->offeringAudit()))->execute(
             $this->createPlanOfferingCommand($plan->id->value, $billingOption->id->value),
         );
 
@@ -282,7 +283,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 correlationId: $this->uuid(505),
             ),
         );
-        $updatedPlanOffering = (new UpdatePlanOfferingService($planOfferingRepository))->execute(
+        $updatedPlanOffering = (new UpdatePlanOfferingService($planOfferingRepository, $this->offeringAudit()))->execute(
             new UpdatePlanOfferingCommand(
                 planOfferingId: $planOffering->id->value,
                 amountMinor: 15000,
@@ -431,7 +432,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         self::assertSame(CapabilityStatus::Retired, $retiredCapability->status);
         self::assertSame(3, $capabilityRepository->saveCalls);
 
-        $activatedPlanOffering = (new ActivatePlanOfferingService($planOfferingRepository))->execute(
+        $activatedPlanOffering = (new ActivatePlanOfferingService($planOfferingRepository, $this->offeringAudit()))->execute(
             new ActivatePlanOfferingCommand(
                 planOfferingId: $planOfferingRepository->planOfferingId(),
                 expectedVersion: 1,
@@ -458,7 +459,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 correlationId: $this->uuid(619),
             ),
         );
-        $retiredPlanOffering = (new RetirePlanOfferingService($planOfferingRepository))->execute(
+        $retiredPlanOffering = (new RetirePlanOfferingService($planOfferingRepository, $this->offeringAudit()))->execute(
             new RetirePlanOfferingCommand(
                 planOfferingId: $grandfatheredPlanOffering->id->value,
                 expectedVersion: 4,
@@ -576,7 +577,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                     correlationId: $this->uuid(818),
                 ),
             ),
-            'PlanOffering' => fn () => (new UpdatePlanOfferingService(new RecordingPlanOfferingRepository($this->planOffering(version: 3))))->execute(
+            'PlanOffering' => fn () => (new UpdatePlanOfferingService(new RecordingPlanOfferingRepository($this->planOffering(version: 3)), $this->offeringAudit()))->execute(
                 new UpdatePlanOfferingCommand(
                     planOfferingId: $this->uuid(819),
                     amountMinor: 10000,
@@ -662,7 +663,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 $planOffering = $this->planOffering(version: 3);
                 $repository = new RecordingPlanOfferingRepository($planOffering);
 
-                return [$repository, fn () => (new UpdatePlanOfferingService($repository))->execute(
+                return [$repository, fn () => (new UpdatePlanOfferingService($repository, $this->offeringAudit()))->execute(
                     new UpdatePlanOfferingCommand(
                         planOfferingId: $planOffering->id->value,
                         amountMinor: 10000,
@@ -714,7 +715,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                     correlationId: $this->uuid(835),
                 ),
             ),
-            'PlanOffering' => fn () => (new ActivatePlanOfferingService(new RecordingPlanOfferingRepository(null)))->execute(
+            'PlanOffering' => fn () => (new ActivatePlanOfferingService(new RecordingPlanOfferingRepository(null), $this->offeringAudit()))->execute(
                 new ActivatePlanOfferingCommand(
                     planOfferingId: $this->uuid(836),
                     expectedVersion: 1,
@@ -767,7 +768,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 $planOffering = $this->planOffering(version: 3);
                 $repository = new RecordingPlanOfferingRepository($planOffering);
 
-                return [$repository, fn () => (new ActivatePlanOfferingService($repository))->execute(
+                return [$repository, fn () => (new ActivatePlanOfferingService($repository, $this->offeringAudit()))->execute(
                     new ActivatePlanOfferingCommand(
                         planOfferingId: $planOffering->id->value,
                         expectedVersion: 2,
@@ -881,7 +882,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $planOffering = $this->planOffering(version: 1);
         $repository = new RecordingPlanOfferingRepository($planOffering);
 
-        $updated = (new UpdatePlanOfferingService($repository))->execute(
+        $updated = (new UpdatePlanOfferingService($repository, $this->offeringAudit()))->execute(
             new UpdatePlanOfferingCommand(
                 planOfferingId: $planOffering->id->value,
                 amountMinor: 20000,
@@ -903,7 +904,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $invariantViolatingRepository = new RecordingPlanOfferingRepository($this->planOffering(version: 1));
 
         try {
-            (new UpdatePlanOfferingService($invariantViolatingRepository))->execute(
+            (new UpdatePlanOfferingService($invariantViolatingRepository, $this->offeringAudit()))->execute(
                 new UpdatePlanOfferingCommand(
                     planOfferingId: $invariantViolatingRepository->planOfferingId(),
                     amountMinor: 20000,
@@ -1185,6 +1186,11 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
     private function auditRecorder(): RecordingAuditEntryRecorder
     {
         return new RecordingAuditEntryRecorder;
+    }
+
+    private function offeringAudit(): PlanOfferingAuditTrail
+    {
+        return new PlanOfferingAuditTrail($this->auditRecorder());
     }
 
     /**

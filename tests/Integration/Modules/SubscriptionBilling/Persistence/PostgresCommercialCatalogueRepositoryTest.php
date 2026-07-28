@@ -28,6 +28,7 @@ use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\Plan
 use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\RecurrenceClassification;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Exceptions\StaleCommercialCatalogueWriteException;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\CommercialCataloguePersistenceMapper;
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresCommercialCatalogueQueryAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresBillingOptionRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresCapabilityDefinitionRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPlanOfferingRepository;
@@ -182,6 +183,14 @@ final class PostgresCommercialCatalogueRepositoryTest extends TestCase
         self::assertSame(2, $planOffering->version());
         self::assertCount(2, iterator_to_array($this->planOfferingRepository()->findByPlan($plan->id), false));
         self::assertCount(0, iterator_to_array($this->planOfferingRepository()->findAvailableForDate('2026-07-01'), false));
+
+        self::assertNotNull($this->connection);
+        $queries = new PostgresCommercialCatalogueQueryAdapter($this->connection);
+        self::assertNotNull($queries->findPlanOffering($planOffering->id->value));
+        $history = $queries->forPlanOffering($planOffering->id->value);
+        self::assertCount(2, $history);
+        self::assertSame([2, 1], array_column($history, 'version'));
+        self::assertSame('MYR', $history[0]->currencyCode);
     }
 
     public function test_stale_plan_write_is_rejected(): void

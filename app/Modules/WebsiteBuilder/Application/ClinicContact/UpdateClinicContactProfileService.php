@@ -13,8 +13,10 @@ use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActor
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 use App\Modules\WebsiteBuilder\Application\Exceptions\ClinicNotFoundException;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorization;
+use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
+use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleClinicWriteException;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicContactProfile;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
@@ -30,6 +32,16 @@ final readonly class UpdateClinicContactProfileService
         private AuditEntryRecorderInterface $auditEntries,
     ) {}
 
+    public function read(string $tenantId, WebsiteAuthorizationContext $authorization): ClinicContactProfileData
+    {
+        $tenant = new TenantId($tenantId);
+        $this->authorization->assertCanUpdate($authorization, $tenant);
+        $clinic = $this->clinics->findByTenantId($tenant)
+            ?? throw new ClinicNotFoundException('Clinic was not found in the authorized Tenant.');
+
+        return ClinicContactProfileData::fromClinic($clinic);
+    }
+
     public function handle(UpdateClinicContactProfileCommand $command): UpdateClinicContactProfileResult
     {
         $tenantId = new TenantId($command->tenantId);
@@ -40,6 +52,9 @@ final readonly class UpdateClinicContactProfileService
             $clinic = $this->clinics->findById($tenantId, $clinicId);
             if ($clinic === null) {
                 throw new ClinicNotFoundException('Clinic was not found in the authorized Tenant.');
+            }
+            if ($command->expectedVersion !== null && $clinic->version() !== $command->expectedVersion) {
+                throw new StaleClinicWriteException('Clinic Contact Profile changed since it was loaded.');
             }
 
             $current = $clinic->contactProfile();

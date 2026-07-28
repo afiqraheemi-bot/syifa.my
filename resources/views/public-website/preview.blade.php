@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Draft Preview · {{ $document->head->title }}</title>
+    <meta name="description" content="{{ $document->head->description }}">
+    <meta name="robots" content="noindex,nofollow,noarchive">
+    <style>:root{--brand-primary:{{ $document->brandTokens->primary }};--brand-primary-hover:{{ $document->brandTokens->primaryHover }};--brand-primary-active:{{ $document->brandTokens->primaryActive }};--brand-on-primary:{{ $document->brandTokens->onPrimary }};--brand-secondary:{{ $document->brandTokens->secondary }};--brand-on-secondary:{{ $document->brandTokens->onSecondary }};}</style>
+    @unless (app()->environment('testing')) @vite('resources/js/public-website.js') @endunless
+</head>
+<body
+    class="public-site"
+    data-template="{{ strtolower(str_replace('_', '-', $document->website->website->templateId)) }}"
+>
+    <div
+        role="status"
+        class="draft-preview-indicator"
+        style="position:sticky;top:0;z-index:1000;padding:.75rem 1rem;background:#18221f;color:#fff;text-align:center;font-weight:700"
+    >
+        Draft Preview · Not published
+    </div>
+    <x-public.skip-link />
+    <x-public.navbar :document="$document" />
+
+    <main id="main-content">
+        @foreach ($document->website->sections as $section)
+            @switch($section->type())
+                @case('HERO')
+                    <x-public.hero :section="$section" :document="$document" />
+                    @break
+                @case('ABOUT')
+                    <x-public.about :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" />
+                    @break
+                @case('SERVICES')
+                    <x-public.services :section="$section" :booking-url="$document->bookingDestination" />
+                    @break
+                @case('DOCTORS')
+                    <x-public.doctors :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" />
+                    @break
+                @case('TESTIMONIALS')
+                    <x-public.testimonials :section="$section" />
+                    @break
+                @case('GALLERY')
+                    <x-public.gallery :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" />
+                    @break
+                @case('FAQ')
+                    <x-public.faq :section="$section" />
+                    @break
+                @case('CONTACT')
+                    <x-public.contact :section="$section" :actions="$document->contactActions" :booking-url="$document->bookingDestination" />
+                    @break
+                @case('BOOKING_CTA')
+                    <x-public.booking-cta :section="$section" :booking-url="$document->bookingDestination" :phone-url="$document->contactActions->telephone" />
+                    @break
+            @endswitch
+        @endforeach
+    </main>
+
+    <x-public.footer :document="$document" />
+</body>
+</html>

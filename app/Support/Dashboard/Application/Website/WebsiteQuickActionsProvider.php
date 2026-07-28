@@ -10,12 +10,12 @@ use App\Support\Dashboard\Application\DashboardSectionProviderInterface;
 
 final readonly class WebsiteQuickActionsProvider implements DashboardSectionProviderInterface
 {
+    public function __construct(private ?string $editUrl = null) {}
+
     public function provide(AuthorizationContext $context): DashboardSectionProjection
     {
         return new DashboardSectionProjection('quickActions', [
-            ['key' => 'edit', 'label' => 'Edit website', 'description' => 'Website editing is not available yet.', 'href' => null, 'available' => false],
-            ['key' => 'publish', 'label' => 'Publish website', 'description' => 'Publishing is not available yet.', 'href' => null, 'available' => false],
-            ['key' => 'domain', 'label' => 'Manage domain', 'description' => 'Domain management is not available yet.', 'href' => null, 'available' => false],
+            ['key' => 'edit', 'label' => 'Edit website', 'description' => 'Update your clinic website content.', 'href' => $this->editUrl ?? route('dashboard.website.content'), 'available' => true],
         ]);
     }
 }

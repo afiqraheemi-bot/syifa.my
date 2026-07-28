@@ -19,12 +19,14 @@ use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\Pag
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\PaginatedPlanOfferingData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanOfferingData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PricingHistoryData;
+use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PricingHistoryReadInterface;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Database\ConnectionInterface;
 use stdClass;
 
-final readonly class PostgresCommercialCatalogueQueryAdapter implements BillingOptionCatalogueQueryInterface, CapabilityDefinitionCatalogueQueryInterface, CommercialCatalogueQueryInterface, PlanCatalogueQueryInterface, PlanOfferingCatalogueQueryInterface
+final readonly class PostgresCommercialCatalogueQueryAdapter implements BillingOptionCatalogueQueryInterface, CapabilityDefinitionCatalogueQueryInterface, CommercialCatalogueQueryInterface, PlanCatalogueQueryInterface, PlanOfferingCatalogueQueryInterface, PricingHistoryReadInterface
 {
     private const string PLAN_TABLE = 'commercial_catalogue_plans';
 
@@ -116,6 +118,24 @@ final readonly class PostgresCommercialCatalogueQueryAdapter implements BillingO
         );
     }
 
+    public function forPlanOffering(string $planOfferingId): array
+    {
+        return array_values($this->connection->table('commercial_catalogue_plan_offering_versions')
+            ->where('id', $planOfferingId)
+            ->orderByDesc('version')
+            ->get()
+            ->map(fn (stdClass $row): PricingHistoryData => new PricingHistoryData(
+                $this->integer($row, 'version'),
+                $this->integer($row, 'amount_minor'),
+                $this->string($row, 'currency_code'),
+                $this->dateString($this->value($row, 'effective_start')),
+                $this->nullableDateString($this->value($row, 'effective_end')),
+                $this->string($row, 'capability_configuration_reference'),
+                $this->dateTimeString($this->value($row, 'created_at')),
+            ))
+            ->all());
+    }
+
     /**
      * @template T of object
      *
@@ -174,6 +194,7 @@ final readonly class PostgresCommercialCatalogueQueryAdapter implements BillingO
             $this->integer($row, 'display_order'),
             $this->dateTimeString($this->value($row, 'domain_created_at')),
             $this->dateTimeString($this->value($row, 'domain_last_changed_at')),
+            $this->integer($row, 'version'),
         );
     }
 

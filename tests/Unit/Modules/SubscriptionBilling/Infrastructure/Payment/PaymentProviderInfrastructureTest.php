@@ -53,8 +53,12 @@ final class PaymentProviderInfrastructureTest extends TestCase
             ]], 200),
         ]);
         $provider = $this->toyyibPay();
-        $result = $provider->start(new ProviderPaymentRequest('payment-1', 2550, 'MYR', 'idempotency-1', 'correlation-1'));
+        $result = $provider->start(new ProviderPaymentRequest(
+            'payment-1', 2550, 'MYR', 'idempotency-1', 'correlation-1',
+            commercialOfferValidUntil: new DateTimeImmutable('2026-07-22T01:00:00Z'),
+        ));
         self::assertSame('bill-code', $result->providerPaymentReference);
+        self::assertSame('https://dev.toyyibpay.test/bill-code', $result->redirectDestination);
         Http::assertSent(static fn ($request): bool => str_ends_with($request->url(), '/index.php/api/createBill')
             && $request['billCallbackUrl'] === 'https://callback.test');
         $verification = $provider->verify(new ProviderPaymentVerificationRequest('toyyibpay', 'bill-code', 'payment-1', 'attempt-1', 2550, 'MYR'));
@@ -79,12 +83,17 @@ final class PaymentProviderInfrastructureTest extends TestCase
 
     public function test_stripe_uses_idempotency_and_verifies_timestamped_webhook(): void
     {
-        Http::fake(['https://stripe.test/v1/checkout/sessions' => Http::response(['id' => 'cs_test_1'], 200)]);
+        Http::fake(['https://stripe.test/v1/checkout/sessions' => Http::response([
+            'id' => 'cs_test_1',
+            'url' => 'https://checkout.stripe.com/c/pay/cs_test_1',
+            'expires_at' => 1784682000,
+        ], 200)]);
         $provider = new StripePaymentProvider(
             $this->app->make(Factory::class), 'sk_test', 'whsec_test', 'https://return.test/success', 'https://return.test/cancel', 'https://stripe.test/v1',
         );
         $result = $provider->start(new ProviderPaymentRequest('payment-1', 2550, 'MYR', 'idem-1', 'corr-1'));
         self::assertSame('cs_test_1', $result->providerPaymentReference);
+        self::assertSame('https://checkout.stripe.com/c/pay/cs_test_1', $result->redirectDestination);
         Http::assertSent(fn ($request): bool => $request->hasHeader('Idempotency-Key', 'idem-1'));
 
         $payload = json_encode(['id' => 'evt_1', 'type' => 'checkout.session.completed', 'data' => ['object' => ['id' => 'cs_test_1']]], JSON_THROW_ON_ERROR);

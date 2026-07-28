@@ -95,6 +95,12 @@ final class PlatformSessionEndpointsTest extends TestCase
             ->assertJsonPath('data.principal.platform_identity_id', self::IDENTITY_ID)
             ->assertJsonPath('data.principal.role', 'website_designer');
 
+        $this->postJson('https://clinic.app.syifa.my/api/v1/sessions', [
+            'email' => 'same-address@example.test',
+            'password' => 'correct horse battery staple',
+        ])->assertStatus(409)
+            ->assertJsonPath('type', 'already_authenticated');
+
         $this->get('https://clinic.app.syifa.my/dashboard')
             ->assertOk()
             ->assertInertia(
@@ -112,6 +118,7 @@ final class PlatformSessionEndpointsTest extends TestCase
             ->assertUnauthorized()
             ->assertHeader('Content-Type', 'application/problem+json')
             ->assertJsonPath('type', 'session_invalid');
+
     }
 
     public function test_invalid_password_and_locked_account_fail_closed(): void

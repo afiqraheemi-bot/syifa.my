@@ -8,6 +8,54 @@ use PHPUnit\Framework\TestCase;
 
 final class DashboardShellPresentationArchitectureTest extends TestCase
 {
+    public function test_commercial_management_delivery_remains_thin_and_presentation_only(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $page = (string) file_get_contents($root.'/app/Support/Dashboard/Application/SuperAdmin/Commercial/SuperAdminCommercialManagementPage.php');
+        $controller = (string) file_get_contents($root.'/app/Support/Dashboard/Presentation/Http/Controllers/SuperAdminCommercialOfferingOperationController.php');
+        $planController = (string) file_get_contents($root.'/app/Support/Dashboard/Presentation/Http/Controllers/SuperAdminCommercialPlanOperationController.php');
+        $pageController = (string) file_get_contents($root.'/app/Support/Dashboard/Presentation/Http/Controllers/SuperAdminCommercialManagementController.php');
+        $component = (string) file_get_contents($root.'/resources/js/Modules/SubscriptionBilling/Commercial/SuperAdminCommercialManagement.vue');
+        $mutationPage = (string) file_get_contents($root.'/app/Support/Dashboard/Application/SuperAdmin/Commercial/SuperAdminCommercialMutationPage.php');
+        $mutationComponent = (string) file_get_contents($root.'/resources/js/Modules/SubscriptionBilling/Commercial/SuperAdminCommercialMutationForm.vue');
+
+        self::assertStringContainsString('PricingHistoryReadInterface', $page);
+        self::assertStringContainsString('CreatePlanOfferingService', $controller);
+        self::assertStringContainsString('UpdatePlanOfferingService', $controller);
+        self::assertStringContainsString('ActivatePlanOfferingService', $controller);
+        self::assertStringContainsString('RetirePlanOfferingService', $controller);
+        self::assertStringNotContainsString('Inertia::clearHistory()', $pageController);
+        self::assertStringNotContainsString('Inertia::encryptHistory()', $pageController);
+        self::assertStringNotContainsString('commercial_validation', $page);
+        self::assertStringNotContainsString('commercial_validation', $controller);
+        self::assertStringNotContainsString('commercial_validation', $planController);
+        self::assertStringNotContainsString('commercial_validation', $pageController);
+        self::assertStringNotContainsString('commercial_validation', $component);
+        self::assertStringNotContainsString('window.history.replaceState(', $component);
+        self::assertStringNotContainsString("window.addEventListener('pageshow'", $component);
+        self::assertStringNotContainsString('window.location.reload()', $component);
+        self::assertStringNotContainsString('visibleValidationErrors', $component);
+        self::assertStringContainsString('nextTick(() => confirmationButton.value?.focus())', $component);
+        self::assertStringContainsString('fixed inset-0 z-50', $component);
+        self::assertStringNotContainsString('validationErrors', $page);
+        self::assertStringNotContainsString('oldInput', $page);
+        self::assertStringNotContainsString('name="code"', $component);
+        self::assertStringNotContainsString('name="amount_minor"', $component);
+        self::assertStringContainsString("getBag('commercial')", $mutationPage);
+        self::assertStringContainsString('validationErrors', $mutationComponent);
+        self::assertSame(3, substr_count($mutationComponent, ':disabled="submitting"'));
+        self::assertStringContainsString('Price (RM)', $mutationComponent);
+        self::assertStringContainsString('name="amount_minor" :value="amountMinor"', $mutationComponent);
+
+        foreach (['DB::', 'RepositoryInterface', 'ConnectionInterface', 'PaymentProvider', 'Stripe', 'ToyyibPay'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $controller);
+            self::assertStringNotContainsString($forbidden, $component);
+        }
+        foreach (['AuthorizationService', 'PermissionResolver', 'RoleResolver', 'fetch(', 'axios', 'localStorage'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $component);
+        }
+    }
+
     public function test_shared_dashboard_component_catalogue_is_complete(): void
     {
         foreach ([
@@ -236,6 +284,114 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
             'OnboardingJobStatus',
         ] as $forbidden) {
             self::assertStringNotContainsString($forbidden, $page);
+        }
+    }
+
+    public function test_super_admin_overview_only_renders_immutable_application_contracts(): void
+    {
+        $page = (string) file_get_contents(
+            dirname(__DIR__, 2).'/resources/js/Modules/PlatformAdministration/Dashboard/SuperAdminDashboardOverview.vue',
+        );
+        foreach ([
+            'DashboardShell',
+            'DashboardSummaryCard',
+            'DashboardQuickActions',
+            'DashboardRecentActivity',
+            'createDashboardSummaries(props.summaries)',
+            'Recent platform activity',
+        ] as $contract) {
+            self::assertStringContainsString($contract, $page);
+        }
+        foreach ([
+            'AuthorizationService', 'Repository', 'DB::', 'Schema::',
+            'fetch(', 'axios', 'super_admin', 'clinic_owner', 'website_designer',
+        ] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $page);
+        }
+    }
+
+    public function test_super_admin_dashboard_application_uses_query_contracts_without_persistence_access(): void
+    {
+        $sources = '';
+        foreach (glob(dirname(__DIR__, 2).'/app/Support/Dashboard/Application/SuperAdmin/*.php') ?: [] as $file) {
+            $sources .= (string) file_get_contents($file);
+        }
+
+        self::assertStringContainsString('PlatformDashboardReadInterface', $sources);
+        self::assertStringContainsString('DashboardSectionProviderInterface', $sources);
+        foreach (['Repository', 'Postgres', 'DB::', 'Schema::', '\\Domain\\'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $sources);
+        }
+    }
+
+    public function test_super_admin_tenant_overview_is_projection_only_and_controller_is_thin(): void
+    {
+        $page = (string) file_get_contents(
+            dirname(__DIR__, 2).'/resources/js/Modules/PlatformAdministration/Tenants/SuperAdminTenantOverview.vue',
+        );
+        foreach (['DashboardShell', 'DashboardEmptyState', 'tenantOverview.search', 'tenantOverview.statusFilter', 'tenantOverview.pagination'] as $contract) {
+            self::assertStringContainsString($contract, $page);
+        }
+        foreach (['AuthorizationService', 'Repository', 'DB::', 'Schema::', 'fetch(', 'axios'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $page);
+        }
+
+        $controller = (string) file_get_contents(
+            dirname(__DIR__, 2).'/app/Support/Dashboard/Presentation/Http/Controllers/SuperAdminTenantOverviewController.php',
+        );
+        self::assertStringContainsString('SuperAdminTenantOverviewPage', $controller);
+        self::assertStringNotContainsString('TenantOverviewReadInterface', $controller);
+        self::assertStringNotContainsString('AuthorizationService', $controller);
+    }
+
+    public function test_super_admin_billing_overview_is_projection_only_and_controller_is_thin(): void
+    {
+        $page = (string) file_get_contents(
+            dirname(__DIR__, 2).'/resources/js/Modules/SubscriptionBilling/Dashboard/SuperAdminBillingOverview.vue',
+        );
+        foreach (['DashboardShell', 'DashboardEmptyState', 'billingOverview.search', 'billingOverview.statusFilter', 'billingOverview.pagination'] as $contract) {
+            self::assertStringContainsString($contract, $page);
+        }
+        foreach (['AuthorizationService', 'Repository', 'DB::', 'Schema::', 'fetch(', 'axios'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $page);
+        }
+
+        $controller = (string) file_get_contents(
+            dirname(__DIR__, 2).'/app/Support/Dashboard/Presentation/Http/Controllers/SuperAdminBillingOverviewController.php',
+        );
+        self::assertStringContainsString('SuperAdminBillingOverviewPage', $controller);
+        self::assertStringNotContainsString('BillingOverviewReadInterface', $controller);
+        self::assertStringNotContainsString('AuthorizationService', $controller);
+        self::assertStringNotContainsString('DB::', $controller);
+    }
+
+    public function test_subscription_detail_is_read_only_projection_and_controller_is_thin(): void
+    {
+        $page = (string) file_get_contents(
+            dirname(__DIR__, 2).'/resources/js/Modules/SubscriptionBilling/Dashboard/SuperAdminSubscriptionDetail.vue',
+        );
+        foreach (['DashboardShell', 'Renewal timeline', 'Payment history', 'Auto-renew'] as $contract) {
+            self::assertStringContainsString($contract, $page);
+        }
+        foreach (['AuthorizationService', 'Repository', 'DB::', 'fetch(', 'axios', 'PATCH', 'DELETE'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $page);
+        }
+
+        $controller = (string) file_get_contents(
+            dirname(__DIR__, 2).'/app/Support/Dashboard/Presentation/Http/Controllers/SuperAdminSubscriptionDetailController.php',
+        );
+        self::assertStringContainsString('SuperAdminSubscriptionDetailPage', $controller);
+        self::assertStringNotContainsString('SubscriptionDetailReadInterface', $controller);
+        self::assertStringNotContainsString('AuthorizationService', $controller);
+
+        $operations = (string) file_get_contents(
+            dirname(__DIR__, 2).'/app/Support/Dashboard/Presentation/Http/Controllers/SuperAdminSubscriptionOperationController.php',
+        );
+        foreach (['ManualRenewSubscriptionInterface', 'EnableAutoRenewInterface', 'CancelAutoRenewInterface'] as $contract) {
+            self::assertStringContainsString($contract, $operations);
+        }
+        foreach (['PrepareRenewalOfferInterface', 'Repository', 'DB::', 'PaymentProvider'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $operations);
         }
     }
 

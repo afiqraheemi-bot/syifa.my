@@ -25,7 +25,7 @@ final class PaymentPersistenceMapper
             id: $payment->id->value,
             commercialOfferId: $payment->commercialOfferId->value,
             clinicRegistrationId: $payment->clinicRegistrationId->value,
-            platformIdentityId: $payment->platformIdentityId->value,
+            platformIdentityId: $payment->platformIdentityId?->value,
             tenantId: $payment->tenantId?->value,
             amountMinor: $payment->amount->minorUnits,
             currency: $payment->currency->value,
@@ -71,7 +71,9 @@ final class PaymentPersistenceMapper
             id: new PaymentId($record->id),
             commercialOfferId: new PaymentReference($record->commercialOfferId),
             clinicRegistrationId: new PaymentReference($record->clinicRegistrationId),
-            platformIdentityId: new PaymentReference($record->platformIdentityId),
+            platformIdentityId: $record->platformIdentityId === null
+                ? null
+                : new PaymentReference($record->platformIdentityId),
             tenantId: $record->tenantId === null ? null : new TenantId($record->tenantId),
             amount: new PaymentAmount($record->amountMinor),
             currency: new PaymentCurrency($record->currency),

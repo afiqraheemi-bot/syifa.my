@@ -16,7 +16,7 @@ final class PaymentDataAssembler
             paymentId: $payment->id->value,
             commercialOfferId: $payment->commercialOfferId->value,
             clinicRegistrationId: $payment->clinicRegistrationId->value,
-            platformIdentityId: $payment->platformIdentityId->value,
+            platformIdentityId: $payment->platformIdentityId?->value,
             tenantId: $payment->tenantId?->value,
             amountMinor: $payment->amount->minorUnits,
             currency: $payment->currency->value,

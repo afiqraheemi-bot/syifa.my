@@ -73,7 +73,7 @@ final class RecordingSessionStore implements ClinicOwnerSessionStoreInterface
 
     public function __construct(public ?ClinicOwnerSessionState $state) {}
 
-    public function establish(ClinicOwnerSessionState $state): void
+    public function establish(ClinicOwnerSessionState $state, bool $remember = false): void
     {
         $this->state = $state;
     }

@@ -13,6 +13,7 @@ use App\Modules\Commercial\Contracts\ReferenceData\PlanOfferingReferenceData;
 use App\Modules\Commercial\Contracts\Repositories\CommercialOfferRepositoryInterface;
 use App\Modules\Commercial\Contracts\Transactions\CommercialTransactionInterface;
 use App\Modules\Commercial\Domain\CommercialOffer;
+use App\Modules\Commercial\Domain\ValueObjects\ClinicRegistrationReference;
 use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferId;
 use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferStatus;
 use App\Modules\Commercial\Domain\ValueObjects\PlatformIdentityReference;
@@ -58,7 +59,7 @@ final class CommercialOfferApiTest extends TestCase
         $this->app->instance(ClinicRegistrationQueryInterface::class, new FeatureClinicRegistrationQuery($this->uuid(3), $this->uuid(6)));
     }
 
-    public function test_authenticated_platform_identity_can_prepare_view_and_cancel_offer(): void
+    public function test_platform_identity_cannot_start_initial_acquisition(): void
     {
         $this->getJson('/api/v1/commercial/available-offers')
             ->assertOk()
@@ -67,28 +68,9 @@ final class CommercialOfferApiTest extends TestCase
         $this->postJson('/api/v1/commercial/offers', [
             'clinic_registration_id' => $this->uuid(3),
             'plan_offering_id' => 'offering-basic-monthly',
-        ])->assertCreated()
-            ->assertJsonPath('data.id', $this->uuid(10))
-            ->assertJsonPath('data.status', 'prepared')
-            ->assertJsonPath('data.totals.currency', 'MYR');
+        ])->assertNotFound();
 
-        $this->getJson('/api/v1/commercial/offers/current')
-            ->assertOk()
-            ->assertJsonPath('data.id', $this->uuid(10));
-
-        $this->getJson('/api/v1/commercial/offers/'.$this->uuid(10))
-            ->assertOk()
-            ->assertJsonPath('data.status', 'prepared');
-
-        $this->postJson('/api/v1/commercial/offers/'.$this->uuid(10).'/cancel', [
-            'expected_version' => 1,
-        ])->assertOk()
-            ->assertJsonPath('data.status', 'cancelled');
-
-        self::assertSame(['commercial.offer.prepare', 'commercial.offer.cancel'], array_map(
-            static fn (AuditEntryData $entry): string => $entry->action,
-            $this->audit->entries,
-        ));
+        self::assertSame([], $this->audit->entries);
     }
 
     public function test_public_access_is_not_allowed(): void
@@ -100,18 +82,6 @@ final class CommercialOfferApiTest extends TestCase
             ->assertHeader('Content-Type', 'application/problem+json');
     }
 
-    public function test_add_on_payment_and_tenant_payloads_are_rejected(): void
-    {
-        $this->postJson('/api/v1/commercial/offers', [
-            'clinic_registration_id' => $this->uuid(3),
-            'plan_offering_id' => 'offering-basic-monthly',
-            'tenant_id' => $this->uuid(9),
-            'add_on_selections' => ['addon'],
-            'payment_method' => 'card',
-        ])->assertUnprocessable()
-            ->assertJsonPath('type', 'commercial.validation_failed');
-    }
-
     public function test_routes_are_authenticated_platform_routes_only(): void
     {
         $routes = collect(Route::getRoutes()->getRoutes())
@@ -120,7 +90,7 @@ final class CommercialOfferApiTest extends TestCase
             ->values()
             ->all();
 
-        self::assertCount(5, $routes);
+        self::assertCount(4, $routes);
 
         foreach ($routes as $route) {
             self::assertContains('throttle:platform.session', $route[3]);
@@ -213,6 +183,11 @@ final class FeatureClinicRegistrationQuery implements ClinicRegistrationQueryInt
             [],
         );
     }
+
+    public function currentForTrackingCredential(string $trackingCredential): ?ClinicRegistrationData
+    {
+        return $this->currentForPlatformIdentity($trackingCredential);
+    }
 }
 
 final class FeatureCommercialOfferIdentifierGenerator implements CommercialOfferIdentifierGeneratorInterface
@@ -287,12 +262,37 @@ final class FeatureInMemoryCommercialOfferRepository implements CommercialOfferR
     public function findCurrentForPlatformIdentity(PlatformIdentityReference $platformIdentity): ?CommercialOffer
     {
         foreach ($this->offers as $offer) {
-            if ($offer->platformIdentity->value === $platformIdentity->value && $offer->status === CommercialOfferStatus::Prepared) {
+            if ($offer->platformIdentity?->value === $platformIdentity->value && $offer->status === CommercialOfferStatus::Prepared) {
                 return $offer;
             }
         }
 
         return null;
+    }
+
+    public function findCurrentForClinicRegistration(ClinicRegistrationReference $clinicRegistration): ?CommercialOffer
+    {
+        foreach ($this->offers as $offer) {
+            if ($offer->clinicRegistration->value === $clinicRegistration->value
+                && in_array($offer->status, [CommercialOfferStatus::Prepared, CommercialOfferStatus::Claimed], true)) {
+                return $offer;
+            }
+        }
+
+        return null;
+    }
+
+    public function findInitialAcquisitionForRegistration(
+        CommercialOfferId $commercialOfferId,
+        ClinicRegistrationReference $clinicRegistration,
+    ): ?CommercialOffer {
+        $offer = $this->offers[$commercialOfferId->value] ?? null;
+
+        return $offer !== null
+            && $offer->platformIdentity === null
+            && $offer->clinicRegistration->value === $clinicRegistration->value
+                ? $offer
+                : null;
     }
 
     public function save(CommercialOffer $commercialOffer): void

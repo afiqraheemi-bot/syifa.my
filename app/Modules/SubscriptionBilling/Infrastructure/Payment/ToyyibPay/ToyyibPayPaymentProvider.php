@@ -16,6 +16,7 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificatio
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationOutcome;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookEvent;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\ExpiryAuthority;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\Exceptions\PaymentProviderTransportException;
 use DateTimeImmutable;
 use Illuminate\Http\Client\ConnectionException;
@@ -75,8 +76,18 @@ final readonly class ToyyibPayPaymentProvider implements PaymentProviderInterfac
         if (! $response->successful() || ! is_string($code) || $code === '') {
             throw new PaymentProviderTransportException('ToyyibPay Bill creation failed.');
         }
+        $redirect = rtrim($this->baseUrl, '/').'/'.$code;
+        if ($request->commercialOfferValidUntil === null || ! $this->validRedirect($redirect)) {
+            throw new PaymentProviderTransportException('ToyyibPay hosted checkout evidence is incomplete.');
+        }
 
-        return new ProviderPaymentResult('toyyibpay', $code);
+        return new ProviderPaymentResult(
+            'toyyibpay',
+            $code,
+            $redirect,
+            $request->commercialOfferValidUntil,
+            ExpiryAuthority::CommercialOffer,
+        );
     }
 
     public function verify(ProviderPaymentVerificationRequest $request): ProviderPaymentVerification
@@ -135,5 +146,17 @@ final readonly class ToyyibPayPaymentProvider implements PaymentProviderInterfac
                 '1' => 'payment.succeeded', '3' => 'payment.failed', default => 'payment.pending'
             },
         );
+    }
+
+    private function validRedirect(string $url): bool
+    {
+        $parts = parse_url($url);
+        $expected = parse_url($this->baseUrl);
+
+        return is_array($parts) && is_array($expected)
+            && ($parts['scheme'] ?? null) === 'https'
+            && ($parts['host'] ?? null) === ($expected['host'] ?? null)
+            && ! isset($parts['user'])
+            && ! isset($parts['pass']);
     }
 }

@@ -105,6 +105,18 @@ final class SubmitBookingServiceTest extends TestCase
         }
     }
 
+    public function test_manual_booking_allows_no_service_when_service_selection_is_disabled(): void
+    {
+        $fixture = new SubmitBookingFixture;
+        $fixture->serviceSelectionEnabled = false;
+        $service = new CreateManualBookingService($fixture->workflow(), new BookingOwnerAuthorization);
+
+        $service->execute($fixture->manualCommand('PHONE', serviceId: null));
+
+        self::assertCount(1, $fixture->bookings);
+        self::assertNull($fixture->bookings[0]->serviceId);
+    }
+
     public function test_website_designer_and_cross_tenant_owner_are_denied_without_leaking_data(): void
     {
         $actor = '00000000-0000-4000-8000-000000000020';
@@ -149,6 +161,8 @@ final class SubmitBookingFixture implements BookingClockInterface, BookingHistor
 
     public int $reservations = 0;
 
+    public bool $serviceSelectionEnabled = true;
+
     public function __construct()
     {
         $this->services = [Service::register(new ServiceId($this->uuid(4)), new TenantId($this->uuid(1)), new ServiceName('Consultation'), null, new SortOrder(1), $this->now())];
@@ -169,14 +183,31 @@ final class SubmitBookingFixture implements BookingClockInterface, BookingHistor
         return new SubmitBookingCommand($this->uuid(1), 'Aisyah Rahman', '+60123456789', '2026-08-10', '10:00', true, $this->uuid(4));
     }
 
-    public function manualCommand(string $source, string $role = 'clinic_owner', int $actorTenant = 1, ?string $actorId = null): CreateManualBookingCommand
+    public function manualCommand(string $source, string $role = 'clinic_owner', int $actorTenant = 1, ?string $actorId = null, ?string $serviceId = null): CreateManualBookingCommand
     {
-        return new CreateManualBookingCommand(new TenantId($this->uuid(1)), new TenantId($this->uuid($actorTenant)), $actorId ?? $this->uuid(20), $role, $source, 'Aisyah Rahman', '+60123456789', '2026-08-10', '10:00', $this->uuid(4));
+        return new CreateManualBookingCommand(new TenantId($this->uuid(1)), new TenantId($this->uuid($actorTenant)), $actorId ?? $this->uuid(20), $role, $source, 'Aisyah Rahman', '+60123456789', '2026-08-10', '10:00', $serviceId ?? ($this->serviceSelectionEnabled ? $this->uuid(4) : null));
     }
 
     public function configuration(TenantId $tenantId): BookingFormConfiguration
     {
-        return BookingFormConfiguration::create($tenantId, true, false, false, false, false, new RequiredFields([BookingFormField::Service]), new FieldOrder([BookingFormField::PatientName, BookingFormField::Phone, BookingFormField::AppointmentDate, BookingFormField::AppointmentTime, BookingFormField::Service]), new FieldLabels([]), $this->now());
+        return BookingFormConfiguration::create(
+            $tenantId,
+            $this->serviceSelectionEnabled,
+            false,
+            false,
+            false,
+            false,
+            new RequiredFields($this->serviceSelectionEnabled ? [BookingFormField::Service] : []),
+            new FieldOrder(array_filter([
+                BookingFormField::PatientName,
+                BookingFormField::Phone,
+                BookingFormField::AppointmentDate,
+                BookingFormField::AppointmentTime,
+                $this->serviceSelectionEnabled ? BookingFormField::Service : null,
+            ])),
+            new FieldLabels([]),
+            $this->now(),
+        );
     }
 
     public function run(callable $callback): mixed

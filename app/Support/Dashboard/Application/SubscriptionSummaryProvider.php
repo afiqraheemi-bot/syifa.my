@@ -29,6 +29,8 @@ final readonly class SubscriptionSummaryProvider implements DashboardSectionProv
                 'value' => ucfirst(str_replace('_', ' ', $subscription->status)),
                 'detail' => sprintf('Current term ends %s.', $subscription->endsOn),
                 'tone' => $subscription->status === 'active' ? 'positive' : 'neutral',
+                'url' => route('dashboard.subscription'),
+                'actionLabel' => 'View subscription',
             ]);
     }
 }

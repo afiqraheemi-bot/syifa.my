@@ -89,6 +89,24 @@ final class ProductionEnvironmentGuardTest extends TestCase
         self::assertContains('session.secure.unsafe', $exception->violations());
     }
 
+    public function test_production_http_edge_and_private_storage_controls_fail_closed(): void
+    {
+        $this->configureSafeProduction();
+        Config::set('edge_security.enabled', false);
+        Config::set('edge_security.trusted_hosts.enabled', false);
+        Config::set('http_security.enabled', false);
+        Config::set('filesystems.disks.local.serve', true);
+        Config::set('session.same_site', 'none');
+
+        $exception = $this->captureGuardException();
+
+        self::assertContains('edge_security.enabled.unsafe', $exception->violations());
+        self::assertContains('edge_security.trusted_hosts.enabled.unsafe', $exception->violations());
+        self::assertContains('http_security.enabled.unsafe', $exception->violations());
+        self::assertContains('filesystems.disks.local.serve.unsafe', $exception->violations());
+        self::assertContains('session.same_site.unsafe', $exception->violations());
+    }
+
     public function test_failure_does_not_expose_sensitive_configuration_values(): void
     {
         $this->configureSafeProduction();
@@ -102,6 +120,22 @@ final class ProductionEnvironmentGuardTest extends TestCase
         self::assertStringNotContainsString('syifa.example', $exception->getMessage());
     }
 
+    public function test_production_uses_shared_redis_for_cache_sessions_and_async_work(): void
+    {
+        $this->configureSafeProduction();
+        Config::set('cache.default', 'file');
+        Config::set('queue.default', 'sync');
+        Config::set('queue.connections.redis.after_commit', false);
+        Config::set('session.driver', 'file');
+
+        $exception = $this->captureGuardException();
+
+        self::assertContains('cache.default.unsafe', $exception->violations());
+        self::assertContains('queue.default.unsafe', $exception->violations());
+        self::assertContains('queue.connections.redis.after_commit.unsafe', $exception->violations());
+        self::assertContains('session.driver.unsafe', $exception->violations());
+    }
+
     private function configureSafeProduction(): void
     {
         Config::set('production_guard.enabled', true);
@@ -110,9 +144,18 @@ final class ProductionEnvironmentGuardTest extends TestCase
         Config::set('app.debug', false);
         Config::set('app.key', 'base64:unit-test-application-key');
         Config::set('app.url', 'https://syifa.example');
+        Config::set('edge_security.enabled', true);
+        Config::set('edge_security.trusted_hosts.enabled', true);
+        Config::set('http_security.enabled', true);
+        Config::set('filesystems.disks.local.serve', false);
+        Config::set('cache.default', 'redis');
+        Config::set('queue.default', 'redis');
+        Config::set('queue.connections.redis.after_commit', true);
+        Config::set('session.driver', 'redis');
         Config::set('session.encrypt', true);
         Config::set('session.http_only', true);
         Config::set('session.secure', true);
+        Config::set('session.same_site', 'lax');
     }
 
     private function guard(): ProductionEnvironmentGuard

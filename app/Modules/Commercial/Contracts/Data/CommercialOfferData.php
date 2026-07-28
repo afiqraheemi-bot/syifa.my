@@ -11,7 +11,7 @@ final readonly class CommercialOfferData
      */
     public function __construct(
         public string $id,
-        public string $platformIdentityId,
+        public ?string $platformIdentityId,
         public string $clinicRegistrationId,
         public ?string $tenantId,
         public string $status,

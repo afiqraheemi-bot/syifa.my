@@ -166,7 +166,7 @@ final class CommercialCatalogueHttpDeliveryTest extends LaravelTestCase
                         return $this->result;
                     }
                 },
-                ['plan_id' => '11111111-1111-4111-8111-111111111111', 'code' => 'starter', 'name' => 'Starter', 'description' => 'Starter plan.', 'status' => 'draft', 'display_order' => 1, 'created_at' => '2026-07-15T00:00:00Z', 'last_changed_at' => '2026-07-15T00:00:00Z'],
+                ['plan_id' => '11111111-1111-4111-8111-111111111111', 'code' => 'starter', 'name' => 'Starter', 'description' => 'Starter plan.', 'status' => 'draft', 'display_order' => 1, 'created_at' => '2026-07-15T00:00:00Z', 'last_changed_at' => '2026-07-15T00:00:00Z', 'version' => 1],
             ],
             'billing options' => [
                 self::BASE.'/billing-options',

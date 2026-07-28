@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Support\Dashboard\Application\Website;
 
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressData;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\PublishedWebsiteSnapshotData;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteDetailData;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsitePublishedSnapshotReadInterface;
@@ -53,17 +55,21 @@ final class WebsiteOverviewProvidersTest extends TestCase
 
         self::assertSame('Not available', (new WebsiteStatusProvider($websites))->provide($this->context())->data['value']);
         self::assertSame('Not published', (new PublishStatusProvider($websites, $this->snapshots(null)))->provide($this->context())->data['value']);
-        self::assertSame('Not available', (new DomainStatusProvider)->provide($this->context())->data['value']);
+        self::assertSame(
+            'Preparing',
+            (new DomainStatusProvider($this->addresses(null)))->provide($this->context())->data['value'],
+        );
         self::assertSame('Not available', (new ThemeInformationProvider($websites))->provide($this->context())->data['value']);
         self::assertSame('Not available', (new SeoStatusProvider($websites, $this->seo(null)))->provide($this->context())->data['value']);
     }
 
-    public function test_website_quick_actions_are_explicitly_unavailable(): void
+    public function test_website_edit_action_targets_the_governed_content_editor(): void
     {
-        $actions = (new WebsiteQuickActionsProvider)->provide($this->context())->data;
+        $actions = (new WebsiteQuickActionsProvider('/dashboard/website/content'))->provide($this->context())->data;
 
-        self::assertSame([false, false, false], array_column($actions, 'available'));
-        self::assertSame([null, null, null], array_column($actions, 'href'));
+        self::assertCount(1, $actions);
+        self::assertSame([true], array_column($actions, 'available'));
+        self::assertSame(['/dashboard/website/content'], array_column($actions, 'href'));
     }
 
     private function context(): AuthorizationContext
@@ -101,6 +107,29 @@ final class WebsiteOverviewProvidersTest extends TestCase
             public function latest(string $websiteId): ?PublishedWebsiteSnapshotData
             {
                 return $this->snapshot;
+            }
+        };
+    }
+
+    private function addresses(?WebsitePublicAddressData $address): WebsitePublicAddressReadInterface
+    {
+        return new class($address) implements WebsitePublicAddressReadInterface
+        {
+            public function __construct(private readonly ?WebsitePublicAddressData $address) {}
+
+            public function forWebsite(string $trustedTenantId, string $websiteId): ?WebsitePublicAddressData
+            {
+                return $this->address;
+            }
+
+            public function forTenant(string $trustedTenantId): ?WebsitePublicAddressData
+            {
+                return $this->address;
+            }
+
+            public function resolveActiveHost(string $host): ?WebsitePublicAddressData
+            {
+                return $this->address?->active === true ? $this->address : null;
             }
         };
     }

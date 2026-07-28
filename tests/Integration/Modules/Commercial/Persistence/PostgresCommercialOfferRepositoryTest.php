@@ -37,6 +37,10 @@ final class PostgresCommercialOfferRepositoryTest extends TestCase
 
     private ?Migration $tenantIdMigration = null;
 
+    private ?Migration $provenanceMigration = null;
+
+    private ?Migration $ownershipMigration = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -72,6 +76,16 @@ final class PostgresCommercialOfferRepositoryTest extends TestCase
         $this->tenantIdMigration = $tenantIdMigration;
         $tenantIdMigration->up();
 
+        $provenanceMigration = require base_path('database/migrations/commercial/2026_07_30_000001_add_renewal_offer_provenance.php');
+        self::assertInstanceOf(Migration::class, $provenanceMigration);
+        $this->provenanceMigration = $provenanceMigration;
+        $provenanceMigration->up();
+
+        $ownershipMigration = require base_path('database/migrations/commercial/2026_08_28_000001_correct_initial_commercial_offer_ownership.php');
+        self::assertInstanceOf(Migration::class, $ownershipMigration);
+        $this->ownershipMigration = $ownershipMigration;
+        $ownershipMigration->up();
+
         $this->repository = new PostgresCommercialOfferRepository(
             $this->connection,
             new CommercialOfferPersistenceMapper,
@@ -80,6 +94,16 @@ final class PostgresCommercialOfferRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->ownershipMigration !== null) {
+            $this->connection?->table('commercial_offer_line_items')->delete();
+            $this->connection?->table('commercial_offers')->delete();
+            $this->ownershipMigration->down();
+        }
+
+        if ($this->provenanceMigration !== null) {
+            $this->provenanceMigration->down();
+        }
+
         if ($this->tenantIdMigration !== null) {
             $this->tenantIdMigration->down();
         }
@@ -123,6 +147,35 @@ final class PostgresCommercialOfferRepositoryTest extends TestCase
         $reloaded = $this->repository()->find($offer->id);
         self::assertNotNull($reloaded);
         self::assertSame($this->uuid(6), $reloaded->tenantId?->value);
+    }
+
+    public function test_initial_acquisition_persists_clinic_registration_as_owner_without_platform_identity(): void
+    {
+        $offer = CommercialOffer::prepareForClinicRegistration(
+            new CommercialOfferId($this->uuid(40)),
+            new ClinicRegistrationReference($this->uuid(41)),
+            null,
+            $this->offer()->checkoutSnapshot,
+            OfferExpiry::fromPreparedAt($this->time(), 30),
+            $this->time(),
+            $this->uuid(43),
+        );
+
+        $this->repository()->save($offer);
+
+        $row = $this->connection()->table('commercial_offers')->where('id', $offer->id->value)->first();
+        self::assertNotNull($row);
+        self::assertNull($row->platform_identity_id);
+        self::assertSame('clinic_registration', $row->owner_kind);
+        self::assertSame('initial_checkout', $row->purpose);
+        self::assertNull($row->tenant_id);
+
+        $reloaded = $this->repository()->findCurrentForClinicRegistration(
+            new ClinicRegistrationReference($this->uuid(41)),
+        );
+        self::assertNotNull($reloaded);
+        self::assertNull($reloaded->platformIdentity);
+        self::assertSame($offer->id->value, $reloaded->id->value);
     }
 
     public function test_tenant_id_column_is_nullable_and_legacy_rows_are_not_backfilled(): void

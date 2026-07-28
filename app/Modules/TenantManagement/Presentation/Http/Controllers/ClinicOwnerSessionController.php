@@ -28,6 +28,7 @@ final readonly class ClinicOwnerSessionController
             $credentials['email'],
             $credentials['password'],
             new DateTimeImmutable,
+            $request->boolean('remember'),
         );
 
         if ($session === null) {

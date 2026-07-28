@@ -19,6 +19,8 @@ use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentResult;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerification;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderPaymentVerificationRequest;
 use App\Modules\SubscriptionBilling\Contracts\Payment\ProviderWebhookEvent;
+use App\Modules\SubscriptionBilling\Contracts\Renewal\ProviderHealthInterface;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\ConfiguredProviderHealth;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PaymentProviderRegistry;
 use DateTimeImmutable;
 use RuntimeException;
@@ -63,6 +65,22 @@ final class PaymentProviderAdministrationHttpDeliveryTest extends LaravelTestCas
         $response->assertOk();
         $response->assertJsonPath('data.0.provider_key', 'toyyibpay');
         $response->assertJsonPath('data.0.is_default', true);
+    }
+
+    public function test_super_admin_can_monitor_provider_health_without_secret_disclosure(): void
+    {
+        $this->actingAsPrincipal('super_admin');
+        $this->bindPaymentInfrastructure(
+            [$this->provider('toyyibpay', true, true)],
+            new PaymentProviderConfiguration('toyyibpay', true, true, true, true, true),
+        );
+
+        $this->getJson(self::BASE.'/health')
+            ->assertOk()
+            ->assertJsonPath('data.0.provider_key', 'toyyibpay')
+            ->assertJsonPath('data.0.status', 'operational')
+            ->assertJsonPath('data.0.accepting_new_attempts', true)
+            ->assertJsonMissingPath('data.0.credentials');
     }
 
     public function test_super_admin_can_enable_a_provider(): void
@@ -122,6 +140,7 @@ final class PaymentProviderAdministrationHttpDeliveryTest extends LaravelTestCas
     {
         return [
             ['GET', self::BASE],
+            ['GET', self::BASE.'/health'],
             ['POST', self::BASE.'/stripe/assess'],
             ['POST', self::BASE.'/stripe/enable'],
             ['POST', self::BASE.'/stripe/disable'],
@@ -218,6 +237,7 @@ final class PaymentProviderAdministrationHttpDeliveryTest extends LaravelTestCas
 
         $this->app->instance(PaymentProviderConfigurationRepositoryInterface::class, $repository);
         $this->app->instance(PaymentProviderRegistryInterface::class, new PaymentProviderRegistry($providers, $repository));
+        $this->app->instance(ProviderHealthInterface::class, new ConfiguredProviderHealth($providers, $repository));
         $this->app->instance(PaymentTransactionInterface::class, new class implements PaymentTransactionInterface
         {
             public function run(callable $operation): mixed

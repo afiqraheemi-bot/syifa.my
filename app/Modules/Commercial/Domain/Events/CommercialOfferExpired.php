@@ -10,7 +10,7 @@ final readonly class CommercialOfferExpired
 {
     public function __construct(
         public string $commercialOfferId,
-        public string $platformIdentityId,
+        public ?string $platformIdentityId,
         public DateTimeImmutable $occurredAt,
     ) {}
 }

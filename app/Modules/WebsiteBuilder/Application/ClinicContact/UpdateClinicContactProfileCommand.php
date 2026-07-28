@@ -21,5 +21,6 @@ final readonly class UpdateClinicContactProfileCommand
         public OptionalContactValue $longitude,
         public DateTimeImmutable $occurredAt,
         public string $correlationId,
+        public ?int $expectedVersion = null,
     ) {}
 }
