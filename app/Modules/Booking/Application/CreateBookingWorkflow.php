@@ -37,6 +37,7 @@ use App\Modules\Booking\Domain\ValueObjects\ScheduledAppointment;
 use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceStatus;
 use App\Modules\Booking\Domain\ValueObjects\TenantId;
+use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
 
 final readonly class CreateBookingWorkflow
 {
@@ -53,11 +54,12 @@ final readonly class CreateBookingWorkflow
         private SlotCapacityReservationInterface $capacity,
         private BookingHistoryRepositoryInterface $history,
         private BookingHistoryIdentifierGeneratorInterface $historyIdentifiers,
+        private ?TransactionalNotificationGatewayInterface $notifications = null,
     ) {}
 
     public function execute(CreateBookingCommand $command): BookingSubmissionResult
     {
-        return $this->transactions->run(function () use ($command): BookingSubmissionResult {
+        $result = $this->transactions->run(function () use ($command): BookingSubmissionResult {
             if ($command->source === BookingSource::Website && $command->consent !== true) {
                 throw new RequiredBookingFieldMissingException('The required field "consent" must be supplied.');
             }
@@ -78,6 +80,15 @@ final readonly class CreateBookingWorkflow
 
             return new BookingSubmissionResult($booking->id->value, $booking->reference->value, $booking->status()->value, $booking->createdAt);
         });
+
+        $this->notifications?->bookingReceived(
+            $command->tenantId,
+            $result->bookingId,
+            $result->reference,
+            $command->email,
+        );
+
+        return $result;
     }
 
     private function validatedServiceId(CreateBookingCommand $command, TenantId $tenantId, BookingFormConfiguration $configuration): ?ServiceId

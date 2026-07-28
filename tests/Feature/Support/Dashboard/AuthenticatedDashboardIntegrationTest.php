@@ -25,6 +25,7 @@ use App\Modules\Booking\Domain\ValueObjects\SortOrder;
 use App\Modules\Booking\Domain\ValueObjects\TenantId as BookingTenantId;
 use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewReadInterface;
 use App\Modules\ClinicRegistration\Contracts\Review\RegistrationReviewItemData;
+use App\Modules\Notification\Contracts\NotificationReadInterface;
 use App\Modules\Onboarding\Contracts\Administration\SuperAdminOnboardingReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
@@ -190,6 +191,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         );
         $this->app->instance(AuditEntryRecorderInterface::class, new DashboardAuditRecorder);
         $this->app->instance(AuditEntryReadInterface::class, new DashboardFixedAuditRead);
+        $this->app->instance(NotificationReadInterface::class, new DashboardFixedNotificationRead);
         $this->app->instance(
             BookingFormConfigurationRepositoryInterface::class,
             new DashboardFixedBookingConfigurationRepository,
@@ -279,7 +281,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         if ($actorType === ActorType::ClinicOwner) {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 5)
+                    ->has('navigation', 6)
                     ->where('welcomeTitle', 'Welcome back, Authenticated User')
                     ->has('summaries', 4)
                     ->where('summaries.0.key', 'clinic')
@@ -307,7 +309,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         } else {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 8)
+                    ->has('navigation', 9)
                     ->where('navigation.1.key', 'registrations')
                     ->where('navigation.2.key', 'tenants'),
             );
@@ -368,14 +370,15 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.1.available', true)
                     ->where('quickActions.2.href', route('dashboard.commercial'))
                     ->where('quickActions.2.available', true)
-                    ->has('navigation', 8)
+                    ->has('navigation', 9)
                     ->where('navigation.1.href', route('dashboard.registrations'))
                     ->where('navigation.2.href', route('dashboard.tenants'))
                     ->where('navigation.3.href', route('dashboard.onboarding-management'))
                     ->where('navigation.4.href', route('dashboard.billing'))
                     ->where('navigation.5.href', route('dashboard.commercial'))
                     ->where('navigation.6.href', route('dashboard.payment-providers'))
-                    ->where('navigation.7.href', route('dashboard.audit'))
+                    ->where('navigation.7.href', route('dashboard.notifications'))
+                    ->where('navigation.8.href', route('dashboard.audit'))
                     ->has('recentActivity', 1),
             );
     }
@@ -442,6 +445,46 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
         );
         $this->getJson('/dashboard/audit')->assertForbidden();
+    }
+
+    public function test_notification_history_is_role_and_tenant_scoped(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+            ),
+        );
+
+        $this->get('/dashboard/notifications?status=queued')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('Shared/Notifications/NotificationHistory', false)
+                    ->where('filters.status', 'queued')
+                    ->where('canFilterTenant', false)
+                    ->where('notificationHistory.entries.0.category', 'booking_received'),
+            );
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+        $this->get('/dashboard/notifications')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('canFilterTenant', true)
+                    ->where('contextLabel', 'Super Admin workspace'),
+            );
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+        );
+        $this->getJson('/dashboard/notifications')->assertForbidden();
     }
 
     public function test_super_admin_can_open_onboarding_management_but_other_roles_cannot(): void
@@ -2985,6 +3028,36 @@ final class DashboardRecordedBookingOperations implements ClinicOwnerBookingOper
     public function reschedule(string $tenantId, string $bookingId, string $localDate, string $localStart, string $actorId, string $actorRole): void
     {
         $this->calls[] = ['reschedule', $tenantId, $bookingId, $localDate, $localStart, $actorId, $actorRole];
+    }
+}
+
+final readonly class DashboardFixedNotificationRead implements NotificationReadInterface
+{
+    public function forTenant(string $tenantId, ?string $status, ?string $triggerType): array
+    {
+        return $this->entries($tenantId);
+    }
+
+    public function forPlatform(?string $tenantId, ?string $status, ?string $triggerType): array
+    {
+        return $this->entries($tenantId);
+    }
+
+    /** @return array{entries: list<array<string, mixed>>} */
+    private function entries(?string $tenantId): array
+    {
+        return ['entries' => [[
+            'id' => '00000000-0000-4000-8000-000000000901',
+            'tenantId' => $tenantId,
+            'category' => 'booking_received',
+            'triggerType' => 'booking',
+            'triggerId' => 'booking-1',
+            'recipientReference' => 'clinic_owner',
+            'status' => 'queued',
+            'createdAt' => '2026-07-28T10:00:00+00:00',
+            'updatedAt' => '2026-07-28T10:00:00+00:00',
+            'attempts' => [],
+        ]]];
     }
 }
 

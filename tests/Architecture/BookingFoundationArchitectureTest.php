@@ -216,7 +216,6 @@ final class BookingFoundationArchitectureTest extends TestCase
 
             foreach ([
                 'ConflictDetection',
-                'Notification',
                 'Reminder',
                 'WebsiteBuilder',
                 'Pricing',
@@ -228,6 +227,18 @@ final class BookingFoundationArchitectureTest extends TestCase
             ] as $forbidden) {
                 self::assertStringNotContainsString($forbidden, $source, $file);
             }
+        }
+
+        $workflow = $this->source($this->root().'/app/Modules/Booking/Application/CreateBookingWorkflow.php');
+        self::assertStringContainsString(
+            'App\\Modules\\Notification\\Contracts\\TransactionalNotificationGatewayInterface',
+            $workflow,
+        );
+        foreach ($this->phpFilesIn($this->root().'/app/Modules/Booking/Domain') as $file) {
+            self::assertStringNotContainsString('Modules\\Notification', $this->source($file), $file);
+        }
+        foreach ($this->phpFilesIn($this->root().'/app/Modules/Booking/Infrastructure') as $file) {
+            self::assertStringNotContainsString('Modules\\Notification', $this->source($file), $file);
         }
     }
 

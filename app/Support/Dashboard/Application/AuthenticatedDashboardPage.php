@@ -73,6 +73,12 @@ final readonly class AuthenticatedDashboardPage
                 route('dashboard.subscription'),
                 false,
             ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'notifications',
+                'Notifications',
+                route('dashboard.notifications'),
+                false,
+            ))->toArray();
 
             return new DashboardPageView(
                 'TenantManagement/Dashboard/ClinicOwnerDashboardOverview',
@@ -131,6 +137,12 @@ final readonly class AuthenticatedDashboardPage
                 'payment-providers',
                 'Payment Providers',
                 route('dashboard.payment-providers'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'notifications',
+                'Notifications',
+                route('dashboard.notifications'),
                 false,
             ))->toArray();
             $props['navigation'][] = (new DashboardNavigationItem(
