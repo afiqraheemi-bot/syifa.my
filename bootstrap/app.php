@@ -13,6 +13,7 @@ use App\Modules\TenantManagement\Presentation\Http\Middleware\AttachRequestIdent
 use App\Modules\TenantManagement\Presentation\Http\Responses\ProblemDetailsResponse;
 use App\Support\Authorization\Http\Middleware\AuthorizeRequest;
 use App\Support\Identity\Http\Middleware\EnsureGuestForGuard;
+use App\Support\Provisioning\Infrastructure\Jobs\PublishSubscriptionProvisioningOutboxJob;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -107,6 +108,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // outbox row that never reached the queue (or whose lease expired
         // after a worker crash) is still discovered and delivered here.
         $schedule->job(new PublishPaymentOutboxJob, 'payment-outbox', 'redis')
+            ->onOneServer()
+            ->everyMinute();
+        $schedule->job(new PublishSubscriptionProvisioningOutboxJob, 'provisioning-outbox', 'redis')
             ->onOneServer()
             ->everyMinute();
     })

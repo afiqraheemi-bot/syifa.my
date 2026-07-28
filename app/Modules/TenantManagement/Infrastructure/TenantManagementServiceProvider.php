@@ -6,12 +6,14 @@ namespace App\Modules\TenantManagement\Infrastructure;
 
 use App\Modules\TenantManagement\Application\Authentication\AuthenticateClinicOwnerService;
 use App\Modules\TenantManagement\Application\Authentication\VerifyClinicOwnerCredentialService;
+use App\Modules\TenantManagement\Application\Provisioning\ProvisionTenantService;
 use App\Modules\TenantManagement\Application\Session\CreateClinicOwnerSessionService;
 use App\Modules\TenantManagement\Application\Session\GetCurrentClinicOwnerSessionService;
 use App\Modules\TenantManagement\Contracts\Authentication\AuthenticationSignalDispatcherInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticationInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerCredentialVerificationInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\TrustedTenantSelectorInterface;
+use App\Modules\TenantManagement\Contracts\Provisioning\ProvisionTenantInterface;
 use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionStoreInterface;
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolverInterface;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewReadInterface;
@@ -63,6 +65,7 @@ final class TenantManagementServiceProvider extends ServiceProvider
             ClinicOwnerCredentialVerificationInterface::class,
             VerifyClinicOwnerCredentialService::class,
         );
+        $this->app->bind(ProvisionTenantInterface::class, ProvisionTenantService::class);
 
         $this->app->bind(ClinicOwnerAuthenticationInterface::class, AuthenticateClinicOwnerService::class);
         $this->app->bind(AuthenticationSignalDispatcherInterface::class, LaravelAuthenticationSignalDispatcher::class);

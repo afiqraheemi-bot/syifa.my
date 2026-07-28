@@ -12,6 +12,7 @@ use App\Modules\TenantManagement\Infrastructure\TenantManagementServiceProvider;
 use App\Modules\WebsiteBuilder\Infrastructure\WebsiteBuilderServiceProvider;
 use App\Providers\AppServiceProvider;
 use App\Support\Identity\IdentityServiceProvider;
+use App\Support\Provisioning\ProvisioningServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -24,4 +25,5 @@ return [
     SubscriptionBillingServiceProvider::class,
     BookingServiceProvider::class,
     IdentityServiceProvider::class,
+    ProvisioningServiceProvider::class,
 ];
