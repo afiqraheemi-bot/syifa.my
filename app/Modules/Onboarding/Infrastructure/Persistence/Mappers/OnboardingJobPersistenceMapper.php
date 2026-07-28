@@ -4,18 +4,23 @@ declare(strict_types=1);
 
 namespace App\Modules\Onboarding\Infrastructure\Persistence\Mappers;
 
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\WebsiteApproval;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\WebsiteDesignerAssignment;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\ClinicOwnerAuthorityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobLifecycleTimestamps;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentEndReason;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteId;
 use App\Modules\Onboarding\Infrastructure\Persistence\Records\OnboardingJobStorageRecord;
+use App\Modules\Onboarding\Infrastructure\Persistence\Records\WebsiteApprovalStorageRecord;
 use App\Modules\Onboarding\Infrastructure\Persistence\Records\WebsiteDesignerAssignmentStorageRecord;
 
 final class OnboardingJobPersistenceMapper
@@ -24,6 +29,7 @@ final class OnboardingJobPersistenceMapper
     public function toDomain(
         OnboardingJobStorageRecord $jobRecord,
         array $assignmentRecords,
+        ?WebsiteApprovalStorageRecord $approvalRecord = null,
     ): OnboardingJob {
         $assignments = [];
 
@@ -62,6 +68,20 @@ final class OnboardingJobPersistenceMapper
             ),
             $assignments,
             $jobRecord->version,
+            $approvalRecord === null ? null : new WebsiteApproval(
+                new WebsiteApprovalId($approvalRecord->id),
+                new OnboardingJobId($approvalRecord->onboardingJobId),
+                new TenantId($approvalRecord->tenantId),
+                new WebsiteId($approvalRecord->websiteId),
+                WebsiteApprovalStatus::from($approvalRecord->status),
+                $approvalRecord->websiteVersion,
+                $approvalRecord->draftVersion,
+                new PlatformIdentityId($approvalRecord->requestedBy),
+                $approvalRecord->requestedAt,
+                $approvalRecord->decidedBy === null ? null : new ClinicOwnerAuthorityId($approvalRecord->decidedBy),
+                $approvalRecord->correctionNote,
+                $approvalRecord->decidedAt,
+            ),
         );
     }
 
@@ -108,5 +128,25 @@ final class OnboardingJobPersistenceMapper
         }
 
         return $records;
+    }
+
+    public function approvalRecord(OnboardingJob $job): ?WebsiteApprovalStorageRecord
+    {
+        $approval = $job->websiteApproval();
+
+        return $approval === null ? null : new WebsiteApprovalStorageRecord(
+            $approval->id->value,
+            $approval->onboardingJobId->value,
+            $approval->tenantId->value,
+            $approval->websiteId->value,
+            $approval->status->value,
+            $approval->websiteVersion,
+            $approval->draftVersion,
+            $approval->requestedBy->value,
+            $approval->requestedAt,
+            $approval->decidedBy?->value,
+            $approval->correctionNote,
+            $approval->decidedAt,
+        );
     }
 }

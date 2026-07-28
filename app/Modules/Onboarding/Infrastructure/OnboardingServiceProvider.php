@@ -9,9 +9,13 @@ use App\Modules\Onboarding\Contracts\Administration\SuperAdminOnboardingReadInte
 use App\Modules\Onboarding\Contracts\Administration\WebsiteDesignerEligibilityInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
 use App\Modules\Onboarding\Contracts\Provisioning\ProvisionOnboardingJobInterface;
+use App\Modules\Onboarding\Contracts\WebsiteApproval\ClinicOwnerWebsiteApprovalReadInterface;
+use App\Modules\Onboarding\Contracts\WebsiteApproval\OnboardingWorkflowTransactionInterface;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Repositories\OnboardingJobRepositoryInterface;
 use App\Modules\Onboarding\Infrastructure\Persistence\Mappers\OnboardingJobPersistenceMapper;
+use App\Modules\Onboarding\Infrastructure\Persistence\OnboardingDatabaseWorkflowTransaction;
 use App\Modules\Onboarding\Infrastructure\Persistence\Repositories\PostgresOnboardingJobRepository;
+use App\Modules\Onboarding\Infrastructure\Queries\PostgresClinicOwnerWebsiteApprovalReadAdapter;
 use App\Modules\Onboarding\Infrastructure\Queries\PostgresSuperAdminOnboardingAdapter;
 use App\Modules\Onboarding\Infrastructure\Queries\PostgresWebsiteDesignerDashboardReadAdapter;
 use Illuminate\Foundation\Application;
@@ -32,6 +36,18 @@ final class OnboardingServiceProvider extends ServiceProvider
                     new OnboardingJobPersistenceMapper,
                 );
             },
+        );
+        $this->app->singleton(
+            OnboardingWorkflowTransactionInterface::class,
+            static fn (Application $application): OnboardingDatabaseWorkflowTransaction => new OnboardingDatabaseWorkflowTransaction(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->singleton(
+            ClinicOwnerWebsiteApprovalReadInterface::class,
+            static fn (Application $application): PostgresClinicOwnerWebsiteApprovalReadAdapter => new PostgresClinicOwnerWebsiteApprovalReadAdapter(
+                $application->make('db')->connection(),
+            ),
         );
         $this->app->singleton(
             WebsiteDesignerDashboardReadInterface::class,

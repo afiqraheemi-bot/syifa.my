@@ -29,6 +29,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\AuthenticatedDashboardCo
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerSubscriptionController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteApprovalController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteContentOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminBillingOverviewController;
@@ -241,6 +242,9 @@ Route::prefix('/dashboard/billing/subscriptions/{subscriptionId}')
 Route::get('/dashboard/website', ClinicOwnerWebsiteOverviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website');
+Route::post('/dashboard/website/approval', ClinicOwnerWebsiteApprovalController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website.approval');
 Route::get('/dashboard/website/content', ClinicOwnerWebsiteContentOverviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.content');

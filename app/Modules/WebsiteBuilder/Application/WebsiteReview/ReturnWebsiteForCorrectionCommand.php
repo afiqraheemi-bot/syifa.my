@@ -6,13 +6,12 @@ namespace App\Modules\WebsiteBuilder\Application\WebsiteReview;
 
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 
-final readonly class ReadyForReviewCommand
+final readonly class ReturnWebsiteForCorrectionCommand
 {
     public function __construct(
         public WebsiteAuthorizationContext $authorization,
         public string $tenantId,
         public string $websiteId,
         public int $expectedVersion,
-        public int $expectedDraftVersion,
     ) {}
 }

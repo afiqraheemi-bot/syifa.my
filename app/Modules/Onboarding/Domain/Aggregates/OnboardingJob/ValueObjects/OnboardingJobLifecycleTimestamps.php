@@ -44,6 +44,13 @@ final readonly class OnboardingJobLifecycleTimestamps
         };
     }
 
+    public function atOrAfterLatest(DateTimeImmutable $candidate): DateTimeImmutable
+    {
+        $latest = $this->latest();
+
+        return $candidate < $latest ? $latest->modify('+1 microsecond') : $candidate;
+    }
+
     private function copy(
         ?DateTimeImmutable $awaitingInputsAt = null,
         ?DateTimeImmutable $assignedAt = null,
@@ -73,8 +80,16 @@ final readonly class OnboardingJobLifecycleTimestamps
 
     private function assertChronological(DateTimeImmutable $occurredAt): void
     {
-        $latest = $this->createdAt;
+        if ($occurredAt < $this->latest()) {
+            throw new InvalidOnboardingJobLifecycleTransitionException(
+                'An Onboarding Job transition cannot occur before its previous transition.',
+            );
+        }
+    }
 
+    private function latest(): DateTimeImmutable
+    {
+        $latest = $this->createdAt;
         foreach ([
             $this->awaitingInputsAt,
             $this->assignedAt,
@@ -92,10 +107,6 @@ final readonly class OnboardingJobLifecycleTimestamps
             }
         }
 
-        if ($occurredAt < $latest) {
-            throw new InvalidOnboardingJobLifecycleTransitionException(
-                'An Onboarding Job transition cannot occur before its previous transition.',
-            );
-        }
+        return $latest;
     }
 }

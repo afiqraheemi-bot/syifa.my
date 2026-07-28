@@ -31,6 +31,16 @@ use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInter
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerJobDetailData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerQueueJobData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerRecentAssignmentData;
+use App\Modules\Onboarding\Contracts\WebsiteApproval\ClinicOwnerWebsiteApprovalReadInterface;
+use App\Modules\Onboarding\Contracts\WebsiteApproval\OnboardingWorkflowTransactionInterface;
+use App\Modules\Onboarding\Contracts\WebsiteApproval\WebsiteApprovalAuditInterface;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Repositories\OnboardingJobRepositoryInterface;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId as OnboardingTenantId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteId as OnboardingWebsiteId;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\PlatformAdministration\Contracts\Dashboard\PlatformDashboardActivityData;
@@ -84,6 +94,7 @@ use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingServiceOption;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressData;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\Publication\WebsitePublicationApprovalReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryData;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\PublishedWebsiteSectionSummaryData;
@@ -185,6 +196,35 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->app->instance(ClinicOwnerBookingReadInterface::class, new DashboardFixedBookingRead);
         $this->app->instance(PublicBookingFormReaderInterface::class, new DashboardFixedBookingFormRead);
         $this->app->instance(WebsiteDesignerDashboardReadInterface::class, new DashboardFixedDesignerRead);
+        $onboardingJob = OnboardingJob::create(
+            new OnboardingJobId('00000000-0000-4000-8000-000000000101'),
+            new OnboardingTenantId('00000000-0000-4000-8000-000000000002'),
+            new OnboardingWebsiteId('00000000-0000-4000-8000-000000000001'),
+            new DateTimeImmutable('2026-07-20T09:00:00+08:00'),
+        );
+        $onboardingJob->assignWebsiteDesigner(
+            new WebsiteDesignerAssignmentId('00000000-0000-4000-8000-000000000005'),
+            new PlatformIdentityId('00000000-0000-4000-8000-000000000010'),
+            new DateTimeImmutable('2026-07-24T09:30:00+08:00'),
+        );
+        $onboardingJob->synchronizePersistenceVersion(1);
+        $this->app->instance(
+            OnboardingJobRepositoryInterface::class,
+            new DashboardOnboardingJobRepository($onboardingJob),
+        );
+        $this->app->instance(
+            OnboardingWorkflowTransactionInterface::class,
+            new DashboardOnboardingWorkflowTransaction,
+        );
+        $this->app->instance(WebsiteApprovalAuditInterface::class, new DashboardWebsiteApprovalAudit);
+        $this->app->instance(
+            ClinicOwnerWebsiteApprovalReadInterface::class,
+            new DashboardClinicOwnerWebsiteApprovalRead,
+        );
+        $this->app->instance(
+            WebsitePublicationApprovalReadInterface::class,
+            new DashboardApprovedWebsitePublication,
+        );
         $this->app->instance(PlatformDashboardReadInterface::class, new DashboardFixedPlatformRead);
         $this->app->instance(TenantOverviewReadInterface::class, new DashboardFixedTenantOverviewRead);
         $this->app->instance(BillingOverviewReadInterface::class, new DashboardFixedBillingOverviewRead);
@@ -1038,6 +1078,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->patchJson('/dashboard/onboarding/'.$jobId, [
             'workspace' => 'ready_for_review',
             'version' => 1,
+            'draft_version' => 1,
+            'job_version' => 1,
         ])
             ->assertOk()
             ->assertJsonPath('data.lifecycle', 'ready_for_review')
@@ -1046,6 +1088,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->patchJson('/dashboard/onboarding/'.$jobId, [
             'workspace' => 'ready_for_review',
             'version' => 1,
+            'draft_version' => 1,
+            'job_version' => 1,
         ])->assertConflict();
 
         $this->get('/dashboard/onboarding/'.$jobId)
@@ -1071,6 +1115,58 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         )->assertForbidden();
     }
 
+    public function test_only_the_tenant_clinic_owner_can_approve_the_designer_submission(): void
+    {
+        $jobId = '00000000-0000-4000-8000-000000000101';
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $this->patchJson('/dashboard/onboarding/'.$jobId, [
+            'workspace' => 'ready_for_review',
+            'version' => 1,
+            'draft_version' => 1,
+            'job_version' => 1,
+        ])->assertOk();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000099',
+                identityId: '00000000-0000-4000-8000-000000000040',
+            ),
+        );
+        $this->postJson('/dashboard/website/approval', [
+            'job_id' => $jobId,
+            'expected_version' => 2,
+            'decision' => 'approve',
+        ])->assertConflict();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                identityId: '00000000-0000-4000-8000-000000000040',
+            ),
+        );
+        $this->postJson('/dashboard/website/approval', [
+            'job_id' => $jobId,
+            'expected_version' => 2,
+            'decision' => 'approve',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'ready_for_launch')
+            ->assertJsonPath('version', 3);
+    }
+
     public function test_assigned_designer_publishes_reviewed_website_once_and_refreshes_authoritative_detail(): void
     {
         $this->app->instance(
@@ -1089,6 +1185,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->patchJson('/dashboard/onboarding/'.$jobId, [
             'workspace' => 'ready_for_review',
             'version' => 1,
+            'draft_version' => 1,
+            'job_version' => 1,
         ])->assertOk();
 
         $this->postJson('/dashboard/onboarding/'.$jobId.'/publish', [
@@ -1255,6 +1353,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->patchJson('/dashboard/onboarding/'.$jobId, [
             'workspace' => 'ready_for_review',
             'version' => 1,
+            'draft_version' => 1,
+            'job_version' => 1,
         ])->assertOk();
         $this->app->instance(
             SubscriptionSummaryReadInterface::class,
@@ -1975,6 +2075,84 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
     }
 }
 
+final class DashboardOnboardingJobRepository implements OnboardingJobRepositoryInterface
+{
+    public function __construct(private OnboardingJob $job) {}
+
+    public function find(OnboardingTenantId $tenantId, OnboardingJobId $onboardingJobId): ?OnboardingJob
+    {
+        return $this->job->tenantId->value === $tenantId->value
+            && $this->job->id->value === $onboardingJobId->value
+                ? $this->job
+                : null;
+    }
+
+    public function findById(OnboardingJobId $onboardingJobId): ?OnboardingJob
+    {
+        return $this->job->id->value === $onboardingJobId->value ? $this->job : null;
+    }
+
+    public function save(OnboardingJob $onboardingJob): void
+    {
+        $onboardingJob->synchronizePersistenceVersion($onboardingJob->version() + 1);
+        $this->job = $onboardingJob;
+    }
+}
+
+final readonly class DashboardOnboardingWorkflowTransaction implements OnboardingWorkflowTransactionInterface
+{
+    public function run(callable $operation): mixed
+    {
+        return $operation();
+    }
+}
+
+final readonly class DashboardWebsiteApprovalAudit implements WebsiteApprovalAuditInterface
+{
+    public function recordWebsiteApprovalRequested(
+        string $actorId,
+        string $tenantId,
+        string $jobId,
+        string $approvalId,
+        int $websiteVersion,
+        int $draftVersion,
+        int $resultingJobVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {}
+
+    public function recordWebsiteApprovalDecision(
+        string $actorId,
+        string $tenantId,
+        string $jobId,
+        string $approvalId,
+        string $decision,
+        int $resultingJobVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {}
+}
+
+final readonly class DashboardApprovedWebsitePublication implements WebsitePublicationApprovalReadInterface
+{
+    public function isApproved(
+        string $tenantId,
+        string $websiteId,
+        int $websiteVersion,
+        int $draftVersion,
+    ): bool {
+        return true;
+    }
+}
+
+final readonly class DashboardClinicOwnerWebsiteApprovalRead implements ClinicOwnerWebsiteApprovalReadInterface
+{
+    public function forTenant(string $tenantId): ?array
+    {
+        return null;
+    }
+}
+
 final readonly class DashboardFixedClinicSummary implements ClinicSummaryReadInterface
 {
     public function summary(string $trustedTenantId): ?ClinicSummaryData
@@ -2140,6 +2318,7 @@ final readonly class DashboardFixedDesignerRead implements WebsiteDesignerDashbo
             '00000000-0000-4000-8000-000000000002',
             '00000000-0000-4000-8000-000000000001',
             'in_progress',
+            1,
             new DateTimeImmutable('2026-08-24T09:30:00+08:00'),
             new DateTimeImmutable('2026-08-25T10:00:00+08:00'),
             [

@@ -133,7 +133,8 @@ final readonly class WebsiteDesignerJobDetailPage
                     (string) $job->data['id'],
                 ),
                 'canSubmitForReview' => $editableWebsite['lifecycle'] === 'draft',
-                'canPublish' => $editableWebsite['lifecycle'] === 'ready_for_review',
+                'canPublish' => $editableWebsite['lifecycle'] === 'ready_for_review'
+                    && $jobData['status'] === 'ready_for_launch',
                 'address' => $address === null ? null : [
                     'host' => $address->host,
                     'url' => $address->url,

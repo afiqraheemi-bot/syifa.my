@@ -10,6 +10,7 @@ use App\Modules\WebsiteBuilder\Application\WebsiteAuthorization;
 use App\Modules\WebsiteBuilder\Application\WebsiteReview\WebsitePublicationReadinessEvaluator;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfigurationReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\Publication\WebsitePublicationApprovalReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteDraftRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
@@ -36,6 +37,7 @@ final readonly class PublishWebsiteService
         private WebsiteAuthorization $authorization,
         private WebsitePublicationReadinessEvaluator $readiness,
         private WebsitePublicationContentFactory $content,
+        private WebsitePublicationApprovalReadInterface $approval,
     ) {}
 
     public function handle(PublishWebsiteCommand $command): PublishedWebsiteResult
@@ -62,6 +64,16 @@ final readonly class PublishWebsiteService
                     || $draft->version !== $command->expectedDraftVersion) {
                     throw new StaleWebsiteWriteException(
                         'Website or Draft changed since publication was reviewed.',
+                    );
+                }
+                if (! $this->approval->isApproved(
+                    $tenantId->value,
+                    $websiteId->value,
+                    $website->version(),
+                    $draft->version,
+                )) {
+                    throw new InvalidWebsiteValueException(
+                        'Initial publication requires current Clinic Owner approval and Onboarding launch readiness.',
                     );
                 }
 

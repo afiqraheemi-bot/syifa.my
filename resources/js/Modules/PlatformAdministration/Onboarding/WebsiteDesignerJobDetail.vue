@@ -812,6 +812,8 @@ async function submitForReview() {
             body: JSON.stringify({
                 workspace: 'ready_for_review',
                 version: props.websiteSetup.configuration.version,
+                draft_version: props.websiteDraft.draft.version,
+                job_version: props.job.version,
             }),
         });
         const body = response.body;

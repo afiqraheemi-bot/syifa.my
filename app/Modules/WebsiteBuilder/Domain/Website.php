@@ -257,6 +257,11 @@ final class Website
         $this->transition(WebsiteLifecycle::Draft, WebsiteLifecycle::ReadyForReview, $at);
     }
 
+    public function returnToDraftForCorrection(DateTimeImmutable $at): void
+    {
+        $this->transition(WebsiteLifecycle::ReadyForReview, WebsiteLifecycle::Draft, $at);
+    }
+
     public function publish(WebsitePublicationEvidence $evidence, WebsitePublicationReadiness $readiness, WebsitePublicationContent $content, PublicationId $publicationId, string $publishedBy, DateTimeImmutable $at): void
     {
         if (! in_array($this->lifecycle, [WebsiteLifecycle::ReadyForReview, WebsiteLifecycle::Published], true)) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Dashboard\Application\Website;
 
+use App\Modules\Onboarding\Contracts\WebsiteApproval\ClinicOwnerWebsiteApprovalReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\DashboardNavigationItem;
 use App\Support\Dashboard\Application\DashboardPageView;
@@ -18,6 +19,7 @@ final readonly class ClinicOwnerWebsiteOverviewPage
         private ThemeInformationProvider $theme,
         private SeoStatusProvider $seo,
         private WebsiteQuickActionsProvider $quickActions,
+        private ClinicOwnerWebsiteApprovalReadInterface $approval,
     ) {}
 
     public function fromTrustedContext(mixed $context): DashboardPageView
@@ -25,6 +27,7 @@ final readonly class ClinicOwnerWebsiteOverviewPage
         if (! $context instanceof AuthorizationContext) {
             throw new LogicException('Authenticated Website dashboard context was not established.');
         }
+        $approval = $context->tenantId === null ? null : $this->approval->forTenant($context->tenantId);
 
         return new DashboardPageView('TenantManagement/Website/ClinicOwnerWebsiteOverview', [
             'navigation' => [
@@ -47,6 +50,8 @@ final readonly class ClinicOwnerWebsiteOverviewPage
             'themeInformation' => $this->theme->provide($context)->data,
             'seoStatus' => $this->seo->provide($context)->data,
             'quickActions' => $this->quickActions->provide($context)->data,
+            'websiteApproval' => $approval,
+            'websiteApprovalDecisionUrl' => route('dashboard.website.approval'),
         ]);
     }
 }

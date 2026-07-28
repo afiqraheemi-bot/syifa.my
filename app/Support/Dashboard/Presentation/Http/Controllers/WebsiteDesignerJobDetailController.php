@@ -8,20 +8,20 @@ use App\Modules\Booking\Application\Configuration\ManageBookingFormConfiguration
 use App\Modules\Booking\Application\Configuration\UpdateBookingFormConfigurationCommand;
 use App\Modules\Booking\Domain\Exceptions\InvalidBookingFormConfigurationValueException;
 use App\Modules\Booking\Domain\Exceptions\StaleBookingFormConfigurationWriteException;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidOnboardingJobLifecycleTransitionException;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\OptionalContactValue;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileCommand;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileService;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\UpdateWebsiteContentCommand;
-use App\Modules\WebsiteBuilder\Application\WebsiteReview\ReadyForReviewCommand;
-use App\Modules\WebsiteBuilder\Application\WebsiteReview\ReadyForReviewService;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidClinicContactProfileException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleClinicWriteException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Support\Authorization\Application\AuthorizationContext;
+use App\Support\Dashboard\Application\WebsiteDesigner\Job\SubmitWebsiteForReviewApplication;
 use App\Support\Dashboard\Application\WebsiteDesigner\Job\WebsiteDesignerJobDetailPage;
 use App\Support\Dashboard\Presentation\Http\Requests\UpdateClinicOwnerWebsiteContentRequest;
 use Illuminate\Http\JsonResponse;
@@ -40,7 +40,7 @@ final readonly class WebsiteDesignerJobDetailController
         ManageWebsiteContentService $websiteContent,
         ManageBookingFormConfigurationService $bookingConfiguration,
         UpdateClinicContactProfileService $clinicContact,
-        ReadyForReviewService $readyForReview,
+        SubmitWebsiteForReviewApplication $readyForReview,
         string $jobId,
     ): Response|RedirectResponse|JsonResponse {
         $context = $this->context($request);
@@ -293,17 +293,20 @@ final readonly class WebsiteDesignerJobDetailController
         Request $request,
         AuthorizationContext $context,
         array $props,
-        ReadyForReviewService $service,
+        SubmitWebsiteForReviewApplication $service,
     ): JsonResponse {
-        /** @var array{workspace: string, version: int} $data */
+        /** @var array{workspace: string, version: int, draft_version: int, job_version: int} $data */
         $data = $request->validate([
             'workspace' => ['required', 'in:ready_for_review'],
             'version' => ['required', 'integer', 'min:1'],
+            'draft_version' => ['required', 'integer', 'min:1'],
+            'job_version' => ['required', 'integer', 'min:1'],
         ]);
         $tenantId = (string) $props['job']['tenantId'];
+        $correlationId = (string) Str::uuid();
 
         try {
-            $website = $service->handle(new ReadyForReviewCommand(
+            $website = $service->execute(
                 new WebsiteAuthorizationContext(
                     $context->identityId,
                     $context->role,
@@ -311,8 +314,14 @@ final readonly class WebsiteDesignerJobDetailController
                 ),
                 $tenantId,
                 (string) $props['job']['websiteId'],
+                (string) $props['job']['id'],
+                (string) Str::uuid(),
                 $data['version'],
-            ));
+                $data['draft_version'],
+                $data['job_version'],
+                $correlationId,
+                new \DateTimeImmutable,
+            );
         } catch (StaleWebsiteWriteException $exception) {
             return response()->json([
                 'message' => 'The Website changed. Refresh before submitting it for review.',
@@ -321,6 +330,11 @@ final readonly class WebsiteDesignerJobDetailController
         } catch (InvalidWebsiteValueException $exception) {
             return response()->json([
                 'message' => 'The Website is not ready for review.',
+                'detail' => $exception->getMessage(),
+            ], 422);
+        } catch (InvalidOnboardingJobLifecycleTransitionException $exception) {
+            return response()->json([
+                'message' => 'The Onboarding Job could not enter Website review.',
                 'detail' => $exception->getMessage(),
             ], 422);
         }

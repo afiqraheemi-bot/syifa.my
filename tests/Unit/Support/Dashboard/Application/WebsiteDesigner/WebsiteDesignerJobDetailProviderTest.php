@@ -53,6 +53,7 @@ final readonly class FixedJobDetailRead implements WebsiteDesignerDashboardReadI
             'tenant-1',
             'website-1',
             'in_review',
+            1,
             new DateTimeImmutable('2026-08-20T09:00:00Z'),
             new DateTimeImmutable('2026-08-22T09:00:00Z'),
             [

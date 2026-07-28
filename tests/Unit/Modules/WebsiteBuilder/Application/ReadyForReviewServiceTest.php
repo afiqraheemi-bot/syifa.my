@@ -172,6 +172,7 @@ final class ReadyForReviewServiceTest extends TestCase
             self::TENANT,
             self::WEBSITE,
             $expectedVersion,
+            1,
         );
     }
 

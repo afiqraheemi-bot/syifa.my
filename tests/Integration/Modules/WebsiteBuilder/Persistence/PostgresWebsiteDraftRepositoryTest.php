@@ -22,6 +22,7 @@ use App\Modules\WebsiteBuilder\Application\WebsiteReview\WebsitePublicationReadi
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfiguration;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfigurationReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingServiceOption;
+use App\Modules\WebsiteBuilder\Contracts\Publication\WebsitePublicationApprovalReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ActiveServiceReferenceReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Domain\Clinic;
@@ -396,6 +397,7 @@ final class PostgresWebsiteDraftRepositoryTest extends TestCase
             $website->tenantId->value,
             $website->id->value,
             1,
+            1,
         ));
         self::assertSame('ready_for_review', $reviewed->toArray()['lifecycle']);
         $websiteAfterReview = $websites->findById($website->tenantId, $website->id);
@@ -427,6 +429,7 @@ final class PostgresWebsiteDraftRepositoryTest extends TestCase
             new WebsiteAuthorization,
             new WebsitePublicationReadinessEvaluator(new WebsiteDraftSectionCodec),
             new WebsitePublicationContentFactory,
+            new DraftApprovedWebsitePublication,
         );
         $published = $publisher->handle(new PublishWebsiteCommand(
             new WebsiteAuthorizationContext(
@@ -524,6 +527,18 @@ final readonly class DraftActiveSubscription implements SubscriptionSummaryReadI
     public function summary(string $trustedTenantId): SubscriptionSummaryData
     {
         return new SubscriptionSummaryData('active', '2099-12-31');
+    }
+}
+
+final readonly class DraftApprovedWebsitePublication implements WebsitePublicationApprovalReadInterface
+{
+    public function isApproved(
+        string $tenantId,
+        string $websiteId,
+        int $websiteVersion,
+        int $draftVersion,
+    ): bool {
+        return true;
     }
 }
 

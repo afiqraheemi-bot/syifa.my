@@ -12,6 +12,7 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId
 use App\Modules\Onboarding\Infrastructure\Persistence\Exceptions\InvalidOnboardingJobStorageStateException;
 use App\Modules\Onboarding\Infrastructure\Persistence\Mappers\OnboardingJobPersistenceMapper;
 use App\Modules\Onboarding\Infrastructure\Persistence\Records\OnboardingJobStorageRecord;
+use App\Modules\Onboarding\Infrastructure\Persistence\Records\WebsiteApprovalStorageRecord;
 use App\Modules\Onboarding\Infrastructure\Persistence\Records\WebsiteDesignerAssignmentStorageRecord;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -49,10 +50,16 @@ final class PostgresOnboardingJobRepository implements OnboardingJobRepositoryIn
         foreach ($assignmentRows as $assignmentRow) {
             $assignmentRecords[] = $this->assignmentRecordFromRow($assignmentRow);
         }
+        $approvalRow = $this->connection
+            ->table('onboarding_website_approvals')
+            ->where('tenant_id', $tenantId->value)
+            ->where('onboarding_job_id', $onboardingJobId->value)
+            ->first();
 
         return $this->mapper->toDomain(
             $this->jobRecordFromRow($jobRow),
             $assignmentRecords,
+            $approvalRow === null ? null : $this->approvalRecordFromRow($approvalRow),
         );
     }
 
@@ -99,6 +106,7 @@ final class PostgresOnboardingJobRepository implements OnboardingJobRepositoryIn
             $this->jobValues($record, 1, $now) + ['created_at' => $now],
         );
         $this->persistAssignmentChanges($job, $now);
+        $this->persistWebsiteApproval($job, $now);
 
         return 1;
     }
@@ -122,6 +130,7 @@ final class PostgresOnboardingJobRepository implements OnboardingJobRepositoryIn
         }
 
         $this->persistAssignmentChanges($job, $now);
+        $this->persistWebsiteApproval($job, $now);
 
         return $newVersion;
     }
@@ -212,6 +221,54 @@ final class PostgresOnboardingJobRepository implements OnboardingJobRepositoryIn
         ]);
     }
 
+    private function persistWebsiteApproval(OnboardingJob $job, string $now): void
+    {
+        $record = $this->mapper->approvalRecord($job);
+        if ($record === null) {
+            return;
+        }
+
+        $values = [
+            'id' => $record->id,
+            'onboarding_job_id' => $record->onboardingJobId,
+            'tenant_id' => $record->tenantId,
+            'website_id' => $record->websiteId,
+            'status' => $record->status,
+            'website_version' => $record->websiteVersion,
+            'draft_version' => $record->draftVersion,
+            'requested_by' => $record->requestedBy,
+            'requested_at' => $this->databaseTimestamp($record->requestedAt),
+            'decided_by' => $record->decidedBy,
+            'correction_note' => $record->correctionNote,
+            'decided_at' => $this->nullableDatabaseTimestamp($record->decidedAt),
+            'updated_at' => $now,
+        ];
+        $stored = $this->connection->table('onboarding_website_approvals')
+            ->where('tenant_id', $record->tenantId)
+            ->where('onboarding_job_id', $record->onboardingJobId)
+            ->lockForUpdate()
+            ->first();
+
+        if ($stored === null) {
+            $this->connection->table('onboarding_website_approvals')->insert(
+                $values + ['created_at' => $now],
+            );
+
+            return;
+        }
+        if ((string) $stored->id !== $record->id
+            || (string) $stored->website_id !== $record->websiteId) {
+            throw new InvalidOnboardingJobStorageStateException(
+                'Website Approval identity and ownership are immutable.',
+            );
+        }
+
+        $this->connection->table('onboarding_website_approvals')
+            ->where('tenant_id', $record->tenantId)
+            ->where('onboarding_job_id', $record->onboardingJobId)
+            ->update($values);
+    }
+
     private function persistExistingAssignmentTransition(
         WebsiteDesignerAssignmentStorageRecord $stored,
         WebsiteDesignerAssignmentStorageRecord $aggregate,
@@ -294,6 +351,24 @@ final class PostgresOnboardingJobRepository implements OnboardingJobRepositoryIn
             $this->dateTimeValue($row->assigned_at ?? null, 'assigned_at'),
             $this->nullableDateTimeValue($row->ended_at ?? null, 'ended_at'),
             $endReason,
+        );
+    }
+
+    private function approvalRecordFromRow(stdClass $row): WebsiteApprovalStorageRecord
+    {
+        return new WebsiteApprovalStorageRecord(
+            $this->stringValue($row, 'id'),
+            $this->stringValue($row, 'onboarding_job_id'),
+            $this->stringValue($row, 'tenant_id'),
+            $this->stringValue($row, 'website_id'),
+            $this->stringValue($row, 'status'),
+            $this->integerValue($row, 'website_version'),
+            $this->integerValue($row, 'draft_version'),
+            $this->stringValue($row, 'requested_by'),
+            $this->dateTimeValue($row->requested_at ?? null, 'requested_at'),
+            $row->decided_by === null ? null : (string) $row->decided_by,
+            $row->correction_note === null ? null : (string) $row->correction_note,
+            $this->nullableDateTimeValue($row->decided_at ?? null, 'decided_at'),
         );
     }
 

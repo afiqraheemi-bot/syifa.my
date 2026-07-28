@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Onboarding\Domain\Aggregates\OnboardingJob;
 
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\WebsiteApproval;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\WebsiteDesignerAssignment;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\OnboardingJobCancelled;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\OnboardingJobCompleted;
@@ -14,11 +15,14 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\WebsiteDesigne
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\WebsiteDesignerReassigned;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidOnboardingJobLifecycleTransitionException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidWebsiteDesignerAssignmentTransitionException;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\ClinicOwnerAuthorityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobLifecycleTimestamps;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentEndReason;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentStatus;
@@ -40,6 +44,7 @@ final class OnboardingJob
         private OnboardingJobStatus $status,
         private OnboardingJobLifecycleTimestamps $lifecycleTimestamps,
         private int $version,
+        private ?WebsiteApproval $websiteApproval = null,
     ) {}
 
     public static function create(
@@ -75,6 +80,7 @@ final class OnboardingJob
         OnboardingJobLifecycleTimestamps $lifecycleTimestamps,
         array $websiteDesignerAssignments,
         int $version,
+        ?WebsiteApproval $websiteApproval = null,
     ): self {
         if ($version < 1) {
             throw new InvalidOnboardingJobLifecycleTransitionException(
@@ -82,7 +88,16 @@ final class OnboardingJob
             );
         }
 
-        $job = new self($id, $tenantId, $websiteId, $status, $lifecycleTimestamps, $version);
+        $job = new self($id, $tenantId, $websiteId, $status, $lifecycleTimestamps, $version, $websiteApproval);
+
+        if ($websiteApproval !== null
+            && ($websiteApproval->onboardingJobId->value !== $id->value
+                || $websiteApproval->tenantId->value !== $tenantId->value
+                || $websiteApproval->websiteId->value !== $websiteId->value)) {
+            throw new InvalidOnboardingJobLifecycleTransitionException(
+                'Website Approval cannot cross Job, Tenant, or Website boundaries.',
+            );
+        }
 
         foreach ($websiteDesignerAssignments as $assignment) {
             if ($assignment->onboardingJobId->value !== $id->value
@@ -140,6 +155,11 @@ final class OnboardingJob
     public function lifecycleTimestamps(): OnboardingJobLifecycleTimestamps
     {
         return $this->lifecycleTimestamps;
+    }
+
+    public function atOrAfterLatestTransition(DateTimeImmutable $candidate): DateTimeImmutable
+    {
+        return $this->lifecycleTimestamps->atOrAfterLatest($candidate);
     }
 
     public function version(): int
@@ -291,6 +311,83 @@ final class OnboardingJob
     public function websiteDesignerAssignmentHistory(): array
     {
         return array_values($this->websiteDesignerAssignments);
+    }
+
+    public function websiteApproval(): ?WebsiteApproval
+    {
+        return $this->websiteApproval;
+    }
+
+    public function requestWebsiteApproval(
+        WebsiteApprovalId $approvalId,
+        PlatformIdentityId $designerId,
+        int $websiteVersion,
+        int $draftVersion,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        if ($this->findActiveAssignmentFor($designerId) === null) {
+            throw new InvalidWebsiteDesignerAssignmentTransitionException(
+                'Only the active Website Designer may request Website approval.',
+            );
+        }
+
+        if ($this->status === OnboardingJobStatus::Assigned) {
+            $this->start($occurredAt);
+        }
+
+        if ($this->websiteApproval === null) {
+            $this->websiteApproval = WebsiteApproval::request(
+                $approvalId,
+                $this->id,
+                $this->tenantId,
+                $this->websiteId,
+                $websiteVersion,
+                $draftVersion,
+                $designerId,
+                $occurredAt,
+            );
+        } else {
+            $this->websiteApproval = $this->websiteApproval->resubmit(
+                $websiteVersion,
+                $draftVersion,
+                $designerId,
+                $occurredAt,
+            );
+        }
+
+        $this->submitForReview($occurredAt);
+    }
+
+    public function requestWebsiteCorrection(
+        ClinicOwnerAuthorityId $clinicOwnerId,
+        string $reason,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $approval = $this->websiteApproval
+            ?? throw new InvalidOnboardingJobLifecycleTransitionException(
+                'Website approval has not been requested.',
+            );
+        $this->websiteApproval = $approval->requestCorrection($clinicOwnerId, $reason, $occurredAt);
+        $this->requireCorrection($occurredAt);
+    }
+
+    public function approveWebsite(
+        ClinicOwnerAuthorityId $clinicOwnerId,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $approval = $this->websiteApproval
+            ?? throw new InvalidOnboardingJobLifecycleTransitionException(
+                'Website approval has not been requested.',
+            );
+        $this->websiteApproval = $approval->approve($clinicOwnerId, $occurredAt);
+        $this->markReadyForLaunch($occurredAt);
+    }
+
+    public function hasApprovedWebsiteVersions(int $websiteVersion, int $draftVersion): bool
+    {
+        return $this->status === OnboardingJobStatus::ReadyForLaunch
+            && $this->websiteApproval?->status === WebsiteApprovalStatus::Approved
+            && $this->websiteApproval->matchesPublication($websiteVersion, $draftVersion);
     }
 
     public function start(DateTimeImmutable $occurredAt): void

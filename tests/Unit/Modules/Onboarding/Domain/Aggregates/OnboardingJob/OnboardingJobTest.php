@@ -13,10 +13,13 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\WebsiteDesigne
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidOnboardingJobLifecycleTransitionException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidWebsiteDesignerAssignmentTransitionException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\ClinicOwnerAuthorityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentEndReason;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteId;
@@ -190,6 +193,42 @@ final class OnboardingJobTest extends TestCase
 
         $this->expectException(InvalidOnboardingJobLifecycleTransitionException::class);
         $job->start($this->time('10:01:00'));
+    }
+
+    public function test_website_approval_is_owned_by_the_job_and_only_the_owner_decision_makes_it_launch_ready(): void
+    {
+        $job = $this->jobWithAssignment();
+        $job->requestWebsiteApproval(
+            new WebsiteApprovalId($this->uuid(30)),
+            $this->platformIdentityId(20),
+            2,
+            4,
+            $this->time('10:02:00'),
+        );
+
+        self::assertSame(OnboardingJobStatus::InReview, $job->status());
+        self::assertSame(WebsiteApprovalStatus::Requested, $job->websiteApproval()?->status);
+        self::assertFalse($job->hasApprovedWebsiteVersions(2, 4));
+
+        $job->requestWebsiteCorrection(
+            new ClinicOwnerAuthorityId($this->uuid(40)),
+            'Update the clinic contact details.',
+            $this->time('10:03:00'),
+        );
+        self::assertSame(OnboardingJobStatus::CorrectionRequired, $job->status());
+
+        $job->requestWebsiteApproval(
+            new WebsiteApprovalId($this->uuid(30)),
+            $this->platformIdentityId(20),
+            3,
+            5,
+            $this->time('10:04:00'),
+        );
+        $job->approveWebsite(new ClinicOwnerAuthorityId($this->uuid(40)), $this->time('10:05:00'));
+
+        self::assertSame(OnboardingJobStatus::ReadyForLaunch, $job->status());
+        self::assertTrue($job->hasApprovedWebsiteVersions(3, 5));
+        self::assertFalse($job->hasApprovedWebsiteVersions(2, 4));
     }
 
     private function jobWithAssignment(): OnboardingJob

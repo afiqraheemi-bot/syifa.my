@@ -210,6 +210,7 @@ final class AssignedJobRead implements WebsiteDesignerDashboardReadInterface
             WebsiteDesignerDraftContentHttpDeliveryTest::TENANT,
             WebsiteDesignerDraftContentHttpDeliveryTest::WEBSITE,
             'ASSIGNED',
+            1,
             $at,
             $at,
             [],

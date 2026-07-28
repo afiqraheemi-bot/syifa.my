@@ -6,10 +6,13 @@ namespace Tests\Integration\Modules\Onboarding\Persistence;
 
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\StaleOnboardingJobWriteException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\ClinicOwnerAuthorityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentEndReason;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteId;
@@ -32,6 +35,8 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
     private ?PostgresOnboardingJobRepository $repository = null;
 
     private ?Migration $migration = null;
+
+    private ?Migration $approvalMigration = null;
 
     protected function setUp(): void
     {
@@ -57,6 +62,7 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
         DB::purge('onboarding_postgres_integration');
         $this->connection = DB::connection('onboarding_postgres_integration');
         Schema::dropIfExists('website_designer_assignments');
+        Schema::dropIfExists('onboarding_website_approvals');
         Schema::dropIfExists('onboarding_jobs');
         $migration = require base_path(
             'database/migrations/onboarding/2026_07_13_000001_create_onboarding_job_aggregate_tables.php',
@@ -64,6 +70,12 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
         self::assertInstanceOf(Migration::class, $migration);
         $this->migration = $migration;
         $this->migration->up();
+        $approvalMigration = require base_path(
+            'database/migrations/onboarding/2026_09_03_000001_create_onboarding_website_approvals.php',
+        );
+        self::assertInstanceOf(Migration::class, $approvalMigration);
+        $this->approvalMigration = $approvalMigration;
+        $this->approvalMigration->up();
         $this->repository = new PostgresOnboardingJobRepository(
             $this->connection,
             new OnboardingJobPersistenceMapper,
@@ -73,6 +85,7 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
     protected function tearDown(): void
     {
         if ($this->migration !== null) {
+            $this->approvalMigration?->down();
             $this->migration->down();
         }
 
@@ -122,6 +135,38 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
             $reloaded->websiteDesignerAssignmentHistory()[0]->endReason,
         );
         self::assertSame($this->uuid(11), $reloaded->activeWebsiteDesignerAssignment()?->id->value);
+    }
+
+    public function test_website_approval_and_correction_cycle_survives_reload(): void
+    {
+        $job = $this->jobWithAssignment();
+        $this->repository()->save($job);
+        $job->requestWebsiteApproval(
+            new WebsiteApprovalId($this->uuid(30)),
+            $this->platformIdentityId(20),
+            2,
+            3,
+            $this->time('10:02:00'),
+        );
+        $this->repository()->save($job);
+        $job->requestWebsiteCorrection(
+            new ClinicOwnerAuthorityId($this->uuid(40)),
+            'Correct the clinic contact details.',
+            $this->time('10:03:00'),
+        );
+        $this->repository()->save($job);
+        $reloaded = $this->repository()->find($job->tenantId, $job->id);
+
+        self::assertNotNull($reloaded);
+        self::assertSame(OnboardingJobStatus::CorrectionRequired, $reloaded->status());
+        self::assertSame(
+            WebsiteApprovalStatus::CorrectionRequested,
+            $reloaded->websiteApproval()?->status,
+        );
+        self::assertSame(
+            'Correct the clinic contact details.',
+            $reloaded->websiteApproval()?->correctionNote,
+        );
     }
 
     public function test_revocation_survives_reload(): void

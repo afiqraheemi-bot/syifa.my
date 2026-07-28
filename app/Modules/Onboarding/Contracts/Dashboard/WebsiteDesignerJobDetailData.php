@@ -17,6 +17,7 @@ final readonly class WebsiteDesignerJobDetailData
         public string $tenantId,
         public string $websiteId,
         public string $status,
+        public int $version,
         public DateTimeImmutable $assignedAt,
         public DateTimeImmutable $updatedAt,
         public array $lifecycle,

@@ -168,6 +168,7 @@ final readonly class PostgresWebsiteDesignerDashboardReadAdapter implements Webs
             (string) $row->tenant_id,
             (string) $row->website_id,
             (string) $row->status,
+            (int) $row->version,
             new DateTimeImmutable((string) $row->assignment_assigned_at),
             new DateTimeImmutable((string) $row->updated_at),
             $lifecycle,

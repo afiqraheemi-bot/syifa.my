@@ -42,6 +42,7 @@ final readonly class WebsiteDesignerJobDetailProvider
             'tenantId' => $job->tenantId,
             'websiteId' => $job->websiteId,
             'status' => $job->status,
+            'version' => $job->version,
             'statusLabel' => $this->label($job->status),
             'progress' => [
                 'value' => self::PROGRESS[$job->status] ?? 0,
