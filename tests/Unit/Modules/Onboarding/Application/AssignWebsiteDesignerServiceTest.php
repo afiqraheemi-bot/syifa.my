@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Onboarding\Application;
 
 use App\Modules\Onboarding\Application\Administration\AssignWebsiteDesignerService;
+use App\Modules\Onboarding\Application\Administration\ReassignWebsiteDesignerService;
 use App\Modules\Onboarding\Contracts\Administration\AssignWebsiteDesignerCommand;
 use App\Modules\Onboarding\Contracts\Administration\OnboardingAuditInterface;
+use App\Modules\Onboarding\Contracts\Administration\ReassignWebsiteDesignerCommand;
 use App\Modules\Onboarding\Contracts\Administration\WebsiteDesignerEligibilityInterface;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidWebsiteDesignerAssignmentTransitionException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
@@ -75,6 +77,51 @@ final class AssignWebsiteDesignerServiceTest extends TestCase
         ));
     }
 
+    public function test_it_reassigns_an_active_job_without_leaving_two_active_assignments(): void
+    {
+        $job = OnboardingJob::create(
+            new OnboardingJobId($this->uuid(1)),
+            new TenantId($this->uuid(2)),
+            new WebsiteId($this->uuid(3)),
+            new DateTimeImmutable('2026-09-01T00:00:00Z'),
+        );
+        $job->synchronizePersistenceVersion(1);
+        $repository = new InMemoryAdminOnboardingJobRepository($job);
+        $audit = new InMemoryOnboardingAuditRecorder;
+        $assign = new AssignWebsiteDesignerService(
+            $repository,
+            new FixedWebsiteDesignerEligibility(true),
+            $audit,
+        );
+        $currentAssignmentId = $assign->execute(new AssignWebsiteDesignerCommand(
+            $job->id->value,
+            $this->uuid(4),
+            1,
+            $this->uuid(5),
+            $this->uuid(6),
+            new DateTimeImmutable('2026-09-01T00:01:00Z'),
+        ));
+
+        $replacementId = (new ReassignWebsiteDesignerService(
+            $repository,
+            new FixedWebsiteDesignerEligibility(true),
+            $audit,
+        ))->execute(new ReassignWebsiteDesignerCommand(
+            $job->id->value,
+            $currentAssignmentId,
+            $this->uuid(7),
+            1,
+            $this->uuid(5),
+            $this->uuid(8),
+            new DateTimeImmutable('2026-09-01T00:02:00Z'),
+        ));
+
+        self::assertSame($replacementId, $job->activeWebsiteDesignerAssignment()?->id->value);
+        self::assertSame($this->uuid(7), $job->activeWebsiteDesignerAssignment()?->platformIdentityId->value);
+        self::assertCount(2, $job->websiteDesignerAssignmentHistory());
+        self::assertSame(1, $audit->reassignmentCalls);
+    }
+
     private function uuid(int $suffix): string
     {
         return sprintf('00000000-0000-4000-8000-%012d', $suffix);
@@ -117,6 +164,8 @@ final readonly class FixedWebsiteDesignerEligibility implements WebsiteDesignerE
 
 final class InMemoryOnboardingAuditRecorder implements OnboardingAuditInterface
 {
+    public int $reassignmentCalls = 0;
+
     public function recordDesignerAssignment(
         string $auditEntryId,
         string $actorPlatformIdentityId,
@@ -128,4 +177,20 @@ final class InMemoryOnboardingAuditRecorder implements OnboardingAuditInterface
         string $correlationId,
         DateTimeImmutable $occurredAt,
     ): void {}
+
+    public function recordDesignerReassignment(
+        string $auditEntryId,
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $previousAssignmentId,
+        string $newAssignmentId,
+        string $designerId,
+        int $previousVersion,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $this->reassignmentCalls++;
+    }
 }

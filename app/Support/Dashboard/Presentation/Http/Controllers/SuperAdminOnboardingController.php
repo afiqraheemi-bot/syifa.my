@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Support\Dashboard\Presentation\Http\Controllers;
 
 use App\Modules\Onboarding\Application\Administration\AssignWebsiteDesignerService;
+use App\Modules\Onboarding\Application\Administration\ReassignWebsiteDesignerService;
 use App\Modules\Onboarding\Contracts\Administration\AssignWebsiteDesignerCommand;
+use App\Modules\Onboarding\Contracts\Administration\ReassignWebsiteDesignerCommand;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidWebsiteDesignerAssignmentTransitionException;
 use App\Modules\TenantManagement\Application\Administration\EstablishClinicOwnerService;
 use App\Modules\TenantManagement\Contracts\Administration\EstablishClinicOwnerCommand;
@@ -61,6 +63,39 @@ final readonly class SuperAdminOnboardingController
         }
 
         return response()->json(['assignmentId' => $assignmentId], 201);
+    }
+
+    public function reassign(
+        string $jobId,
+        Request $request,
+        ReassignWebsiteDesignerService $assignments,
+    ): JsonResponse {
+        $validated = $request->validate([
+            'current_assignment_id' => ['required', 'uuid'],
+            'platform_identity_id' => ['required', 'uuid'],
+            'expected_version' => ['required', 'integer', 'min:1'],
+        ]);
+        $context = $request->attributes->get(AuthorizationContext::class);
+        if (! $context instanceof AuthorizationContext) {
+            return response()->json(['message' => 'Super Admin authorization context is unavailable.'], 403);
+        }
+        $correlationId = $request->attributes->get('correlation_id');
+
+        try {
+            $assignmentId = $assignments->execute(new ReassignWebsiteDesignerCommand(
+                $jobId,
+                (string) $validated['current_assignment_id'],
+                (string) $validated['platform_identity_id'],
+                (int) $validated['expected_version'],
+                $context->identityId,
+                is_string($correlationId) && $correlationId !== '' ? $correlationId : (string) Str::uuid(),
+                new DateTimeImmutable,
+            ));
+        } catch (InvalidWebsiteDesignerAssignmentTransitionException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        }
+
+        return response()->json(['assignmentId' => $assignmentId], 200);
     }
 
     public function establishOwner(

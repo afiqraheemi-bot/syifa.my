@@ -19,4 +19,18 @@ interface OnboardingAuditInterface
         string $correlationId,
         DateTimeImmutable $occurredAt,
     ): void;
+
+    public function recordDesignerReassignment(
+        string $auditEntryId,
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $previousAssignmentId,
+        string $newAssignmentId,
+        string $designerId,
+        int $previousVersion,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void;
 }

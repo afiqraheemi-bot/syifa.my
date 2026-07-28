@@ -18,6 +18,7 @@ const props = defineProps({
     onboarding: { type: Object, required: true },
     filters: { type: Object, required: true },
     assignUrlTemplate: { type: String, required: true },
+    reassignUrlTemplate: { type: String, required: true },
     ownerUrlTemplate: { type: String, required: true },
 });
 
@@ -31,17 +32,27 @@ const success = ref('');
 async function assign(job) {
     const designerId = selections[job.id];
     if (!designerId || busyJob.value) return;
-    if (!window.confirm(`Assign the selected Website Designer to ${job.clinicName}?`)) return;
+    const reassigning = Boolean(job.assignmentId);
+    if (
+        !window.confirm(
+            `${reassigning ? 'Reassign' : 'Assign'} the selected Website Designer to ${job.clinicName}?`,
+        )
+    )
+        return;
 
     busyJob.value = job.id;
     error.value = '';
     success.value = '';
     const response = await browserHttpRequest(
-        props.assignUrlTemplate.replace('__JOB_ID__', job.id),
+        (reassigning ? props.reassignUrlTemplate : props.assignUrlTemplate).replace(
+            '__JOB_ID__',
+            job.id,
+        ),
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                ...(reassigning ? { current_assignment_id: job.assignmentId } : {}),
                 platform_identity_id: designerId,
                 expected_version: job.version,
             }),
@@ -57,7 +68,7 @@ async function assign(job) {
         return;
     }
 
-    success.value = 'Website Designer assigned successfully.';
+    success.value = `Website Designer ${reassigning ? 'reassigned' : 'assigned'} successfully.`;
     router.reload({ only: ['onboarding'] });
 }
 
@@ -170,7 +181,7 @@ async function establishOwner(job) {
                             }}
                         </p>
                     </div>
-                    <div v-if="!job.assignmentId" class="flex flex-col gap-2 sm:flex-row">
+                    <div class="flex flex-col gap-2 sm:flex-row">
                         <select
                             v-model="selections[job.id]"
                             :disabled="busyJob === job.id"
@@ -182,6 +193,7 @@ async function establishOwner(job) {
                                 v-for="designer in onboarding.designers"
                                 :key="designer.id"
                                 :value="designer.id"
+                                :disabled="designer.id === job.designerId"
                             >
                                 {{ designer.name }} — {{ designer.email }}
                             </option>
@@ -192,7 +204,15 @@ async function establishOwner(job) {
                             class="min-h-11 rounded-xl bg-emerald-700 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                             @click="assign(job)"
                         >
-                            {{ busyJob === job.id ? 'Assigning…' : 'Assign' }}
+                            {{
+                                busyJob === job.id
+                                    ? job.assignmentId
+                                        ? 'Reassigning…'
+                                        : 'Assigning…'
+                                    : job.assignmentId
+                                      ? 'Reassign'
+                                      : 'Assign'
+                            }}
                         </button>
                     </div>
                 </div>

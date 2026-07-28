@@ -49,4 +49,40 @@ final readonly class OnboardingPlatformAuditAdapter implements OnboardingAuditIn
             ],
         ));
     }
+
+    public function recordDesignerReassignment(
+        string $auditEntryId,
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $previousAssignmentId,
+        string $newAssignmentId,
+        string $designerId,
+        int $previousVersion,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $this->audit->record(new AuditEntryData(
+            $auditEntryId,
+            $occurredAt,
+            new AuditActorData(AuditActorType::PlatformIdentity->value, $actorPlatformIdentityId),
+            $tenantId,
+            'onboarding.website_designer.reassign',
+            new AuditTargetData('onboarding_job', $jobId),
+            new AuditOutcomeData(AuditOutcomeType::Succeeded->value, null),
+            $correlationId,
+            [
+                'resource_type' => 'website_designer_assignment',
+                'target_label' => sprintf(
+                    'previous_assignment=%s;new_assignment=%s;designer=%s;version=%d->%d',
+                    $previousAssignmentId,
+                    $newAssignmentId,
+                    $designerId,
+                    $previousVersion,
+                    $resultingVersion,
+                ),
+            ],
+        ));
+    }
 }
