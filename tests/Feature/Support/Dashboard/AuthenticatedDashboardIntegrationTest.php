@@ -42,6 +42,7 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteId as OnboardingWebsiteId;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryReadInterface;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\PlatformAdministration\Contracts\Dashboard\PlatformDashboardActivityData;
 use App\Modules\PlatformAdministration\Contracts\Dashboard\PlatformDashboardData;
@@ -188,6 +189,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             new DashboardWebsitePublicationTransaction,
         );
         $this->app->instance(AuditEntryRecorderInterface::class, new DashboardAuditRecorder);
+        $this->app->instance(AuditEntryReadInterface::class, new DashboardFixedAuditRead);
         $this->app->instance(
             BookingFormConfigurationRepositoryInterface::class,
             new DashboardFixedBookingConfigurationRepository,
@@ -305,7 +307,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         } else {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 7)
+                    ->has('navigation', 8)
                     ->where('navigation.1.key', 'registrations')
                     ->where('navigation.2.key', 'tenants'),
             );
@@ -366,13 +368,14 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.1.available', true)
                     ->where('quickActions.2.href', route('dashboard.commercial'))
                     ->where('quickActions.2.available', true)
-                    ->has('navigation', 7)
+                    ->has('navigation', 8)
                     ->where('navigation.1.href', route('dashboard.registrations'))
                     ->where('navigation.2.href', route('dashboard.tenants'))
                     ->where('navigation.3.href', route('dashboard.onboarding-management'))
                     ->where('navigation.4.href', route('dashboard.billing'))
                     ->where('navigation.5.href', route('dashboard.commercial'))
                     ->where('navigation.6.href', route('dashboard.payment-providers'))
+                    ->where('navigation.7.href', route('dashboard.audit'))
                     ->has('recentActivity', 1),
             );
     }
@@ -392,10 +395,53 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('contextLabel', 'Super Admin workspace')
                     ->where('providerEndpoints.index', route('payment-providers.index'))
                     ->where('providerEndpoints.health', route('payment-providers.health'))
-                    ->has('navigation', 7)
+                    ->has('navigation', 8)
                     ->where('navigation.6.key', 'payment-providers')
-                    ->where('navigation.6.current', true),
+                    ->where('navigation.6.current', true)
+                    ->where('navigation.7.key', 'audit'),
             );
+    }
+
+    public function test_super_admin_can_filter_audit_activity_but_other_roles_cannot(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+
+        $this->get('/dashboard/audit?action=website&outcome=succeeded&actor_type=system')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('PlatformAdministration/Audit/SuperAdminAuditViewer', false)
+                    ->where('contextLabel', 'Super Admin workspace')
+                    ->where('filters.action', 'website')
+                    ->where('filters.outcome', 'succeeded')
+                    ->where('filters.actorType', 'system')
+                    ->where('audit.entries.0.action', 'website.published')
+                    ->has('navigation', 8)
+                    ->where('navigation.7.key', 'audit')
+                    ->where('navigation.7.current', true),
+            );
+
+        $this->get('/dashboard/audit?tenant_id=not-a-uuid')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('filters.tenantId', null),
+            );
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+        );
+        $this->getJson('/dashboard/audit')->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->getJson('/dashboard/audit')->assertForbidden();
     }
 
     public function test_super_admin_can_open_onboarding_management_but_other_roles_cannot(): void
@@ -2939,6 +2985,33 @@ final class DashboardRecordedBookingOperations implements ClinicOwnerBookingOper
     public function reschedule(string $tenantId, string $bookingId, string $localDate, string $localStart, string $actorId, string $actorRole): void
     {
         $this->calls[] = ['reschedule', $tenantId, $bookingId, $localDate, $localStart, $actorId, $actorRole];
+    }
+}
+
+final readonly class DashboardFixedAuditRead implements AuditEntryReadInterface
+{
+    public function search(
+        ?string $action,
+        ?string $outcome,
+        ?string $actorType,
+        ?string $tenantId,
+        ?string $correlationId,
+    ): array {
+        return [
+            'entries' => [[
+                'id' => '00000000-0000-4000-8000-000000000801',
+                'occurredAt' => '2026-07-28T10:00:00+00:00',
+                'actorType' => 'system',
+                'actorIdentityId' => null,
+                'tenantId' => null,
+                'action' => 'website.published',
+                'targetType' => 'website',
+                'targetId' => '00000000-0000-4000-8000-000000000001',
+                'outcome' => 'succeeded',
+                'reasonCode' => null,
+                'correlationId' => '00000000-0000-4000-8000-000000000802',
+            ]],
+        ];
     }
 }
 

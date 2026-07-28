@@ -133,6 +133,12 @@ final readonly class AuthenticatedDashboardPage
                 route('dashboard.payment-providers'),
                 false,
             ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
+                'audit',
+                'Audit Activity',
+                route('dashboard.audit'),
+                false,
+            ))->toArray();
 
             return new DashboardPageView(
                 'PlatformAdministration/Dashboard/SuperAdminDashboardOverview',

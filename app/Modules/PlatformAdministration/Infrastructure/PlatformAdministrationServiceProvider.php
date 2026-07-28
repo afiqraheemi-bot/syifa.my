@@ -16,6 +16,7 @@ use App\Modules\PlatformAdministration\Application\PasswordReset\RequestPlatform
 use App\Modules\PlatformAdministration\Application\PasswordReset\ResetPlatformPasswordService;
 use App\Modules\PlatformAdministration\Application\PlatformIdentity\GetPlatformIdentityService;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditCorrelationIdResolverInterface;
+use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryReadInterface;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRepositoryInterface;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipalResolverInterface;
@@ -35,6 +36,7 @@ use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWo
 use App\Modules\PlatformAdministration\Domain\Authorization\PlatformAuthorizationService;
 use App\Modules\PlatformAdministration\Infrastructure\Authentication\PlatformIdentityUserProvider;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\AuditEntry\Mappers\AuditEntryPersistenceMapper;
+use App\Modules\PlatformAdministration\Infrastructure\Persistence\AuditEntry\PostgresAuditEntryReadAdapter;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\AuditEntry\PostgresAuditEntryRepository;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\Authorization\Mappers\PlatformAuthorizationPersistenceMapper;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\Authorization\PostgresCategoryGrantLookup;
@@ -70,6 +72,12 @@ final class PlatformAdministrationServiceProvider extends ServiceProvider
             ),
         );
         $this->app->singleton(AuditEntryPersistenceMapper::class);
+        $this->app->singleton(
+            AuditEntryReadInterface::class,
+            static fn (Application $application): PostgresAuditEntryReadAdapter => new PostgresAuditEntryReadAdapter(
+                $application->make('db')->connection(),
+            ),
+        );
 
         $this->app->singleton(
             PostgresAuditEntryRepository::class,
