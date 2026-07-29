@@ -29,6 +29,14 @@ final readonly class OnboardingWebsitePublicationApprovalAdapter implements Webs
             ->where('approval.website_version', $websiteVersion)
             ->where('approval.draft_version', $draftVersion)
             ->where('job.status', 'ready_for_launch')
+            ->whereNotExists(static function ($query): void {
+                $query->selectRaw('1')
+                    ->from('onboarding_tasks as task')
+                    ->whereColumn('task.onboarding_job_id', 'job.id')
+                    ->whereColumn('task.tenant_id', 'job.tenant_id')
+                    ->where('task.mandatory', true)
+                    ->whereNotIn('task.status', ['completed', 'waived']);
+            })
             ->exists();
     }
 }

@@ -456,6 +456,11 @@ final class OnboardingJob
                 }
             }
         }
+        if ($this->mandatoryTasksSatisfied()
+            && $this->websiteApproval?->status === WebsiteApprovalStatus::Approved
+            && $this->status === OnboardingJobStatus::InReview) {
+            $this->markReadyForLaunch($occurredAt);
+        }
     }
 
     public function waiveTask(
@@ -536,6 +541,16 @@ final class OnboardingJob
                 'Website approval has not been requested.',
             );
         $this->websiteApproval = $approval->requestCorrection($clinicOwnerId, $reason, $occurredAt);
+        $approvalTask = $this->findTaskByKey('website_approval');
+        if ($approvalTask !== null && $approvalTask->status === OnboardingTaskStatus::Completed) {
+            $this->tasks[$approvalTask->id->value] = $approvalTask->transition(
+                OnboardingTaskStatus::Reopened,
+                null,
+                $reason,
+                null,
+                $occurredAt,
+            );
+        }
         $this->requireCorrection($occurredAt);
     }
 
@@ -548,14 +563,29 @@ final class OnboardingJob
                 'Website approval has not been requested.',
             );
         $this->websiteApproval = $approval->approve($clinicOwnerId, $occurredAt);
-        $this->markReadyForLaunch($occurredAt);
+        $approvalTask = $this->findTaskByKey('website_approval');
+        if ($approvalTask !== null && ! $approvalTask->status->satisfiesDependency()) {
+            $this->progressTask(
+                $approvalTask->id,
+                OnboardingTaskResponsibility::ClinicOwner,
+                OnboardingTaskStatus::Completed,
+                'website_approval:'.$approval->id->value,
+                null,
+                $occurredAt,
+            );
+        }
+        if ($this->status === OnboardingJobStatus::InReview
+            && ($this->tasks === [] || $this->mandatoryTasksSatisfied())) {
+            $this->markReadyForLaunch($occurredAt);
+        }
     }
 
     public function hasApprovedWebsiteVersions(int $websiteVersion, int $draftVersion): bool
     {
         return $this->status === OnboardingJobStatus::ReadyForLaunch
             && $this->websiteApproval?->status === WebsiteApprovalStatus::Approved
-            && $this->websiteApproval->matchesPublication($websiteVersion, $draftVersion);
+            && $this->websiteApproval->matchesPublication($websiteVersion, $draftVersion)
+            && $this->mandatoryTasksSatisfied();
     }
 
     public function start(DateTimeImmutable $occurredAt): void
@@ -598,12 +628,22 @@ final class OnboardingJob
     {
         $this->assertStatusIs(OnboardingJobStatus::InReview, 'mark ready for launch');
         $this->assertHasActiveAssignment('mark ready for launch');
+        if (! $this->mandatoryTasksSatisfied()) {
+            throw new InvalidOnboardingTaskTransitionException(
+                'Launch Readiness cannot be achieved while mandatory Tasks remain unsatisfied.',
+            );
+        }
         $this->transitionTo(OnboardingJobStatus::ReadyForLaunch, $occurredAt);
     }
 
     public function complete(DateTimeImmutable $occurredAt): void
     {
         $this->assertStatusIs(OnboardingJobStatus::ReadyForLaunch, 'complete');
+        if (! $this->mandatoryTasksSatisfied()) {
+            throw new InvalidOnboardingTaskTransitionException(
+                'An Onboarding Job cannot complete while mandatory Tasks remain unsatisfied.',
+            );
+        }
         $this->endActiveAssignment(WebsiteDesignerAssignmentEndReason::OnboardingJobCompleted, $occurredAt);
         $this->transitionTo(OnboardingJobStatus::Completed, $occurredAt);
         $this->record(new OnboardingJobCompleted($this->id->value, $this->tenantId->value, $occurredAt));
@@ -718,6 +758,28 @@ final class OnboardingJob
                 $transition,
             ));
         }
+    }
+
+    private function findTaskByKey(string $key): ?OnboardingTask
+    {
+        foreach ($this->tasks as $task) {
+            if ($task->key === $key) {
+                return $task;
+            }
+        }
+
+        return null;
+    }
+
+    private function mandatoryTasksSatisfied(): bool
+    {
+        foreach ($this->tasks as $task) {
+            if ($task->mandatory && ! $task->status->satisfiesDependency()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function assertStatusIs(OnboardingJobStatus $expected, string $transition): void

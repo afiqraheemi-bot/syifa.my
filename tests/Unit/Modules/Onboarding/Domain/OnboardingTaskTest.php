@@ -11,7 +11,9 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\Onboardi
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskResponsibility;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskStatus;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteId;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
@@ -102,6 +104,30 @@ final class OnboardingTaskTest extends TestCase
             null,
             $now->modify('+1 hour'),
         );
+    }
+
+    public function test_launch_readiness_rejects_unsatisfied_mandatory_task(): void
+    {
+        $now = new DateTimeImmutable('2026-07-29T10:00:00+08:00');
+        $job = $this->job($now);
+        $job->assignWebsiteDesigner(
+            new WebsiteDesignerAssignmentId('00000000-0000-4000-8000-000000000021'),
+            new PlatformIdentityId('00000000-0000-4000-8000-000000000022'),
+            $now->modify('+1 minute'),
+        );
+        $job->addTask($this->task(
+            '00000000-0000-4000-8000-000000000023',
+            'website_setup',
+            OnboardingTaskResponsibility::WebsiteDesigner,
+            OnboardingTaskStatus::Ready,
+            null,
+            $now,
+        ));
+        $job->start($now->modify('+2 minutes'));
+        $job->submitForReview($now->modify('+3 minutes'));
+
+        $this->expectException(InvalidOnboardingTaskTransitionException::class);
+        $job->markReadyForLaunch($now->modify('+4 minutes'));
     }
 
     private function job(DateTimeImmutable $now): OnboardingJob
