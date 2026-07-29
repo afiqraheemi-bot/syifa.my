@@ -42,7 +42,7 @@ final readonly class DeliverNotificationService
             $notification->recordAccepted($now);
             $this->notifications->save($notification);
         } catch (Throwable $exception) {
-            $notification->recordFailure($now, count($notification->attempts) < 3, 'transport_failure');
+            $notification->recordFailure($now, count($notification->attempts) + 1 < 3, 'transport_failure');
             $this->notifications->save($notification);
 
             throw new RuntimeException('Notification delivery failed safely.', 0, $exception);
