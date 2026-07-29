@@ -33,6 +33,8 @@ use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInter
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerJobDetailData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerQueueJobData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerRecentAssignmentData;
+use App\Modules\Onboarding\Contracts\LaunchReadiness\LaunchReadinessData;
+use App\Modules\Onboarding\Contracts\LaunchReadiness\LaunchReadinessReadInterface;
 use App\Modules\Onboarding\Contracts\Tasks\OnboardingTaskReadInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\ClinicOwnerWebsiteApprovalReadInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\OnboardingWorkflowTransactionInterface;
@@ -229,16 +231,17 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             'website_setup',
             'Prepare Website',
             OnboardingTaskResponsibility::WebsiteDesigner,
-            OnboardingTaskStatus::Ready,
+            OnboardingTaskStatus::Completed,
             true,
             true,
             null,
             new DateTimeImmutable('2026-08-07T09:30:00+08:00'),
-            null,
+            'website_configuration_reviewed',
             null,
             null,
             new DateTimeImmutable('2026-07-24T09:30:00+08:00'),
-            new DateTimeImmutable('2026-07-24T09:30:00+08:00'),
+            new DateTimeImmutable('2026-07-24T10:00:00+08:00'),
+            new DateTimeImmutable('2026-07-24T10:00:00+08:00'),
         ));
         $onboardingJob->synchronizePersistenceVersion(1);
         $this->app->instance(
@@ -258,6 +261,10 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->app->instance(
             OnboardingTaskReadInterface::class,
             new DashboardOnboardingTaskRead,
+        );
+        $this->app->instance(
+            LaunchReadinessReadInterface::class,
+            new DashboardLaunchReadinessRead,
         );
         $this->app->instance(
             WebsitePublicationApprovalReadInterface::class,
@@ -2507,6 +2514,24 @@ final readonly class DashboardOnboardingTaskRead implements OnboardingTaskReadIn
     public function forTenant(string $tenantId): ?array
     {
         return null;
+    }
+}
+
+final readonly class DashboardLaunchReadinessRead implements LaunchReadinessReadInterface
+{
+    public function forJob(string $onboardingJobId): ?LaunchReadinessData
+    {
+        return null;
+    }
+
+    public function forTenant(string $tenantId): ?LaunchReadinessData
+    {
+        return null;
+    }
+
+    public function forJobs(array $onboardingJobIds): array
+    {
+        return [];
     }
 }
 

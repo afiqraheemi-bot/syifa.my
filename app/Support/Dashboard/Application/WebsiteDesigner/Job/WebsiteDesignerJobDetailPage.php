@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Dashboard\Application\WebsiteDesigner\Job;
 
 use App\Modules\Booking\Application\Configuration\ManageBookingFormConfigurationService;
+use App\Modules\Onboarding\Contracts\LaunchReadiness\LaunchReadinessReadInterface;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileService;
 use App\Modules\WebsiteBuilder\Application\WebsiteAddress\WebsiteSubdomainPolicy;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
@@ -28,6 +29,7 @@ final readonly class WebsiteDesignerJobDetailPage
         private ManageWebsiteDraftContentService $websiteDraft,
         private WebsitePublicAddressReadInterface $addresses,
         private WebsiteSubdomainPolicy $subdomains,
+        private LaunchReadinessReadInterface $launchReadiness,
     ) {}
 
     public function fromTrustedContext(mixed $context, string $jobId): ?DashboardPageView
@@ -91,6 +93,7 @@ final readonly class WebsiteDesignerJobDetailPage
             $tenantId,
             (string) $job->data['websiteId'],
         );
+        $readiness = $this->launchReadiness->forJob($jobId);
 
         return new DashboardPageView('PlatformAdministration/Onboarding/WebsiteDesignerJobDetail', [
             'navigation' => [
@@ -111,6 +114,7 @@ final readonly class WebsiteDesignerJobDetailPage
                 'jobId' => $jobId,
                 'taskId' => '__TASK_ID__',
             ]),
+            'launchReadiness' => $readiness?->toArray(),
             'websiteSetup' => [
                 'configuration' => $editableWebsite,
                 'templateOptions' => array_map(static fn (TemplateId $template): array => [

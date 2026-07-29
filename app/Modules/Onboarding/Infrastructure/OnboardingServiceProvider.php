@@ -8,6 +8,7 @@ use App\Modules\Onboarding\Application\Provisioning\ProvisionOnboardingJobServic
 use App\Modules\Onboarding\Contracts\Administration\SuperAdminOnboardingReadInterface;
 use App\Modules\Onboarding\Contracts\Administration\WebsiteDesignerEligibilityInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
+use App\Modules\Onboarding\Contracts\LaunchReadiness\LaunchReadinessReadInterface;
 use App\Modules\Onboarding\Contracts\Provisioning\ProvisionOnboardingJobInterface;
 use App\Modules\Onboarding\Contracts\Tasks\OnboardingTaskReadInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\ClinicOwnerWebsiteApprovalReadInterface;
@@ -17,6 +18,7 @@ use App\Modules\Onboarding\Infrastructure\Persistence\Mappers\OnboardingJobPersi
 use App\Modules\Onboarding\Infrastructure\Persistence\OnboardingDatabaseWorkflowTransaction;
 use App\Modules\Onboarding\Infrastructure\Persistence\Repositories\PostgresOnboardingJobRepository;
 use App\Modules\Onboarding\Infrastructure\Queries\PostgresClinicOwnerWebsiteApprovalReadAdapter;
+use App\Modules\Onboarding\Infrastructure\Queries\PostgresLaunchReadinessReadAdapter;
 use App\Modules\Onboarding\Infrastructure\Queries\PostgresOnboardingTaskReadAdapter;
 use App\Modules\Onboarding\Infrastructure\Queries\PostgresSuperAdminOnboardingAdapter;
 use App\Modules\Onboarding\Infrastructure\Queries\PostgresWebsiteDesignerDashboardReadAdapter;
@@ -60,6 +62,12 @@ final class OnboardingServiceProvider extends ServiceProvider
         $this->app->singleton(
             OnboardingTaskReadInterface::class,
             static fn (Application $application): PostgresOnboardingTaskReadAdapter => new PostgresOnboardingTaskReadAdapter(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->singleton(
+            LaunchReadinessReadInterface::class,
+            static fn (Application $application): PostgresLaunchReadinessReadAdapter => new PostgresLaunchReadinessReadAdapter(
                 $application->make('db')->connection(),
             ),
         );

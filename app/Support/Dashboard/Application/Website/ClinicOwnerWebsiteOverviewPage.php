@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Dashboard\Application\Website;
 
+use App\Modules\Onboarding\Contracts\LaunchReadiness\LaunchReadinessReadInterface;
 use App\Modules\Onboarding\Contracts\Tasks\OnboardingTaskReadInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\ClinicOwnerWebsiteApprovalReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
@@ -22,6 +23,7 @@ final readonly class ClinicOwnerWebsiteOverviewPage
         private WebsiteQuickActionsProvider $quickActions,
         private ClinicOwnerWebsiteApprovalReadInterface $approval,
         private OnboardingTaskReadInterface $onboardingTasks,
+        private LaunchReadinessReadInterface $launchReadiness,
     ) {}
 
     public function fromTrustedContext(mixed $context): DashboardPageView
@@ -31,6 +33,7 @@ final readonly class ClinicOwnerWebsiteOverviewPage
         }
         $approval = $context->tenantId === null ? null : $this->approval->forTenant($context->tenantId);
         $tasks = $context->tenantId === null ? null : $this->onboardingTasks->forTenant($context->tenantId);
+        $readiness = $context->tenantId === null ? null : $this->launchReadiness->forTenant($context->tenantId);
 
         return new DashboardPageView('TenantManagement/Website/ClinicOwnerWebsiteOverview', [
             'navigation' => [
@@ -58,6 +61,7 @@ final readonly class ClinicOwnerWebsiteOverviewPage
             'websiteApproval' => $approval,
             'websiteApprovalDecisionUrl' => route('dashboard.website.approval'),
             'onboardingTasks' => $tasks,
+            'launchReadiness' => $readiness?->toArray(),
             'onboardingTaskUrlTemplate' => $tasks === null ? null : route('dashboard.website.onboarding-tasks.update', [
                 'jobId' => $tasks['jobId'],
                 'taskId' => '__TASK_ID__',

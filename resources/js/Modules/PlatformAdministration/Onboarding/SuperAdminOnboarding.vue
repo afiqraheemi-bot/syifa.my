@@ -262,6 +262,16 @@ async function waiveTask(job, task) {
                                 job.designerName ? `Assigned to ${job.designerName}` : 'Unassigned'
                             }}
                         </p>
+                        <p
+                            v-if="job.launchReadiness"
+                            class="mt-2 text-sm font-semibold"
+                            :class="
+                                job.launchReadiness.ready ? 'text-emerald-700' : 'text-amber-700'
+                            "
+                        >
+                            Launch readiness:
+                            {{ job.launchReadiness.ready ? 'Ready' : 'Blocked' }}
+                        </p>
                     </div>
                     <div class="flex flex-col gap-2 sm:flex-row">
                         <select

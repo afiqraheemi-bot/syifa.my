@@ -29,6 +29,7 @@ const props = defineProps({
     websiteApprovalDecisionUrl: { type: String, required: true },
     onboardingTasks: { type: Object, default: null },
     onboardingTaskUrlTemplate: { type: String, default: null },
+    launchReadiness: { type: Object, default: null },
 });
 
 const navigation = createDashboardNavigation(props.navigation);
@@ -239,6 +240,43 @@ async function decideWebsiteApproval(selectedDecision) {
                     </button>
                 </article>
             </div>
+        </section>
+
+        <section
+            v-if="launchReadiness"
+            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            aria-labelledby="owner-launch-readiness"
+        >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 id="owner-launch-readiness" class="text-xl font-bold text-slate-950">
+                        Launch readiness
+                    </h2>
+                    <p class="mt-1 text-sm text-slate-600">
+                        Live assessment of the requirements for your clinic Website launch.
+                    </p>
+                </div>
+                <span
+                    class="rounded-full px-3 py-1 text-sm font-bold"
+                    :class="
+                        launchReadiness.ready
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-900'
+                    "
+                >
+                    {{ launchReadiness.ready ? 'Ready' : 'Blocked' }}
+                </span>
+            </div>
+            <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+                <li
+                    v-for="condition in launchReadiness.conditions"
+                    :key="condition.key"
+                    class="rounded-lg bg-slate-50 p-3 text-sm text-slate-800"
+                >
+                    <strong>{{ condition.satisfied ? 'Complete' : 'Required' }}:</strong>
+                    {{ condition.label }}
+                </li>
+            </ul>
         </section>
 
         <WebsiteQuickActions :actions="quickActions" />

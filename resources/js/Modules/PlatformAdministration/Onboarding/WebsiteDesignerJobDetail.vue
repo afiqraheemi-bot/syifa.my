@@ -22,6 +22,7 @@ const props = defineProps({
     clinicContact: { type: Object, required: true },
     websiteDraft: { type: Object, required: true },
     taskUpdateUrlTemplate: { type: String, required: true },
+    launchReadiness: { type: Object, default: null },
 });
 
 const navigation = createDashboardNavigation(props.navigation);
@@ -1099,6 +1100,50 @@ async function progressTask(task, operation) {
                     />
                 </div>
             </div>
+        </section>
+
+        <section
+            v-if="launchReadiness"
+            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+            aria-labelledby="launch-readiness-title"
+        >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 id="launch-readiness-title" class="text-xl font-bold text-slate-950">
+                        Launch readiness
+                    </h2>
+                    <p class="mt-1 text-sm text-slate-600">
+                        Computed live from each module’s authoritative evidence.
+                    </p>
+                </div>
+                <span
+                    class="rounded-full px-3 py-1 text-sm font-bold"
+                    :class="
+                        launchReadiness.ready
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-900'
+                    "
+                >
+                    {{ launchReadiness.ready ? 'Ready' : 'Blocked' }}
+                </span>
+            </div>
+            <ul class="mt-5 grid gap-3 sm:grid-cols-2">
+                <li
+                    v-for="condition in launchReadiness.conditions"
+                    :key="condition.key"
+                    class="rounded-xl border p-4"
+                    :class="
+                        condition.satisfied
+                            ? 'border-emerald-200 bg-emerald-50'
+                            : 'border-amber-200 bg-amber-50'
+                    "
+                >
+                    <p class="font-bold text-slate-950">
+                        {{ condition.satisfied ? '✓' : '!' }} {{ condition.label }}
+                    </p>
+                    <p class="mt-1 text-sm text-slate-700">{{ condition.detail }}</p>
+                </li>
+            </ul>
         </section>
 
         <section

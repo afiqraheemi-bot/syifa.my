@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Dashboard\Application\SuperAdmin\Onboarding;
 
 use App\Modules\Onboarding\Contracts\Administration\SuperAdminOnboardingReadInterface;
+use App\Modules\Onboarding\Contracts\LaunchReadiness\LaunchReadinessReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\DashboardNavigationItem;
 use App\Support\Dashboard\Application\DashboardPageView;
@@ -12,7 +13,10 @@ use LogicException;
 
 final readonly class SuperAdminOnboardingPage
 {
-    public function __construct(private SuperAdminOnboardingReadInterface $onboarding) {}
+    public function __construct(
+        private SuperAdminOnboardingReadInterface $onboarding,
+        private LaunchReadinessReadInterface $launchReadiness,
+    ) {}
 
     /** @param array<string, mixed> $query */
     public function fromTrustedContext(mixed $context, array $query): DashboardPageView
@@ -22,6 +26,18 @@ final readonly class SuperAdminOnboardingPage
         }
         $status = is_string($query['status'] ?? null) && $query['status'] !== '' ? $query['status'] : null;
         $search = is_string($query['search'] ?? null) && trim($query['search']) !== '' ? trim($query['search']) : null;
+
+        $overview = $this->onboarding->overview($status, $search);
+        $readiness = $this->launchReadiness->forJobs(array_map(
+            static fn (array $job): string => (string) $job['id'],
+            $overview['jobs'],
+        ));
+        $overview['jobs'] = array_map(static function (array $job) use ($readiness): array {
+            $assessment = $readiness[(string) $job['id']] ?? null;
+            $job['launchReadiness'] = $assessment?->toArray();
+
+            return $job;
+        }, $overview['jobs']);
 
         return new DashboardPageView('PlatformAdministration/Onboarding/SuperAdminOnboarding', [
             'navigation' => [
@@ -42,7 +58,7 @@ final readonly class SuperAdminOnboardingPage
             'pageDescription' => 'Assign eligible Website Designers and monitor every provisioned clinic.',
             'identityName' => $context->name,
             'contextLabel' => 'Super Admin workspace',
-            'onboarding' => $this->onboarding->overview($status, $search),
+            'onboarding' => $overview,
             'filters' => ['status' => $status, 'search' => $search],
             'assignUrlTemplate' => route('dashboard.onboarding-management.assign', ['jobId' => '__JOB_ID__']),
             'reassignUrlTemplate' => route('dashboard.onboarding-management.reassign', ['jobId' => '__JOB_ID__']),

@@ -34,6 +34,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerSubscriptionC
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteApprovalController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteContentOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\LaunchReadinessController;
 use App\Support\Dashboard\Presentation\Http\Controllers\NotificationHistoryController;
 use App\Support\Dashboard\Presentation\Http\Controllers\OnboardingTaskController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ReportsController;
@@ -83,6 +84,10 @@ Route::get('/terms', [PublicLegalDocumentController::class, 'terms'])->name('pub
 Route::get('/dashboard', AuthenticatedDashboardController::class)
     ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
     ->name('dashboard');
+Route::get('/api/v1/onboarding-jobs/{jobId}/launch-readiness', LaunchReadinessController::class)
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
+    ->name('onboarding.launch-readiness.show');
 Route::get('/dashboard/onboarding', WebsiteDesignerOnboardingQueueController::class)
     ->middleware('authorize.context:platform_identity,website_designer')
     ->name('dashboard.onboarding');
