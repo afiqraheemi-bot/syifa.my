@@ -24,6 +24,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationEvidence;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationReadiness;
 use App\Modules\WebsiteBuilder\Domain\Website;
 use DateTimeImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\WebsitePublicationContentFactory;
 use Tests\TestCase;
 
@@ -238,6 +239,33 @@ final class PublicWebsiteDeliveryTest extends TestCase
             ->assertSee('--brand-primary:#112233;--brand-primary-hover:#0E1C2A;--brand-primary-active:#0C1723;--brand-on-primary:#F9FCFA;--brand-secondary:#F5F7F9;--brand-on-secondary:#18221F;', false);
     }
 
+    #[DataProvider('officialTemplates')]
+    public function test_every_official_template_selects_its_governed_public_personality(
+        string $templateId,
+        string $selector,
+    ): void {
+        $this->bindWebsite($this->renderModel('Klinik Syifa', TemplateId::from($templateId)));
+
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertSee('data-template="'.$selector.'"', false)
+            ->assertSee('Book Appointment')
+            ->assertSee('id="services"', false)
+            ->assertSee('id="contact"', false);
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function officialTemplates(): array
+    {
+        return [
+            'Essential' => ['SYIFA_ESSENTIAL', 'syifa-essential'],
+            'Care' => ['SYIFA_CARE', 'syifa-care'],
+            'Dental' => ['SYIFA_DENTAL', 'syifa-dental'],
+            'Aesthetic' => ['SYIFA_AESTHETIC', 'syifa-aesthetic'],
+            'Specialist' => ['SYIFA_SPECIALIST', 'syifa-specialist'],
+        ];
+    }
+
     public function test_an_unsafe_tenant_brand_colour_falls_back_to_the_current_default_appearance(): void
     {
         $website = Website::create(new WebsiteId($this->uuid(1)), new TenantId($this->uuid(2)), TemplateId::SyifaEssential, new WebsiteBranding('Klinik Syifa', 'Trusted care', '#FF0000', '#AABBCC', null, null, 'hello@clinic.test', '+6012', 'Kuala Lumpur'), array_map(fn (int $suffix): SectionId => new SectionId($this->uuid($suffix)), range(100, 108)), new DateTimeImmutable('2026-08-20T00:00:00Z'));
@@ -256,9 +284,11 @@ final class PublicWebsiteDeliveryTest extends TestCase
         self::assertSame(0, substr_count($navigationHtml, 'Book Appointment'));
     }
 
-    private function renderModel(string $clinicName): PublicWebsiteRenderModel
-    {
-        $website = Website::create(new WebsiteId($this->uuid(1)), new TenantId($this->uuid(2)), TemplateId::SyifaEssential, new WebsiteBranding($clinicName, 'Trusted care', '#112233', '#AABBCC', null, null, 'hello@clinic.test', '+6012', 'Kuala Lumpur'), array_map(fn (int $suffix): SectionId => new SectionId($this->uuid($suffix)), range(100, 108)), new DateTimeImmutable('2026-08-20T00:00:00Z'));
+    private function renderModel(
+        string $clinicName,
+        TemplateId $template = TemplateId::SyifaEssential,
+    ): PublicWebsiteRenderModel {
+        $website = Website::create(new WebsiteId($this->uuid(1)), new TenantId($this->uuid(2)), $template, new WebsiteBranding($clinicName, 'Trusted care', '#112233', '#AABBCC', null, null, 'hello@clinic.test', '+6012', 'Kuala Lumpur'), array_map(fn (int $suffix): SectionId => new SectionId($this->uuid($suffix)), range(100, 108)), new DateTimeImmutable('2026-08-20T00:00:00Z'));
         $website->readyForReview(new DateTimeImmutable('2026-08-20T01:00:00Z'));
         $website->publish(new WebsitePublicationEvidence(true, true), new WebsitePublicationReadiness(true, true, true, true, true, true, str_repeat('a', 64)), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(80)), $this->uuid(90), new DateTimeImmutable('2026-08-20T02:00:00Z'));
 

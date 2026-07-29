@@ -1763,6 +1763,10 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('websiteSetup.configuration.version', 2),
             );
 
+        $this->get('/dashboard/onboarding/'.$jobId.'/preview')
+            ->assertOk()
+            ->assertSee('data-template="syifa-care"', false);
+
         $this->from('/dashboard/onboarding/'.$jobId)
             ->patch('/dashboard/onboarding/'.$jobId, [
                 'version' => 2,

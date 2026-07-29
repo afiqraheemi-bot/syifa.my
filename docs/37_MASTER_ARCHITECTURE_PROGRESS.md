@@ -36,10 +36,10 @@ This record summarizes accepted architecture increments. It does not supersede P
 | Template | Status | Canonical reference |
 |---|---|---|
 | Syifa Essential | **Complete and Locked** (Reference Template V1, 2026-07-23, ADR-025) | [Reference Template Specification — Syifa Essential](./public-website/templates/SYIFA_ESSENTIAL_REFERENCE.md) establishes the default page flow, Section blueprints, mobile/desktop behavior, conversion hierarchy, adaptive journey, and personality-specific quality baseline. See [Reference Lock Record](./public-website/13_REFERENCE_LOCK_V1.md) for the frozen token/component contract. |
-| Syifa Care | Not specified | Requires a future governed reference increment. |
-| Syifa Dental | Not specified | Requires a future governed reference increment. |
-| Syifa Aesthetic | Not specified | Requires a future governed reference increment. |
-| Syifa Specialist | Not specified | Requires a future governed reference increment. |
+| Syifa Care | **Implemented** | Warm, reassuring family-care personality on the shared immutable rendering contract. |
+| Syifa Dental | **Implemented** | Precise, bright clinical personality on the shared immutable rendering contract. |
+| Syifa Aesthetic | **Implemented** | Refined editorial personality on the shared immutable rendering contract. |
+| Syifa Specialist | **Implemented** | Authoritative information-led personality on the shared immutable rendering contract. |
 
 ## Product and visual specifications
 
@@ -68,11 +68,16 @@ Website Aggregate
                                 -> Production Readiness Review -> Resolution Board -> Sprint 1/2 delivery -> M1 stabilization
 ```
 
-The public experience is implemented and locked for Syifa Essential. ADR-020 completed the Service display projection and Gallery accessibility metadata; ADR-023 (with its ADR-020 publication-read capture) completed the Clinic Contact projection — business hours, WhatsApp, and coordinates are present in published snapshots and render contracts today, not deferred. ADR-024 established the delivery boundary and Ferrari UX Iteration V2 plus Reference Certification Remediation V1 completed and certified the Syifa Essential implementation itself. ADR-025 records that lock. ADR-026 locks the Phone/Email/WhatsApp contact-channel policy on the same foundation. ADR-027 through ADR-031 are now implemented as the public Booking journey and its real Booking Engine adapters. Consent persists in append-only Booking history; Tenant resolution remains trusted; the public form query excludes Doctor/Branch structurally; availability exposes no capacity; and Success uses a short-lived, session-bound opaque token. Care, Dental, Aesthetic, and Specialist visual variants remain unbuilt; the shared variant-selection mechanism required to build them is deliberately deferred until the first of them exists (`05_TEMPLATE_ADAPTATION_RULES.md`).
+The public experience is implemented for all five official templates. ADR-020 completed the Service display projection and Gallery accessibility metadata; ADR-023 (with its ADR-020 publication-read capture) completed the Clinic Contact projection — business hours, WhatsApp, and coordinates are present in published snapshots and render contracts today, not deferred. ADR-024 established the delivery boundary and Ferrari UX Iteration V2 plus Reference Certification Remediation V1 completed and certified the Syifa Essential implementation itself. ADR-025 records that lock. The subsequent five-template implementation derives the minimum finite `TemplateId` presentation selector from Essential plus four real variants while retaining one rendering contract and component system; see `public-website/17_FIVE_TEMPLATE_IMPLEMENTATION_V1.md`. ADR-026 locks the Phone/Email/WhatsApp contact-channel policy on the same foundation. ADR-027 through ADR-031 are now implemented as the public Booking journey and its real Booking Engine adapters. Consent persists in append-only Booking history; Tenant resolution remains trusted; the public form query excludes Doctor/Branch structurally; availability exposes no capacity; and Success uses a short-lived, session-bound opaque token.
 
 ## Next governed decisions
 
-**Current milestone: M1 Public Product Complete.** Website Foundation, immutable publication/rendering, Syifa Essential, Public Booking and real Booking Engine integration are implemented. Sprint 3/private SaaS work has not started and is outside M1.
+**Current milestone: MVP completion and release hardening.** The public
+acquisition, Website, Booking, Subscription, Onboarding and role-based
+workspaces are implemented; all five official public templates now share the
+immutable rendering system. Remaining production activation work is
+environmental or governed separately: approved legal copy, external payment
+and mail credentials, and production deployment operations.
 
 Future decisions remain separately scoped:
 

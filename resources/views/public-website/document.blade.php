@@ -21,7 +21,10 @@
     <style>:root{--brand-primary:{{ $document->brandTokens->primary }};--brand-primary-hover:{{ $document->brandTokens->primaryHover }};--brand-primary-active:{{ $document->brandTokens->primaryActive }};--brand-on-primary:{{ $document->brandTokens->onPrimary }};--brand-secondary:{{ $document->brandTokens->secondary }};--brand-on-secondary:{{ $document->brandTokens->onSecondary }};}</style>
     @unless (app()->environment('testing')) @vite('resources/js/public-website.js') @endunless
 </head>
-<body class="public-site">
+<body
+    class="public-site"
+    data-template="{{ strtolower(str_replace('_', '-', $document->website->website->templateId)) }}"
+>
     <x-public.skip-link />
     <x-public.navbar :document="$document" />
 
