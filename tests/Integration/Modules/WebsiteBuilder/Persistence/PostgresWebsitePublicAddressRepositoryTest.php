@@ -58,6 +58,7 @@ final class PostgresWebsitePublicAddressRepositoryTest extends TestCase
             '2026_08_11_000001_create_website_assets_table.php',
             '2026_08_27_000001_create_website_public_hosts.php',
             '2026_08_27_000002_add_website_public_host_ownership_constraint.php',
+            '2026_09_05_000001_create_custom_domains.php',
         ] as $file) {
             $migration = require base_path('database/migrations/website_builder/'.$file);
             self::assertIsObject($migration);

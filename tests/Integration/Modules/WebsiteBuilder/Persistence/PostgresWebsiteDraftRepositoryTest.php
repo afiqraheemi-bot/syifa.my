@@ -402,8 +402,8 @@ final class PostgresWebsiteDraftRepositoryTest extends TestCase
             ),
             $website->tenantId->value,
             $website->id->value,
-            1,
-            1,
+            $websiteAfterPreview->version(),
+            $reloaded->version,
         ));
         self::assertSame('ready_for_review', $reviewed->toArray()['lifecycle']);
         $websiteAfterReview = $websites->findById($website->tenantId, $website->id);
