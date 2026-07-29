@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Dashboard\Application\Website;
 
+use App\Modules\Onboarding\Contracts\Tasks\OnboardingTaskReadInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\ClinicOwnerWebsiteApprovalReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\DashboardNavigationItem;
@@ -20,6 +21,7 @@ final readonly class ClinicOwnerWebsiteOverviewPage
         private SeoStatusProvider $seo,
         private WebsiteQuickActionsProvider $quickActions,
         private ClinicOwnerWebsiteApprovalReadInterface $approval,
+        private OnboardingTaskReadInterface $onboardingTasks,
     ) {}
 
     public function fromTrustedContext(mixed $context): DashboardPageView
@@ -28,6 +30,7 @@ final readonly class ClinicOwnerWebsiteOverviewPage
             throw new LogicException('Authenticated Website dashboard context was not established.');
         }
         $approval = $context->tenantId === null ? null : $this->approval->forTenant($context->tenantId);
+        $tasks = $context->tenantId === null ? null : $this->onboardingTasks->forTenant($context->tenantId);
 
         return new DashboardPageView('TenantManagement/Website/ClinicOwnerWebsiteOverview', [
             'navigation' => [
@@ -54,6 +57,11 @@ final readonly class ClinicOwnerWebsiteOverviewPage
             'quickActions' => $this->quickActions->provide($context)->data,
             'websiteApproval' => $approval,
             'websiteApprovalDecisionUrl' => route('dashboard.website.approval'),
+            'onboardingTasks' => $tasks,
+            'onboardingTaskUrlTemplate' => $tasks === null ? null : route('dashboard.website.onboarding-tasks.update', [
+                'jobId' => $tasks['jobId'],
+                'taskId' => '__TASK_ID__',
+            ]),
         ]);
     }
 }

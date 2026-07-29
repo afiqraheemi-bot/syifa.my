@@ -54,6 +54,13 @@ final readonly class WebsiteDesignerJobDetailProvider
                 $this->stage('review', 'Review status', $job->status, ['in_review', 'correction_required']),
                 $this->stage('publish-readiness', 'Publish readiness', $job->status, ['ready_for_launch']),
             ],
+            'tasks' => array_map(fn (array $task): array => [
+                ...$task,
+                'statusLabel' => $this->label((string) $task['status']),
+                'responsibilityLabel' => $this->label((string) $task['responsibility']),
+                'actionable' => $task['responsibility'] === 'website_designer'
+                    && ! in_array($task['status'], ['completed', 'waived', 'cancelled'], true),
+            ], $job->tasks),
             'timeline' => $this->timeline($job),
             'actions' => [
                 [

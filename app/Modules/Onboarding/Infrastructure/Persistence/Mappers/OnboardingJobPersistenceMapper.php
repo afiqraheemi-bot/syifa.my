@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Onboarding\Infrastructure\Persistence\Mappers;
 
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\OnboardingTask;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\WebsiteApproval;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\WebsiteDesignerAssignment;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
@@ -11,6 +12,9 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\ClinicOw
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobLifecycleTimestamps;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobStatus;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskResponsibility;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalId;
@@ -20,16 +24,21 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteD
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteId;
 use App\Modules\Onboarding\Infrastructure\Persistence\Records\OnboardingJobStorageRecord;
+use App\Modules\Onboarding\Infrastructure\Persistence\Records\OnboardingTaskStorageRecord;
 use App\Modules\Onboarding\Infrastructure\Persistence\Records\WebsiteApprovalStorageRecord;
 use App\Modules\Onboarding\Infrastructure\Persistence\Records\WebsiteDesignerAssignmentStorageRecord;
 
 final class OnboardingJobPersistenceMapper
 {
-    /** @param list<WebsiteDesignerAssignmentStorageRecord> $assignmentRecords */
+    /**
+     * @param  list<WebsiteDesignerAssignmentStorageRecord>  $assignmentRecords
+     * @param  list<OnboardingTaskStorageRecord>  $taskRecords
+     */
     public function toDomain(
         OnboardingJobStorageRecord $jobRecord,
         array $assignmentRecords,
         ?WebsiteApprovalStorageRecord $approvalRecord = null,
+        array $taskRecords = [],
     ): OnboardingJob {
         $assignments = [];
 
@@ -81,6 +90,28 @@ final class OnboardingJobPersistenceMapper
                 $approvalRecord->decidedBy === null ? null : new ClinicOwnerAuthorityId($approvalRecord->decidedBy),
                 $approvalRecord->correctionNote,
                 $approvalRecord->decidedAt,
+            ),
+            array_map(
+                static fn (OnboardingTaskStorageRecord $record): OnboardingTask => new OnboardingTask(
+                    new OnboardingTaskId($record->id),
+                    new OnboardingJobId($record->onboardingJobId),
+                    new TenantId($record->tenantId),
+                    $record->key,
+                    $record->title,
+                    OnboardingTaskResponsibility::from($record->responsibility),
+                    OnboardingTaskStatus::from($record->status),
+                    $record->mandatory,
+                    $record->blocking,
+                    $record->dependsOnTaskId === null ? null : new OnboardingTaskId($record->dependsOnTaskId),
+                    $record->dueAt,
+                    $record->evidenceReference,
+                    $record->note,
+                    $record->waiverReason,
+                    $record->taskCreatedAt,
+                    $record->taskUpdatedAt,
+                    $record->completedAt,
+                ),
+                $taskRecords,
             ),
         );
     }
@@ -147,6 +178,33 @@ final class OnboardingJobPersistenceMapper
             $approval->decidedBy?->value,
             $approval->correctionNote,
             $approval->decidedAt,
+        );
+    }
+
+    /** @return list<OnboardingTaskStorageRecord> */
+    public function taskRecords(OnboardingJob $job): array
+    {
+        return array_map(
+            static fn (OnboardingTask $task): OnboardingTaskStorageRecord => new OnboardingTaskStorageRecord(
+                $task->id->value,
+                $task->onboardingJobId->value,
+                $task->tenantId->value,
+                $task->key,
+                $task->title,
+                $task->responsibility->value,
+                $task->status->value,
+                $task->mandatory,
+                $task->blocking,
+                $task->dependsOnTaskId?->value,
+                $task->dueAt,
+                $task->evidenceReference,
+                $task->note,
+                $task->waiverReason,
+                $task->createdAt,
+                $task->updatedAt,
+                $task->completedAt,
+            ),
+            $job->tasks(),
         );
     }
 }

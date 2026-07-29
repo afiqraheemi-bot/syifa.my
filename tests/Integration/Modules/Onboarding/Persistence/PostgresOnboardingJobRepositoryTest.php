@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Modules\Onboarding\Persistence;
 
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\OnboardingTask;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\StaleOnboardingJobWriteException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\ClinicOwnerAuthorityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobStatus;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskResponsibility;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalId;
@@ -38,6 +42,8 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
 
     private ?Migration $approvalMigration = null;
 
+    private ?Migration $taskMigration = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -63,6 +69,7 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
         $this->connection = DB::connection('onboarding_postgres_integration');
         Schema::dropIfExists('website_designer_assignments');
         Schema::dropIfExists('onboarding_website_approvals');
+        Schema::dropIfExists('onboarding_tasks');
         Schema::dropIfExists('onboarding_jobs');
         $migration = require base_path(
             'database/migrations/onboarding/2026_07_13_000001_create_onboarding_job_aggregate_tables.php',
@@ -76,6 +83,12 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
         self::assertInstanceOf(Migration::class, $approvalMigration);
         $this->approvalMigration = $approvalMigration;
         $this->approvalMigration->up();
+        $taskMigration = require base_path(
+            'database/migrations/onboarding/2026_09_08_000001_create_onboarding_tasks.php',
+        );
+        self::assertInstanceOf(Migration::class, $taskMigration);
+        $this->taskMigration = $taskMigration;
+        $this->taskMigration->up();
         $this->repository = new PostgresOnboardingJobRepository(
             $this->connection,
             new OnboardingJobPersistenceMapper,
@@ -85,6 +98,7 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
     protected function tearDown(): void
     {
         if ($this->migration !== null) {
+            $this->taskMigration?->down();
             $this->approvalMigration?->down();
             $this->migration->down();
         }
@@ -113,6 +127,55 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
         self::assertNotNull($reloaded);
         self::assertCount(1, $reloaded->websiteDesignerAssignmentHistory());
         self::assertNotNull($reloaded->activeWebsiteDesignerAssignment());
+    }
+
+    public function test_it_persists_and_reloads_onboarding_tasks_with_dependency_lineage(): void
+    {
+        $job = $this->job();
+        $firstId = new OnboardingTaskId($this->uuid(50));
+        $job->addTask(new OnboardingTask(
+            $firstId,
+            $job->id,
+            $job->tenantId,
+            'clinic_inputs',
+            'Provide clinic information',
+            OnboardingTaskResponsibility::ClinicOwner,
+            OnboardingTaskStatus::AwaitingClinicOwner,
+            true,
+            true,
+            null,
+            $this->time('10:00:00')->modify('+14 days'),
+            null,
+            null,
+            null,
+            $this->time('10:00:00'),
+            $this->time('10:00:00'),
+        ));
+        $job->addTask(new OnboardingTask(
+            new OnboardingTaskId($this->uuid(51)),
+            $job->id,
+            $job->tenantId,
+            'website_setup',
+            'Prepare Website',
+            OnboardingTaskResponsibility::WebsiteDesigner,
+            OnboardingTaskStatus::NotReady,
+            true,
+            true,
+            $firstId,
+            $this->time('10:00:00')->modify('+14 days'),
+            null,
+            null,
+            null,
+            $this->time('10:00:00'),
+            $this->time('10:00:00'),
+        ));
+
+        $this->repository()->save($job);
+        $reloaded = $this->repository()->find($job->tenantId, $job->id);
+
+        self::assertNotNull($reloaded);
+        self::assertCount(2, $reloaded->tasks());
+        self::assertSame($firstId->value, $reloaded->tasks()[1]->dependsOnTaskId?->value);
     }
 
     public function test_reassignment_survives_reload_with_immutable_history(): void

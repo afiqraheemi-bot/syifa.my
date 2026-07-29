@@ -263,6 +263,18 @@ final class InMemoryOnboardingAuditRecorder implements OnboardingAuditInterface
     ): void {
         $this->lifecycleCalls++;
     }
+
+    public function recordTaskWaiver(
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $taskId,
+        string $reason,
+        int $previousVersion,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {}
 }
 
 final readonly class ImmediateAdminOnboardingTransaction implements OnboardingWorkflowTransactionInterface

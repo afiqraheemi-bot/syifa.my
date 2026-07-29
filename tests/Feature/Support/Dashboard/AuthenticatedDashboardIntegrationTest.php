@@ -26,18 +26,24 @@ use App\Modules\Booking\Domain\ValueObjects\TenantId as BookingTenantId;
 use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewReadInterface;
 use App\Modules\ClinicRegistration\Contracts\Review\RegistrationReviewItemData;
 use App\Modules\Notification\Contracts\NotificationReadInterface;
+use App\Modules\Onboarding\Contracts\Administration\OnboardingAuditInterface;
 use App\Modules\Onboarding\Contracts\Administration\SuperAdminOnboardingReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerJobDetailData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerQueueJobData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerRecentAssignmentData;
+use App\Modules\Onboarding\Contracts\Tasks\OnboardingTaskReadInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\ClinicOwnerWebsiteApprovalReadInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\OnboardingWorkflowTransactionInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\WebsiteApprovalAuditInterface;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\OnboardingTask;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Repositories\OnboardingJobRepositoryInterface;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskResponsibility;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId as OnboardingTenantId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
@@ -216,6 +222,24 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             new PlatformIdentityId('00000000-0000-4000-8000-000000000010'),
             new DateTimeImmutable('2026-07-24T09:30:00+08:00'),
         );
+        $onboardingJob->addTask(new OnboardingTask(
+            new OnboardingTaskId('00000000-0000-4000-8000-000000000106'),
+            $onboardingJob->id,
+            $onboardingJob->tenantId,
+            'website_setup',
+            'Prepare Website',
+            OnboardingTaskResponsibility::WebsiteDesigner,
+            OnboardingTaskStatus::Ready,
+            true,
+            true,
+            null,
+            new DateTimeImmutable('2026-08-07T09:30:00+08:00'),
+            null,
+            null,
+            null,
+            new DateTimeImmutable('2026-07-24T09:30:00+08:00'),
+            new DateTimeImmutable('2026-07-24T09:30:00+08:00'),
+        ));
         $onboardingJob->synchronizePersistenceVersion(1);
         $this->app->instance(
             OnboardingJobRepositoryInterface::class,
@@ -226,9 +250,14 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             new DashboardOnboardingWorkflowTransaction,
         );
         $this->app->instance(WebsiteApprovalAuditInterface::class, new DashboardWebsiteApprovalAudit);
+        $this->app->instance(OnboardingAuditInterface::class, new DashboardOnboardingAudit);
         $this->app->instance(
             ClinicOwnerWebsiteApprovalReadInterface::class,
             new DashboardClinicOwnerWebsiteApprovalRead,
+        );
+        $this->app->instance(
+            OnboardingTaskReadInterface::class,
+            new DashboardOnboardingTaskRead,
         );
         $this->app->instance(
             WebsitePublicationApprovalReadInterface::class,
@@ -1884,6 +1913,41 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_assigned_designer_can_complete_accountable_task_and_other_roles_cannot_use_designer_route(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $this->patchJson(
+            '/dashboard/onboarding/00000000-0000-4000-8000-000000000101/tasks/00000000-0000-4000-8000-000000000106',
+            [
+                'operation' => 'complete',
+                'expected_version' => 1,
+                'evidence_reference' => 'website_configuration_reviewed',
+            ],
+        )
+            ->assertOk()
+            ->assertJsonPath('version', 2);
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->patchJson(
+            '/dashboard/onboarding/00000000-0000-4000-8000-000000000101/tasks/00000000-0000-4000-8000-000000000106',
+            [
+                'operation' => 'complete',
+                'expected_version' => 2,
+                'evidence_reference' => 'forbidden',
+            ],
+        )->assertForbidden();
+    }
+
     public function test_clinic_owner_receives_the_website_overview_from_application_providers(): void
     {
         $this->websiteAddresses->seed(
@@ -2373,6 +2437,59 @@ final readonly class DashboardWebsiteApprovalAudit implements WebsiteApprovalAud
     ): void {}
 }
 
+final readonly class DashboardOnboardingAudit implements OnboardingAuditInterface
+{
+    public function recordDesignerAssignment(
+        string $auditEntryId,
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $assignmentId,
+        string $designerId,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {}
+
+    public function recordDesignerReassignment(
+        string $auditEntryId,
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $previousAssignmentId,
+        string $newAssignmentId,
+        string $designerId,
+        int $previousVersion,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {}
+
+    public function recordJobLifecycleChange(
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $operation,
+        ?string $reason,
+        int $previousVersion,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {}
+
+    public function recordTaskWaiver(
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $taskId,
+        string $reason,
+        int $previousVersion,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {}
+}
+
 final readonly class DashboardApprovedWebsitePublication implements WebsitePublicationApprovalReadInterface
 {
     public function isApproved(
@@ -2382,6 +2499,14 @@ final readonly class DashboardApprovedWebsitePublication implements WebsitePubli
         int $draftVersion,
     ): bool {
         return true;
+    }
+}
+
+final readonly class DashboardOnboardingTaskRead implements OnboardingTaskReadInterface
+{
+    public function forTenant(string $tenantId): ?array
+    {
+        return null;
     }
 }
 

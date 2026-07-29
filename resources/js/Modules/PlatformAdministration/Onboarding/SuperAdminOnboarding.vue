@@ -20,6 +20,7 @@ const props = defineProps({
     assignUrlTemplate: { type: String, required: true },
     reassignUrlTemplate: { type: String, required: true },
     lifecycleUrlTemplate: { type: String, required: true },
+    taskUrlTemplate: { type: String, required: true },
     ownerUrlTemplate: { type: String, required: true },
 });
 
@@ -157,6 +158,39 @@ async function manageLifecycle(job, operation) {
         return;
     }
     success.value = response.body?.message ?? 'Onboarding Job updated successfully.';
+    router.reload({ only: ['onboarding'] });
+}
+
+async function waiveTask(job, task) {
+    if (busyJob.value) return;
+    const reason = window.prompt(`Reason to waive "${task.title}":`)?.trim();
+    if (!reason || reason.length < 5) {
+        error.value = 'A waiver reason of at least five characters is required.';
+        return;
+    }
+    if (!window.confirm(`Waive "${task.title}" for ${job.clinicName}?`)) return;
+
+    busyJob.value = `task:${task.id}`;
+    error.value = '';
+    success.value = '';
+    const response = await browserHttpRequest(
+        props.taskUrlTemplate.replace('__JOB_ID__', job.id).replace('__TASK_ID__', task.id),
+        {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                operation: 'waive',
+                waiver_reason: reason,
+                expected_version: job.version,
+            }),
+        },
+    );
+    busyJob.value = null;
+    if (!response.ok) {
+        error.value = response.body?.message ?? 'The Onboarding Task could not be waived.';
+        return;
+    }
+    success.value = 'Onboarding Task waived with durable audit evidence.';
     router.reload({ only: ['onboarding'] });
 }
 </script>
@@ -327,6 +361,38 @@ async function manageLifecycle(job, operation) {
                                 : `${lifecycleLabel(operation)} job`
                         }}
                     </button>
+                </div>
+                <div class="mt-5 border-t border-slate-200 pt-5">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="font-bold text-slate-950">Onboarding tasks</h3>
+                        <span class="text-sm font-semibold text-slate-600">
+                            {{ job.taskSummary.completed }}/{{ job.taskSummary.total }} complete
+                        </span>
+                    </div>
+                    <div class="mt-3 grid gap-2">
+                        <div
+                            v-for="task in job.tasks"
+                            :key="task.id"
+                            class="flex flex-col gap-2 rounded-lg bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                            <div>
+                                <p class="text-sm font-semibold text-slate-900">{{ task.title }}</p>
+                                <p class="text-xs text-slate-600">
+                                    {{ task.responsibility.replaceAll('_', ' ') }} ·
+                                    {{ task.status.replaceAll('_', ' ') }}
+                                </p>
+                            </div>
+                            <button
+                                v-if="!['completed', 'waived', 'cancelled'].includes(task.status)"
+                                type="button"
+                                :disabled="busyJob !== null"
+                                class="min-h-9 rounded-lg border border-amber-400 px-3 text-sm font-semibold text-amber-800 disabled:opacity-50"
+                                @click="waiveTask(job, task)"
+                            >
+                                {{ busyJob === `task:${task.id}` ? 'Waiving…' : 'Waive' }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </article>
         </div>

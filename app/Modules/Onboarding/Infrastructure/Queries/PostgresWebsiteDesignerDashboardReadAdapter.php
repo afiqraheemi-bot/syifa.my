@@ -161,6 +161,25 @@ final readonly class PostgresWebsiteDesignerDashboardReadAdapter implements Webs
             $value = $row->{$column};
             $lifecycle[$column] = $value === null ? null : new DateTimeImmutable((string) $value);
         }
+        $tasks = $this->connection->table('onboarding_tasks')
+            ->where('tenant_id', (string) $row->tenant_id)
+            ->where('onboarding_job_id', (string) $row->id)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(static fn (object $task): array => [
+                'id' => (string) $task->id,
+                'key' => (string) $task->task_key,
+                'title' => (string) $task->title,
+                'responsibility' => (string) $task->responsibility,
+                'status' => (string) $task->status,
+                'mandatory' => (bool) $task->mandatory,
+                'blocking' => (bool) $task->blocking,
+                'dueAt' => $task->due_at === null ? null : (string) $task->due_at,
+                'evidenceReference' => $task->evidence_reference === null ? null : (string) $task->evidence_reference,
+                'note' => $task->note === null ? null : (string) $task->note,
+                'completedAt' => $task->completed_at === null ? null : (string) $task->completed_at,
+            ])
+            ->all();
 
         return new WebsiteDesignerJobDetailData(
             (string) $row->assignment_id,
@@ -172,6 +191,7 @@ final readonly class PostgresWebsiteDesignerDashboardReadAdapter implements Webs
             new DateTimeImmutable((string) $row->assignment_assigned_at),
             new DateTimeImmutable((string) $row->updated_at),
             $lifecycle,
+            array_values($tasks),
         );
     }
 }

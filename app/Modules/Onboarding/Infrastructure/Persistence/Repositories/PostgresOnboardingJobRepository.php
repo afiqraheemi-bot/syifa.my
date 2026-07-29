@@ -12,6 +12,7 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId
 use App\Modules\Onboarding\Infrastructure\Persistence\Exceptions\InvalidOnboardingJobStorageStateException;
 use App\Modules\Onboarding\Infrastructure\Persistence\Mappers\OnboardingJobPersistenceMapper;
 use App\Modules\Onboarding\Infrastructure\Persistence\Records\OnboardingJobStorageRecord;
+use App\Modules\Onboarding\Infrastructure\Persistence\Records\OnboardingTaskStorageRecord;
 use App\Modules\Onboarding\Infrastructure\Persistence\Records\WebsiteApprovalStorageRecord;
 use App\Modules\Onboarding\Infrastructure\Persistence\Records\WebsiteDesignerAssignmentStorageRecord;
 use DateTimeImmutable;
@@ -55,11 +56,20 @@ final class PostgresOnboardingJobRepository implements OnboardingJobRepositoryIn
             ->where('tenant_id', $tenantId->value)
             ->where('onboarding_job_id', $onboardingJobId->value)
             ->first();
+        $taskRecords = $this->connection->table('onboarding_tasks')
+            ->where('tenant_id', $tenantId->value)
+            ->where('onboarding_job_id', $onboardingJobId->value)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (object $row): OnboardingTaskStorageRecord => $this->taskRecordFromRow($row))
+            ->all();
 
         return $this->mapper->toDomain(
             $this->jobRecordFromRow($jobRow),
             $assignmentRecords,
             $approvalRow === null ? null : $this->approvalRecordFromRow($approvalRow),
+            array_values($taskRecords),
         );
     }
 
@@ -107,6 +117,7 @@ final class PostgresOnboardingJobRepository implements OnboardingJobRepositoryIn
         );
         $this->persistAssignmentChanges($job, $now);
         $this->persistWebsiteApproval($job, $now);
+        $this->persistTasks($job, $now);
 
         return 1;
     }
@@ -131,6 +142,7 @@ final class PostgresOnboardingJobRepository implements OnboardingJobRepositoryIn
 
         $this->persistAssignmentChanges($job, $now);
         $this->persistWebsiteApproval($job, $now);
+        $this->persistTasks($job, $now);
 
         return $newVersion;
     }
@@ -269,6 +281,82 @@ final class PostgresOnboardingJobRepository implements OnboardingJobRepositoryIn
             ->update($values);
     }
 
+    private function persistTasks(OnboardingJob $job, string $now): void
+    {
+        $storedRows = $this->connection->table('onboarding_tasks')
+            ->where('tenant_id', $job->tenantId->value)
+            ->where('onboarding_job_id', $job->id->value)
+            ->lockForUpdate()
+            ->get();
+        $stored = [];
+        foreach ($storedRows as $row) {
+            $record = $this->taskRecordFromRow($row);
+            $stored[$record->id] = $record;
+        }
+
+        $aggregateIds = [];
+        foreach ($this->mapper->taskRecords($job) as $order => $record) {
+            $aggregateIds[$record->id] = true;
+            if ($record->tenantId !== $job->tenantId->value || $record->onboardingJobId !== $job->id->value) {
+                throw new InvalidOnboardingJobStorageStateException('Onboarding Task has conflicting aggregate ownership.');
+            }
+            $values = [
+                'task_key' => $record->key,
+                'title' => $record->title,
+                'responsibility' => $record->responsibility,
+                'status' => $record->status,
+                'mandatory' => $record->mandatory,
+                'blocking' => $record->blocking,
+                'depends_on_task_id' => $record->dependsOnTaskId,
+                'sort_order' => $order,
+                'due_at' => $this->nullableDatabaseTimestamp($record->dueAt),
+                'evidence_reference' => $record->evidenceReference,
+                'note' => $record->note,
+                'waiver_reason' => $record->waiverReason,
+                'task_created_at' => $this->databaseTimestamp($record->taskCreatedAt),
+                'task_updated_at' => $this->databaseTimestamp($record->taskUpdatedAt),
+                'completed_at' => $this->nullableDatabaseTimestamp($record->completedAt),
+                'updated_at' => $now,
+            ];
+            $existing = $stored[$record->id] ?? null;
+            if ($existing === null) {
+                $this->connection->table('onboarding_tasks')->insert($values + [
+                    'id' => $record->id,
+                    'onboarding_job_id' => $record->onboardingJobId,
+                    'tenant_id' => $record->tenantId,
+                    'created_at' => $now,
+                ]);
+
+                continue;
+            }
+            if ($existing->onboardingJobId !== $record->onboardingJobId
+                || $existing->tenantId !== $record->tenantId
+                || $existing->key !== $record->key
+                || $existing->title !== $record->title
+                || $existing->responsibility !== $record->responsibility
+                || $existing->mandatory !== $record->mandatory
+                || $existing->blocking !== $record->blocking
+                || $existing->dependsOnTaskId !== $record->dependsOnTaskId
+                || $existing->taskCreatedAt != $record->taskCreatedAt) {
+                throw new InvalidOnboardingJobStorageStateException(
+                    'Immutable Onboarding Task identity and workflow definition cannot be rewritten.',
+                );
+            }
+            $this->connection->table('onboarding_tasks')
+                ->where('tenant_id', $record->tenantId)
+                ->where('onboarding_job_id', $record->onboardingJobId)
+                ->where('id', $record->id)
+                ->update($values);
+        }
+        foreach ($stored as $record) {
+            if (! isset($aggregateIds[$record->id])) {
+                throw new InvalidOnboardingJobStorageStateException(
+                    'Onboarding Task history cannot be removed from its Onboarding Job.',
+                );
+            }
+        }
+    }
+
     private function persistExistingAssignmentTransition(
         WebsiteDesignerAssignmentStorageRecord $stored,
         WebsiteDesignerAssignmentStorageRecord $aggregate,
@@ -369,6 +457,29 @@ final class PostgresOnboardingJobRepository implements OnboardingJobRepositoryIn
             $row->decided_by === null ? null : (string) $row->decided_by,
             $row->correction_note === null ? null : (string) $row->correction_note,
             $this->nullableDateTimeValue($row->decided_at ?? null, 'decided_at'),
+        );
+    }
+
+    private function taskRecordFromRow(stdClass $row): OnboardingTaskStorageRecord
+    {
+        return new OnboardingTaskStorageRecord(
+            $this->stringValue($row, 'id'),
+            $this->stringValue($row, 'onboarding_job_id'),
+            $this->stringValue($row, 'tenant_id'),
+            $this->stringValue($row, 'task_key'),
+            $this->stringValue($row, 'title'),
+            $this->stringValue($row, 'responsibility'),
+            $this->stringValue($row, 'status'),
+            (bool) $row->mandatory,
+            (bool) $row->blocking,
+            $row->depends_on_task_id === null ? null : (string) $row->depends_on_task_id,
+            $this->nullableDateTimeValue($row->due_at ?? null, 'due_at'),
+            $row->evidence_reference === null ? null : (string) $row->evidence_reference,
+            $row->note === null ? null : (string) $row->note,
+            $row->waiver_reason === null ? null : (string) $row->waiver_reason,
+            $this->dateTimeValue($row->task_created_at ?? null, 'task_created_at'),
+            $this->dateTimeValue($row->task_updated_at ?? null, 'task_updated_at'),
+            $this->nullableDateTimeValue($row->completed_at ?? null, 'completed_at'),
         );
     }
 

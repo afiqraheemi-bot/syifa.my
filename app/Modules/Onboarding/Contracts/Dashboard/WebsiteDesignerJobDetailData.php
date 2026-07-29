@@ -10,6 +10,7 @@ final readonly class WebsiteDesignerJobDetailData
 {
     /**
      * @param  array<string, DateTimeImmutable|null>  $lifecycle
+     * @param  list<array<string, mixed>>  $tasks
      */
     public function __construct(
         public string $assignmentId,
@@ -21,5 +22,6 @@ final readonly class WebsiteDesignerJobDetailData
         public DateTimeImmutable $assignedAt,
         public DateTimeImmutable $updatedAt,
         public array $lifecycle,
+        public array $tasks = [],
     ) {}
 }

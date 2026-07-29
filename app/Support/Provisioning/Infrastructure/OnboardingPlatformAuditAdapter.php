@@ -120,6 +120,39 @@ final readonly class OnboardingPlatformAuditAdapter implements OnboardingAuditIn
         ));
     }
 
+    public function recordTaskWaiver(
+        string $actorPlatformIdentityId,
+        string $tenantId,
+        string $jobId,
+        string $taskId,
+        string $reason,
+        int $previousVersion,
+        int $resultingVersion,
+        string $correlationId,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $this->audit->record(new AuditEntryData(
+            $this->identifier($taskId, $correlationId.':waive'),
+            $occurredAt,
+            new AuditActorData(AuditActorType::PlatformIdentity->value, $actorPlatformIdentityId),
+            $tenantId,
+            'onboarding.task.waive',
+            new AuditTargetData('onboarding_job', $jobId),
+            new AuditOutcomeData(AuditOutcomeType::Succeeded->value, null),
+            $correlationId,
+            [
+                'resource_type' => 'onboarding_task',
+                'target_label' => sprintf(
+                    'task=%s;reason=%s;version=%d->%d',
+                    $taskId,
+                    $reason,
+                    $previousVersion,
+                    $resultingVersion,
+                ),
+            ],
+        ));
+    }
+
     public function recordWebsiteApprovalRequested(
         string $actorId,
         string $tenantId,

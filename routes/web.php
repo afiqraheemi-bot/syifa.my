@@ -35,6 +35,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteApprov
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteContentOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\NotificationHistoryController;
+use App\Support\Dashboard\Presentation\Http\Controllers\OnboardingTaskController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ReportsController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminAuditViewerController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminBillingOverviewController;
@@ -89,6 +90,10 @@ Route::match(['get', 'patch'], '/dashboard/onboarding/{jobId}', WebsiteDesignerJ
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,website_designer')
     ->name('dashboard.onboarding.show');
+Route::patch('/dashboard/onboarding/{jobId}/tasks/{taskId}', OnboardingTaskController::class)
+    ->whereUuid(['jobId', 'taskId'])
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.tasks.update');
 Route::get('/dashboard/onboarding/{jobId}/preview', WebsiteDesignerDraftPreviewController::class)
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,website_designer')
@@ -147,6 +152,10 @@ Route::post('/dashboard/onboarding-management/{jobId}/lifecycle', [SuperAdminOnb
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.onboarding-management.lifecycle');
+Route::patch('/dashboard/onboarding-management/{jobId}/tasks/{taskId}', OnboardingTaskController::class)
+    ->whereUuid(['jobId', 'taskId'])
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.onboarding-management.tasks.update');
 Route::post('/dashboard/onboarding-management/tenants/{tenantId}/owner', [SuperAdminOnboardingController::class, 'establishOwner'])
     ->whereUuid('tenantId')
     ->middleware('authorize.context:platform_identity,super_admin')
@@ -273,6 +282,10 @@ Route::prefix('/dashboard/website/domain')
 Route::post('/dashboard/website/approval', ClinicOwnerWebsiteApprovalController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.approval');
+Route::patch('/dashboard/website/onboarding-tasks/{jobId}/{taskId}', OnboardingTaskController::class)
+    ->whereUuid(['jobId', 'taskId'])
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website.onboarding-tasks.update');
 Route::get('/dashboard/website/content', ClinicOwnerWebsiteContentOverviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.content');

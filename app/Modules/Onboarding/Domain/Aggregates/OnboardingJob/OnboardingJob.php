@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Onboarding\Domain\Aggregates\OnboardingJob;
 
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\OnboardingTask;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\WebsiteApproval;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\WebsiteDesignerAssignment;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\OnboardingJobCancelled;
@@ -14,11 +15,15 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\WebsiteDesigne
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\WebsiteDesignerAssignmentRevoked;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\WebsiteDesignerReassigned;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidOnboardingJobLifecycleTransitionException;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidOnboardingTaskTransitionException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidWebsiteDesignerAssignmentTransitionException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\ClinicOwnerAuthorityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobLifecycleTimestamps;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobStatus;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskResponsibility;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalId;
@@ -33,6 +38,9 @@ final class OnboardingJob
 {
     /** @var array<string, WebsiteDesignerAssignment> */
     private array $websiteDesignerAssignments = [];
+
+    /** @var array<string, OnboardingTask> */
+    private array $tasks = [];
 
     /** @var list<object> */
     private array $domainEvents = [];
@@ -71,7 +79,10 @@ final class OnboardingJob
         return $job;
     }
 
-    /** @param list<WebsiteDesignerAssignment> $websiteDesignerAssignments */
+    /**
+     * @param  list<WebsiteDesignerAssignment>  $websiteDesignerAssignments
+     * @param  list<OnboardingTask>  $tasks
+     */
     public static function reconstitute(
         OnboardingJobId $id,
         TenantId $tenantId,
@@ -81,6 +92,7 @@ final class OnboardingJob
         array $websiteDesignerAssignments,
         int $version,
         ?WebsiteApproval $websiteApproval = null,
+        array $tasks = [],
     ): self {
         if ($version < 1) {
             throw new InvalidOnboardingJobLifecycleTransitionException(
@@ -116,6 +128,35 @@ final class OnboardingJob
             }
 
             $job->websiteDesignerAssignments[$assignment->id->value] = $assignment;
+        }
+
+        foreach ($tasks as $task) {
+            if ($task->onboardingJobId->value !== $id->value
+                || $task->tenantId->value !== $tenantId->value) {
+                throw new InvalidOnboardingTaskTransitionException(
+                    'Onboarding Task state cannot cross Job or Tenant boundaries.',
+                );
+            }
+            if (isset($job->tasks[$task->id->value])) {
+                throw new InvalidOnboardingTaskTransitionException(
+                    'An Onboarding Task identifier cannot be reused.',
+                );
+            }
+            foreach ($job->tasks as $existing) {
+                if ($existing->key === $task->key) {
+                    throw new InvalidOnboardingTaskTransitionException(
+                        'An Onboarding Task key must be unique within its Job.',
+                    );
+                }
+            }
+            $job->tasks[$task->id->value] = $task;
+        }
+        foreach ($job->tasks as $task) {
+            if ($task->dependsOnTaskId !== null && ! isset($job->tasks[$task->dependsOnTaskId->value])) {
+                throw new InvalidOnboardingTaskTransitionException(
+                    'An Onboarding Task dependency must belong to the same Job.',
+                );
+            }
         }
 
         $activeAssignment = $job->activeWebsiteDesignerAssignment();
@@ -316,6 +357,133 @@ final class OnboardingJob
     public function websiteApproval(): ?WebsiteApproval
     {
         return $this->websiteApproval;
+    }
+
+    public function addTask(OnboardingTask $task): void
+    {
+        if ($task->onboardingJobId->value !== $this->id->value
+            || $task->tenantId->value !== $this->tenantId->value) {
+            throw new InvalidOnboardingTaskTransitionException(
+                'An Onboarding Task cannot cross Job or Tenant boundaries.',
+            );
+        }
+        if (isset($this->tasks[$task->id->value])) {
+            throw new InvalidOnboardingTaskTransitionException(
+                'An Onboarding Task identifier cannot be reused.',
+            );
+        }
+        foreach ($this->tasks as $existing) {
+            if ($existing->key === $task->key) {
+                throw new InvalidOnboardingTaskTransitionException(
+                    'An Onboarding Task key must be unique within its Job.',
+                );
+            }
+        }
+        if ($task->dependsOnTaskId !== null && ! isset($this->tasks[$task->dependsOnTaskId->value])) {
+            throw new InvalidOnboardingTaskTransitionException(
+                'An Onboarding Task dependency must already belong to the same Job.',
+            );
+        }
+        $this->tasks[$task->id->value] = $task;
+    }
+
+    /** @return list<OnboardingTask> */
+    public function tasks(): array
+    {
+        return array_values($this->tasks);
+    }
+
+    public function findTask(OnboardingTaskId $taskId): ?OnboardingTask
+    {
+        return $this->tasks[$taskId->value] ?? null;
+    }
+
+    public function progressTask(
+        OnboardingTaskId $taskId,
+        OnboardingTaskResponsibility $actorResponsibility,
+        OnboardingTaskStatus $status,
+        ?string $evidenceReference,
+        ?string $note,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $task = $this->findTask($taskId)
+            ?? throw new InvalidOnboardingTaskTransitionException('The Onboarding Task does not belong to this Job.');
+        if ($task->responsibility !== $actorResponsibility) {
+            throw new InvalidOnboardingTaskTransitionException(
+                'Only the accountable participant may progress this Onboarding Task.',
+            );
+        }
+        if ($actorResponsibility === OnboardingTaskResponsibility::WebsiteDesigner
+            && $this->activeWebsiteDesignerAssignment() === null) {
+            throw new InvalidOnboardingTaskTransitionException(
+                'An active Website Designer Assignment is required to progress this Task.',
+            );
+        }
+        if ($status === OnboardingTaskStatus::Completed && $task->dependsOnTaskId !== null) {
+            $dependency = $this->tasks[$task->dependsOnTaskId->value] ?? null;
+            if ($dependency === null || ! $dependency->status->satisfiesDependency()) {
+                throw new InvalidOnboardingTaskTransitionException(
+                    'The Onboarding Task dependency must be satisfied before completion.',
+                );
+            }
+        }
+        if ($status !== OnboardingTaskStatus::Completed && $task->dependsOnTaskId !== null) {
+            $dependency = $this->tasks[$task->dependsOnTaskId->value] ?? null;
+            if ($dependency === null || ! $dependency->status->satisfiesDependency()) {
+                throw new InvalidOnboardingTaskTransitionException(
+                    'The Onboarding Task dependency must be satisfied before work begins.',
+                );
+            }
+        }
+        $this->tasks[$taskId->value] = $task->transition(
+            $status,
+            $evidenceReference,
+            $note,
+            null,
+            $occurredAt,
+        );
+        if ($status->satisfiesDependency()) {
+            foreach ($this->tasks as $dependentId => $dependent) {
+                if ($dependent->dependsOnTaskId?->value === $taskId->value
+                    && $dependent->status === OnboardingTaskStatus::NotReady) {
+                    $this->tasks[$dependentId] = $dependent->transition(
+                        OnboardingTaskStatus::Ready,
+                        null,
+                        null,
+                        null,
+                        $occurredAt,
+                    );
+                }
+            }
+        }
+    }
+
+    public function waiveTask(
+        OnboardingTaskId $taskId,
+        string $reason,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $task = $this->findTask($taskId)
+            ?? throw new InvalidOnboardingTaskTransitionException('The Onboarding Task does not belong to this Job.');
+        $this->tasks[$taskId->value] = $task->transition(
+            OnboardingTaskStatus::Waived,
+            'authorized_exception',
+            null,
+            $reason,
+            $occurredAt,
+        );
+        foreach ($this->tasks as $dependentId => $dependent) {
+            if ($dependent->dependsOnTaskId?->value === $taskId->value
+                && $dependent->status === OnboardingTaskStatus::NotReady) {
+                $this->tasks[$dependentId] = $dependent->transition(
+                    OnboardingTaskStatus::Ready,
+                    null,
+                    null,
+                    null,
+                    $occurredAt,
+                );
+            }
+        }
     }
 
     public function requestWebsiteApproval(

@@ -21,6 +21,7 @@ const props = defineProps({
     bookingSetup: { type: Object, required: true },
     clinicContact: { type: Object, required: true },
     websiteDraft: { type: Object, required: true },
+    taskUpdateUrlTemplate: { type: String, required: true },
 });
 
 const navigation = createDashboardNavigation(props.navigation);
@@ -183,6 +184,9 @@ const addressSaving = ref(false);
 const addressSuccess = ref('');
 const addressError = ref('');
 const websiteAddress = ref(props.websiteSetup.address);
+const taskBusy = ref(null);
+const taskError = ref('');
+const taskSuccess = ref('');
 
 function csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
@@ -1012,6 +1016,41 @@ function saveClinicContact() {
         },
     });
 }
+
+async function progressTask(task, operation) {
+    if (taskBusy.value || !task.actionable) return;
+    const evidence =
+        operation === 'complete'
+            ? window.prompt('Describe the authoritative completion evidence:')?.trim()
+            : null;
+    if (operation === 'complete' && !evidence) return;
+    if (!window.confirm(`${operation === 'complete' ? 'Complete' : 'Update'} ${task.title}?`)) {
+        return;
+    }
+
+    taskBusy.value = task.id;
+    taskError.value = '';
+    taskSuccess.value = '';
+    const response = await browserHttpRequest(
+        props.taskUpdateUrlTemplate.replace('__TASK_ID__', task.id),
+        {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                operation,
+                expected_version: props.job.version,
+                evidence_reference: evidence,
+            }),
+        },
+    );
+    taskBusy.value = null;
+    if (!response.ok) {
+        taskError.value = response.body?.message ?? 'The Onboarding Task could not be updated.';
+        return;
+    }
+    taskSuccess.value = response.body?.message ?? 'Onboarding Task updated successfully.';
+    window.location.reload();
+}
 </script>
 
 <template>
@@ -1059,6 +1098,61 @@ function saveClinicContact() {
                         :style="{ width: `${job.progress.value}%` }"
                     />
                 </div>
+            </div>
+        </section>
+
+        <section
+            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+            aria-labelledby="onboarding-tasks-title"
+        >
+            <h2 id="onboarding-tasks-title" class="text-xl font-bold text-slate-950">
+                Onboarding tasks
+            </h2>
+            <p class="mt-1 text-sm text-slate-600">
+                Progress only the tasks assigned to the Website Designer. Completion requires
+                evidence.
+            </p>
+            <p v-if="taskError" role="alert" class="mt-4 rounded-lg bg-red-50 p-3 text-red-800">
+                {{ taskError }}
+            </p>
+            <p
+                v-if="taskSuccess"
+                role="status"
+                class="mt-4 rounded-lg bg-emerald-50 p-3 text-emerald-800"
+            >
+                {{ taskSuccess }}
+            </p>
+            <div class="mt-5 grid gap-3">
+                <article
+                    v-for="task in job.tasks"
+                    :key="task.id"
+                    class="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div>
+                        <h3 class="font-bold text-slate-950">{{ task.title }}</h3>
+                        <p class="mt-1 text-sm text-slate-600">
+                            {{ task.responsibilityLabel }} · {{ task.statusLabel }}
+                        </p>
+                    </div>
+                    <div v-if="task.actionable" class="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            class="min-h-10 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-800 disabled:opacity-50"
+                            :disabled="taskBusy !== null"
+                            @click="progressTask(task, 'start')"
+                        >
+                            Start
+                        </button>
+                        <button
+                            type="button"
+                            class="min-h-10 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white disabled:opacity-50"
+                            :disabled="taskBusy !== null"
+                            @click="progressTask(task, 'complete')"
+                        >
+                            {{ taskBusy === task.id ? 'Updating…' : 'Complete' }}
+                        </button>
+                    </div>
+                </article>
             </div>
         </section>
 

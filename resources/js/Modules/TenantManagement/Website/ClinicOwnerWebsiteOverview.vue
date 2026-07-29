@@ -27,6 +27,8 @@ const props = defineProps({
     quickActions: { type: Array, required: true },
     websiteApproval: { type: Object, default: null },
     websiteApprovalDecisionUrl: { type: String, required: true },
+    onboardingTasks: { type: Object, default: null },
+    onboardingTaskUrlTemplate: { type: String, default: null },
 });
 
 const navigation = createDashboardNavigation(props.navigation);
@@ -36,6 +38,36 @@ const reason = ref('');
 const busy = ref(false);
 const approvalError = ref('');
 const approvalSuccess = ref('');
+const taskBusy = ref(null);
+const taskError = ref('');
+
+async function completeOwnerTask(task) {
+    if (!props.onboardingTasks || !props.onboardingTaskUrlTemplate || taskBusy.value) return;
+    const evidence = window.prompt('Describe the information or approval supplied:')?.trim();
+    if (!evidence) return;
+    if (!window.confirm(`Complete "${task.title}"?`)) return;
+
+    taskBusy.value = task.id;
+    taskError.value = '';
+    const response = await browserHttpRequest(
+        props.onboardingTaskUrlTemplate.replace('__TASK_ID__', task.id),
+        {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                operation: 'complete',
+                expected_version: props.onboardingTasks.jobVersion,
+                evidence_reference: evidence,
+            }),
+        },
+    );
+    taskBusy.value = null;
+    if (!response.ok) {
+        taskError.value = response.body?.message ?? 'The onboarding task could not be updated.';
+        return;
+    }
+    router.reload({ only: ['onboardingTasks'] });
+}
 
 async function decideWebsiteApproval(selectedDecision) {
     if (!props.websiteApproval || busy.value) return;
@@ -163,6 +195,49 @@ async function decideWebsiteApproval(selectedDecision) {
                             : 'Request correction'
                     }}
                 </button>
+            </div>
+        </section>
+
+        <section
+            v-if="onboardingTasks"
+            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            aria-labelledby="clinic-onboarding-tasks"
+        >
+            <h2 id="clinic-onboarding-tasks" class="text-xl font-bold text-slate-950">
+                Onboarding tasks
+            </h2>
+            <p class="mt-1 text-sm text-slate-600">
+                Track the managed Website delivery and complete clinic-owned inputs.
+            </p>
+            <p v-if="taskError" role="alert" class="mt-4 rounded-lg bg-red-50 p-3 text-red-800">
+                {{ taskError }}
+            </p>
+            <div class="mt-4 grid gap-3">
+                <article
+                    v-for="task in onboardingTasks.tasks"
+                    :key="task.id"
+                    class="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div>
+                        <h3 class="font-bold text-slate-950">{{ task.title }}</h3>
+                        <p class="mt-1 text-sm capitalize text-slate-600">
+                            {{ task.responsibility.replaceAll('_', ' ') }} ·
+                            {{ task.status.replaceAll('_', ' ') }}
+                        </p>
+                    </div>
+                    <button
+                        v-if="
+                            task.responsibility === 'clinic_owner' &&
+                            !['completed', 'waived', 'cancelled'].includes(task.status)
+                        "
+                        type="button"
+                        :disabled="taskBusy !== null"
+                        class="min-h-10 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white disabled:opacity-50"
+                        @click="completeOwnerTask(task)"
+                    >
+                        {{ taskBusy === task.id ? 'Updating…' : 'Mark complete' }}
+                    </button>
+                </article>
             </div>
         </section>
 

@@ -107,6 +107,10 @@ final readonly class WebsiteDesignerJobDetailPage
             'identityName' => $context->name,
             'contextLabel' => 'Website Designer workspace',
             'job' => $jobData,
+            'taskUpdateUrlTemplate' => route('dashboard.onboarding.tasks.update', [
+                'jobId' => $jobId,
+                'taskId' => '__TASK_ID__',
+            ]),
             'websiteSetup' => [
                 'configuration' => $editableWebsite,
                 'templateOptions' => array_map(static fn (TemplateId $template): array => [

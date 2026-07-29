@@ -85,7 +85,41 @@ final readonly class PostgresSuperAdminOnboardingAdapter implements SuperAdminOn
             ])
             ->all();
 
-        return ['jobs' => array_values($jobs), 'designers' => array_values($designers)];
+        $taskRows = $this->connection->table('onboarding_tasks')
+            ->whereIn('onboarding_job_id', array_map(
+                static fn (array $job): string => (string) $job['id'],
+                $jobs,
+            ))
+            ->orderBy('sort_order')
+            ->get()
+            ->groupBy('onboarding_job_id');
+        $jobs = array_map(static function (array $job) use ($taskRows): array {
+            $tasks = $taskRows->get($job['id'], collect())->map(static fn (object $task): array => [
+                'id' => (string) $task->id,
+                'title' => (string) $task->title,
+                'responsibility' => (string) $task->responsibility,
+                'status' => (string) $task->status,
+                'mandatory' => (bool) $task->mandatory,
+                'blocking' => (bool) $task->blocking,
+                'dueAt' => $task->due_at === null ? null : (string) $task->due_at,
+            ])->values()->all();
+            $job['tasks'] = $tasks;
+            $job['taskSummary'] = [
+                'total' => count($tasks),
+                'completed' => count(array_filter(
+                    $tasks,
+                    static fn (array $task): bool => in_array($task['status'], ['completed', 'waived'], true),
+                )),
+                'blocked' => count(array_filter(
+                    $tasks,
+                    static fn (array $task): bool => $task['status'] === 'blocked',
+                )),
+            ];
+
+            return $job;
+        }, array_values($jobs));
+
+        return ['jobs' => $jobs, 'designers' => array_values($designers)];
     }
 
     public function isEligible(string $platformIdentityId): bool
