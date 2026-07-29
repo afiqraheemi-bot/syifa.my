@@ -9,8 +9,11 @@ use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRend
 final readonly class PublicRoutePolicy
 {
     /** @return array<string, PublicUrl> */
-    public function available(PublicWebsiteRenderModel $model, PublicSiteContext $context): array
-    {
+    public function available(
+        PublicWebsiteRenderModel $model,
+        PublicSiteContext $context,
+        bool $bookingFlowAvailable = true,
+    ): array {
         $routes = [PublicRoute::Home->value => $context->url()];
         $availableTypes = array_fill_keys(array_map(static fn ($section): string => $section->type(), $model->sections), true);
         foreach ([
@@ -19,7 +22,9 @@ final readonly class PublicRoutePolicy
             PublicRoute::Booking->value => 'BOOKING_CTA',
         ] as $route => $type) {
             if (isset($availableTypes[$type])) {
-                $routes[$route] = new PublicUrl($context->url()->value.'#'.$route);
+                $routes[$route] = $route === PublicRoute::Booking->value && $bookingFlowAvailable
+                    ? $context->url('booking')
+                    : new PublicUrl($context->url()->value.'#'.$route);
             }
         }
         $routes[PublicRoute::Privacy->value] = $context->url('privacy');

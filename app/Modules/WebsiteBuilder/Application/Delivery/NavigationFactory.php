@@ -9,9 +9,16 @@ use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRend
 final readonly class NavigationFactory
 {
     /** @return list<NavigationItem> */
-    public function make(PublicWebsiteRenderModel $model, PublicSiteContext $context): array
-    {
-        $available = (new PublicRoutePolicy)->available($model, $context);
+    public function make(
+        PublicWebsiteRenderModel $model,
+        PublicSiteContext $context,
+        bool $bookingFlowAvailable = true,
+    ): array {
+        $available = (new PublicRoutePolicy)->available(
+            $model,
+            $context,
+            $bookingFlowAvailable,
+        );
         // Home is intentionally excluded: the brand/logo is the canonical Home
         // link (see navbar.blade.php and footer.blade.php), and the Component
         // Catalogue caps Desktop Navigation at six primary items plus Booking.

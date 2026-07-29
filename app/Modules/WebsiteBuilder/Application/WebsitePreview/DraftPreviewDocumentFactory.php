@@ -33,14 +33,14 @@ final readonly class DraftPreviewDocumentFactory
             );
             $assetDimensions[$asset->assetId] = [$asset->width, $asset->height];
         }
-        $routes = (new PublicRoutePolicy)->available($model, $context);
+        $routes = (new PublicRoutePolicy)->available($model, $context, false);
         $booking = $routes[PublicRoute::Booking->value] ?? $context->url();
 
         return new PublicWebsiteDocument(
             $model,
             $context,
             (new SeoDocumentHeadFactory)->make($model, $context, $context->url()),
-            (new NavigationFactory)->make($model, $context),
+            (new NavigationFactory)->make($model, $context, false),
             $assetUrls,
             $assetDimensions,
             [],

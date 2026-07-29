@@ -37,7 +37,9 @@ final readonly class PublicWebsiteDocumentFactory
         }
         $sitemap = array_values(array_filter(
             $routes,
-            static fn (PublicUrl $url, string $name): bool => (! in_array($name, [PublicRoute::Privacy->value, PublicRoute::Terms->value], true) || isset($legalUrls[$name])) && ! str_contains($url->value, '#'),
+            static fn (PublicUrl $url, string $name): bool => $name !== PublicRoute::Booking->value
+                && (! in_array($name, [PublicRoute::Privacy->value, PublicRoute::Terms->value], true) || isset($legalUrls[$name]))
+                && ! str_contains($url->value, '#'),
             ARRAY_FILTER_USE_BOTH,
         ));
 

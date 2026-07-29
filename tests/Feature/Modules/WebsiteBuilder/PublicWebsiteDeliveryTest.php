@@ -57,7 +57,7 @@ final class PublicWebsiteDeliveryTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Klinik Syifa')
-            ->assertSee('https://clinic.example/#booking', false)
+            ->assertSee('https://clinic.example/booking', false)
             ->assertSee('application/ld+json', false)
             ->assertDontSee('storage_key');
     }

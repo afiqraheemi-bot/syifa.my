@@ -42,9 +42,25 @@ final class PublicWebsiteDeliveryContractTest extends TestCase
 
         self::assertSame('https://clinic.example/care/', $routes[PublicRoute::Home->value]->value);
         self::assertSame('https://clinic.example/care/#services', $routes[PublicRoute::Services->value]->value);
-        self::assertSame('https://clinic.example/care/#booking', $routes[PublicRoute::Booking->value]->value);
+        self::assertSame('https://clinic.example/care/booking', $routes[PublicRoute::Booking->value]->value);
         self::assertSame('https://clinic.example/care/privacy', $routes[PublicRoute::Privacy->value]->value);
         self::assertArrayNotHasKey('unknown', $routes);
+    }
+
+    public function test_draft_preview_keeps_booking_inside_the_protected_preview_document(): void
+    {
+        $context = new PublicSiteContext(
+            'https',
+            'app.example',
+            '/dashboard/onboarding/job/preview',
+            $this->uuid(1),
+        );
+        $routes = (new PublicRoutePolicy)->available($this->renderModel(), $context, false);
+
+        self::assertSame(
+            'https://app.example/dashboard/onboarding/job/preview/#booking',
+            $routes[PublicRoute::Booking->value]->value,
+        );
     }
 
     #[DataProvider('invalidContexts')]
