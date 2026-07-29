@@ -26,6 +26,14 @@ function display(value) {
     return label(String(value));
 }
 
+function hasBreakdown(value) {
+    return typeof value === 'object' && value !== null && Object.keys(value).length > 0;
+}
+
+function isBreakdown(value) {
+    return typeof value === 'object' && value !== null;
+}
+
 function date(value) {
     return new Intl.DateTimeFormat('en-MY', {
         dateStyle: 'medium',
@@ -56,7 +64,7 @@ function date(value) {
                 class="rounded-2xl border border-slate-200 bg-white p-5"
             >
                 <h2 class="text-sm font-semibold text-slate-600">{{ label(key) }}</h2>
-                <template v-if="typeof value === 'object' && value !== null">
+                <template v-if="hasBreakdown(value)">
                     <dl class="mt-4 space-y-2">
                         <div
                             v-for="(nestedValue, nestedKey) in value"
@@ -70,6 +78,9 @@ function date(value) {
                         </div>
                     </dl>
                 </template>
+                <p v-else-if="isBreakdown(value)" class="mt-3 text-sm text-slate-500">
+                    No activity in this scope yet.
+                </p>
                 <p v-else class="mt-2 text-2xl font-bold text-slate-950">{{ display(value) }}</p>
             </article>
         </div>

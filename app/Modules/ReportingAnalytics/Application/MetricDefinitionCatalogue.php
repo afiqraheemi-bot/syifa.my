@@ -13,6 +13,7 @@ final readonly class MetricDefinitionCatalogue
             $this->definition('website.publication_status', 'Website publication status'),
             $this->definition('booking.total', 'Total bookings'),
             $this->definition('booking.by_status', 'Bookings by status'),
+            $this->definition('booking.by_service', 'Bookings by service'),
             $this->definition('subscription.current_status', 'Current subscription status'),
         ];
     }
@@ -35,6 +36,12 @@ final readonly class MetricDefinitionCatalogue
             $this->definition('website.published', 'Published websites'),
             $this->definition('subscription.active', 'Active subscriptions'),
             $this->definition('booking.total', 'Total bookings'),
+            $this->definition('booking.adopting_tenants', 'Clinics receiving bookings'),
+            $this->definition('registration.by_status', 'Registrations by status'),
+            $this->definition('website.by_status', 'Websites by status'),
+            $this->definition('subscription.by_status', 'Subscriptions by status'),
+            $this->definition('booking.by_status', 'Bookings by status'),
+            $this->definition('onboarding.by_status', 'Onboarding jobs by status'),
             $this->definition('onboarding.open', 'Open onboarding jobs'),
         ];
     }

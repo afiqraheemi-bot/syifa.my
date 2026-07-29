@@ -29,6 +29,18 @@ final readonly class PostgresReportReadAdapter implements ReportReadInterface
             ->pluck('aggregate', 'status')
             ->map(static fn (mixed $count): int => (int) $count)
             ->all();
+        $serviceCounts = $this->connection->table('bookings')
+            ->leftJoin('services', function ($join): void {
+                $join->on('services.id', '=', 'bookings.service_id')
+                    ->on('services.tenant_id', '=', 'bookings.tenant_id');
+            })
+            ->where('bookings.tenant_id', $tenantId)
+            ->selectRaw("COALESCE(services.name, 'Not selected') AS service_name, COUNT(*) AS aggregate")
+            ->groupBy('services.id', 'services.name')
+            ->orderBy('services.name')
+            ->pluck('aggregate', 'service_name')
+            ->map(static fn (mixed $count): int => (int) $count)
+            ->all();
 
         return [
             'scope' => 'tenant',
@@ -39,6 +51,7 @@ final readonly class PostgresReportReadAdapter implements ReportReadInterface
                 'websitePublicationStatus' => $website === null ? 'not_available' : (string) $website,
                 'bookingTotal' => array_sum($bookingCounts),
                 'bookingsByStatus' => $bookingCounts,
+                'bookingsByService' => $serviceCounts,
                 'subscriptionStatus' => $subscription === null ? 'not_available' : (string) $subscription->status,
                 'subscriptionStartsOn' => $subscription === null ? null : (string) $subscription->starts_on,
                 'subscriptionEndsOn' => $subscription === null ? null : (string) $subscription->ends_on,
@@ -72,6 +85,12 @@ final readonly class PostgresReportReadAdapter implements ReportReadInterface
 
     public function portfolio(): array
     {
+        $registrationsByStatus = $this->countsByStatus('clinic_registrations');
+        $websitesByStatus = $this->countsByStatus('websites', 'lifecycle');
+        $subscriptionsByStatus = $this->countsByStatus('subscriptions');
+        $bookingsByStatus = $this->countsByStatus('bookings');
+        $onboardingByStatus = $this->countsByStatus('onboarding_jobs');
+
         return [
             'scope' => 'platform_portfolio',
             'scopeId' => null,
@@ -83,8 +102,26 @@ final readonly class PostgresReportReadAdapter implements ReportReadInterface
                 'publishedWebsites' => $this->connection->table('websites')->where('lifecycle', 'published')->count(),
                 'activeSubscriptions' => $this->connection->table('subscriptions')->whereIn('status', ['active', 'renewal_due', 'reactivated'])->count(),
                 'bookingTotal' => $this->connection->table('bookings')->count(),
+                'bookingAdoptingTenants' => $this->connection->table('bookings')->distinct()->count('tenant_id'),
                 'openOnboardingJobs' => $this->connection->table('onboarding_jobs')->whereNotIn('status', ['completed', 'cancelled'])->count(),
+                'registrationsByStatus' => $registrationsByStatus,
+                'websitesByStatus' => $websitesByStatus,
+                'subscriptionsByStatus' => $subscriptionsByStatus,
+                'bookingsByStatus' => $bookingsByStatus,
+                'onboardingByStatus' => $onboardingByStatus,
             ],
         ];
+    }
+
+    /** @return array<string, int> */
+    private function countsByStatus(string $table, string $statusColumn = 'status'): array
+    {
+        return $this->connection->table($table)
+            ->selectRaw($statusColumn.' AS lifecycle_status, COUNT(*) AS aggregate')
+            ->groupBy($statusColumn)
+            ->orderBy($statusColumn)
+            ->pluck('aggregate', 'lifecycle_status')
+            ->map(static fn (mixed $count): int => (int) $count)
+            ->all();
     }
 }
