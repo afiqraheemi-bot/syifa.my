@@ -1172,6 +1172,63 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->getJson('/dashboard/onboarding')->assertForbidden();
     }
 
+    public function test_launch_readiness_endpoint_enforces_role_and_resource_scope(): void
+    {
+        $jobId = DashboardLaunchReadinessRead::JOB_ID;
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $this->getJson('/api/v1/onboarding-jobs/'.$jobId.'/launch-readiness')
+            ->assertOk()
+            ->assertJsonPath('data.onboardingJobId', $jobId)
+            ->assertJsonPath('data.tenantId', DashboardLaunchReadinessRead::TENANT_ID)
+            ->assertJsonPath('data.ready', false);
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000999',
+            ),
+        );
+        $this->getJson('/api/v1/onboarding-jobs/'.$jobId.'/launch-readiness')
+            ->assertNotFound();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                DashboardLaunchReadinessRead::TENANT_ID,
+            ),
+        );
+        $this->getJson('/api/v1/onboarding-jobs/'.$jobId.'/launch-readiness')
+            ->assertOk()
+            ->assertJsonPath('data.onboardingJobId', $jobId);
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-foreign'),
+        );
+        $this->getJson('/api/v1/onboarding-jobs/'.$jobId.'/launch-readiness')
+            ->assertNotFound();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+        $this->getJson('/api/v1/onboarding-jobs/'.$jobId.'/launch-readiness')
+            ->assertOk()
+            ->assertJsonPath('data.onboardingJobId', $jobId);
+    }
+
     public function test_website_designer_receives_assignment_scoped_operational_job_detail(): void
     {
         $this->app->instance(
@@ -2519,19 +2576,41 @@ final readonly class DashboardOnboardingTaskRead implements OnboardingTaskReadIn
 
 final readonly class DashboardLaunchReadinessRead implements LaunchReadinessReadInterface
 {
+    public const string JOB_ID = '00000000-0000-4000-8000-000000000101';
+
+    public const string TENANT_ID = '00000000-0000-4000-8000-000000000002';
+
     public function forJob(string $onboardingJobId): ?LaunchReadinessData
     {
-        return null;
+        return $onboardingJobId === self::JOB_ID ? $this->data() : null;
     }
 
     public function forTenant(string $tenantId): ?LaunchReadinessData
     {
-        return null;
+        return $tenantId === self::TENANT_ID ? $this->data() : null;
     }
 
     public function forJobs(array $onboardingJobIds): array
     {
-        return [];
+        return in_array(self::JOB_ID, $onboardingJobIds, true)
+            ? [self::JOB_ID => $this->data()]
+            : [];
+    }
+
+    private function data(): LaunchReadinessData
+    {
+        return new LaunchReadinessData(
+            self::JOB_ID,
+            self::TENANT_ID,
+            '00000000-0000-4000-8000-000000000001',
+            'blocked',
+            [[
+                'key' => 'clinic_owner_approval',
+                'label' => 'Clinic Owner approval',
+                'satisfied' => false,
+                'detail' => 'Current approval is required.',
+            ]],
+        );
     }
 }
 
@@ -2698,7 +2777,8 @@ final readonly class DashboardFixedDesignerRead implements WebsiteDesignerDashbo
 
     public function detail(string $platformIdentityId, string $onboardingJobId): ?WebsiteDesignerJobDetailData
     {
-        if ($onboardingJobId !== '00000000-0000-4000-8000-000000000101') {
+        if ($platformIdentityId !== '00000000-0000-4000-8000-000000000010'
+            || $onboardingJobId !== '00000000-0000-4000-8000-000000000101') {
             return null;
         }
 
