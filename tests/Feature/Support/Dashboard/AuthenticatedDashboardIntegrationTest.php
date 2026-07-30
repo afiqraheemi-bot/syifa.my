@@ -382,7 +382,12 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('summaries.4.key', 'ready-publish')
                     ->where('summaries.5.value', '2')
                     ->has('quickActions', 3)
-                    ->where('quickActions.0.available', false)
+                    ->where('quickActions.0.available', true)
+                    ->where('quickActions.0.href', route('dashboard.onboarding'))
+                    ->where('quickActions.1.available', true)
+                    ->where('quickActions.1.href', route('dashboard.onboarding', ['status' => 'in_progress']))
+                    ->where('quickActions.2.available', true)
+                    ->where('quickActions.2.href', route('dashboard.onboarding', ['status' => 'in_review']))
                     ->has('recentAssignments', 1)
                     ->where('recentAssignments.0.description', 'Website setup')
                     ->has('navigation', 3),

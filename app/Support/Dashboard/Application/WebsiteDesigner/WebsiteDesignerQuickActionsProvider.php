@@ -10,29 +10,35 @@ use App\Support\Dashboard\Application\DashboardSectionProviderInterface;
 
 final readonly class WebsiteDesignerQuickActionsProvider implements DashboardSectionProviderInterface
 {
+    public function __construct(
+        private ?string $assignmentsUrl = null,
+        private ?string $setupUrl = null,
+        private ?string $reviewUrl = null,
+    ) {}
+
     public function provide(AuthorizationContext $context): DashboardSectionProjection
     {
         return new DashboardSectionProjection('quickActions', [
             [
                 'key' => 'view-assignments',
                 'label' => 'View assignments',
-                'description' => 'Assignment management is not available in this increment.',
-                'href' => null,
-                'available' => false,
+                'description' => 'Open your active onboarding queue.',
+                'href' => $this->assignmentsUrl ?? route('dashboard.onboarding'),
+                'available' => true,
             ],
             [
                 'key' => 'continue-setup',
                 'label' => 'Continue website setup',
-                'description' => 'Website editing is not available in this increment.',
-                'href' => null,
-                'available' => false,
+                'description' => 'Choose an assigned clinic and continue its website setup.',
+                'href' => $this->setupUrl ?? route('dashboard.onboarding', ['status' => 'in_progress']),
+                'available' => true,
             ],
             [
                 'key' => 'review-projects',
                 'label' => 'Review projects',
-                'description' => 'Review operations are not available in this increment.',
-                'href' => null,
-                'available' => false,
+                'description' => 'Review assigned websites that need revision.',
+                'href' => $this->reviewUrl ?? route('dashboard.onboarding', ['status' => 'in_review']),
+                'available' => true,
             ],
         ]);
     }

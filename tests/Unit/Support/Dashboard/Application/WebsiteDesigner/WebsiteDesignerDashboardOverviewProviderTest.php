@@ -32,7 +32,7 @@ final class WebsiteDesignerDashboardOverviewProviderTest extends TestCase
         );
         $provider = new WebsiteDesignerDashboardOverviewProvider(
             new WebsiteDesignerAssignmentsProvider($read),
-            new WebsiteDesignerQuickActionsProvider,
+            new WebsiteDesignerQuickActionsProvider('/assignments', '/setup', '/review'),
             new WebsiteDesignerRecentAssignmentsProvider($read),
         );
 
@@ -47,7 +47,12 @@ final class WebsiteDesignerDashboardOverviewProviderTest extends TestCase
         self::assertSame('Review & revision', $overview['recentAssignments'][0]['description']);
         self::assertSame('2026-08-24T09:30:00+08:00', $overview['recentAssignments'][0]['occurredAt']);
         self::assertCount(3, $overview['quickActions']);
-        self::assertSame([false, false, false], array_column($overview['quickActions'], 'available'));
+        self::assertSame([true, true, true], array_column($overview['quickActions'], 'available'));
+        self::assertSame([
+            '/assignments',
+            '/setup',
+            '/review',
+        ], array_column($overview['quickActions'], 'href'));
         self::assertSame(['designer-1', 'designer-1'], $read->identityIds);
     }
 
@@ -56,7 +61,7 @@ final class WebsiteDesignerDashboardOverviewProviderTest extends TestCase
         $read = new WebsiteDesignerFixedDashboardRead;
         $provider = new WebsiteDesignerDashboardOverviewProvider(
             new WebsiteDesignerAssignmentsProvider($read),
-            new WebsiteDesignerQuickActionsProvider,
+            new WebsiteDesignerQuickActionsProvider('/assignments', '/setup', '/review'),
             new WebsiteDesignerRecentAssignmentsProvider($read),
         );
 
