@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Modules\WebsiteBuilder\Persistence;
 
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryData;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContext;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\ServicesSectionRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\PublicWebsiteRenderProjector;
-use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\GallerySectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\ServicePresentationItem;
@@ -444,15 +445,36 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $website->readyForReview($this->at('+1 hour'));
         $website->publish($this->publicationEvidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(852)), $this->uuid(900), $this->at('+2 hours'));
         $repository->save($website);
-        $provider = new PostgresPublicWebsiteRenderModelProvider($repository, new PublicWebsiteRenderProjector);
+        $provider = new PostgresPublicWebsiteRenderModelProvider(
+            $repository,
+            new PublicWebsiteRenderProjector,
+            new WebsiteSubscriptionSummary('active', '2099-12-31'),
+        );
 
-        $render = $provider->find(new PublicSiteContext('https', 'clinic.example', websiteId: $website->id->value));
+        $render = $provider->find(new PublicSiteContext(
+            'https',
+            'clinic.example',
+            websiteId: $website->id->value,
+            tenantId: $website->tenantId->value,
+        ));
 
         self::assertNotNull($render);
         self::assertSame('Klinik Syifa', $render->branding->clinicName);
         self::assertInstanceOf(ServicesSectionRenderModel::class, $render->sections[2]);
         self::assertSame('Rawatan Kesihatan Am', $render->sections[2]->services[0]->displayName);
         self::assertNull($provider->find(new PublicSiteContext('https', 'missing.example', websiteId: $this->uuid(999))));
+
+        $expired = new PostgresPublicWebsiteRenderModelProvider(
+            $repository,
+            new PublicWebsiteRenderProjector,
+            new WebsiteSubscriptionSummary('expired', '2026-08-01'),
+        );
+        self::assertNull($expired->find(new PublicSiteContext(
+            'https',
+            'clinic.example',
+            websiteId: $website->id->value,
+            tenantId: $website->tenantId->value,
+        )));
     }
 
     public function test_republish_inserts_new_version_and_preserves_previous_snapshot(): void
@@ -666,7 +688,7 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $this->migrations = [];
     }
 
-    private function repository(): WebsiteRepositoryInterface
+    private function repository(): PostgresWebsiteRepository
     {
         return new PostgresWebsiteRepository($this->db(), new WebsitePersistenceMapper, new WebsiteSectionPersistenceMapper, new WebsiteSeoConfigurationPersistenceMapper, new WebsiteAssetPersistenceMapper);
     }
@@ -714,5 +736,18 @@ final class PostgresWebsiteRepositoryTest extends TestCase
     private function uuid(int $suffix): string
     {
         return sprintf('00000000-0000-4000-8000-%012d', $suffix);
+    }
+}
+
+final readonly class WebsiteSubscriptionSummary implements SubscriptionSummaryReadInterface
+{
+    public function __construct(
+        private string $status,
+        private string $endsOn,
+    ) {}
+
+    public function summary(string $trustedTenantId): SubscriptionSummaryData
+    {
+        return new SubscriptionSummaryData($this->status, $this->endsOn);
     }
 }

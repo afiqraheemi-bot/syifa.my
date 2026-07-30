@@ -469,6 +469,7 @@ final class PostgresWebsiteDraftRepositoryTest extends TestCase
         self::assertSame('Trusted clinic care', $publicHero->headline);
         $publicContext = (new PostgresPublicSiteContextFactory(
             $addresses,
+            new DraftActiveSubscription,
             [],
             true,
         ))->forHost('KLINIK-SYIFA.SYIFA.MY');
@@ -476,6 +477,7 @@ final class PostgresWebsiteDraftRepositoryTest extends TestCase
         $hostRendered = (new PostgresPublicWebsiteRenderModelProvider(
             $websites,
             new PublicWebsiteRenderProjector,
+            new DraftActiveSubscription,
         ))->find($publicContext);
         self::assertNotNull($hostRendered);
         self::assertInstanceOf(HeroSectionRenderModel::class, $hostRendered->sections[0]);

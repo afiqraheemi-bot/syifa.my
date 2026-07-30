@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\WebsiteBuilder\Infrastructure\Delivery;
 
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContext;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContextFactoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
@@ -13,6 +14,7 @@ final readonly class PostgresPublicSiteContextFactory implements PublicSiteConte
     /** @param array<string, array{website_id: string, base_path?: string, scheme?: string}> $localSites */
     public function __construct(
         private WebsitePublicAddressReadInterface $addresses,
+        private SubscriptionSummaryReadInterface $subscriptions,
         private array $localSites = [],
         private bool $runtimeAddressing = true,
     ) {}
@@ -38,9 +40,22 @@ final readonly class PostgresPublicSiteContextFactory implements PublicSiteConte
             return null;
         }
         $address = $this->addresses->resolveActiveHost($normalized);
+        if ($address === null) {
+            return null;
+        }
+        $subscription = $this->subscriptions->summary($address->tenantId);
+        if ($subscription === null
+            || $subscription->status !== 'active'
+            || $subscription->endsOn < date('Y-m-d')) {
+            return null;
+        }
 
-        return $address === null
-            ? null
-            : new PublicSiteContext('https', $address->host, '', $address->websiteId);
+        return new PublicSiteContext(
+            'https',
+            $address->host,
+            '',
+            $address->websiteId,
+            $address->tenantId,
+        );
     }
 }

@@ -8,6 +8,7 @@ use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeRea
 use App\Modules\Booking\Contracts\Queries\AvailableSlotReaderInterface;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
 use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementLookupInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Application\CustomDomain\ManageCustomDomainService;
 use App\Modules\WebsiteBuilder\Application\Delivery\AvailabilityDeliveryService;
 use App\Modules\WebsiteBuilder\Application\Delivery\BookingDeliveryService;
@@ -19,6 +20,7 @@ use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteDocumentFactory
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteRenderModelProviderInterface;
 use App\Modules\WebsiteBuilder\Application\Provisioning\ProvisionWebsiteFoundationService;
 use App\Modules\WebsiteBuilder\Application\Provisioning\ReserveProvisionedWebsiteAddressService;
+use App\Modules\WebsiteBuilder\Application\Rendering\PublicWebsiteRenderProjector;
 use App\Modules\WebsiteBuilder\Application\WebsiteAddress\WebsiteSubdomainPolicy;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\WebsiteDraftSectionCodec;
 use App\Modules\WebsiteBuilder\Contracts\CustomDomain\CustomDomainRepositoryInterface;
@@ -125,6 +127,7 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
             PublicSiteContextFactoryInterface::class,
             static fn (Application $application): PostgresPublicSiteContextFactory => new PostgresPublicSiteContextFactory(
                 $application->make(WebsitePublicAddressReadInterface::class),
+                $application->make(SubscriptionSummaryReadInterface::class),
                 (array) config('public_website_delivery.sites', []),
                 (bool) config('public_website_delivery.runtime_addressing', true),
             ),
@@ -133,7 +136,14 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
             PublicAssetUrlResolverInterface::class,
             static fn (): OriginPublicAssetUrlResolver => new OriginPublicAssetUrlResolver((string) config('public_website_delivery.asset_origin')),
         );
-        $this->app->singleton(PublicWebsiteRenderModelProviderInterface::class, PostgresPublicWebsiteRenderModelProvider::class);
+        $this->app->singleton(
+            PublicWebsiteRenderModelProviderInterface::class,
+            static fn (Application $application): PostgresPublicWebsiteRenderModelProvider => new PostgresPublicWebsiteRenderModelProvider(
+                $application->make(PostgresWebsiteRepository::class),
+                $application->make(PublicWebsiteRenderProjector::class),
+                $application->make(SubscriptionSummaryReadInterface::class),
+            ),
+        );
         $this->app->singleton(
             PlatformLegalContentProviderInterface::class,
             static fn (): ConfiguredPlatformLegalContentProvider => new ConfiguredPlatformLegalContentProvider((array) config('public_website_delivery.legal', [])),

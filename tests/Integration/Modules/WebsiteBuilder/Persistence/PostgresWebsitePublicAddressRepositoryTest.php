@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Modules\WebsiteBuilder\Persistence;
 
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryData;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\PostgresPublicSiteContextFactory;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsitePublicAddressRepository;
@@ -141,14 +143,31 @@ final class PostgresWebsitePublicAddressRepositoryTest extends TestCase
         );
         self::assertNull($addresses->forWebsite($this->uuid(2), $this->uuid(10)));
 
-        $context = (new PostgresPublicSiteContextFactory($addresses, [], true))->forHost(
+        $context = (new PostgresPublicSiteContextFactory(
+            $addresses,
+            new AddressSubscription,
+            [],
+            true,
+        ))->forHost(
             'KLINIK-ONE.SYIFA.MY.',
         );
         self::assertNotNull($context);
         self::assertSame($this->uuid(10), $context->websiteId);
+        self::assertSame($this->uuid(1), $context->tenantId);
         self::assertSame('https://klinik-one.syifa.my', $context->origin());
+        self::assertNull((new PostgresPublicSiteContextFactory(
+            $addresses,
+            new AddressSubscription('expired', '2026-08-01'),
+            [],
+            true,
+        ))->forHost('klinik-one.syifa.my'));
         self::assertNull(
-            (new PostgresPublicSiteContextFactory($addresses, [], true))->forHost(
+            (new PostgresPublicSiteContextFactory(
+                $addresses,
+                new AddressSubscription,
+                [],
+                true,
+            ))->forHost(
                 'unknown.syifa.my',
             ),
         );
@@ -193,5 +212,18 @@ final class PostgresWebsitePublicAddressRepositoryTest extends TestCase
     private function uuid(int $suffix): string
     {
         return sprintf('00000000-0000-4000-8000-%012d', $suffix);
+    }
+}
+
+final readonly class AddressSubscription implements SubscriptionSummaryReadInterface
+{
+    public function __construct(
+        private string $status = 'active',
+        private string $endsOn = '2099-12-31',
+    ) {}
+
+    public function summary(string $trustedTenantId): SubscriptionSummaryData
+    {
+        return new SubscriptionSummaryData($this->status, $this->endsOn);
     }
 }

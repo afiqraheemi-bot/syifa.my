@@ -15,6 +15,7 @@ final readonly class PublicSiteContext
         public string $host,
         string $basePath = '',
         public ?string $websiteId = null,
+        public ?string $tenantId = null,
     ) {
         $hostIsValid = preg_match('/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?::[0-9]{1,5})?$/', $host) === 1;
         if (! in_array($scheme, ['https', 'http'], true) || ! $hostIsValid || str_contains($host, '..') || str_contains($host, '@')) {
@@ -29,6 +30,9 @@ final readonly class PublicSiteContext
         }
         if ($websiteId !== null && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $websiteId) !== 1) {
             throw new InvalidPublicDeliveryValueException('Public site Website identity is invalid.');
+        }
+        if ($tenantId !== null && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $tenantId) !== 1) {
+            throw new InvalidPublicDeliveryValueException('Public site Tenant identity is invalid.');
         }
         $this->basePath = $basePath;
     }
