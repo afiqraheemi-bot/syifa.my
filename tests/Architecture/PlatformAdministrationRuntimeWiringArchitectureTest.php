@@ -37,7 +37,7 @@ final class PlatformAdministrationRuntimeWiringArchitectureTest extends TestCase
         self::assertStringNotContainsString('Permissive', $contents);
     }
 
-    public function test_provider_introduces_no_route_identity_persistence_or_new_migration(): void
+    public function test_provider_introduces_no_route_or_identity_persistence_and_only_approved_migrations(): void
     {
         $root = dirname(__DIR__, 2);
         $provider = file_get_contents(
@@ -54,6 +54,7 @@ final class PlatformAdministrationRuntimeWiringArchitectureTest extends TestCase
                 $root.'/database/migrations/platform_administration/2026_07_20_000001_create_audit_entries_table.php',
                 $root.'/database/migrations/platform_administration/2026_08_21_000001_add_remember_token_to_platform_workforce_credentials.php',
                 $root.'/database/migrations/platform_administration/2026_08_21_000002_create_platform_identity_password_reset_tokens_table.php',
+                $root.'/database/migrations/platform_administration/2026_09_09_000001_create_platform_workforce_mfa_enrollments.php',
             ],
             glob($root.'/database/migrations/platform_administration/*.php') ?: [],
         );

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\PlatformAdministration\Presentation\Http\Controllers;
 
 use App\Modules\PlatformAdministration\Application\Authentication\LogoutPlatformSessionService;
+use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformMfaChallengeInterface;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipal;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionAuthenticationInterface;
+use App\Modules\PlatformAdministration\Presentation\Http\Requests\PlatformMfaChallengeRequest;
 use App\Modules\PlatformAdministration\Presentation\Http\Requests\PlatformSessionLoginRequest;
 use App\Modules\PlatformAdministration\Presentation\Http\Responses\ProblemDetailsResponse;
 use DateTimeImmutable;
@@ -19,6 +21,7 @@ final readonly class PlatformSessionController
     public function store(
         PlatformSessionLoginRequest $request,
         PlatformSessionAuthenticationInterface $sessions,
+        PlatformMfaChallengeInterface $mfa,
     ): JsonResponse {
         /** @var array{email: string, password: string} $credentials */
         $credentials = $request->safe()->only(['email', 'password']);
@@ -27,6 +30,7 @@ final readonly class PlatformSessionController
             $credentials['password'],
             new DateTimeImmutable,
             $request->boolean('remember'),
+            false,
         );
 
         if (! $principal instanceof PlatformPrincipal) {
@@ -36,6 +40,40 @@ final readonly class PlatformSessionController
                 'Authentication Failed',
                 401,
                 'The supplied credentials could not be authenticated.',
+            );
+        }
+
+        $challenge = $mfa->begin(
+            $principal,
+            mb_strtolower(trim($credentials['email'])),
+            $request->boolean('remember'),
+            new DateTimeImmutable,
+        );
+
+        return response()->json([
+            'data' => [
+                'authenticated' => false,
+                'state' => $challenge->state,
+                'setup_key' => $challenge->setupKey,
+                'provisioning_uri' => $challenge->provisioningUri,
+                'csrf_token' => $request->session()->token(),
+            ],
+        ], 202);
+    }
+
+    public function completeMfa(
+        PlatformMfaChallengeRequest $request,
+        PlatformMfaChallengeInterface $mfa,
+    ): JsonResponse {
+        $principal = $mfa->complete((string) $request->validated('code'), new DateTimeImmutable);
+
+        if (! $principal instanceof PlatformPrincipal) {
+            return ProblemDetailsResponse::make(
+                $request,
+                'mfa_authentication_failed',
+                'Authentication Failed',
+                401,
+                'The supplied authentication code could not be verified.',
             );
         }
 

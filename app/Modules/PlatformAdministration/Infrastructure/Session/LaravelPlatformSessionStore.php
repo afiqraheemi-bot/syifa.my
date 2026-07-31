@@ -35,23 +35,21 @@ final readonly class LaravelPlatformSessionStore implements PlatformSessionStore
      * "session regeneration after login" and Phase 4's native-middleware
      * requirement in one step.
      *
-     * `$remember` re-logs in with a freshly-queried, real Eloquent row —
-     * Laravel's recaller cookie embeds a hash derived from the genuine
-     * `password_hash`, which the minimally-hydrated object `Auth::attempt()`
-     * used for verification deliberately never carries (Application layer
-     * never sees Eloquent). This is the only place that row is fetched.
+     * Establishment always logs in a freshly queried, real Eloquent row. That
+     * is essential after MFA because the password-stage guard has already
+     * been logged out, and it also gives Laravel a genuine password hash when
+     * a revocable remember-me cookie is requested.
      */
     public function establish(PlatformPrincipal $principal, DateTimeImmutable $authenticatedAt, bool $remember = false): PlatformSessionState
     {
-        if ($remember) {
-            $user = PlatformIdentityAuthenticatable::query()
-                ->where('platform_identity_id', $principal->platformIdentityId)
-                ->first();
+        $user = PlatformIdentityAuthenticatable::query()
+            ->where('platform_identity_id', $principal->platformIdentityId)
+            ->first();
 
-            if ($user instanceof PlatformIdentityAuthenticatable) {
-                $this->guard()->login($user, true);
-            }
+        if (! $user instanceof PlatformIdentityAuthenticatable) {
+            throw new RuntimeException('The authenticated platform identity credential no longer exists.');
         }
+        $this->guard()->login($user, $remember);
 
         $this->session->migrate(true);
         $this->session->regenerateToken();

@@ -58,6 +58,7 @@ final readonly class AuthenticatePlatformSessionService implements PlatformSessi
         #[SensitiveParameter] string $plainPassword,
         DateTimeImmutable $attemptedAt,
         bool $remember = false,
+        bool $establishSession = true,
     ): ?PlatformPrincipal {
         $attemptedAtUtc = $this->utc($attemptedAt);
         $correlationId = $this->correlationIds->resolve();
@@ -149,13 +150,20 @@ final readonly class AuthenticatePlatformSessionService implements PlatformSessi
             $identity->name,
         );
 
-        if (! $this->auditAuthenticationSuccess($correlationId, $attemptedAtUtc, $identity, $remember)) {
+        if ($establishSession) {
+            if (! $this->auditAuthenticationSuccess($correlationId, $attemptedAtUtc, $identity, $remember)) {
+                $guard->logout();
+
+                return null;
+            }
+
+            $this->sessions->establish($principal, $attemptedAt, $remember);
+        } else {
+            // A valid password is only the first factor for platform workforce
+            // identities. Never leave Laravel's native guard authenticated
+            // while the server-owned MFA challenge is pending.
             $guard->logout();
-
-            return null;
         }
-
-        $this->sessions->establish($principal, $attemptedAt, $remember);
 
         return $principal;
     }

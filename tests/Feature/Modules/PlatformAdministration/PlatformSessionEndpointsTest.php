@@ -9,6 +9,10 @@ use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInter
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerJobDetailData;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
+use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformMfaChallengeData;
+use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformMfaChallengeInterface;
+use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipal;
+use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionStoreInterface;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityData;
 use App\Modules\PlatformAdministration\Contracts\PlatformIdentity\PlatformIdentityLookupInterface;
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\CredentialVerificationInterface;
@@ -20,7 +24,11 @@ use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActor
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditEntryId;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 use DateTimeImmutable;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -40,6 +48,39 @@ final class PlatformSessionEndpointsTest extends TestCase
     {
         parent::setUp();
         config()->set('session.driver', 'array');
+        if (! Schema::hasTable('platform_workforce_credentials')) {
+            Schema::create('platform_workforce_credentials', function (Blueprint $table): void {
+                $table->uuid('platform_identity_id')->primary();
+                $table->string('normalized_email');
+                $table->string('password_hash');
+                $table->string('email_verification_status');
+                $table->timestamp('email_verified_at')->nullable();
+                $table->string('account_status');
+                $table->unsignedInteger('failed_attempt_count')->default(0);
+                $table->timestamp('lockout_until')->nullable();
+                $table->string('name');
+                $table->string('role');
+                $table->rememberToken();
+                $table->unsignedBigInteger('version');
+                $table->timestamps();
+            });
+        }
+        DB::table('platform_workforce_credentials')->updateOrInsert(
+            ['platform_identity_id' => self::IDENTITY_ID],
+            [
+                'normalized_email' => 'designer@example.test',
+                'password_hash' => Hash::make('correct horse battery staple'),
+                'email_verification_status' => 'verified',
+                'email_verified_at' => now(),
+                'account_status' => 'active',
+                'failed_attempt_count' => 0,
+                'name' => 'Website Designer',
+                'role' => 'website_designer',
+                'version' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
         $this->verification = new MutableCredentialVerification(true, self::IDENTITY_ID);
         $this->identities = new MutablePlatformIdentityLookup(new PlatformIdentityData(
             self::IDENTITY_ID,
@@ -67,6 +108,10 @@ final class PlatformSessionEndpointsTest extends TestCase
         $this->app->instance(PlatformWorkforceCredentialLookupInterface::class, $this->credentials);
         $this->app->instance(AuditEntryRecorderInterface::class, $this->auditRecorder);
         $this->app->instance(
+            PlatformMfaChallengeInterface::class,
+            new CompletingPlatformMfaChallenge($this->app->make(PlatformSessionStoreInterface::class)),
+        );
+        $this->app->instance(
             WebsiteDesignerDashboardReadInterface::class,
             new EmptyWebsiteDesignerDashboardRead,
         );
@@ -81,15 +126,22 @@ final class PlatformSessionEndpointsTest extends TestCase
             'password' => 'correct horse battery staple',
         ]);
 
-        $login->assertCreated()
+        $login->assertStatus(202)
+            ->assertJsonPath('data.authenticated', false)
+            ->assertJsonPath('data.state', 'mfa_required')
+            ->assertJsonStructure(['data' => ['csrf_token']]);
+
+        $this->getJson('https://clinic.app.syifa.my/api/v1/platform/sessions/current')
+            ->assertUnauthorized()
+            ->assertJsonPath('type', 'session_invalid');
+
+        $this->postJson('https://clinic.app.syifa.my/api/v1/platform/sessions/mfa', [
+            'code' => '123456',
+        ])->assertCreated()
             ->assertJsonPath('data.authenticated', true)
-            ->assertJsonPath('data.principal.platform_identity_id', self::IDENTITY_ID)
-            ->assertJsonPath('data.principal.role', 'website_designer')
-            ->assertJsonPath('data.principal.name', 'Website Designer');
+            ->assertJsonPath('data.principal.platform_identity_id', self::IDENTITY_ID);
 
         self::assertNotSame($startingSessionId, session()->getId());
-        self::assertCount(1, $this->auditRecorder->entries);
-
         $this->getJson('https://clinic.app.syifa.my/api/v1/platform/sessions/current')
             ->assertOk()
             ->assertJsonPath('data.principal.platform_identity_id', self::IDENTITY_ID)
@@ -170,6 +222,9 @@ final class PlatformSessionEndpointsTest extends TestCase
         $this->postJson('https://clinic.app.syifa.my/api/v1/platform/sessions', [
             'email' => 'designer@example.test',
             'password' => 'correct horse battery staple',
+        ])->assertStatus(202);
+        $this->postJson('https://clinic.app.syifa.my/api/v1/platform/sessions/mfa', [
+            'code' => '123456',
         ])->assertCreated();
 
         $this->identities->identity = new PlatformIdentityData(
@@ -193,13 +248,44 @@ final class PlatformSessionEndpointsTest extends TestCase
             ->values()
             ->all();
 
-        self::assertCount(3, $routes);
+        self::assertCount(4, $routes);
         self::assertSame('api/v1/platform/sessions', $routes[0][1]);
-        self::assertSame('api/v1/platform/sessions/current', $routes[1][1]);
+        self::assertSame('api/v1/platform/sessions/mfa', $routes[1][1]);
         self::assertSame('api/v1/platform/sessions/current', $routes[2][1]);
+        self::assertSame('api/v1/platform/sessions/current', $routes[3][1]);
         self::assertContains('web', $routes[0][2]);
         self::assertContains('web', $routes[1][2]);
         self::assertContains('web', $routes[2][2]);
+        self::assertContains('web', $routes[3][2]);
+    }
+}
+
+final class CompletingPlatformMfaChallenge implements PlatformMfaChallengeInterface
+{
+    private ?PlatformPrincipal $principal = null;
+
+    public function __construct(private readonly PlatformSessionStoreInterface $sessions) {}
+
+    public function begin(
+        PlatformPrincipal $principal,
+        string $normalizedEmail,
+        bool $remember,
+        DateTimeImmutable $at,
+    ): PlatformMfaChallengeData {
+        $this->principal = $principal;
+
+        return new PlatformMfaChallengeData('mfa_required');
+    }
+
+    public function complete(string $code, DateTimeImmutable $at): ?PlatformPrincipal
+    {
+        if ($code !== '123456' || ! $this->principal instanceof PlatformPrincipal) {
+            return null;
+        }
+
+        $this->sessions->establish($this->principal, $at);
+
+        return $this->principal;
     }
 }
 

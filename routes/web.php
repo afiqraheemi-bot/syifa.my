@@ -414,6 +414,9 @@ Route::prefix('api/v1/platform/sessions')
                 'guest.guard:clinic_owner',
                 'throttle:platform.login',
             ]);
+        Route::post('/mfa', [PlatformSessionController::class, 'completeMfa'])
+            ->middleware('throttle:platform.login')
+            ->name('platform-sessions.mfa');
         Route::get('/current', [PlatformSessionController::class, 'show'])
             ->middleware([
                 'throttle:platform.session',

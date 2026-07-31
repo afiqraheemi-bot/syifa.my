@@ -45,6 +45,7 @@ final class RootEntryTest extends TestCase
                     ->where('localClinicOwnerLogin', true)
                     ->where('clinicOwnerSessionUrl', url('/api/v1/sessions'))
                     ->where('platformSessionUrl', url('/api/v1/platform/sessions'))
+                    ->where('platformMfaUrl', route('platform-sessions.mfa'))
                     ->where('dashboardUrl', url('/dashboard'))
                     ->where('clinicRegistrationUrl', route('clinic-registration.browser'))
                     ->has('clinicPortalBaseDomains'),

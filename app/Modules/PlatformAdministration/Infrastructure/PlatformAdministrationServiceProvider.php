@@ -7,6 +7,7 @@ namespace App\Modules\PlatformAdministration\Infrastructure;
 use App\Modules\PlatformAdministration\Application\AuditEntry\RecordAuditEntryService;
 use App\Modules\PlatformAdministration\Application\Authentication\AuthenticatePlatformSessionService;
 use App\Modules\PlatformAdministration\Application\Authentication\LogoutPlatformSessionService;
+use App\Modules\PlatformAdministration\Application\Authentication\PlatformMfaChallengeService;
 use App\Modules\PlatformAdministration\Application\Authentication\PlatformPrincipalResolver;
 use App\Modules\PlatformAdministration\Application\Authorization\AuthorizePlatformActionService;
 use App\Modules\PlatformAdministration\Application\EmailVerification\SendPlatformEmailVerificationNotificationService;
@@ -19,6 +20,9 @@ use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditCorrelationIdRe
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryReadInterface;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRepositoryInterface;
+use App\Modules\PlatformAdministration\Contracts\Authentication\PendingPlatformAuthenticationStoreInterface;
+use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformMfaChallengeInterface;
+use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformMfaEnrollmentRepositoryInterface;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipalResolverInterface;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionAuthenticationInterface;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformSessionStoreInterface;
@@ -35,6 +39,7 @@ use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWo
 use App\Modules\PlatformAdministration\Contracts\WorkforceCredentials\PlatformWorkforceCredentialStateWriterInterface;
 use App\Modules\PlatformAdministration\Domain\Authorization\PlatformAuthorizationService;
 use App\Modules\PlatformAdministration\Infrastructure\Authentication\PlatformIdentityUserProvider;
+use App\Modules\PlatformAdministration\Infrastructure\Authentication\PostgresPlatformMfaEnrollmentRepository;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\AuditEntry\Mappers\AuditEntryPersistenceMapper;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\AuditEntry\PostgresAuditEntryReadAdapter;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\AuditEntry\PostgresAuditEntryRepository;
@@ -48,6 +53,7 @@ use App\Modules\PlatformAdministration\Infrastructure\Persistence\PlatformIdenti
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\PlatformIdentity\PostgresPlatformIdentityLookup;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\WorkforceCredentials\Mappers\PlatformWorkforceCredentialPersistenceMapper;
 use App\Modules\PlatformAdministration\Infrastructure\Persistence\WorkforceCredentials\PostgresPlatformWorkforceCredentialAdapter;
+use App\Modules\PlatformAdministration\Infrastructure\Session\LaravelPendingPlatformAuthenticationStore;
 use App\Modules\PlatformAdministration\Infrastructure\Session\LaravelPlatformSessionStore;
 use App\Modules\PlatformAdministration\Infrastructure\Support\RequestAuditCorrelationIdResolver;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -55,6 +61,7 @@ use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Auth\PasswordBrokerFactory;
+use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\URL;
@@ -212,6 +219,33 @@ final class PlatformAdministrationServiceProvider extends ServiceProvider
             },
         );
         $this->app->alias(LaravelPlatformSessionStore::class, PlatformSessionStoreInterface::class);
+        $this->app->singleton(LaravelPendingPlatformAuthenticationStore::class);
+        $this->app->alias(
+            LaravelPendingPlatformAuthenticationStore::class,
+            PendingPlatformAuthenticationStoreInterface::class,
+        );
+        $this->app->singleton(
+            PostgresPlatformMfaEnrollmentRepository::class,
+            static fn (Application $application): PostgresPlatformMfaEnrollmentRepository => new PostgresPlatformMfaEnrollmentRepository(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->alias(
+            PostgresPlatformMfaEnrollmentRepository::class,
+            PlatformMfaEnrollmentRepositoryInterface::class,
+        );
+        $this->app->singleton(
+            PlatformMfaChallengeService::class,
+            static fn (Application $application): PlatformMfaChallengeService => new PlatformMfaChallengeService(
+                $application->make(PlatformMfaEnrollmentRepositoryInterface::class),
+                $application->make(PendingPlatformAuthenticationStoreInterface::class),
+                $application->make(PlatformSessionStoreInterface::class),
+                $application->make(AuditEntryRecorderInterface::class),
+                $application->make(AuditCorrelationIdResolverInterface::class),
+                $application->make(Encrypter::class),
+            ),
+        );
+        $this->app->alias(PlatformMfaChallengeService::class, PlatformMfaChallengeInterface::class);
 
         $this->app->singleton(
             PlatformPrincipalResolver::class,

@@ -42,6 +42,7 @@ final readonly class RootEntryController
                 && config('tenant_management.local_demo_tenant.enabled') === true,
             'clinicOwnerSessionUrl' => url('/api/v1/sessions'),
             'platformSessionUrl' => url('/api/v1/platform/sessions'),
+            'platformMfaUrl' => route('platform-sessions.mfa'),
             'dashboardUrl' => url('/dashboard'),
             'clinicRegistrationUrl' => route('clinic-registration.browser'),
             'clinicPortalBaseDomains' => $this->clinicPortalBaseDomains(),

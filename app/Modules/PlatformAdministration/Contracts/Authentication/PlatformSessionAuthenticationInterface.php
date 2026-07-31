@@ -14,5 +14,6 @@ interface PlatformSessionAuthenticationInterface
         #[SensitiveParameter] string $plainPassword,
         DateTimeImmutable $attemptedAt,
         bool $remember = false,
+        bool $establishSession = true,
     ): ?PlatformPrincipal;
 }

@@ -35,6 +35,16 @@ export async function createBrowserSession(url, credentials, remember = false) {
     });
 }
 
+export async function completePlatformMfa(url, code) {
+    return browserHttpRequest(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+    });
+}
+
 export async function deleteBrowserSession(url) {
     return fetch(url, {
         method: 'DELETE',

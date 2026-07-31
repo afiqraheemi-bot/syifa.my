@@ -1,12 +1,16 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue';
-import { createBrowserSession } from '../../../Shared/Authentication/session.js';
+import {
+    completePlatformMfa,
+    createBrowserSession,
+} from '../../../Shared/Authentication/session.js';
 
 const props = defineProps({
     clinicPortal: { type: Boolean, required: true },
     localClinicOwnerLogin: { type: Boolean, required: true },
     clinicOwnerSessionUrl: { type: String, required: true },
     platformSessionUrl: { type: String, required: true },
+    platformMfaUrl: { type: String, required: true },
     dashboardUrl: { type: String, required: true },
     clinicRegistrationUrl: { type: String, required: true },
     clinicPortalBaseDomains: { type: Array, required: true },
@@ -21,6 +25,9 @@ const clinicLabel = ref('');
 const loading = ref(false);
 const error = ref('');
 const errorPanel = ref(null);
+const mfaState = ref(null);
+const mfaCode = ref('');
+const mfaSetupKey = ref('');
 
 const isClinicOwner = computed(() => actor.value === 'clinic_owner');
 const canAuthenticateClinicOwner = computed(
@@ -35,6 +42,9 @@ const heading = computed(() => {
 function chooseActor(nextActor) {
     actor.value = nextActor;
     error.value = '';
+    mfaState.value = null;
+    mfaCode.value = '';
+    mfaSetupKey.value = '';
 }
 
 function openClinicPortal() {
@@ -72,6 +82,18 @@ async function submit() {
         return;
     }
 
+    if (result.status === 202 && result.body?.data?.state) {
+        mfaState.value = result.body.data.state;
+        mfaSetupKey.value = result.body.data.setup_key ?? '';
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        if (csrfMeta && result.body.data.csrf_token) {
+            csrfMeta.setAttribute('content', result.body.data.csrf_token);
+        }
+        password.value = '';
+        loading.value = false;
+        return;
+    }
+
     if (result.ok) {
         error.value = '';
         window.location.assign(props.dashboardUrl);
@@ -88,6 +110,26 @@ async function submit() {
             'Log masuk tidak berjaya. Semak maklumat anda atau hubungi pentadbir jika akaun dikunci atau belum disahkan.',
         );
     }
+}
+
+async function submitMfa() {
+    if (loading.value) return;
+
+    error.value = '';
+    loading.value = true;
+
+    try {
+        const result = await completePlatformMfa(props.platformMfaUrl, mfaCode.value);
+        if (result.ok && result.body?.data?.authenticated === true) {
+            window.location.assign(props.dashboardUrl);
+            return;
+        }
+    } catch {
+        // The same safe message is used for transport and verification failure.
+    }
+
+    loading.value = false;
+    showError('Kod pengesahan tidak sah atau telah tamat tempoh. Sila cuba lagi.');
 }
 
 async function showError(message) {
@@ -168,7 +210,7 @@ async function showError(message) {
                     </div>
 
                     <form
-                        v-if="!isClinicOwner || canAuthenticateClinicOwner"
+                        v-if="(!isClinicOwner || canAuthenticateClinicOwner) && !mfaState"
                         class="mt-8 space-y-5"
                         @submit.prevent="submit"
                     >
@@ -232,6 +274,60 @@ async function showError(message) {
                             class="flex min-h-12 w-full items-center justify-center rounded-xl bg-emerald-700 px-5 font-bold text-white transition hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-wait disabled:opacity-70"
                         >
                             {{ loading ? 'Sedang log masuk…' : 'Log masuk' }}
+                        </button>
+                    </form>
+
+                    <form v-else-if="mfaState" class="mt-8 space-y-5" @submit.prevent="submitMfa">
+                        <div
+                            v-if="mfaState === 'mfa_enrollment_required'"
+                            class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-950"
+                        >
+                            <p class="font-bold">Aktifkan pengesahan dua langkah</p>
+                            <p class="mt-1">
+                                Tambah kunci ini dalam aplikasi authenticator anda. Kunci ini hanya
+                                dipaparkan semasa pendaftaran.
+                            </p>
+                            <code
+                                class="mt-3 block break-all rounded-lg bg-white p-3 font-mono text-xs"
+                                >{{ mfaSetupKey }}</code
+                            >
+                        </div>
+                        <div>
+                            <label
+                                for="mfa-code"
+                                class="block text-sm font-semibold text-slate-800"
+                            >
+                                Kod authenticator 6 digit
+                            </label>
+                            <input
+                                id="mfa-code"
+                                v-model="mfaCode"
+                                name="code"
+                                type="text"
+                                inputmode="numeric"
+                                autocomplete="one-time-code"
+                                pattern="[0-9]{6}"
+                                maxlength="6"
+                                required
+                                autofocus
+                                class="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-center font-mono text-xl tracking-[0.35em] focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                            />
+                        </div>
+                        <div
+                            v-if="error"
+                            ref="errorPanel"
+                            tabindex="-1"
+                            role="alert"
+                            class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800"
+                        >
+                            {{ error }}
+                        </div>
+                        <button
+                            type="submit"
+                            :disabled="loading || mfaCode.length !== 6"
+                            class="flex min-h-12 w-full items-center justify-center rounded-xl bg-emerald-700 px-5 font-bold text-white transition hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-wait disabled:opacity-70"
+                        >
+                            {{ loading ? 'Mengesahkan…' : 'Sahkan dan teruskan' }}
                         </button>
                     </form>
 
