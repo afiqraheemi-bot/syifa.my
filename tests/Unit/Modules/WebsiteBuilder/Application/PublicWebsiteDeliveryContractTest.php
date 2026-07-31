@@ -129,6 +129,39 @@ final class PublicWebsiteDeliveryContractTest extends TestCase
         self::assertNull($actions->directions);
     }
 
+    public function test_approved_legal_document_can_be_loaded_from_a_deployment_owned_file(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'syifa-legal-');
+        self::assertIsString($path);
+        file_put_contents($path, json_encode([
+            'version' => '2026-09-v1',
+            'title' => 'Privacy Notice',
+            'paragraphs' => ['Approved policy text.'],
+        ], JSON_THROW_ON_ERROR));
+
+        try {
+            $document = (new ConfiguredPlatformLegalContentProvider([
+                'privacy' => ['path' => $path],
+            ]))->find(PublicRoute::Privacy);
+
+            self::assertNotNull($document);
+            self::assertSame('2026-09-v1', $document->version);
+            self::assertSame('Privacy Notice', $document->title);
+            self::assertSame(['Approved policy text.'], $document->paragraphs);
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public function test_invalid_or_unreadable_legal_document_file_fails_closed(): void
+    {
+        $provider = new ConfiguredPlatformLegalContentProvider([
+            'privacy' => ['path' => '/path/that/does/not/exist.json'],
+        ]);
+
+        self::assertNull($provider->find(PublicRoute::Privacy));
+    }
+
     private function renderModel(): PublicWebsiteRenderModel
     {
         $website = Website::create(new WebsiteId($this->uuid(1)), new TenantId($this->uuid(2)), TemplateId::SyifaEssential, new WebsiteBranding('Klinik Syifa', 'Trusted care', '#112233', '#AABBCC', null, null, 'hello@clinic.test', '+6012', 'Kuala Lumpur'), array_map(fn (int $suffix): SectionId => new SectionId($this->uuid($suffix)), range(100, 108)), new DateTimeImmutable('2026-08-19T00:00:00Z'));

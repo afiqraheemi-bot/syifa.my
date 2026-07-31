@@ -60,6 +60,12 @@ Secrets come from an approved secret-management system, are scoped to workload a
 
 Feature flags have explicit owner, audience, default, telemetry, expiry, and removal date. Security and authorization controls cannot rely solely on flags. Tenant-targeted rollout must preserve tenant isolation and commercial fairness.
 
+Approved platform legal copy is supplied as deployment-owned, read-only JSON files through
+`PUBLIC_LEGAL_PRIVACY_PATH` and `PUBLIC_LEGAL_TERMS_PATH`. Each file contains a non-empty
+`version`, `title`, and `paragraphs` string array. Missing, unreadable, malformed, or empty
+documents fail closed and their public route remains unavailable; application source and seed
+data must never manufacture production policy text.
+
 ## Release Process
 
 The standard release flow is:

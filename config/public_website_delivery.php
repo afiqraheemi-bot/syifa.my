@@ -25,7 +25,11 @@ return [
     // Legal documents fail closed until approved, versioned copy is supplied
     // through an environment-specific configuration source.
     'legal' => [
-        'privacy' => null,
-        'terms' => null,
+        'privacy' => env('PUBLIC_LEGAL_PRIVACY_PATH') === null
+            ? null
+            : ['path' => (string) env('PUBLIC_LEGAL_PRIVACY_PATH')],
+        'terms' => env('PUBLIC_LEGAL_TERMS_PATH') === null
+            ? null
+            : ['path' => (string) env('PUBLIC_LEGAL_TERMS_PATH')],
     ],
 ];
