@@ -23,6 +23,17 @@ final readonly class BookingActionProvider
                 'tone' => 'primary',
             ];
         }
+        if ($booking->status === 'confirmed') {
+            $actions[] = [
+                'key' => 'complete',
+                'label' => 'Mark completed',
+                'href' => route('dashboard.bookings.complete', ['bookingId' => $booking->id]),
+                'method' => 'post',
+                'requiresSchedule' => false,
+                'confirmation' => 'Mark this appointment as completed? This action cannot be undone.',
+                'tone' => 'primary',
+            ];
+        }
         if (in_array($booking->status, ['submitted', 'confirmed'], true)) {
             $actions[] = [
                 'key' => 'reschedule',
@@ -41,17 +52,6 @@ final readonly class BookingActionProvider
                 'requiresSchedule' => false,
                 'confirmation' => 'Cancel this booking? This action cannot be undone.',
                 'tone' => 'danger',
-            ];
-        }
-        if ($booking->status === 'confirmed') {
-            $actions[] = [
-                'key' => 'complete',
-                'label' => 'Mark completed',
-                'href' => route('dashboard.bookings.complete', ['bookingId' => $booking->id]),
-                'method' => 'post',
-                'requiresSchedule' => false,
-                'confirmation' => 'Mark this appointment as completed? This action cannot be undone.',
-                'tone' => 'primary',
             ];
         }
 

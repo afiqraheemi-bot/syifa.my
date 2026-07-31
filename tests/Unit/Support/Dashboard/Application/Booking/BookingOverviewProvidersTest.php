@@ -33,7 +33,7 @@ final class BookingOverviewProvidersTest extends TestCase
         self::assertSame('BOOK-001', $projection['items'][0]['reference']);
         self::assertSame('Website', $projection['items'][0]['sourceLabel']);
         self::assertSame(['confirm', 'reschedule', 'cancel'], array_column($projection['items'][0]['actions'], 'key'));
-        self::assertSame(['reschedule', 'cancel'], array_column($projection['items'][1]['actions'], 'key'));
+        self::assertSame(['complete', 'reschedule', 'cancel'], array_column($projection['items'][1]['actions'], 'key'));
         self::assertSame(['primary', 'neutral', 'danger'], array_column($projection['items'][0]['actions'], 'tone'));
         self::assertSame(
             'Cancel this booking? This action cannot be undone.',
