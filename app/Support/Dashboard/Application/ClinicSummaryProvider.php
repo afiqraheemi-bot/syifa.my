@@ -26,10 +26,10 @@ final readonly class ClinicSummaryProvider implements DashboardSectionProviderIn
             : [
                 'key' => 'clinic',
                 'label' => 'Clinic',
-                'value' => $clinic->timezone,
+                'value' => $clinic->clinicName,
                 'detail' => $clinic->operationalProfileConfigured
-                    ? 'Operational profile configured.'
-                    : 'Operational profile setup is incomplete.',
+                    ? sprintf('Operational profile configured · %s', $clinic->timezone)
+                    : sprintf('Operational profile setup is incomplete · %s', $clinic->timezone),
                 'tone' => $clinic->operationalProfileConfigured ? 'positive' : 'neutral',
             ]);
     }

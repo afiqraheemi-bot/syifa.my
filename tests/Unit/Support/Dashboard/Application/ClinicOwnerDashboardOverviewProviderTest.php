@@ -27,12 +27,12 @@ final class ClinicOwnerDashboardOverviewProviderTest extends TestCase
     public function test_clinic_summary_projects_real_clinic_information(): void
     {
         $projection = (new ClinicSummaryProvider($this->clinics(
-            new ClinicSummaryData('clinic-1', 'Asia/Kuala_Lumpur', true),
+            new ClinicSummaryData('clinic-1', 'Klinik Syifa', 'Asia/Kuala_Lumpur', true),
         )))->provide($this->context());
 
         self::assertSame('clinicSummary', $projection->key);
-        self::assertSame('Asia/Kuala_Lumpur', $projection->data['value']);
-        self::assertSame('Operational profile configured.', $projection->data['detail']);
+        self::assertSame('Klinik Syifa', $projection->data['value']);
+        self::assertSame('Operational profile configured · Asia/Kuala_Lumpur', $projection->data['detail']);
         self::assertSame('positive', $projection->data['tone']);
     }
 
@@ -83,13 +83,13 @@ final class ClinicOwnerDashboardOverviewProviderTest extends TestCase
     public function test_overview_orchestrates_all_section_providers_without_fabricating_values(): void
     {
         $overview = $this->overview(
-            new ClinicSummaryData('clinic-1', 'Asia/Kuala_Lumpur', false),
+            new ClinicSummaryData('clinic-1', 'Klinik Syifa', 'Asia/Kuala_Lumpur', false),
             new SubscriptionSummaryData('restricted', '2027-08-20'),
         )->for($this->context());
 
         self::assertSame('Welcome back, Aisyah', $overview['welcomeTitle']);
         self::assertSame(['clinic', 'subscription', 'bookings', 'website'], array_column($overview['summaries'], 'key'));
-        self::assertSame('Asia/Kuala_Lumpur', $overview['summaries'][0]['value']);
+        self::assertSame('Klinik Syifa', $overview['summaries'][0]['value']);
         self::assertSame('Restricted', $overview['summaries'][1]['value']);
         self::assertSame('3', $overview['summaries'][2]['value']);
         self::assertSame('Live', $overview['summaries'][3]['value']);

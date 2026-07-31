@@ -15,6 +15,9 @@ final readonly class PostgresClinicSummaryReadAdapter implements ClinicSummaryRe
     public function summary(string $trustedTenantId): ?ClinicSummaryData
     {
         $row = $this->connection->table('clinics')
+            ->join('websites', function ($join): void {
+                $join->on('websites.tenant_id', '=', 'clinics.tenant_id');
+            })
             ->leftJoin('clinic_contact_profiles', function ($join): void {
                 $join->on('clinic_contact_profiles.clinic_id', '=', 'clinics.id')
                     ->on('clinic_contact_profiles.tenant_id', '=', 'clinics.tenant_id');
@@ -22,6 +25,7 @@ final readonly class PostgresClinicSummaryReadAdapter implements ClinicSummaryRe
             ->where('clinics.tenant_id', $trustedTenantId)
             ->first([
                 'clinics.id',
+                'websites.clinic_name',
                 'clinics.timezone',
                 'clinic_contact_profiles.operational_phone',
                 'clinic_contact_profiles.operational_email',
@@ -36,6 +40,11 @@ final readonly class PostgresClinicSummaryReadAdapter implements ClinicSummaryRe
             || $row->operational_email !== null
             || $row->postal_address !== null;
 
-        return new ClinicSummaryData((string) $row->id, (string) $row->timezone, $configured);
+        return new ClinicSummaryData(
+            (string) $row->id,
+            (string) $row->clinic_name,
+            (string) $row->timezone,
+            $configured,
+        );
     }
 }

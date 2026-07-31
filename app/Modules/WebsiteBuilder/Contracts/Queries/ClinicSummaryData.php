@@ -8,6 +8,7 @@ final readonly class ClinicSummaryData
 {
     public function __construct(
         public string $clinicId,
+        public string $clinicName,
         public string $timezone,
         public bool $operationalProfileConfigured,
     ) {}

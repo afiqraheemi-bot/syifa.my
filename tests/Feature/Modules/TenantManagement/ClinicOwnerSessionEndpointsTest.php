@@ -45,7 +45,7 @@ final class ClinicOwnerSessionEndpointsTest extends TestCase
         {
             public function summary(string $trustedTenantId): ?ClinicSummaryData
             {
-                return new ClinicSummaryData('clinic-1', 'Asia/Kuala_Lumpur', true);
+                return new ClinicSummaryData('clinic-1', 'Klinik Syifa', 'Asia/Kuala_Lumpur', true);
             }
         });
         $this->app->instance(SubscriptionSummaryReadInterface::class, new class implements SubscriptionSummaryReadInterface

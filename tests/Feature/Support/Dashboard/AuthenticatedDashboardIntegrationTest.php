@@ -327,7 +327,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('welcomeTitle', 'Welcome back, Authenticated User')
                     ->has('summaries', 4)
                     ->where('summaries.0.key', 'clinic')
-                    ->where('summaries.0.value', 'Asia/Kuala_Lumpur')
+                    ->where('summaries.0.value', 'Klinik Syifa')
                     ->where('summaries.1.key', 'subscription')
                     ->where('summaries.1.value', 'Active')
                     ->where('summaries.2.key', 'bookings')
@@ -2640,7 +2640,7 @@ final readonly class DashboardFixedClinicSummary implements ClinicSummaryReadInt
 {
     public function summary(string $trustedTenantId): ?ClinicSummaryData
     {
-        return new ClinicSummaryData('clinic-1', 'Asia/Kuala_Lumpur', true);
+        return new ClinicSummaryData('clinic-1', 'Klinik Syifa', 'Asia/Kuala_Lumpur', true);
     }
 }
 
