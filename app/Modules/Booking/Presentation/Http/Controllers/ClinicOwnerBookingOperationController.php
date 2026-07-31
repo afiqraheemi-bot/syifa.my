@@ -44,6 +44,22 @@ final readonly class ClinicOwnerBookingOperationController
         return $this->redirect($request, $bookingId);
     }
 
+    public function complete(
+        string $bookingId,
+        Request $request,
+        ClinicOwnerBookingOperationsInterface $operations,
+    ): RedirectResponse {
+        $context = $this->context($request);
+        $operations->complete(
+            $this->tenantId($context),
+            $bookingId,
+            $context->identityId,
+            $context->role,
+        );
+
+        return $this->redirect($request, $bookingId);
+    }
+
     public function reschedule(
         string $bookingId,
         RescheduleClinicOwnerBookingRequest $request,

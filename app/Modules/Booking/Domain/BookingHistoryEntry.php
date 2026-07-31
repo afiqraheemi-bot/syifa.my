@@ -55,6 +55,11 @@ final readonly class BookingHistoryEntry
         return new self($id, $booking->tenantId->value, $booking->id->value, BookingHistoryEventType::Cancelled, BookingActorType::ClinicOwner, $actorId, $at, ['status' => 'cancelled', 'reason' => $reason]);
     }
 
+    public static function completed(string $id, Booking $booking, string $actorId, DateTimeImmutable $at): self
+    {
+        return new self($id, $booking->tenantId->value, $booking->id->value, BookingHistoryEventType::Completed, BookingActorType::ClinicOwner, $actorId, $at, ['status' => 'completed']);
+    }
+
     /** @param array<string, string|int|bool|null> $payload */
     public static function reconstitute(string $id, string $tenantId, string $bookingId, string $eventType, string $actorType, ?string $actorId, DateTimeImmutable $occurredAt, array $payload): self
     {
@@ -68,6 +73,7 @@ final readonly class BookingHistoryEntry
             BookingHistoryEventType::Confirmed => ['status'],
             BookingHistoryEventType::Rescheduled => ['old_local_date', 'old_local_start', 'old_local_end', 'old_timezone', 'old_starts_at_utc', 'old_ends_at_utc', 'old_duration_minutes', 'new_local_date', 'new_local_start', 'new_local_end', 'new_timezone', 'new_starts_at_utc', 'new_ends_at_utc', 'new_duration_minutes', 'note'],
             BookingHistoryEventType::Cancelled => ['status', 'reason'],
+            BookingHistoryEventType::Completed => ['status'],
         };
         $optional = match ($type) {
             BookingHistoryEventType::Submitted => ['consent_acknowledged'],

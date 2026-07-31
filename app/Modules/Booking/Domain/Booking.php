@@ -131,6 +131,15 @@ final class Booking
         $this->updatedAt = $occurredAt;
     }
 
+    public function complete(DateTimeImmutable $occurredAt): void
+    {
+        if ($this->status !== BookingStatus::Confirmed) {
+            throw new InvalidBookingValueException('Only a confirmed Booking may be completed.');
+        }
+        $this->status = BookingStatus::Completed;
+        $this->updatedAt = $occurredAt;
+    }
+
     public function synchronizeVersion(int $version): void
     {
         $this->version = $version;

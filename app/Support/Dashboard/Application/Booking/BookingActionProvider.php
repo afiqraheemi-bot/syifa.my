@@ -43,6 +43,17 @@ final readonly class BookingActionProvider
                 'tone' => 'danger',
             ];
         }
+        if ($booking->status === 'confirmed') {
+            $actions[] = [
+                'key' => 'complete',
+                'label' => 'Mark completed',
+                'href' => route('dashboard.bookings.complete', ['bookingId' => $booking->id]),
+                'method' => 'post',
+                'requiresSchedule' => false,
+                'confirmation' => 'Mark this appointment as completed? This action cannot be undone.',
+                'tone' => 'primary',
+            ];
+        }
 
         return $actions;
     }

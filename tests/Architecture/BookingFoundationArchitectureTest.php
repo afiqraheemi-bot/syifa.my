@@ -302,6 +302,7 @@ final class BookingFoundationArchitectureTest extends TestCase
                 $this->root().'/database/migrations/booking/2026_08_05_000003_remove_service_duration.php',
                 $this->root().'/database/migrations/booking/2026_08_06_000001_add_booking_source.php',
                 $this->root().'/database/migrations/booking/2026_08_22_000001_add_booking_management_read_indexes.php',
+                $this->root().'/database/migrations/booking/2026_09_10_000001_add_booking_completed_history_event.php',
             ],
             glob($this->root().'/database/migrations/booking/*.php') ?: [],
         );

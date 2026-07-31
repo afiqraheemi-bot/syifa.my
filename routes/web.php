@@ -329,6 +329,7 @@ Route::prefix('/dashboard/bookings/{bookingId}')
     ->group(function (): void {
         Route::post('/confirm', [ClinicOwnerBookingOperationController::class, 'confirm'])->name('confirm');
         Route::post('/cancel', [ClinicOwnerBookingOperationController::class, 'cancel'])->name('cancel');
+        Route::post('/complete', [ClinicOwnerBookingOperationController::class, 'complete'])->name('complete');
         Route::patch('/reschedule', [ClinicOwnerBookingOperationController::class, 'reschedule'])->name('reschedule');
     });
 

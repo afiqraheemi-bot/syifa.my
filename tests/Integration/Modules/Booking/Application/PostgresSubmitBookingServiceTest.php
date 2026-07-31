@@ -13,6 +13,7 @@ use App\Modules\Booking\Application\CancelBookingService;
 use App\Modules\Booking\Application\ClinicOwnerBookingOperations;
 use App\Modules\Booking\Application\Commands\CreateManualBookingCommand;
 use App\Modules\Booking\Application\Commands\SubmitBookingCommand;
+use App\Modules\Booking\Application\CompleteBookingService;
 use App\Modules\Booking\Application\ConfirmBookingService;
 use App\Modules\Booking\Application\CreateBookingWorkflow;
 use App\Modules\Booking\Application\CreateManualBookingService;
@@ -78,7 +79,7 @@ final class PostgresSubmitBookingServiceTest extends TestCase
         Schema::connection(self::CONNECTION)->create('tenants', function (Blueprint $table): void {
             $table->uuid('id')->primary();
         });
-        foreach (['2026_07_30_000001_create_bookings_table.php', '2026_07_31_000001_create_services_table.php', '2026_08_01_000001_create_booking_form_configurations_table.php', '2026_08_02_000001_add_service_id_to_bookings_table.php', '2026_08_03_000001_remove_clinic_id_from_bookings_table.php', '2026_08_05_000001_add_booking_mvp_scheduling.php', '2026_08_05_000002_create_booking_capacity_and_history.php', '2026_08_05_000003_remove_service_duration.php', '2026_08_06_000001_add_booking_source.php'] as $file) {
+        foreach (['2026_07_30_000001_create_bookings_table.php', '2026_07_31_000001_create_services_table.php', '2026_08_01_000001_create_booking_form_configurations_table.php', '2026_08_02_000001_add_service_id_to_bookings_table.php', '2026_08_03_000001_remove_clinic_id_from_bookings_table.php', '2026_08_05_000001_add_booking_mvp_scheduling.php', '2026_08_05_000002_create_booking_capacity_and_history.php', '2026_08_05_000003_remove_service_duration.php', '2026_08_06_000001_add_booking_source.php', '2026_09_10_000001_add_booking_completed_history_event.php'] as $file) {
             $migration = require base_path('database/migrations/booking/'.$file);
             $migration->up();
             array_unshift($this->migrations, $migration);
@@ -259,6 +260,31 @@ final class PostgresSubmitBookingServiceTest extends TestCase
         $this->db()->table('bookings')->delete();
     }
 
+    public function test_clinic_owner_completion_persists_terminal_status_and_history(): void
+    {
+        $result = $this->application(41)->execute($this->command());
+        $operations = $this->operations();
+        $operations->confirm($this->uuid(1), $result->bookingId, $this->uuid(20), 'clinic_owner');
+        $operations->complete($this->uuid(1), $result->bookingId, $this->uuid(20), 'clinic_owner');
+
+        self::assertSame('completed', $this->db()->table('bookings')->where('id', $result->bookingId)->value('status'));
+        self::assertSame(
+            ['BookingSubmitted', 'BookingConfirmed', 'BookingCompleted'],
+            $this->db()->table('booking_history')->where('booking_id', $result->bookingId)->orderBy('occurred_at')->orderBy('id')->pluck('event_type')->all(),
+        );
+        self::assertSame(
+            ['status' => 'completed'],
+            json_decode(
+                (string) $this->db()->table('booking_history')
+                    ->where('booking_id', $result->bookingId)
+                    ->where('event_type', 'BookingCompleted')
+                    ->value('payload'),
+                true,
+                flags: JSON_THROW_ON_ERROR,
+            ),
+        );
+    }
+
     public function test_separate_postgresql_connections_cannot_exceed_final_capacity(): void
     {
         DB::disconnect(self::CONNECTION);
@@ -333,6 +359,7 @@ final class PostgresSubmitBookingServiceTest extends TestCase
             new ConfirmBookingService($bookings, $history, $transactions, new PostgresBookingFixedValues($this->uuid(50), 'unused', $this->now()), new PostgresBookingFixedValues($this->uuid(50), 'unused', $this->now()), $authorization),
             new CancelBookingService($bookings, $history, $capacity, $transactions, new PostgresBookingFixedValues($this->uuid(52), 'unused', $this->now()), new PostgresBookingFixedValues($this->uuid(52), 'unused', $this->now()), $authorization),
             new RescheduleBookingService($bookings, $history, $capacity, new PostgresBookingFixedValues($this->uuid(51), 'unused', $this->now()), new ClinicSlotGenerator, $transactions, new PostgresBookingFixedValues($this->uuid(51), 'unused', $this->now()), new PostgresBookingFixedValues($this->uuid(51), 'unused', $this->now()), $authorization),
+            new CompleteBookingService($bookings, $history, $transactions, new PostgresBookingFixedValues($this->uuid(53), 'unused', $this->now()), new PostgresBookingFixedValues($this->uuid(53), 'unused', $this->now()), $authorization),
         );
     }
 

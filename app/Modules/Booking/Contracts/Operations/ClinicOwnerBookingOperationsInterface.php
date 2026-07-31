@@ -10,6 +10,8 @@ interface ClinicOwnerBookingOperationsInterface
 
     public function cancel(string $tenantId, string $bookingId, string $actorId, string $actorRole): void;
 
+    public function complete(string $tenantId, string $bookingId, string $actorId, string $actorRole): void;
+
     public function reschedule(
         string $tenantId,
         string $bookingId,

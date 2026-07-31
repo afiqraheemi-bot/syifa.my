@@ -623,6 +623,7 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
             'ConfirmBookingService',
             'CancelBookingService',
             'RescheduleBookingService',
+            'CompleteBookingService',
             'BookingOwnerCommand',
             'RescheduleBookingCommand',
         ] as $existingApplicationContract) {

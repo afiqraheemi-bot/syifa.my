@@ -2256,11 +2256,16 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             'return_to_detail' => true,
         ])->assertStatus(303)
             ->assertRedirect(route('dashboard.bookings.show', ['bookingId' => $bookingId]));
+        $this->post(route('dashboard.bookings.complete', ['bookingId' => $bookingId]), [
+            'return_to_detail' => true,
+        ])->assertStatus(303)
+            ->assertRedirect(route('dashboard.bookings.show', ['bookingId' => $bookingId]));
 
         self::assertSame([
             ['confirm', 'tenant-1', $bookingId, 'identity-1', 'clinic_owner'],
             ['reschedule', 'tenant-1', $bookingId, '2026-09-02', '10:30', 'identity-1', 'clinic_owner'],
             ['cancel', 'tenant-1', $bookingId, 'identity-1', 'clinic_owner'],
+            ['complete', 'tenant-1', $bookingId, 'identity-1', 'clinic_owner'],
         ], $this->bookingOperations->calls);
 
         foreach (['website_designer', 'super_admin'] as $role) {
@@ -3370,6 +3375,11 @@ final class DashboardRecordedBookingOperations implements ClinicOwnerBookingOper
     public function cancel(string $tenantId, string $bookingId, string $actorId, string $actorRole): void
     {
         $this->calls[] = ['cancel', $tenantId, $bookingId, $actorId, $actorRole];
+    }
+
+    public function complete(string $tenantId, string $bookingId, string $actorId, string $actorRole): void
+    {
+        $this->calls[] = ['complete', $tenantId, $bookingId, $actorId, $actorRole];
     }
 
     public function reschedule(string $tenantId, string $bookingId, string $localDate, string $localStart, string $actorId, string $actorRole): void

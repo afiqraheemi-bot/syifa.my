@@ -10,4 +10,5 @@ enum BookingHistoryEventType: string
     case Confirmed = 'BookingConfirmed';
     case Rescheduled = 'AppointmentRescheduled';
     case Cancelled = 'BookingCancelled';
+    case Completed = 'BookingCompleted';
 }

@@ -47,6 +47,40 @@ final class BookingLifecycleTest extends TestCase
         $booking->cancel($this->at('+2 hours'));
     }
 
+    public function test_confirmed_booking_can_be_completed_once_with_immutable_history(): void
+    {
+        $booking = $this->booking();
+        $booking->confirm($this->at('+1 hour'));
+        $booking->complete($this->at('+2 hours'));
+        $history = BookingHistoryEntry::completed($this->uuid(10), $booking, $this->uuid(11), $this->at('+2 hours'));
+
+        self::assertSame(BookingStatus::Completed, $booking->status());
+        self::assertSame('BookingCompleted', $history->eventType->value);
+        self::assertSame(['status' => 'completed'], $history->payload);
+        self::assertSame(
+            $history->payload,
+            BookingHistoryEntry::reconstitute(
+                $history->id,
+                $history->tenantId,
+                $history->bookingId,
+                $history->eventType->value,
+                $history->actorType->value,
+                $history->actorId,
+                $history->occurredAt,
+                $history->payload,
+            )->payload,
+        );
+
+        $this->expectException(InvalidBookingValueException::class);
+        $booking->complete($this->at('+3 hours'));
+    }
+
+    public function test_submitted_booking_cannot_be_completed(): void
+    {
+        $this->expectException(InvalidBookingValueException::class);
+        $this->booking()->complete($this->at('+1 hour'));
+    }
+
     public function test_history_reconstitution_accepts_jsonb_key_order_but_rejects_unknown_fields(): void
     {
         $entry = BookingHistoryEntry::submitted($this->uuid(9), $this->booking(), BookingActorType::PublicVisitor, null, $this->at());

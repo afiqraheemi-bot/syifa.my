@@ -16,6 +16,7 @@ final readonly class ClinicOwnerBookingOperations implements ClinicOwnerBookingO
         private ConfirmBookingService $confirm,
         private CancelBookingService $cancel,
         private RescheduleBookingService $reschedule,
+        private CompleteBookingService $complete,
     ) {}
 
     public function confirm(string $tenantId, string $bookingId, string $actorId, string $actorRole): void
@@ -26,6 +27,11 @@ final readonly class ClinicOwnerBookingOperations implements ClinicOwnerBookingO
     public function cancel(string $tenantId, string $bookingId, string $actorId, string $actorRole): void
     {
         $this->cancel->execute($this->ownerCommand($tenantId, $bookingId, $actorId, $actorRole));
+    }
+
+    public function complete(string $tenantId, string $bookingId, string $actorId, string $actorRole): void
+    {
+        $this->complete->execute($this->ownerCommand($tenantId, $bookingId, $actorId, $actorRole));
     }
 
     public function reschedule(
