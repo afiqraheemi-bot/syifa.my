@@ -46,7 +46,7 @@ final readonly class ClinicOwnerCustomDomainPage
             'pageTitle' => 'Custom domain',
             'pageDescription' => 'Authorize and verify a clinic-controlled domain for your published Website.',
             'identityName' => $context->name,
-            'contextLabel' => 'SYIFA.my workspace',
+            'contextLabel' => 'Clinic Owner workspace',
             'domain' => $domain === null ? null : [
                 ...get_object_vars($domain),
                 'verificationValue' => 'syifa-verification='.$verificationToken,

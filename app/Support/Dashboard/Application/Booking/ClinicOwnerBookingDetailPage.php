@@ -48,7 +48,7 @@ final readonly class ClinicOwnerBookingDetailPage
             'pageDescription' => 'Review the authoritative booking details and lifecycle history.',
             'backHref' => route('dashboard.bookings'),
             'identityName' => $context->name,
-            'contextLabel' => 'SYIFA.my workspace',
+            'contextLabel' => 'Clinic Owner workspace',
             'booking' => $this->booking($booking),
             'history' => array_map($this->history(...), $this->bookings->history($context->tenantId, $bookingId)),
             'csrfToken' => csrf_token(),

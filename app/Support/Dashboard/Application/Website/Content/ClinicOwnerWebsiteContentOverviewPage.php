@@ -50,7 +50,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
             'pageTitle' => 'Website content',
             'pageDescription' => 'Update the governed Website configuration used by your clinic.',
             'identityName' => $context->name,
-            'contextLabel' => 'SYIFA.my workspace',
+            'contextLabel' => 'Clinic Owner workspace',
             'contentHealth' => $content['health'],
             'contentSections' => $content['sections'],
             'editableContent' => $editable,

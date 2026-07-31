@@ -49,6 +49,7 @@ final readonly class AuthenticatedDashboardPage
         ];
 
         if ($context->actorType === ActorType::ClinicOwner->value && $context->role === 'clinic_owner') {
+            $props['contextLabel'] = 'Clinic Owner workspace';
             $props['navigation'][] = (new DashboardNavigationItem(
                 'website',
                 'Website',

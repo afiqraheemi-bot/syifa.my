@@ -44,7 +44,7 @@ final readonly class NotificationHistoryPage
             'pageTitle' => 'Notifications',
             'pageDescription' => 'Review transactional communication and delivery outcomes.',
             'identityName' => $context->name,
-            'contextLabel' => $superAdmin ? 'Super Admin workspace' : 'SYIFA.my workspace',
+            'contextLabel' => $superAdmin ? 'Super Admin workspace' : 'Clinic Owner workspace',
             'notificationHistory' => $superAdmin
                 ? $this->notifications->forPlatform($tenantFilter, $status, $triggerType)
                 : $this->notifications->forTenant($context->tenantId, $status, $triggerType),

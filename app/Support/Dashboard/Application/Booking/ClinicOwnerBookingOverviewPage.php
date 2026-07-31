@@ -49,7 +49,7 @@ final readonly class ClinicOwnerBookingOverviewPage
             'pageTitle' => 'Bookings',
             'pageDescription' => 'Review appointments submitted to your clinic.',
             'identityName' => $context->name,
-            'contextLabel' => 'SYIFA.my workspace',
+            'contextLabel' => 'Clinic Owner workspace',
             'bookingList' => $this->list->provide($context, $criteria)->data,
             'statusSummary' => $this->statuses->provide($context)->data,
             'sourceSummary' => $this->sources->provide($context)->data,

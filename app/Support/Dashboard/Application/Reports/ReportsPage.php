@@ -53,7 +53,7 @@ final readonly class ReportsPage
             'contextLabel' => match ($context->role) {
                 'super_admin' => 'Super Admin workspace',
                 'website_designer' => 'Website Designer workspace',
-                default => 'SYIFA.my workspace',
+                default => 'Clinic Owner workspace',
             },
             'report' => $report,
         ]);

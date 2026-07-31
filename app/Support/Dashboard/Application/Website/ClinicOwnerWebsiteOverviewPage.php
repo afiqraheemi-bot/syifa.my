@@ -51,7 +51,7 @@ final readonly class ClinicOwnerWebsiteOverviewPage
             'pageTitle' => 'Website overview',
             'pageDescription' => 'Review the current state of your clinic Website.',
             'identityName' => $context->name,
-            'contextLabel' => 'SYIFA.my workspace',
+            'contextLabel' => 'Clinic Owner workspace',
             'websiteStatus' => $this->website->provide($context)->data,
             'publishStatus' => $this->publish->provide($context)->data,
             'domainStatus' => $this->domain->provide($context)->data,
