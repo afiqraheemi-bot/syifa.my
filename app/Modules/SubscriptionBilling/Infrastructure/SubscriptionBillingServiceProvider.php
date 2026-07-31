@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\SubscriptionBilling\Infrastructure;
 
 use App\Modules\ClinicRegistration\Contracts\Checkout\PublicInitialAcquisitionCheckoutInterface;
+use App\Modules\ClinicRegistration\Contracts\Checkout\PublicInitialAcquisitionStatusReadInterface;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ActivatePlanOfferingService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ActivatePlanService;
@@ -99,6 +100,7 @@ use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentAttemp
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentProviderConfigurationRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentTransaction;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresProviderWebhookReceiptRepository;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPublicInitialAcquisitionStatusReadAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\RegistryPaymentSessionCreator;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\Stripe\StripePaymentProvider;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\SystemProviderVerificationClock;
@@ -237,6 +239,10 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(
             PublicInitialAcquisitionCheckoutInterface::class,
             StartPublicInitialAcquisitionCheckoutService::class,
+        );
+        $this->app->singleton(
+            PublicInitialAcquisitionStatusReadInterface::class,
+            PostgresPublicInitialAcquisitionStatusReadAdapter::class,
         );
         $this->app->singleton(RenewalCheckoutApplication::class);
         $this->app->singleton(RenewalOutcomeApplication::class);

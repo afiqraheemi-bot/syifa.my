@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\ClinicRegistration\Presentation\Http\Controllers\ClinicRegistrationController;
 use App\Modules\ClinicRegistration\Presentation\Http\Controllers\PublicClinicRegistrationController;
 use App\Modules\Commercial\Presentation\Http\Controllers\PublicCommercialOfferController;
+use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\PublicInitialAcquisitionReturnController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('api/v1/clinic-registrations')
@@ -30,3 +31,7 @@ Route::get('/register/offers', [PublicCommercialOfferController::class, 'index']
 Route::post('/register/offers/selection', [PublicCommercialOfferController::class, 'select'])
     ->middleware(['web', 'throttle:public.default'])
     ->name('clinic-registration.offers.select');
+
+Route::get('/payments/return', PublicInitialAcquisitionReturnController::class)
+    ->middleware(['web', 'throttle:public.default'])
+    ->name('clinic-registration.payment-return');

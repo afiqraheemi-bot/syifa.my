@@ -111,6 +111,7 @@ final class ClinicRegistrationFoundationArchitectureTest extends TestCase
             "Route::post('/current/cancel'",
             "Route::get('/register'",
             "Route::get('/register/offers'",
+            "Route::get('/payments/return'",
             "'throttle:public.default'",
         ] as $expected) {
             self::assertStringContainsString($expected, $routes);

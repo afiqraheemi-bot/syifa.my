@@ -48,6 +48,7 @@ use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\Payme
 use App\Modules\SubscriptionBilling\Domain\Aggregates\Payment\ValueObjects\TenantId;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresInitialAcquisitionCheckoutStore;
 use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPaymentTransaction;
+use App\Modules\SubscriptionBilling\Infrastructure\Payment\PostgresPublicInitialAcquisitionStatusReadAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Mappers\PaymentPersistenceMapper;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresPaymentRepository;
 use DateTimeImmutable;
@@ -217,6 +218,17 @@ final class PostgresPaymentRuntimeVerificationTest extends TestCase
         self::assertSame('session_ready', $ready->stage);
         self::assertSame($session->sessionId, $reused->session?->sessionId);
         self::assertSame(1, $this->connection()->table('initial_acquisition_checkout_sessions')->count());
+
+        $status = (new PostgresPublicInitialAcquisitionStatusReadAdapter($this->connection()))
+            ->forRegistration($this->uuid(3));
+        self::assertNotNull($status);
+        self::assertSame('draft', $status->paymentStatus);
+        self::assertSame(3000, $status->amountMinor);
+        self::assertSame('MYR', $status->currency);
+        self::assertNull(
+            (new PostgresPublicInitialAcquisitionStatusReadAdapter($this->connection()))
+                ->forRegistration($this->uuid(99)),
+        );
     }
 
     public function test_payment_insert_failure_after_claim_begins_rolls_back_claim(): void
