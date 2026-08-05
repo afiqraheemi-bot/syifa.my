@@ -19,5 +19,6 @@ final readonly class ProvisionWebsiteFoundationCommand
         public string $clinicPhone,
         public string $clinicAddress,
         public DateTimeImmutable $occurredAt,
+        public string $templateId = 'SYIFA_ESSENTIAL',
     ) {}
 }

@@ -44,6 +44,8 @@ final readonly class ResubmitClinicRegistrationCorrectionService
                 $command->clinicEmail,
                 $command->clinicPhone,
                 $command->clinicAddress,
+                $command->preferredSubdomain,
+                $command->selectedWebsiteTemplate,
             ),
             array_map(
                 static fn ($declaration): DeclarationAcceptance => new DeclarationAcceptance(

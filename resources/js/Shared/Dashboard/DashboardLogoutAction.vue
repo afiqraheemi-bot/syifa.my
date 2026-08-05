@@ -7,6 +7,7 @@ const page = usePage();
 const loading = ref(false);
 const failed = ref(false);
 const logoutUrl = computed(() => page.props.authentication?.logout_url ?? null);
+const loginUrl = computed(() => page.props.authentication?.login_url ?? '/login');
 
 async function logout() {
     if (!logoutUrl.value || loading.value) return;
@@ -22,7 +23,7 @@ async function logout() {
             return;
         }
 
-        window.location.assign('/');
+        window.location.assign(loginUrl.value);
     } catch {
         failed.value = true;
     } finally {

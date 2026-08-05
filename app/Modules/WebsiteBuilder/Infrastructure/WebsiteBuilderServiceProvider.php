@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\WebsiteBuilder\Infrastructure;
 
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeReaderInterface;
+use App\Modules\Booking\Contracts\Queries\ActiveServiceCatalogueReaderInterface;
 use App\Modules\Booking\Contracts\Queries\AvailableSlotReaderInterface;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
 use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementLookupInterface;
@@ -20,9 +21,12 @@ use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteDocumentFactory
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteRenderModelProviderInterface;
 use App\Modules\WebsiteBuilder\Application\Provisioning\ProvisionWebsiteFoundationService;
 use App\Modules\WebsiteBuilder\Application\Provisioning\ReserveProvisionedWebsiteAddressService;
+use App\Modules\WebsiteBuilder\Application\PublicTemplate\StaticPublicTemplateCatalog;
 use App\Modules\WebsiteBuilder\Application\Rendering\PublicWebsiteRenderProjector;
 use App\Modules\WebsiteBuilder\Application\WebsiteAddress\WebsiteSubdomainPolicy;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\WebsiteDraftSectionCodec;
+use App\Modules\WebsiteBuilder\Contracts\Assets\PublicWebsiteAssetReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\Assets\WebsiteAssetBinaryStorageInterface;
 use App\Modules\WebsiteBuilder\Contracts\CustomDomain\CustomDomainRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\CustomDomain\DomainControlVerifierInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\BookingSubmissionGatewayInterface;
@@ -31,8 +35,10 @@ use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfiguration
 use App\Modules\WebsiteBuilder\Contracts\Delivery\WebsiteTenantResolverInterface;
 use App\Modules\WebsiteBuilder\Contracts\Provisioning\ProvisionWebsiteFoundationInterface;
 use App\Modules\WebsiteBuilder\Contracts\Provisioning\ReserveProvisionedWebsiteAddressInterface;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\PublicWebsiteAddressAvailabilityInterface;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\PublicTemplate\PublicTemplateCatalogInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ActiveServiceReferenceReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsitePublishedSnapshotReadInterface;
@@ -43,6 +49,8 @@ use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteDraftRepositoryInte
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\WebsitePublicationTransactionInterface;
+use App\Modules\WebsiteBuilder\Infrastructure\Assets\LaravelWebsiteAssetBinaryStorage;
+use App\Modules\WebsiteBuilder\Infrastructure\Assets\PostgresPublicWebsiteAssetReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\CustomDomain\NativeDnsDomainControlVerifier;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingAvailableSlotReaderAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingFormConfigurationReaderAdapter;
@@ -57,6 +65,7 @@ use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteAssetPe
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSectionPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConfigurationPersistenceMapper;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Queries\PostgresPublicWebsiteAddressAvailability;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresClinicRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresCustomDomainRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsiteDraftRepository;
@@ -78,6 +87,26 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(
+            WebsiteAssetBinaryStorageInterface::class,
+            LaravelWebsiteAssetBinaryStorage::class,
+        );
+        $this->app->singleton(
+            PublicWebsiteAssetReadInterface::class,
+            static fn (Application $application): PostgresPublicWebsiteAssetReadAdapter => new PostgresPublicWebsiteAssetReadAdapter(
+                $application->make('db')->connection(),
+                $application->make('filesystem'),
+            ),
+        );
+        $this->app->singleton(
+            PublicWebsiteAddressAvailabilityInterface::class,
+            static fn ($application): PostgresPublicWebsiteAddressAvailability => new PostgresPublicWebsiteAddressAvailability(
+                $application->make('db')->connection(),
+                $application->make(WebsitePublicAddressRepositoryInterface::class),
+                $application->make(WebsiteSubdomainPolicy::class),
+            ),
+        );
+        $this->app->singleton(PublicTemplateCatalogInterface::class, StaticPublicTemplateCatalog::class);
         $this->app->singleton(
             CustomDomainRepositoryInterface::class,
             static fn (Application $application): PostgresCustomDomainRepository => new PostgresCustomDomainRepository(
@@ -115,6 +144,13 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
             WebsitePublicAddressRepositoryInterface::class,
             static fn (Application $application): PostgresWebsitePublicAddressRepository => new PostgresWebsitePublicAddressRepository(
                 $application->make('db')->connection(),
+                is_string(config('public_website_delivery.local_alias_base_domain'))
+                    ? (string) config('public_website_delivery.local_alias_base_domain')
+                    : null,
+                is_int(config('public_website_delivery.local_alias_port'))
+                    ? (int) config('public_website_delivery.local_alias_port')
+                    : null,
+                (string) config('public_website_delivery.base_domain'),
             ),
         );
         $this->app->alias(
@@ -130,6 +166,13 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
                 $application->make(SubscriptionSummaryReadInterface::class),
                 (array) config('public_website_delivery.sites', []),
                 (bool) config('public_website_delivery.runtime_addressing', true),
+                is_string(config('public_website_delivery.local_alias_base_domain'))
+                    ? (string) config('public_website_delivery.local_alias_base_domain')
+                    : null,
+                is_int(config('public_website_delivery.local_alias_port'))
+                    ? (int) config('public_website_delivery.local_alias_port')
+                    : null,
+                (string) config('public_website_delivery.base_domain'),
             ),
         );
         $this->app->singleton(
@@ -241,6 +284,7 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
             PublicBookingFormConfigurationReaderInterface::class,
             static fn (Application $application): BookingFormConfigurationReaderAdapter => new BookingFormConfigurationReaderAdapter(
                 $application->make(PublicBookingFormReaderInterface::class),
+                $application->make(ActiveServiceCatalogueReaderInterface::class),
             ),
         );
 

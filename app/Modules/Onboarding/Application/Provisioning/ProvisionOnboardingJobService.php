@@ -9,6 +9,7 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\OnboardingTa
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Repositories\OnboardingJobRepositoryInterface;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskResponsibility;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskStatus;
@@ -25,6 +26,7 @@ final readonly class ProvisionOnboardingJobService implements ProvisionOnboardin
         string $onboardingJobId,
         string $tenantId,
         string $websiteId,
+        string $clinicRegistrationReference,
         DateTimeImmutable $occurredAt,
     ): string {
         $tenant = new TenantId($tenantId);
@@ -45,9 +47,43 @@ final readonly class ProvisionOnboardingJobService implements ProvisionOnboardin
             $occurredAt,
         );
         $this->addStandardTasks($job, $occurredAt);
+        $this->completeProvisionedClinicInputs(
+            $job,
+            $clinicRegistrationReference,
+            $occurredAt,
+        );
         $this->jobs->save($job);
 
         return $job->id->value;
+    }
+
+    /**
+     * Always completes `clinic_inputs` immediately — the approved Clinic
+     * Registration is authoritative and already carries every input this
+     * task needs, so this creation path never transitions the Job through
+     * {@see OnboardingJobStatus::AwaitingInputs}. See that case's docblock.
+     */
+    private function completeProvisionedClinicInputs(
+        OnboardingJob $job,
+        string $clinicRegistrationReference,
+        DateTimeImmutable $occurredAt,
+    ): void {
+        $task = array_find(
+            $job->tasks(),
+            static fn (OnboardingTask $task): bool => $task->key === 'clinic_inputs',
+        );
+        if (! $task instanceof OnboardingTask) {
+            throw new \RuntimeException('The provisioned clinic-input checkpoint is unavailable.');
+        }
+
+        $job->progressTask(
+            $task->id,
+            OnboardingTaskResponsibility::ClinicOwner,
+            OnboardingTaskStatus::Completed,
+            'clinic_registration:'.$clinicRegistrationReference,
+            'Completed from the authoritative approved Clinic Registration.',
+            $occurredAt,
+        );
     }
 
     private function addStandardTasks(OnboardingJob $job, DateTimeImmutable $occurredAt): void

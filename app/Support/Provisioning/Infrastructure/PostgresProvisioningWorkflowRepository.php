@@ -123,6 +123,19 @@ final readonly class PostgresProvisioningWorkflowRepository implements Provision
         ], $now);
     }
 
+    public function deadLetter(
+        string $workflowId,
+        string $claimToken,
+        string $safeFailureLabel,
+        DateTimeImmutable $now,
+    ): bool {
+        return $this->release($workflowId, $claimToken, [
+            'status' => 'failed',
+            'next_attempt_at' => null,
+            'safe_failure_label' => substr($safeFailureLabel, 0, 120),
+        ], $now);
+    }
+
     public function complete(string $workflowId, string $claimToken, DateTimeImmutable $now): bool
     {
         return $this->release($workflowId, $claimToken, [

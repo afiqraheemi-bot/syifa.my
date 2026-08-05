@@ -7,12 +7,40 @@ const props = defineProps({
     clinicName: { type: String, default: null },
     offers: { type: Array, required: true },
     selectionUrl: { type: String, required: true },
+    demoPaymentUrl: { type: String, default: null },
     homeUrl: { type: String, required: true },
 });
 
 const selecting = ref('');
 const message = ref('');
 const error = ref('');
+const demoCompleting = ref(false);
+const demoCompleted = ref(false);
+
+async function completeDemoPayment() {
+    if (
+        demoCompleting.value ||
+        !window.confirm('Complete a local demo payment and start provisioning?')
+    )
+        return;
+
+    demoCompleting.value = true;
+    message.value = '';
+    error.value = '';
+    try {
+        const result = await browserHttpRequest(props.demoPaymentUrl, { method: 'POST' });
+        if (!result.ok) {
+            throw new Error(result.body?.message ?? 'Demo payment could not be completed.');
+        }
+        demoCompleted.value = true;
+        message.value = `${result.body.message} The onboarding job is now ready for Super Admin assignment.`;
+    } catch (exception) {
+        error.value =
+            exception instanceof Error ? exception.message : 'Demo payment could not be completed.';
+    } finally {
+        demoCompleting.value = false;
+    }
+}
 
 async function selectOffer(offer) {
     if (selecting.value || !window.confirm(`Continue with ${offer.planName}?`)) return;
@@ -65,6 +93,30 @@ async function selectOffer(offer) {
             <div class="mt-6 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900">
                 Registration status:
                 <strong class="capitalize">{{ registrationStatus }}</strong>
+            </div>
+            <div
+                v-if="demoPaymentUrl"
+                class="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950"
+            >
+                <p class="font-bold">Local demo payment</p>
+                <p class="mt-1 text-sm leading-6">
+                    Skip the external payment page and exercise the real subscription and
+                    provisioning workflow. This option is never available in production.
+                </p>
+                <button
+                    type="button"
+                    :disabled="demoCompleting || demoCompleted"
+                    class="mt-4 min-h-11 rounded-xl bg-amber-900 px-5 font-bold text-white disabled:opacity-60"
+                    @click="completeDemoPayment"
+                >
+                    {{
+                        demoCompleting
+                            ? 'Completing demo…'
+                            : demoCompleted
+                              ? 'Demo Payment Completed'
+                              : 'Complete Demo Payment'
+                    }}
+                </button>
             </div>
 
             <div v-if="offers.length" class="mt-8 grid gap-5 md:grid-cols-2">

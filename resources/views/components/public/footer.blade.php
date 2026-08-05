@@ -1,5 +1,15 @@
-<footer class="site-footer">
-    <div class="public-container site-footer__grid">
+@php
+    $contactSectionIsRendered = false;
+
+    foreach ($document->navigation as $navigationItem) {
+        if ($navigationItem->route === \App\Modules\WebsiteBuilder\Application\Delivery\PublicRoute::Contact) {
+            $contactSectionIsRendered = true;
+            break;
+        }
+    }
+@endphp
+<footer class="site-footer{{ $contactSectionIsRendered ? ' site-footer--compact' : '' }}">
+    <div class="public-container site-footer__grid{{ $contactSectionIsRendered ? ' site-footer__grid--compact' : '' }}">
         <div class="site-footer__brand">
             <a href="{{ $document->context->url()->value }}">{{ $document->website->footer->clinicName }}</a>
             @if ($document->website->branding->tagline !== null)<p>{{ $document->website->branding->tagline }}</p>@endif
@@ -9,14 +19,14 @@
                 @foreach ($document->navigation as $item)<li><a href="{{ $item->url->value }}">{{ $item->label }}</a></li>@endforeach
             </ul></nav>
         @endif
-        @if ($document->website->footer->contactPhone !== null || $document->website->footer->contactEmail !== null || $document->website->footer->address !== null)
+        @if (! $contactSectionIsRendered && ($document->website->footer->contactPhone !== null || $document->website->footer->contactEmail !== null || $document->website->footer->address !== null))
             <div><h2>Contact</h2><address>
                 @if ($document->website->footer->address !== null)<p class="footer-line"><x-public.icon name="location" />{{ $document->website->footer->address }}</p>@endif
                 @if ($document->contactActions->telephone !== null)<a class="footer-line" href="{{ $document->contactActions->telephone }}"><x-public.icon name="phone" />{{ $document->website->footer->contactPhone }}</a>@endif
                 @if ($document->contactActions->email !== null)<a class="footer-line" href="{{ $document->contactActions->email }}"><x-public.icon name="mail" />{{ $document->website->footer->contactEmail }}</a>@endif
             </address></div>
         @endif
-        @if ($document->website->footer->businessHours !== [])
+        @if (! $contactSectionIsRendered && $document->website->footer->businessHours !== [])
             <x-public.business-hours :hours="$document->website->footer->businessHours" />
         @endif
     </div>

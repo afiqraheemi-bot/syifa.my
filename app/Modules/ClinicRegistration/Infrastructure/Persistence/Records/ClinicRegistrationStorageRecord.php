@@ -27,5 +27,7 @@ final readonly class ClinicRegistrationStorageRecord
         public ?DateTimeImmutable $cancelledAt,
         public ?DateTimeImmutable $expiredAt,
         public int $version,
+        public ?string $preferredSubdomain = null,
+        public ?string $selectedWebsiteTemplate = null,
     ) {}
 }

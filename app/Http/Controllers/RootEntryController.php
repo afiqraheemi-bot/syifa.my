@@ -41,14 +41,14 @@ final readonly class RootEntryController
             'localClinicOwnerLogin' => app()->environment(['local', 'testing'])
                 && config('tenant_management.local_demo_tenant.enabled') === true,
             'clinicOwnerSessionUrl' => url('/api/v1/sessions'),
+            'clinicOwnerForgotPasswordUrl' => route('clinic-owner.password.forgot'),
+            'platformForgotPasswordUrl' => route('platform.password.forgot'),
             'platformSessionUrl' => url('/api/v1/platform/sessions'),
             'platformMfaUrl' => route('platform-sessions.mfa'),
             'dashboardUrl' => url('/dashboard'),
-            'clinicRegistrationUrl' => route('clinic-registration.browser'),
+            'clinicRegistrationUrl' => route('clinic-registration.browser', [], false),
+            'clinicRegistrationLoginUrl' => route('clinic-registration.access.login'),
             'clinicPortalBaseDomains' => $this->clinicPortalBaseDomains(),
-            'operationsHealthUrl' => app()->environment(['local', 'development', 'testing'])
-                ? url('/health/ready')
-                : null,
         ]);
     }
 

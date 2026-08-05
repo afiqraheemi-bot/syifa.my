@@ -25,5 +25,7 @@ final readonly class UpdateClinicRegistrationDraftCommand
         public DateTimeImmutable $occurredAt,
         public string $correlationId,
         public array $declarations,
+        public ?string $preferredSubdomain = null,
+        public ?string $selectedWebsiteTemplate = null,
     ) {}
 }

@@ -53,6 +53,8 @@ final class ClinicRegistrationDataAssembler
                 ),
                 $registration->decisions,
             ),
+            preferredSubdomain: $registration->profile->preferredSubdomain,
+            selectedWebsiteTemplate: $registration->profile->selectedWebsiteTemplate,
         );
     }
 

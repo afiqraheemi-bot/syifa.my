@@ -28,7 +28,7 @@ final readonly class ApplyHttpSecurityHeaders
             'X-Permitted-Cross-Domain-Policies' => $this->stringConfig('http_security.x_permitted_cross_domain_policies'),
             'Referrer-Policy' => $this->stringConfig('http_security.referrer_policy'),
             'Cross-Origin-Opener-Policy' => $this->stringConfig('http_security.cross_origin_opener_policy'),
-            'Cross-Origin-Resource-Policy' => $this->stringConfig('http_security.cross_origin_resource_policy'),
+            'Cross-Origin-Resource-Policy' => $this->crossOriginResourcePolicy($request),
             'Origin-Agent-Cluster' => $this->stringConfig('http_security.origin_agent_cluster'),
             'Permissions-Policy' => $this->stringConfig('http_security.permissions_policy'),
         ];
@@ -70,7 +70,51 @@ final readonly class ApplyHttpSecurityHeaders
         $environment = $this->securityEnvironment();
         $value = config('http_security.content_security_policy.'.$environment, '');
 
-        return is_string($value) ? $value : '';
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $assetOrigin = $this->publicAssetOrigin();
+
+        if ($assetOrigin === null || str_contains($value, 'img-src') === false) {
+            return $value;
+        }
+
+        $directives = explode('; ', $value);
+
+        foreach ($directives as &$directive) {
+            if (str_starts_with($directive, 'img-src ') && ! str_contains($directive, ' '.$assetOrigin)) {
+                $directive .= ' '.$assetOrigin;
+            }
+        }
+
+        unset($directive);
+
+        return implode('; ', $directives);
+    }
+
+    private function publicAssetOrigin(): ?string
+    {
+        $value = config('public_website_delivery.asset_origin');
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $origin = rtrim($value, '/');
+
+        return preg_match('/^https?:\/\/[a-z0-9.-]+(?::[1-9][0-9]{0,4})?$/i', $origin) === 1
+            ? $origin
+            : null;
+    }
+
+    private function crossOriginResourcePolicy(Request $request): string
+    {
+        if ($request->is('assets/*')) {
+            return 'cross-origin';
+        }
+
+        return $this->stringConfig('http_security.cross_origin_resource_policy');
     }
 
     private function securityEnvironment(): string

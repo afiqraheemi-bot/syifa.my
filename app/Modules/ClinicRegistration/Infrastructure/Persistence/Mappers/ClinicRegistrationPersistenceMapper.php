@@ -42,6 +42,8 @@ final class ClinicRegistrationPersistenceMapper
             $registration->cancelledAt,
             $registration->expiredAt,
             $registration->version(),
+            $registration->profile->preferredSubdomain,
+            $registration->profile->selectedWebsiteTemplate,
         );
     }
 
@@ -87,7 +89,14 @@ final class ClinicRegistrationPersistenceMapper
             id: new RegistrationId($record->id),
             platformIdentity: new PlatformIdentityReference($record->platformIdentityId),
             status: RegistrationStatus::from($record->status),
-            profile: new ClinicRegistrationProfile($record->clinicName, $record->clinicEmail, $record->clinicPhone, $record->clinicAddress),
+            profile: new ClinicRegistrationProfile(
+                $record->clinicName,
+                $record->clinicEmail,
+                $record->clinicPhone,
+                $record->clinicAddress,
+                $record->preferredSubdomain,
+                $record->selectedWebsiteTemplate,
+            ),
             declarations: array_map(
                 static fn (DeclarationAcceptanceStorageRecord $declaration): DeclarationAcceptance => new DeclarationAcceptance(
                     $declaration->declarationKey,

@@ -12,6 +12,7 @@ use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteLifecycle;
 use DateTimeImmutable;
 use RuntimeException;
 
@@ -56,8 +57,10 @@ final readonly class ReadyForReviewService
         if ($at < $website->updatedAt()) {
             $at = $website->updatedAt()->modify('+1 microsecond');
         }
-        $website->readyForReview($at);
-        $this->websites->save($website);
+        if ($website->lifecycle() !== WebsiteLifecycle::ReadyForReview) {
+            $website->readyForReview($at);
+            $this->websites->save($website);
+        }
 
         return new EditableWebsiteContent($website);
     }

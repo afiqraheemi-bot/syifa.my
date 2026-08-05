@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Tests\Feature\Modules\ClinicRegistration;
 
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationIdentifierGeneratorInterface;
+use App\Modules\ClinicRegistration\Contracts\Authentication\ClinicRegistrationAccessInterface;
+use App\Modules\ClinicRegistration\Contracts\Checkout\CompleteLocalDemoAcquisitionInterface;
 use App\Modules\ClinicRegistration\Contracts\Checkout\PublicInitialAcquisitionCheckoutInterface;
 use App\Modules\ClinicRegistration\Contracts\Checkout\PublicInitialAcquisitionCheckoutResult;
 use App\Modules\ClinicRegistration\Contracts\Checkout\StartPublicInitialAcquisitionCheckoutCommand;
 use App\Modules\ClinicRegistration\Contracts\Events\ClinicRegistrationEventPublisherInterface;
 use App\Modules\ClinicRegistration\Contracts\Repositories\ClinicRegistrationRepositoryInterface;
 use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialInterface;
+use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialWriterInterface;
 use App\Modules\ClinicRegistration\Domain\ClinicRegistration;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationDecisionOutcome;
@@ -25,6 +28,7 @@ use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActor
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditEntryId;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 use App\Modules\PlatformAdministration\Presentation\Http\Middleware\AuthenticatePlatformSessionMiddleware;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\PublicWebsiteAddressAvailabilityInterface;
 use Tests\TestCase;
 
 final class ClinicRegistrationApiTest extends TestCase
@@ -49,6 +53,18 @@ final class ClinicRegistrationApiTest extends TestCase
         $this->app->instance(AuditEntryRecorderInterface::class, $this->audit);
         $this->app->instance(ClinicRegistrationEventPublisherInterface::class, new ApiRecordingEventPublisher);
         $this->app->instance(RegistrationTrackingCredentialInterface::class, $this->tracking);
+        $this->app->instance(RegistrationTrackingCredentialWriterInterface::class, $this->tracking);
+        $this->app->instance(ClinicRegistrationAccessInterface::class, new ApiClinicRegistrationAccess);
+        $this->app->instance(
+            PublicWebsiteAddressAvailabilityInterface::class,
+            new class implements PublicWebsiteAddressAvailabilityInterface
+            {
+                public function available(string $subdomain, string $registrationOwner): bool
+                {
+                    return true;
+                }
+            },
+        );
         $this->app->instance(ClinicRegistrationIdentifierGeneratorInterface::class, new ApiSequentialIdentifierGenerator([$this->uuid(31)]));
     }
 
@@ -68,6 +84,8 @@ final class ClinicRegistrationApiTest extends TestCase
             'clinic_email' => 'owner@clinic.test',
             'clinic_phone' => '+60123456789',
             'clinic_address' => '1 Jalan Klinik',
+            'preferred_subdomain' => 'klinik-syifa',
+            'selected_website_template' => 'SYIFA_ESSENTIAL',
             'selected_plan_offering_reference' => 'offering-basic-monthly',
             'selected_billing_option_reference' => 'monthly',
             'commercial_snapshot_version' => 'catalogue-v1',
@@ -79,6 +97,8 @@ final class ClinicRegistrationApiTest extends TestCase
             ]],
         ])->assertOk()
             ->assertJsonPath('data.clinic.name', 'Klinik Syifa')
+            ->assertJsonPath('data.website_preferences.host', 'klinik-syifa.syifa.my')
+            ->assertJsonPath('data.website_preferences.template', 'SYIFA_ESSENTIAL')
             ->assertJsonPath('data.version', 2);
 
         $this->postJson('/api/v1/clinic-registrations/current/submit', [
@@ -105,6 +125,46 @@ final class ClinicRegistrationApiTest extends TestCase
                 $this->audit->entries,
             ))),
         );
+    }
+
+    public function test_public_prospect_can_configure_and_resume_application_access(): void
+    {
+        $this->postJson('/api/v1/clinic-registrations')->assertCreated();
+
+        $this->patchJson('/api/v1/clinic-registrations/current', [
+            'clinic_name' => 'Klinik Login',
+            'clinic_email' => 'owner@login.test',
+            'clinic_phone' => '+60123456789',
+            'clinic_address' => '1 Jalan Login',
+            'expected_version' => 1,
+            'declarations' => [],
+        ])->assertOk();
+
+        $this->postJson('/register/access', [
+            'password' => 'secure-password-123',
+            'password_confirmation' => 'secure-password-123',
+        ])->assertCreated()
+            ->assertJsonPath('data.configured', true);
+
+        $this->post('/register/logout')->assertRedirect('/');
+        self::assertNull($this->tracking->current());
+
+        $this->postJson('/register/login', [
+            'email' => 'owner@login.test',
+            'password' => 'wrong-password',
+        ])->assertUnauthorized()
+            ->assertJsonPath('message', 'Permohonan tidak dapat disahkan.');
+
+        $this->postJson('/register/login', [
+            'email' => 'OWNER@LOGIN.TEST',
+            'password' => 'secure-password-123',
+            'remember' => true,
+        ])->assertOk()
+            ->assertJsonPath('data.authenticated', true)
+            ->assertJsonPath('data.redirect', route('clinic-registration.browser'));
+
+        self::assertSame($this->uuid(21), $this->tracking->current());
+        self::assertTrue($this->tracking->remember);
     }
 
     public function test_http_validation_rejects_add_on_and_tenant_payloads(): void
@@ -195,8 +255,18 @@ final class ClinicRegistrationApiTest extends TestCase
                     ->where('updateUrl', route('clinic-registration.current.update'))
                     ->where('submitUrl', route('clinic-registration.current.submit'))
                     ->where('cancelUrl', route('clinic-registration.current.cancel'))
+                    ->where(
+                        'addressAvailabilityUrl',
+                        route('clinic-registration.website-address.availability'),
+                    )
+                    ->where('websiteBaseDomain', 'syifa.my')
+                    ->has('templates', 5)
                     ->where('offersUrl', route('clinic-registration.offers')),
             );
+
+        $this->getJson('/register/website-address/availability?subdomain=klinik-baru')
+            ->assertOk()
+            ->assertJsonPath('available', true);
 
         $this->get('/register')
             ->assertOk()
@@ -243,6 +313,8 @@ final class ClinicRegistrationApiTest extends TestCase
             'clinic_email' => 'owner@clinic.test',
             'clinic_phone' => '+60123456789',
             'clinic_address' => '1 Jalan Klinik',
+            'preferred_subdomain' => 'klinik-syifa-offers',
+            'selected_website_template' => 'SYIFA_CARE',
             'selected_plan_offering_reference' => $this->uuid(71),
             'selected_billing_option_reference' => 'annual',
             'commercial_snapshot_version' => 'catalogue-v1',
@@ -309,6 +381,13 @@ final class ClinicRegistrationApiTest extends TestCase
             'plan_offering_id' => $this->uuid(71),
         ])->assertStatus(503)
             ->assertJsonPath('type', 'payment.provider_not_ready');
+
+        $demo = new ApiLocalDemoAcquisition;
+        $this->app->instance(CompleteLocalDemoAcquisitionInterface::class, $demo);
+        $this->postJson('/register/offers/demo-payment')
+            ->assertOk()
+            ->assertJsonPath('message', 'Demo payment succeeded and provisioning completed.');
+        self::assertSame($this->uuid(21), $demo->trackingCredential);
     }
 
     public function test_initial_offer_selection_rejects_financial_and_authority_payloads(): void
@@ -360,8 +439,20 @@ final readonly class ApiInitialAcquisitionCheckout implements PublicInitialAcqui
     }
 }
 
-final class ApiRegistrationTrackingCredential implements RegistrationTrackingCredentialInterface
+final class ApiLocalDemoAcquisition implements CompleteLocalDemoAcquisitionInterface
 {
+    public ?string $trackingCredential = null;
+
+    public function execute(string $trackingCredential, string $correlationId): void
+    {
+        $this->trackingCredential = $trackingCredential;
+    }
+}
+
+final class ApiRegistrationTrackingCredential implements RegistrationTrackingCredentialInterface, RegistrationTrackingCredentialWriterInterface
+{
+    public bool $remember = false;
+
     public function __construct(public ?string $credential) {}
 
     public function current(): ?string
@@ -377,6 +468,44 @@ final class ApiRegistrationTrackingCredential implements RegistrationTrackingCre
     public function forget(): void
     {
         $this->credential = null;
+    }
+
+    public function resume(string $credential, bool $remember = false): void
+    {
+        $this->credential = $credential;
+        $this->remember = $remember;
+    }
+}
+
+final class ApiClinicRegistrationAccess implements ClinicRegistrationAccessInterface
+{
+    /** @var array<string, array{email: string, password: string, credential: string}> */
+    private array $credentials = [];
+
+    public function configured(string $registrationId): bool
+    {
+        return isset($this->credentials[$registrationId]);
+    }
+
+    public function configure(string $registrationId, string $authoritativeEmail, string $password): void
+    {
+        $this->credentials[$registrationId] = [
+            'email' => mb_strtolower($authoritativeEmail),
+            'password' => $password,
+            'credential' => '00000000-0000-4000-8000-000000000021',
+        ];
+    }
+
+    public function authenticate(string $email, string $password): ?string
+    {
+        foreach ($this->credentials as $credential) {
+            if ($credential['email'] === mb_strtolower($email)
+                && $credential['password'] === $password) {
+                return $credential['credential'];
+            }
+        }
+
+        return null;
     }
 }
 

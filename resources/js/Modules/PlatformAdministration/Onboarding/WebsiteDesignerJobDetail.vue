@@ -8,6 +8,7 @@ import {
     DashboardQuickActions,
     DashboardShell,
 } from '../../../Shared/Dashboard/index.js';
+import WebsiteImageUpload from './WebsiteImageUpload.vue';
 
 const props = defineProps({
     navigation: { type: Array, required: true },
@@ -48,6 +49,7 @@ const form = useForm({
     ),
 });
 const bookingSaved = ref(false);
+const bookingScheduleSaved = ref(false);
 const contactSaved = ref(false);
 const contactForm = useForm({
     workspace: 'clinic_contact',
@@ -69,6 +71,32 @@ const bookingForm = useForm({
         bookingFields.map(([key]) => [key, props.bookingSetup.configuration.labels[key] ?? '']),
     ),
 });
+const weekdayOptions = [
+    [1, 'Monday'],
+    [2, 'Tuesday'],
+    [3, 'Wednesday'],
+    [4, 'Thursday'],
+    [5, 'Friday'],
+    [6, 'Saturday'],
+    [7, 'Sunday'],
+];
+const configuredIntervals = new Map(
+    props.bookingSetup.schedule.operating_intervals.map((interval) => [interval.day, interval]),
+);
+const bookingScheduleForm = useForm({
+    workspace: 'booking_schedule',
+    version: props.bookingSetup.schedule.version,
+    timezone: props.bookingSetup.schedule.timezone,
+    appointment_duration_minutes: props.bookingSetup.schedule.appointment_duration_minutes ?? 30,
+    booking_capacity_per_slot: props.bookingSetup.schedule.booking_capacity_per_slot ?? 1,
+    operating_intervals: weekdayOptions.map(([day, label]) => ({
+        day,
+        label,
+        enabled: configuredIntervals.has(day),
+        opens_at: configuredIntervals.get(day)?.opens_at ?? '09:00',
+        closes_at: configuredIntervals.get(day)?.closes_at ?? '17:00',
+    })),
+});
 const enabledBookingFields = computed(() =>
     bookingFields.filter(([key]) => {
         if (key === 'service') return bookingForm.service_selection_enabled;
@@ -79,6 +107,7 @@ const enabledBookingFields = computed(() =>
 );
 const inputClass =
     'mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20';
+const heroAspectRatio = computed(() => (form.template_id === 'SYIFA_AESTHETIC' ? 4 / 5 : 4 / 3));
 const draft = ref({
     version: props.websiteDraft.draft.version,
     sections: props.websiteDraft.draft.sections.map((section) => ({ ...section })),
@@ -171,7 +200,10 @@ const reviewSubmitting = ref(false);
 const reviewSuccess = ref('');
 const reviewError = ref('');
 const reviewConflict = ref(false);
-const reviewCompleted = ref(props.websiteSetup.configuration.lifecycle === 'ready_for_review');
+const reviewCompleted = ref(
+    props.websiteSetup.configuration.lifecycle === 'ready_for_review' &&
+        !props.websiteSetup.canSubmitForReview,
+);
 const previewOpening = ref(false);
 const previewError = ref('');
 const publishSubmitting = ref(false);
@@ -189,9 +221,240 @@ const taskBusy = ref(null);
 const taskError = ref('');
 const taskSuccess = ref('');
 
-function csrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+function synchronizeWebsiteVersion(asset) {
+    if (Number.isInteger(asset?.website_version)) {
+        form.version = asset.website_version;
+    }
 }
+
+const completedTaskStatuses = ['completed', 'waived'];
+const taskByKey = (key) => props.job.tasks.find((task) => task.key === key);
+const taskComplete = (key) => completedTaskStatuses.includes(taskByKey(key)?.status);
+const designerTasks = computed(() =>
+    props.job.tasks.filter((task) => task.responsibility === 'website_designer'),
+);
+const nextDesignerTask = computed(() =>
+    designerTasks.value.find((task) => !completedTaskStatuses.includes(task.status)),
+);
+const clinicInputsComplete = computed(() => taskComplete('clinic_inputs'));
+const workflowCheckpoints = computed(() => {
+    const checkpoints = [
+        {
+            key: 'assignment',
+            label: 'Assignment accepted',
+            detail: 'This clinic is assigned to your Website Designer workspace.',
+            complete: true,
+        },
+        {
+            key: 'clinic_inputs',
+            label: 'Clinic information ready',
+            detail: clinicInputsComplete.value
+                ? 'Clinic Owner inputs are complete.'
+                : 'Wait for the Clinic Owner to complete the required information.',
+            complete: clinicInputsComplete.value,
+        },
+        ...[
+            ['service_setup', 'Configure clinic services'],
+            ['website_setup', 'Build website and content'],
+            ['booking_setup', 'Configure patient booking'],
+        ].map(([key, label]) => ({
+            key,
+            label,
+            detail: taskComplete(key)
+                ? 'Completed with workflow evidence.'
+                : (taskByKey(key)?.statusLabel ?? 'Waiting for the previous checkpoint.'),
+            complete: taskComplete(key),
+        })),
+        {
+            key: 'review_publish',
+            label: 'Review and publish',
+            detail: props.launchReadiness?.ready
+                ? 'Launch evidence is ready. Complete the approved publish flow.'
+                : 'Preview, submit for review and resolve remaining launch evidence.',
+            complete: props.websiteSetup.configuration.lifecycle === 'published',
+        },
+    ];
+    const activeIndex = checkpoints.findIndex((checkpoint) => !checkpoint.complete);
+    const destinations = {
+        assignment: '#onboarding-tasks',
+        clinic_inputs: '#onboarding-tasks',
+        service_setup: '#services-editor',
+        website_setup: '#website-setup',
+        booking_setup: '#booking-setup',
+        review_publish: '#website-review',
+    };
+
+    return checkpoints.map((checkpoint, index) => {
+        const state =
+            checkpoint.complete || activeIndex === -1
+                ? 'complete'
+                : index === activeIndex
+                  ? 'current'
+                  : 'locked';
+
+        return {
+            ...checkpoint,
+            href: destinations[checkpoint.key],
+            state,
+            detail:
+                state === 'current'
+                    ? 'Finish and save this step, then confirm completion to continue.'
+                    : state === 'locked'
+                      ? 'Complete the previous checkpoint to unlock this step.'
+                      : checkpoint.detail,
+            statusLabel:
+                state === 'complete'
+                    ? 'Completed'
+                    : state === 'current'
+                      ? 'In progress'
+                      : 'Waiting',
+        };
+    });
+});
+const currentWorkflowTask = computed(() => {
+    const task = nextDesignerTask.value;
+
+    return task?.actionable ? task : null;
+});
+
+const currentFocus = computed(() => {
+    if (!clinicInputsComplete.value) {
+        return {
+            title: 'Waiting for Clinic Owner information',
+            detail: 'No setup work should be completed until the clinic input checkpoint is ready.',
+            href: '#onboarding-tasks',
+            label: 'View dependency',
+        };
+    }
+
+    const key = nextDesignerTask.value?.key;
+    const destinations = {
+        service_setup: ['Configure clinic services', '#services-editor', 'Open services'],
+        website_setup: ['Build website and content', '#website-setup', 'Open website setup'],
+        booking_setup: ['Configure patient booking', '#booking-setup', 'Open booking setup'],
+        launch_readiness: ['Complete launch readiness', '#website-review', 'Open review'],
+    };
+    const destination = destinations[key];
+    if (destination) {
+        return {
+            title: destination[0],
+            detail: nextDesignerTask.value?.title ?? 'Continue the current onboarding checkpoint.',
+            href: destination[1],
+            label: destination[2],
+        };
+    }
+
+    return {
+        title: props.websiteSetup.canPublish
+            ? 'Publish the approved website'
+            : 'Review website readiness',
+        detail: props.websiteSetup.canPublish
+            ? 'All required evidence is ready for the immutable publication step.'
+            : 'Preview the current draft and submit it when every enabled section is renderable.',
+        href: '#website-review',
+        label: 'Open review and publish',
+    };
+});
+
+const unmetLaunchConditions = computed(
+    () => props.launchReadiness?.conditions?.filter((condition) => !condition.satisfied) ?? [],
+);
+const completedLaunchConditions = computed(
+    () => props.launchReadiness?.conditions?.filter((condition) => condition.satisfied) ?? [],
+);
+const launchReadinessFocus = computed(() => {
+    const condition = unmetLaunchConditions.value[0];
+    if (!condition) {
+        return {
+            title: 'All checks complete',
+            detail: 'The Website has the evidence required for the approved publish action.',
+            href: '#website-review',
+            label: 'Open publish step',
+        };
+    }
+
+    if (
+        ['approval', 'clinic_owner_approval'].includes(condition.key) &&
+        props.websiteSetup.canSubmitForReview
+    ) {
+        return {
+            title: 'Submit the updated version for approval',
+            detail: 'The Website changed after the previous approval. Submit this latest saved version so the Clinic Owner receives a new approval action.',
+            href: '#website-review',
+            label: 'Submit updated version',
+        };
+    }
+
+    const guidance = {
+        tasks: [
+            'Complete the remaining checkpoint',
+            'Finish the required onboarding task and record its completion evidence.',
+            '#workflow',
+            'Open checkpoints',
+        ],
+        approval: [
+            'Waiting for Clinic Owner approval',
+            'The Clinic Owner must review the current Website from their Website Overview and approve it. No approval action is required from the Website Designer.',
+            '#website-review',
+            'Preview submitted Website',
+        ],
+        clinic_owner_approval: [
+            'Waiting for Clinic Owner approval',
+            'The Clinic Owner must review the current Website from their Website Overview and approve it. No approval action is required from the Website Designer.',
+            '#website-review',
+            'Preview submitted Website',
+        ],
+        subscription: [
+            'Subscription must be active',
+            'The clinic needs an active publication entitlement. Ask the Super Admin to verify the subscription if this remains blocked.',
+            '#website-review',
+            'Review status',
+        ],
+        website: [
+            'Submit the Website for review',
+            'Complete the enabled content and template, then submit the current Website version for review.',
+            '#website-review',
+            'Open review step',
+        ],
+        assets: [
+            'Resolve a missing Website asset',
+            'Check that every selected logo and image is available and valid for this Website.',
+            '#website-setup',
+            'Check Website content',
+        ],
+        services: [
+            'Add at least one active service',
+            'The clinic needs an active service before the Website can launch.',
+            '#services-editor',
+            'Open services',
+        ],
+        booking: [
+            'Complete booking configuration',
+            'Save the governed booking form configuration for this clinic.',
+            '#booking-setup',
+            'Open booking setup',
+        ],
+        address: [
+            'Activate the public Website address',
+            'A primary public Website address must be active before launch.',
+            '#website-review',
+            'Review status',
+        ],
+    };
+    const selected = guidance[condition.key] ?? [
+        condition.label,
+        condition.detail,
+        '#website-review',
+        'Review requirement',
+    ];
+
+    return {
+        title: selected[0],
+        detail: selected[1],
+        href: selected[2],
+        label: selected[3],
+    };
+});
 
 function optionalDraftValue(value) {
     const normalized = typeof value === 'string' ? value.trim() : '';
@@ -228,7 +491,6 @@ async function saveHero() {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
             },
             body: JSON.stringify({ version: draft.value.version, sections }),
         });
@@ -282,7 +544,6 @@ async function saveAbout() {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
             },
             body: JSON.stringify({ version: draft.value.version, sections }),
         });
@@ -372,7 +633,6 @@ async function saveServices() {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
             },
             body: JSON.stringify({ version: draft.value.version, sections }),
         });
@@ -453,7 +713,6 @@ async function saveDoctors() {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
             },
             body: JSON.stringify({ version: draft.value.version, sections }),
         });
@@ -538,7 +797,6 @@ async function saveGallery() {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
             },
             body: JSON.stringify({ version: draft.value.version, sections }),
         });
@@ -623,7 +881,6 @@ async function saveTestimonials() {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
             },
             body: JSON.stringify({ version: draft.value.version, sections }),
         });
@@ -702,7 +959,6 @@ async function saveFaq() {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
             },
             body: JSON.stringify({ version: draft.value.version, sections }),
         });
@@ -758,7 +1014,6 @@ async function saveBookingCta() {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
             },
             body: JSON.stringify({ version: draft.value.version, sections }),
         });
@@ -794,7 +1049,9 @@ async function submitForReview() {
         return;
     if (
         !window.confirm(
-            'Submit this Website for review? Content can continue only through the approved review workflow.',
+            props.websiteSetup.configuration.lifecycle === 'ready_for_review'
+                ? 'Submit the updated Website version to the Clinic Owner for approval?'
+                : 'Submit this Website for review? Content can continue only through the approved review workflow.',
         )
     ) {
         return;
@@ -812,7 +1069,6 @@ async function submitForReview() {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
             },
             body: JSON.stringify({
                 workspace: 'ready_for_review',
@@ -827,7 +1083,11 @@ async function submitForReview() {
             throw new Error(body.detail ?? body.message ?? 'The Website could not be submitted.');
         }
 
-        reviewSuccess.value = body.message ?? 'Website submitted for review.';
+        reviewSuccess.value =
+            body.message ??
+            (props.websiteSetup.configuration.lifecycle === 'ready_for_review'
+                ? 'Updated Website version submitted to the Clinic Owner.'
+                : 'Website submitted for review.');
         reviewCompleted.value = true;
         window.setTimeout(() => window.location.reload(), 600);
     } catch (exception) {
@@ -892,7 +1152,6 @@ async function publishWebsite() {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
             },
             body: JSON.stringify({
                 website_version: props.websiteSetup.configuration.version,
@@ -928,7 +1187,6 @@ async function reserveWebsiteAddress() {
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
             },
             body: JSON.stringify({ subdomain: addressForm.value.subdomain }),
         });
@@ -1003,6 +1261,27 @@ function saveBookingConfiguration() {
     });
 }
 
+function saveBookingSchedule() {
+    bookingScheduleSaved.value = false;
+    bookingScheduleForm
+        .transform((data) => ({
+            ...data,
+            operating_intervals: data.operating_intervals
+                .filter((interval) => interval.enabled)
+                .map(({ day, opens_at, closes_at }) => ({ day, opens_at, closes_at })),
+        }))
+        .patch(props.bookingSetup.updateUrl, {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                const current = page.props.bookingSetup?.schedule;
+                if (current) {
+                    bookingScheduleForm.version = current.version;
+                }
+                bookingScheduleSaved.value = true;
+            },
+        });
+}
+
 function saveClinicContact() {
     contactSaved.value = false;
     contactForm.patch(props.clinicContact.updateUrl, {
@@ -1020,11 +1299,7 @@ function saveClinicContact() {
 
 async function progressTask(task, operation) {
     if (taskBusy.value || !task.actionable) return;
-    const evidence =
-        operation === 'complete'
-            ? window.prompt('Describe the authoritative completion evidence:')?.trim()
-            : null;
-    if (operation === 'complete' && !evidence) return;
+    const evidence = operation === 'complete' ? completionEvidence(task) : null;
     if (!window.confirm(`${operation === 'complete' ? 'Complete' : 'Update'} ${task.title}?`)) {
         return;
     }
@@ -1052,6 +1327,17 @@ async function progressTask(task, operation) {
     taskSuccess.value = response.body?.message ?? 'Onboarding Task updated successfully.';
     window.location.reload();
 }
+
+function completionEvidence(task) {
+    const evidence = {
+        service_setup: `website_draft:services:v${draft.value.version}`,
+        website_setup: `website_configuration:v${form.version};draft:v${draft.value.version}`,
+        booking_setup: `booking_form_configuration:v${bookingForm.version}`,
+        launch_readiness: `website_readiness:v${form.version};draft:v${draft.value.version}`,
+    };
+
+    return evidence[task.key] ?? `designer_workspace:${task.key}`;
+}
 </script>
 
 <template>
@@ -1063,16 +1349,22 @@ async function progressTask(task, operation) {
         :identity-name="identityName"
         :context-label="contextLabel"
     >
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section
+            id="workflow"
+            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+        >
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <p class="text-xs font-bold uppercase tracking-wide text-slate-500">
                         Assigned onboarding job
                     </p>
-                    <h2 class="mt-1 break-all text-lg font-bold text-slate-950">{{ job.id }}</h2>
-                    <p class="mt-2 text-sm text-slate-600">
-                        Tenant {{ job.tenantId }} · Website {{ job.websiteId }}
-                    </p>
+                    <h2 class="mt-1 text-2xl font-bold text-slate-950">{{ job.clinicName }}</h2>
+                    <details class="mt-2 text-sm text-slate-500">
+                        <summary class="cursor-pointer font-semibold">Technical references</summary>
+                        <p class="mt-2 break-all">Job {{ job.id }}</p>
+                        <p class="mt-1 break-all">Tenant {{ job.tenantId }}</p>
+                        <p class="mt-1 break-all">Website {{ job.websiteId }}</p>
+                    </details>
                 </div>
                 <span
                     class="rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-800"
@@ -1100,6 +1392,103 @@ async function progressTask(task, operation) {
                     />
                 </div>
             </div>
+
+            <div class="mt-6 grid gap-5 border-t border-slate-200 pt-6 lg:grid-cols-[1fr_20rem]">
+                <ol aria-label="Website onboarding checkpoints">
+                    <li
+                        v-for="(checkpoint, index) in workflowCheckpoints"
+                        :key="checkpoint.key"
+                        class="relative flex gap-4 pb-5 last:pb-0"
+                    >
+                        <div class="flex shrink-0 flex-col items-center" aria-hidden="true">
+                            <span
+                                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-4 ring-white"
+                                :class="
+                                    checkpoint.state === 'complete'
+                                        ? 'bg-emerald-700 text-white'
+                                        : checkpoint.state === 'current'
+                                          ? 'bg-amber-200 text-amber-900'
+                                          : 'bg-slate-200 text-slate-600'
+                                "
+                            >
+                                {{ checkpoint.state === 'complete' ? '✓' : index + 1 }}
+                            </span>
+                            <span
+                                v-if="index < workflowCheckpoints.length - 1"
+                                class="mt-1 h-full min-h-6 w-0.5"
+                                :class="
+                                    checkpoint.state === 'complete'
+                                        ? 'bg-emerald-300'
+                                        : 'bg-slate-200'
+                                "
+                            />
+                        </div>
+                        <a
+                            :href="checkpoint.href"
+                            class="min-w-0 flex-1 rounded-xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+                            :class="
+                                checkpoint.state === 'complete'
+                                    ? 'border-emerald-200 bg-emerald-50'
+                                    : checkpoint.state === 'current'
+                                      ? 'border-amber-300 bg-amber-50'
+                                      : 'border-slate-200 bg-slate-50 opacity-70'
+                            "
+                        >
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <p class="text-sm font-bold text-slate-950">
+                                    {{ checkpoint.label }}
+                                </p>
+                                <span
+                                    class="rounded-full px-2.5 py-1 text-xs font-bold"
+                                    :class="
+                                        checkpoint.state === 'complete'
+                                            ? 'bg-emerald-100 text-emerald-800'
+                                            : checkpoint.state === 'current'
+                                              ? 'bg-amber-200 text-amber-900'
+                                              : 'bg-slate-200 text-slate-600'
+                                    "
+                                >
+                                    {{ checkpoint.statusLabel }}
+                                </span>
+                            </div>
+                            <p class="mt-2 text-xs leading-5 text-slate-600">
+                                {{ checkpoint.detail }}
+                            </p>
+                        </a>
+                    </li>
+                </ol>
+
+                <aside class="rounded-2xl bg-emerald-950 p-5 text-white">
+                    <p class="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                        Focus now
+                    </p>
+                    <h3 class="mt-2 text-lg font-bold">{{ currentFocus.title }}</h3>
+                    <p class="mt-2 text-sm leading-6 text-emerald-100">{{ currentFocus.detail }}</p>
+                    <a
+                        :href="currentFocus.href"
+                        class="mt-4 inline-flex min-h-11 items-center rounded-xl bg-white px-4 font-bold text-emerald-950"
+                    >
+                        {{ currentFocus.label }}
+                    </a>
+                    <div v-if="currentWorkflowTask" class="mt-5 border-t border-emerald-800 pt-5">
+                        <p class="text-sm leading-6 text-emerald-100">
+                            Finished this step? Confirm once to unlock the next checkpoint.
+                        </p>
+                        <button
+                            type="button"
+                            class="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-emerald-300 px-4 font-bold text-white transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
+                            :disabled="taskBusy !== null"
+                            @click="progressTask(currentWorkflowTask, 'complete')"
+                        >
+                            {{
+                                taskBusy === currentWorkflowTask.id
+                                    ? 'Completing…'
+                                    : 'Complete this checkpoint'
+                            }}
+                        </button>
+                    </div>
+                </aside>
+            </div>
         </section>
 
         <section
@@ -1110,10 +1499,10 @@ async function progressTask(task, operation) {
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h2 id="launch-readiness-title" class="text-xl font-bold text-slate-950">
-                        Launch readiness
+                        Ready to publish?
                     </h2>
                     <p class="mt-1 text-sm text-slate-600">
-                        Computed live from each module’s authoritative evidence.
+                        Final automatic checks that protect the clinic before its Website goes live.
                     </p>
                 </div>
                 <span
@@ -1124,38 +1513,85 @@ async function progressTask(task, operation) {
                             : 'bg-amber-100 text-amber-900'
                     "
                 >
-                    {{ launchReadiness.ready ? 'Ready' : 'Blocked' }}
+                    {{
+                        launchReadiness.ready
+                            ? 'Ready to publish'
+                            : `${unmetLaunchConditions.length} step${unmetLaunchConditions.length === 1 ? '' : 's'} remaining`
+                    }}
                 </span>
             </div>
-            <ul class="mt-5 grid gap-3 sm:grid-cols-2">
-                <li
-                    v-for="condition in launchReadiness.conditions"
-                    :key="condition.key"
-                    class="rounded-xl border p-4"
-                    :class="
-                        condition.satisfied
-                            ? 'border-emerald-200 bg-emerald-50'
-                            : 'border-amber-200 bg-amber-50'
-                    "
-                >
-                    <p class="font-bold text-slate-950">
-                        {{ condition.satisfied ? '✓' : '!' }} {{ condition.label }}
+
+            <div
+                class="mt-5 rounded-xl border p-4 sm:flex sm:items-center sm:justify-between sm:gap-5"
+                :class="
+                    launchReadiness.ready
+                        ? 'border-emerald-200 bg-emerald-50'
+                        : 'border-amber-200 bg-amber-50'
+                "
+            >
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-slate-600">
+                        {{ launchReadiness.ready ? 'Ready now' : 'Next step' }}
                     </p>
-                    <p class="mt-1 text-sm text-slate-700">{{ condition.detail }}</p>
-                </li>
-            </ul>
+                    <h3 class="mt-1 font-bold text-slate-950">{{ launchReadinessFocus.title }}</h3>
+                    <p class="mt-1 max-w-3xl text-sm leading-6 text-slate-700">
+                        {{ launchReadinessFocus.detail }}
+                    </p>
+                </div>
+                <a
+                    :href="launchReadinessFocus.href"
+                    class="mt-4 inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-slate-900 px-4 font-semibold text-white sm:mt-0"
+                >
+                    {{ launchReadinessFocus.label }}
+                </a>
+            </div>
+
+            <details class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <summary class="cursor-pointer font-semibold text-slate-900">
+                    View all launch checks
+                    <span class="ml-1 font-normal text-slate-600">
+                        ({{ completedLaunchConditions.length }}/{{
+                            launchReadiness.conditions.length
+                        }}
+                        complete)
+                    </span>
+                </summary>
+                <ul class="mt-4 divide-y divide-slate-200">
+                    <li
+                        v-for="condition in launchReadiness.conditions"
+                        :key="condition.key"
+                        class="flex gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                        <span
+                            class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                            :class="
+                                condition.satisfied
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-amber-100 text-amber-900'
+                            "
+                        >
+                            {{ condition.satisfied ? '✓' : '!' }}
+                        </span>
+                        <div>
+                            <p class="font-semibold text-slate-900">{{ condition.label }}</p>
+                            <p class="mt-0.5 text-sm leading-6 text-slate-600">
+                                {{ condition.detail }}
+                            </p>
+                        </div>
+                    </li>
+                </ul>
+            </details>
         </section>
 
-        <section
+        <details
+            id="onboarding-tasks"
             class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="onboarding-tasks-title"
         >
-            <h2 id="onboarding-tasks-title" class="text-xl font-bold text-slate-950">
-                Onboarding tasks
-            </h2>
+            <summary class="cursor-pointer font-bold text-slate-950">
+                Technical task details
+            </summary>
             <p class="mt-1 text-sm text-slate-600">
-                Progress only the tasks assigned to the Website Designer. Completion requires
-                evidence.
+                Optional workflow information for troubleshooting and handover.
             </p>
             <p v-if="taskError" role="alert" class="mt-4 rounded-lg bg-red-50 p-3 text-red-800">
                 {{ taskError }}
@@ -1179,52 +1615,29 @@ async function progressTask(task, operation) {
                             {{ task.responsibilityLabel }} · {{ task.statusLabel }}
                         </p>
                     </div>
-                    <div v-if="task.actionable" class="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            class="min-h-10 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-800 disabled:opacity-50"
-                            :disabled="taskBusy !== null"
-                            @click="progressTask(task, 'start')"
-                        >
-                            Start
-                        </button>
-                        <button
-                            type="button"
-                            class="min-h-10 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white disabled:opacity-50"
-                            :disabled="taskBusy !== null"
-                            @click="progressTask(task, 'complete')"
-                        >
-                            {{ taskBusy === task.id ? 'Updating…' : 'Complete' }}
-                        </button>
-                    </div>
                 </article>
             </div>
-        </section>
+        </details>
 
-        <section aria-labelledby="workflow-stages-title">
-            <h2 id="workflow-stages-title" class="text-lg font-bold text-slate-950">
-                Operational workflow
-            </h2>
-            <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <article
+        <details class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <summary class="cursor-pointer font-bold text-slate-950">Lifecycle details</summary>
+            <p class="mt-2 text-sm text-slate-600">
+                Supporting status detail for troubleshooting and handover.
+            </p>
+            <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div
                     v-for="stage in job.stages"
                     :key="stage.key"
-                    class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    class="rounded-xl border border-slate-200 bg-slate-50 p-4"
                 >
-                    <h3 class="font-bold text-slate-950">{{ stage.label }}</h3>
-                    <p
-                        :class="[
-                            'mt-3 text-sm font-semibold',
-                            stage.state === 'current' ? 'text-emerald-700' : 'text-slate-500',
-                        ]"
-                    >
-                        {{ stage.stateLabel }}
-                    </p>
-                </article>
+                    <p class="font-semibold text-slate-950">{{ stage.label }}</p>
+                    <p class="mt-1 text-sm text-slate-600">{{ stage.stateLabel }}</p>
+                </div>
             </div>
-        </section>
+        </details>
 
         <section
+            id="website-review"
             class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
             aria-labelledby="website-review-title"
         >
@@ -1286,6 +1699,24 @@ async function progressTask(task, operation) {
             >
                 {{ publishSuccess }}
             </div>
+            <div class="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+                    <p class="font-bold">Current Draft</p>
+                    <p class="mt-1 leading-6">
+                        Preview shows the designer’s latest saved progress immediately. It is not
+                        visible to the public.
+                    </p>
+                </div>
+                <div
+                    class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"
+                >
+                    <p class="font-bold">Published Website</p>
+                    <p class="mt-1 leading-6">
+                        The live Website remains on the last approved publication until the current
+                        draft is reviewed and published.
+                    </p>
+                </div>
+            </div>
             <div class="mt-5 flex flex-wrap gap-3">
                 <button
                     type="button"
@@ -1293,7 +1724,7 @@ async function progressTask(task, operation) {
                     :disabled="previewOpening"
                     @click="openDraftPreview"
                 >
-                    {{ previewOpening ? 'Opening preview…' : 'Preview Website' }}
+                    {{ previewOpening ? 'Opening draft…' : 'Preview Current Draft' }}
                 </button>
                 <button
                     v-if="websiteSetup.canSubmitForReview && !reviewCompleted"
@@ -1302,7 +1733,13 @@ async function progressTask(task, operation) {
                     :disabled="reviewSubmitting"
                     @click="submitForReview"
                 >
-                    {{ reviewSubmitting ? 'Submitting for review…' : 'Submit for review' }}
+                    {{
+                        reviewSubmitting
+                            ? 'Submitting for review…'
+                            : websiteSetup.configuration.lifecycle === 'ready_for_review'
+                              ? 'Submit Updated Version'
+                              : 'Submit for review'
+                    }}
                 </button>
                 <button
                     v-if="websiteSetup.canPublish"
@@ -1331,7 +1768,7 @@ async function progressTask(task, operation) {
             <div class="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <h2 class="font-bold text-slate-950">Public Website address</h2>
+                        <h2 class="font-bold text-slate-950">Published Website address</h2>
                         <p class="mt-1 text-sm text-slate-600">
                             {{
                                 websiteAddress?.host ??
@@ -1352,7 +1789,7 @@ async function progressTask(task, operation) {
                         rel="noopener noreferrer"
                         class="inline-flex min-h-11 items-center rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
                     >
-                        Open Live Website
+                        Open Published Website
                     </a>
                 </div>
                 <form
@@ -1403,7 +1840,7 @@ async function progressTask(task, operation) {
                 <fieldset>
                     <legend class="font-bold text-slate-900">Approved template</legend>
                     <label class="mt-4 block text-sm font-semibold text-slate-800">
-                        Current template
+                        Website template
                         <select v-model="form.template_id" :class="inputClass" required>
                             <option
                                 v-for="template in websiteSetup.templateOptions"
@@ -1415,7 +1852,8 @@ async function progressTask(task, operation) {
                         </select>
                     </label>
                     <p class="mt-2 text-sm text-slate-600">
-                        Select one of the five governed SYIFA.my templates.
+                        Choose any approved SYIFA.my template. For a live Website, the public
+                        template changes only after the Website is published again.
                     </p>
                 </fieldset>
 
@@ -1443,19 +1881,67 @@ async function progressTask(task, operation) {
                             Primary colour
                             <input
                                 v-model="form.branding.primary_color"
-                                :class="inputClass"
-                                pattern="#[0-9A-F]{6}"
+                                type="color"
+                                class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
                             />
+                            <span class="mt-1 block text-xs font-normal text-slate-500">
+                                Choose the main brand colour.
+                            </span>
                         </label>
                         <label class="text-sm font-semibold text-slate-800">
                             Secondary colour
                             <input
                                 v-model="form.branding.secondary_color"
-                                :class="inputClass"
-                                pattern="#[0-9A-F]{6}"
+                                type="color"
+                                class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
                             />
+                            <span class="mt-1 block text-xs font-normal text-slate-500">
+                                Choose the supporting brand colour.
+                            </span>
                         </label>
                     </div>
+                    <WebsiteImageUpload
+                        v-model="form.branding.logo_reference"
+                        class="mt-5"
+                        label="Clinic logo"
+                        :upload-url="websiteDraft.assetUploadUrl"
+                        :asset-url-template="websiteDraft.assetUrlTemplate"
+                        :aspect-ratio="6"
+                        :aspect-ratio-options="[
+                            { label: 'Wide wordmark', value: 6 },
+                            { label: 'Landscape logo', value: 3 },
+                            { label: 'Square symbol', value: 1 },
+                        ]"
+                        :disabled="form.processing"
+                        @uploaded="synchronizeWebsiteVersion"
+                    />
+                    <p class="mt-2 text-sm text-slate-600">
+                        Crop the logo closely using Wide, Landscape, or Square. It appears in
+                        preview after saving and becomes public after the Website is published.
+                    </p>
+                    <fieldset v-if="form.branding.logo_reference" class="mt-5">
+                        <legend class="text-sm font-semibold text-slate-800">Logo size</legend>
+                        <div class="mt-2 grid gap-2 sm:grid-cols-3">
+                            <label
+                                v-for="option in [
+                                    ['compact', 'Compact'],
+                                    ['standard', 'Standard'],
+                                    ['large', 'Large'],
+                                ]"
+                                :key="option[0]"
+                                class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-800 transition has-[:checked]:border-emerald-700 has-[:checked]:bg-emerald-50"
+                            >
+                                <input
+                                    v-model="form.branding.logo_display_size"
+                                    type="radio"
+                                    name="logo_display_size"
+                                    :value="option[0]"
+                                    class="text-emerald-700 focus:ring-emerald-600"
+                                />
+                                {{ option[1] }}
+                            </label>
+                        </div>
+                    </fieldset>
                 </fieldset>
 
                 <fieldset>
@@ -1723,19 +2209,16 @@ async function progressTask(task, operation) {
                             :disabled="heroSaving"
                         />
                     </label>
-                    <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                        Existing Hero image asset ID
-                        <input
-                            v-model="heroForm.hero_image_asset_id"
-                            :class="inputClass"
-                            inputmode="text"
-                            placeholder="UUID of an existing Website asset"
-                            :disabled="heroSaving"
-                        />
-                        <span class="mt-2 block font-normal text-slate-600">
-                            Only an asset already owned by this Website can be referenced.
-                        </span>
-                    </label>
+                    <WebsiteImageUpload
+                        v-model="heroForm.hero_image_asset_id"
+                        class="md:col-span-2"
+                        label="Hero image"
+                        :upload-url="websiteDraft.assetUploadUrl"
+                        :asset-url-template="websiteDraft.assetUrlTemplate"
+                        :aspect-ratio="heroAspectRatio"
+                        :disabled="heroSaving"
+                        @uploaded="synchronizeWebsiteVersion"
+                    />
                 </div>
 
                 <div
@@ -1796,19 +2279,15 @@ async function progressTask(task, operation) {
                             :disabled="aboutSaving"
                         />
                     </label>
-                    <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                        Existing About image asset ID
-                        <input
-                            v-model="aboutForm.image_asset_id"
-                            :class="inputClass"
-                            inputmode="text"
-                            placeholder="UUID of an existing Website asset"
-                            :disabled="aboutSaving"
-                        />
-                        <span class="mt-2 block font-normal text-slate-600">
-                            Only an asset already owned by this Website can be referenced.
-                        </span>
-                    </label>
+                    <WebsiteImageUpload
+                        v-model="aboutForm.image_asset_id"
+                        class="md:col-span-2"
+                        label="About image"
+                        :upload-url="websiteDraft.assetUploadUrl"
+                        :asset-url-template="websiteDraft.assetUrlTemplate"
+                        :disabled="aboutSaving"
+                        @uploaded="synchronizeWebsiteVersion"
+                    />
                 </div>
 
                 <div
@@ -2018,18 +2497,16 @@ async function progressTask(task, operation) {
                                     :disabled="doctorsSaving"
                                 />
                             </label>
-                            <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                                Existing photo asset ID
-                                <input
-                                    v-model="profile.photo_asset_id"
-                                    :class="inputClass"
-                                    placeholder="UUID of an existing Website asset"
-                                    :disabled="doctorsSaving"
-                                />
-                                <span class="mt-2 block font-normal text-slate-600">
-                                    Only an asset already owned by this Website can be referenced.
-                                </span>
-                            </label>
+                            <WebsiteImageUpload
+                                v-model="profile.photo_asset_id"
+                                class="md:col-span-2"
+                                :label="`Photo for ${profile.name || `Doctor ${index + 1}`}`"
+                                :upload-url="websiteDraft.assetUploadUrl"
+                                :asset-url-template="websiteDraft.assetUrlTemplate"
+                                :aspect-ratio="1"
+                                :disabled="doctorsSaving"
+                                @uploaded="synchronizeWebsiteVersion"
+                            />
                             <label
                                 class="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm font-semibold text-slate-800 md:col-span-2"
                             >
@@ -2254,7 +2731,7 @@ async function progressTask(task, operation) {
                         Gallery section
                     </h2>
                     <p class="mt-1 text-sm text-slate-600">
-                        Arrange existing Website-owned assets. Uploading is not available here.
+                        Upload and arrange Website-owned gallery images.
                     </p>
                 </div>
                 <button
@@ -2278,16 +2755,16 @@ async function progressTask(task, operation) {
                             Gallery image {{ index + 1 }}
                         </legend>
                         <div class="grid gap-5 md:grid-cols-2">
-                            <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                                Existing asset ID
-                                <input
-                                    v-model="image.asset_id"
-                                    :class="inputClass"
-                                    required
-                                    placeholder="UUID of an existing Website asset"
-                                    :disabled="gallerySaving"
-                                />
-                            </label>
+                            <WebsiteImageUpload
+                                v-model="image.asset_id"
+                                class="md:col-span-2"
+                                :label="`Gallery image ${index + 1}`"
+                                :upload-url="websiteDraft.assetUploadUrl"
+                                :asset-url-template="websiteDraft.assetUrlTemplate"
+                                :disabled="gallerySaving"
+                                required
+                                @uploaded="synchronizeWebsiteVersion"
+                            />
                             <label class="text-sm font-semibold text-slate-800">
                                 Alternative text
                                 <textarea
@@ -2699,6 +3176,108 @@ async function progressTask(task, operation) {
             </p>
 
             <form class="mt-6 space-y-6" novalidate @submit.prevent="saveBookingConfiguration">
+                <fieldset class="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                    <legend class="px-2 font-bold text-slate-900">Appointment availability</legend>
+                    <p class="text-sm text-slate-600">
+                        Set the clinic hours used to generate bookable appointment slots. Times use
+                        Malaysia time.
+                    </p>
+
+                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <label class="text-sm font-semibold text-slate-800">
+                            Appointment duration
+                            <select
+                                v-model.number="bookingScheduleForm.appointment_duration_minutes"
+                                :class="inputClass"
+                            >
+                                <option :value="15">15 minutes</option>
+                                <option :value="20">20 minutes</option>
+                                <option :value="30">30 minutes</option>
+                                <option :value="45">45 minutes</option>
+                                <option :value="60">60 minutes</option>
+                            </select>
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800">
+                            Patients per slot
+                            <select
+                                v-model.number="bookingScheduleForm.booking_capacity_per_slot"
+                                :class="inputClass"
+                            >
+                                <option v-for="capacity in 10" :key="capacity" :value="capacity">
+                                    {{ capacity }}
+                                </option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="mt-5 space-y-3">
+                        <div
+                            v-for="interval in bookingScheduleForm.operating_intervals"
+                            :key="interval.day"
+                            class="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-[9rem_1fr_1fr] sm:items-end"
+                        >
+                            <label class="flex min-h-11 items-center gap-3 text-sm font-semibold">
+                                <input
+                                    v-model="interval.enabled"
+                                    type="checkbox"
+                                    class="size-4 accent-emerald-700"
+                                />
+                                {{ interval.label }}
+                            </label>
+                            <label class="text-sm font-semibold text-slate-700">
+                                Opens
+                                <input
+                                    v-model="interval.opens_at"
+                                    type="time"
+                                    :disabled="!interval.enabled"
+                                    :class="inputClass"
+                                />
+                            </label>
+                            <label class="text-sm font-semibold text-slate-700">
+                                Closes
+                                <input
+                                    v-model="interval.closes_at"
+                                    type="time"
+                                    :disabled="!interval.enabled"
+                                    :class="inputClass"
+                                />
+                            </label>
+                        </div>
+                    </div>
+
+                    <div
+                        v-if="bookingScheduleForm.hasErrors"
+                        role="alert"
+                        class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+                    >
+                        <p class="font-semibold">Review the appointment availability.</p>
+                        <ul class="mt-2 list-disc space-y-1 pl-5">
+                            <li v-for="(message, field) in bookingScheduleForm.errors" :key="field">
+                                {{ message }}
+                            </li>
+                        </ul>
+                    </div>
+                    <div
+                        v-if="bookingScheduleSaved"
+                        role="status"
+                        class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"
+                    >
+                        Appointment availability saved successfully.
+                    </div>
+                    <button
+                        type="button"
+                        :disabled="bookingScheduleForm.processing"
+                        class="mt-4 min-h-11 rounded-lg bg-emerald-700 px-5 py-3 font-semibold text-white transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                        @click="saveBookingSchedule"
+                    >
+                        {{
+                            bookingScheduleForm.processing
+                                ? 'Saving availability…'
+                                : 'Save appointment availability'
+                        }}
+                    </button>
+                </fieldset>
+
                 <fieldset>
                     <legend class="font-bold text-slate-900">Optional fields</legend>
                     <div class="mt-4 grid gap-4 md:grid-cols-3">

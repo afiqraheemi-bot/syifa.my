@@ -18,4 +18,7 @@
     @case('external')
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 5h5v5" /><path d="M19 5l-9 9" /><path d="M8 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2" /></svg>
         @break
+    @case('medical')
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3.5 19 6v5.2c0 4.2-2.5 7.4-7 9.3-4.5-1.9-7-5.1-7-9.3V6l7-2.5Z" /><path d="M12 8v7M8.5 11.5h7" /></svg>
+        @break
 @endswitch

@@ -610,7 +610,11 @@ final class OnboardingJob
 
     public function submitForReview(DateTimeImmutable $occurredAt): void
     {
-        if (! in_array($this->status, [OnboardingJobStatus::InProgress, OnboardingJobStatus::CorrectionRequired], true)) {
+        if (! in_array($this->status, [
+            OnboardingJobStatus::InProgress,
+            OnboardingJobStatus::CorrectionRequired,
+            OnboardingJobStatus::ReadyForLaunch,
+        ], true)) {
             throw $this->invalidLifecycleTransition('submit for review');
         }
 
@@ -656,8 +660,35 @@ final class OnboardingJob
         }
 
         $this->endActiveAssignment(WebsiteDesignerAssignmentEndReason::OnboardingJobCancelled, $occurredAt);
+        $this->cancelOutstandingTasks($occurredAt);
         $this->transitionTo(OnboardingJobStatus::Cancelled, $occurredAt);
         $this->record(new OnboardingJobCancelled($this->id->value, $this->tenantId->value, $occurredAt));
+    }
+
+    /**
+     * A cancelled Job leaves no task in a state that implies work is still
+     * expected — every task not already at a terminal status (Completed,
+     * Waived, or already Cancelled) is cancelled alongside the Job itself.
+     */
+    private function cancelOutstandingTasks(DateTimeImmutable $occurredAt): void
+    {
+        foreach ($this->tasks as $taskId => $task) {
+            if (in_array($task->status, [
+                OnboardingTaskStatus::Completed,
+                OnboardingTaskStatus::Waived,
+                OnboardingTaskStatus::Cancelled,
+            ], true)) {
+                continue;
+            }
+
+            $this->tasks[$taskId] = $task->transition(
+                OnboardingTaskStatus::Cancelled,
+                null,
+                'Cancelled with the Onboarding Job.',
+                null,
+                $occurredAt,
+            );
+        }
     }
 
     public function reopen(DateTimeImmutable $occurredAt): void

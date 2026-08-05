@@ -16,15 +16,28 @@ use stdClass;
 
 final readonly class PostgresWebsitePublicAddressRepository implements WebsitePublicAddressRepositoryInterface
 {
-    public function __construct(private ConnectionInterface $connection) {}
+    public function __construct(
+        private ConnectionInterface $connection,
+        private ?string $localAliasBaseDomain = null,
+        private ?int $localAliasPort = null,
+        private string $canonicalBaseDomain = 'syifa.my',
+    ) {}
 
     public function isAvailable(string $normalizedHost, string $websiteId): bool
     {
+        $host = $this->normalize($normalizedHost);
         $owner = $this->connection->table('website_public_hosts')
-            ->where('normalized_host', $this->normalize($normalizedHost))
+            ->where('normalized_host', $host)
             ->value('website_id');
 
-        return $owner === null || $owner === $websiteId;
+        if ($owner !== null && $owner !== $websiteId) {
+            return false;
+        }
+
+        return ! $this->connection->table('custom_domains')
+            ->where('normalized_hostname', $host)
+            ->where('status', '!=', 'detached')
+            ->exists();
     }
 
     public function reservePrimary(
@@ -243,9 +256,22 @@ final readonly class PostgresWebsitePublicAddressRepository implements WebsitePu
             (string) $row->website_id,
             (string) $row->tenant_id,
             $host,
-            'https://'.$host,
+            $this->publicUrl($host),
             $active,
         );
+    }
+
+    private function publicUrl(string $host): string
+    {
+        $canonicalSuffix = '.'.strtolower($this->canonicalBaseDomain);
+        if ($this->localAliasBaseDomain !== null && str_ends_with($host, $canonicalSuffix)) {
+            $label = substr($host, 0, -strlen($canonicalSuffix));
+            $port = $this->localAliasPort === null ? '' : ':'.$this->localAliasPort;
+
+            return 'http://'.$label.'.'.$this->localAliasBaseDomain.$port;
+        }
+
+        return 'https://'.$host;
     }
 
     private function normalize(string $host): string

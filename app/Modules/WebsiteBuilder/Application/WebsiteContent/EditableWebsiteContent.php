@@ -28,6 +28,8 @@ final readonly class EditableWebsiteContent
                 'tagline' => $branding->tagline,
                 'primary_color' => $branding->primaryColor,
                 'secondary_color' => $branding->secondaryColor,
+                'logo_reference' => $branding->logoReference?->value,
+                'logo_display_size' => $branding->logoDisplaySize->value,
                 'contact_email' => $branding->contactEmail,
                 'contact_phone' => $branding->contactPhone,
                 'address' => $branding->address,

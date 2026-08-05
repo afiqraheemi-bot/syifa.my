@@ -21,6 +21,14 @@ use Throwable;
 
 final readonly class ProcessProvisioningWorkflowService
 {
+    /**
+     * A workflow that still fails after this many claims (each claim already
+     * represents one execution attempt) stops retrying and is dead-lettered
+     * instead — an unrecoverable step (e.g. permanently invalid registration
+     * data) must never retry forever.
+     */
+    private const int MAX_ATTEMPTS = 10;
+
     private const array STEPS = [
         'tenant_provisioning',
         'website_foundation',
@@ -52,13 +60,19 @@ final readonly class ProcessProvisioningWorkflowService
         try {
             $this->executeStep($claim->workflow, $now);
         } catch (Throwable) {
-            if (! $this->workflows->releaseForRetry(
-                $claim->workflow->id,
-                $claim->claimToken,
-                $now->modify('+30 seconds'),
-                'provisioning_'.$claim->workflow->currentStep.'_failed',
-                $now,
-            )) {
+            $safeFailureLabel = 'provisioning_'.$claim->workflow->currentStep.'_failed';
+
+            $released = $claim->workflow->attemptCount >= self::MAX_ATTEMPTS
+                ? $this->workflows->deadLetter($claim->workflow->id, $claim->claimToken, $safeFailureLabel, $now)
+                : $this->workflows->releaseForRetry(
+                    $claim->workflow->id,
+                    $claim->claimToken,
+                    $now->modify('+30 seconds'),
+                    $safeFailureLabel,
+                    $now,
+                );
+
+            if (! $released) {
                 throw new RuntimeException('Provisioning workflow retry lease became stale.');
             }
 
@@ -100,6 +114,7 @@ final readonly class ProcessProvisioningWorkflowService
                 $this->required($registration->clinicPhone, 'clinic_phone'),
                 $this->required($registration->clinicAddress, 'clinic_address'),
                 $workflow->occurredAt,
+                $registration->selectedWebsiteTemplate ?? 'SYIFA_ESSENTIAL',
             )),
             'booking_configuration' => $this->booking->execute($workflow->tenantId),
             'website_address' => $this->addresses->execute(
@@ -108,11 +123,13 @@ final readonly class ProcessProvisioningWorkflowService
                 $websiteId,
                 $this->required($registration->clinicName, 'clinic_name'),
                 $workflow->occurredAt,
+                $registration->preferredSubdomain,
             ),
             'onboarding_job' => $this->onboarding->execute(
                 $this->identifier($workflow->id, 'onboarding-job'),
                 $workflow->tenantId,
                 $websiteId,
+                $registration->registrationCorrelationReference,
                 $workflow->occurredAt,
             ),
             'registration_completion' => $this->completion->execute(

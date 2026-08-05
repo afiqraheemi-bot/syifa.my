@@ -124,7 +124,6 @@ final readonly class PostgresLaunchReadinessReadAdapter implements LaunchReadine
         $addresses = $this->connection->table('website_public_hosts')
             ->whereIn('website_id', $websiteIds)
             ->where('is_primary', true)
-            ->whereNotNull('activated_at')
             ->whereNull('inactivated_at')
             ->pluck('website_id')->map(static fn (mixed $id): string => (string) $id)->flip();
 
@@ -151,7 +150,7 @@ final readonly class PostgresLaunchReadinessReadAdapter implements LaunchReadine
                 $this->condition('assets', 'Website assets', $assetsAvailable, 'Every referenced Website-owned asset is available for its approved usage.'),
                 $this->condition('services', 'Service Setup', $services->has($tenantId), 'At least one active tenant Service is configured.'),
                 $this->condition('booking', 'Booking configuration', $booking->has($tenantId), 'The governed Booking Form Configuration exists.'),
-                $this->condition('address', 'Public Website address', $addresses->has($websiteId), 'An active primary public hostname is reserved.'),
+                $this->condition('address', 'Public Website address', $addresses->has($websiteId), 'A primary public hostname is reserved and will activate when the Website is published.'),
             ];
             $ready = ! in_array(false, array_column($conditions, 'satisfied'), true);
             $result[$jobId] = new LaunchReadinessData(

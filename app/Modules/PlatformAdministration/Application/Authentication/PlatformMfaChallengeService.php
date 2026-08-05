@@ -39,6 +39,10 @@ final readonly class PlatformMfaChallengeService implements PlatformMfaChallenge
         private AuditEntryRecorderInterface $audit,
         private AuditCorrelationIdResolverInterface $correlations,
         private Encrypter $encrypter,
+        private bool $localDemoMfaEnabled = false,
+        private string $localDemoMfaCode = '',
+        /** @var list<string> */
+        private array $localDemoPlatformIdentityIds = [],
     ) {}
 
     public function begin(
@@ -96,6 +100,14 @@ final readonly class PlatformMfaChallengeService implements PlatformMfaChallenge
             return null;
         }
 
+        if ($this->acceptsLocalDemoCode($pending->principal, $code)) {
+            $this->record($pending->principal, 'platform.authentication.local_demo_mfa_challenge', 'succeeded', null, $at);
+            $this->pending->clear();
+            $this->sessions->establish($pending->principal, $at, $pending->remember);
+
+            return $pending->principal;
+        }
+
         $enrollment = $this->enrollments->find($pending->principal->platformIdentityId);
         $encryptedSecret = $enrollment === null
             ? $pending->encryptedEnrollmentSecret
@@ -147,6 +159,14 @@ final readonly class PlatformMfaChallengeService implements PlatformMfaChallenge
         $this->sessions->establish($pending->principal, $at, $pending->remember);
 
         return $pending->principal;
+    }
+
+    private function acceptsLocalDemoCode(PlatformPrincipal $principal, string $code): bool
+    {
+        return $this->localDemoMfaEnabled
+            && $this->localDemoMfaCode !== ''
+            && hash_equals($this->localDemoMfaCode, $code)
+            && in_array($principal->platformIdentityId, $this->localDemoPlatformIdentityIds, true);
     }
 
     private function verifiedTimeStep(string $secret, string $code, DateTimeImmutable $at): ?int

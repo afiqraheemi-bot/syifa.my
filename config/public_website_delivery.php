@@ -5,6 +5,10 @@ declare(strict_types=1);
 return [
     'asset_origin' => env('PUBLIC_WEBSITE_ASSET_ORIGIN', 'https://assets.syifa.my'),
     'base_domain' => strtolower((string) env('PUBLIC_WEBSITE_BASE_DOMAIN', 'syifa.my')),
+    'local_alias_base_domain' => env('APP_ENV') === 'local' ? 'localhost' : null,
+    'local_alias_port' => env('APP_ENV') === 'local'
+        ? (int) (parse_url((string) env('PUBLIC_WEBSITE_ASSET_ORIGIN', 'http://localhost:8000'), PHP_URL_PORT) ?: 8000)
+        : null,
     'runtime_addressing' => env('APP_ENV') !== 'testing'
         && (bool) env('PUBLIC_WEBSITE_RUNTIME_ADDRESSING', true),
     'custom_domain_targets' => array_values(array_filter(array_map(

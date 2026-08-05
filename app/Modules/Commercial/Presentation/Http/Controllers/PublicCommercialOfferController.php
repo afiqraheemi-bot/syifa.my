@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Commercial\Presentation\Http\Controllers;
 
 use App\Modules\ClinicRegistration\Application\ViewCurrentClinicRegistrationService;
+use App\Modules\ClinicRegistration\Contracts\Checkout\CompleteLocalDemoAcquisitionInterface;
 use App\Modules\ClinicRegistration\Contracts\Checkout\PublicInitialAcquisitionCheckoutInterface;
 use App\Modules\ClinicRegistration\Contracts\Checkout\StartPublicInitialAcquisitionCheckoutCommand;
 use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialInterface;
@@ -50,7 +51,10 @@ final readonly class PublicCommercialOfferController
                 'includedSetup' => 'Managed website onboarding and initial website setup',
             ], $offers->execute(new DateTimeImmutable)),
             'selectionUrl' => route('clinic-registration.offers.select'),
-            'homeUrl' => route('root'),
+            'demoPaymentUrl' => app()->environment('local')
+                ? route('clinic-registration.offers.demo-payment')
+                : null,
+            'homeUrl' => route('root', [], false),
         ]);
     }
 
@@ -94,6 +98,23 @@ final readonly class PublicCommercialOfferController
                 'method' => 'GET',
                 'destination' => $checkout->redirectDestination,
             ],
+        ]);
+    }
+
+    public function demoCheckout(
+        Request $request,
+        CompleteLocalDemoAcquisitionInterface $demo,
+    ): JsonResponse {
+        abort_unless(app()->environment(['local', 'testing']), 404);
+        $credential = $this->tracking->current();
+        if ($credential === null) {
+            throw new NotFoundHttpException;
+        }
+
+        $demo->execute($credential, $this->correlationId($request));
+
+        return new JsonResponse([
+            'message' => 'Demo payment succeeded and provisioning completed.',
         ]);
     }
 

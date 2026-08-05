@@ -19,9 +19,12 @@ use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\Recu
 
 final readonly class CreateBillingOptionService
 {
+    private const string AUDIT_ACTION = 'commercial_catalogue.billing_option.create';
+
     public function __construct(
         private CommercialCatalogueIdentifierGeneratorInterface $identifiers,
         private BillingOptionRepositoryInterface $billingOptions,
+        private BillingOptionAuditTrail $audit,
     ) {}
 
     public function execute(CreateBillingOptionCommand $command): BillingOption
@@ -51,6 +54,14 @@ final readonly class CreateBillingOptionService
         );
 
         $this->billingOptions->save($billingOption);
+        $this->audit->record(
+            self::AUDIT_ACTION,
+            $billingOption,
+            0,
+            $command->occurredAt,
+            $command->actorPlatformIdentityId,
+            $command->correlationId,
+        );
 
         return $billingOption;
     }

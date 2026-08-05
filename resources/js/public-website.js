@@ -38,3 +38,18 @@ if (toggle instanceof HTMLButtonElement && menu instanceof HTMLElement) {
 
     compactNavigation.addEventListener('change', close);
 }
+
+const bookingForm = document.querySelector('[data-booking-form]');
+if (bookingForm instanceof HTMLFormElement) {
+    bookingForm.addEventListener('submit', (event) => {
+        const submitButton = bookingForm.querySelector('[data-submit-booking]');
+        if (!(submitButton instanceof HTMLButtonElement) || submitButton.disabled) {
+            event.preventDefault();
+
+            return;
+        }
+
+        submitButton.disabled = true;
+        submitButton.textContent = 'Submitting…';
+    });
+}

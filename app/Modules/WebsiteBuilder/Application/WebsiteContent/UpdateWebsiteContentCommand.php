@@ -34,5 +34,7 @@ final readonly class UpdateWebsiteContentCommand
         public bool $indexingEnabled,
         public array $sections,
         public ?string $templateId = null,
+        public ?string $logoReference = null,
+        public string $logoDisplaySize = 'standard',
     ) {}
 }

@@ -20,6 +20,10 @@ return [
         'enabled' => env('CLINIC_REGISTRATION_ROUTES_ENABLED', true),
     ],
 
+    'access' => [
+        'remember_minutes' => (int) env('CLINIC_REGISTRATION_REMEMBER_MINUTES', 43200),
+    ],
+
     'trusted_completion_sources' => [
         'tenant_management',
         'provisioning_orchestrator',

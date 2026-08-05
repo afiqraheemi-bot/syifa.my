@@ -6,6 +6,8 @@ namespace App\Support\Dashboard\Application\WebsiteDesigner\Job;
 
 use App\Modules\Booking\Application\Configuration\ManageBookingFormConfigurationService;
 use App\Modules\Onboarding\Contracts\LaunchReadiness\LaunchReadinessReadInterface;
+use App\Modules\Onboarding\Contracts\WebsiteApproval\ClinicOwnerWebsiteApprovalReadInterface;
+use App\Modules\WebsiteBuilder\Application\ClinicBooking\ManageClinicBookingScheduleService;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileService;
 use App\Modules\WebsiteBuilder\Application\WebsiteAddress\WebsiteSubdomainPolicy;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
@@ -26,10 +28,12 @@ final readonly class WebsiteDesignerJobDetailPage
         private ManageWebsiteContentService $websiteContent,
         private ManageBookingFormConfigurationService $bookingConfiguration,
         private UpdateClinicContactProfileService $clinicContact,
+        private ManageClinicBookingScheduleService $clinicBookingSchedule,
         private ManageWebsiteDraftContentService $websiteDraft,
         private WebsitePublicAddressReadInterface $addresses,
         private WebsiteSubdomainPolicy $subdomains,
         private LaunchReadinessReadInterface $launchReadiness,
+        private ClinicOwnerWebsiteApprovalReadInterface $websiteApprovals,
     ) {}
 
     public function fromTrustedContext(mixed $context, string $jobId): ?DashboardPageView
@@ -51,6 +55,7 @@ final readonly class WebsiteDesignerJobDetailPage
             ),
         )->toArray();
         $jobData = $job->data;
+        $jobData['clinicName'] = (string) $editableWebsite['branding']['clinic_name'];
         if ($editableWebsite['lifecycle'] === 'ready_for_review') {
             $jobData['timeline'][] = [
                 'key' => 'website_ready_for_review',
@@ -80,6 +85,14 @@ final readonly class WebsiteDesignerJobDetailPage
                 assignedTenantId: $tenantId,
             ),
         );
+        $bookingSchedule = $this->clinicBookingSchedule->read(
+            $tenantId,
+            new WebsiteAuthorizationContext(
+                $context->identityId,
+                $context->role,
+                assignedTenantId: $tenantId,
+            ),
+        );
         $editableDraft = $this->websiteDraft->load(new LoadDraftWebsiteContent(
             new WebsiteAuthorizationContext(
                 $context->identityId,
@@ -94,6 +107,24 @@ final readonly class WebsiteDesignerJobDetailPage
             (string) $job->data['websiteId'],
         );
         $readiness = $this->launchReadiness->forJob($jobId);
+        $approval = $this->websiteApprovals->forTenant($tenantId);
+        $currentApprovalSatisfied = false;
+        $readinessConditions = $readiness === null ? [] : $readiness->conditions;
+        foreach ($readinessConditions as $condition) {
+            if ($condition['key'] === 'approval') {
+                $currentApprovalSatisfied = $condition['satisfied'];
+                break;
+            }
+        }
+        $approvalCanBeRequested = ! in_array(
+            $approval['approvalStatus'] ?? null,
+            ['requested', 'resubmitted'],
+            true,
+        );
+        $canSubmitForReview = $approvalCanBeRequested && (
+            $editableWebsite['lifecycle'] === 'draft'
+            || ($editableWebsite['lifecycle'] === 'ready_for_review' && ! $currentApprovalSatisfied)
+        );
 
         return new DashboardPageView('PlatformAdministration/Onboarding/WebsiteDesignerJobDetail', [
             'navigation' => [
@@ -140,9 +171,10 @@ final readonly class WebsiteDesignerJobDetailPage
                     'dashboard.onboarding.publish',
                     (string) $job->data['id'],
                 ),
-                'canSubmitForReview' => $editableWebsite['lifecycle'] === 'draft',
+                'canSubmitForReview' => $canSubmitForReview,
                 'canPublish' => $editableWebsite['lifecycle'] === 'ready_for_review'
-                    && $jobData['status'] === 'ready_for_launch',
+                    && $jobData['status'] === 'ready_for_launch'
+                    && $readiness?->status === 'ready',
                 'address' => $address === null ? null : [
                     'host' => $address->host,
                     'url' => $address->url,
@@ -158,6 +190,7 @@ final readonly class WebsiteDesignerJobDetailPage
             ],
             'bookingSetup' => [
                 'configuration' => $editableBooking,
+                'schedule' => $bookingSchedule->toArray(),
                 'updateUrl' => route('dashboard.onboarding.show', (string) $job->data['id']),
             ],
             'clinicContact' => [
@@ -169,6 +202,14 @@ final readonly class WebsiteDesignerJobDetailPage
                 'updateUrl' => route(
                     'website-designer.website-draft.update',
                     (string) $job->data['id'],
+                ),
+                'assetUploadUrl' => route(
+                    'website-designer.website-assets.store',
+                    (string) $job->data['id'],
+                ),
+                'assetUrlTemplate' => route(
+                    'public-website.assets.show',
+                    '__ASSET_ID__',
                 ),
             ],
         ]);

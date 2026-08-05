@@ -6,6 +6,7 @@ namespace App\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\LogoDisplaySize;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\PublicationId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
@@ -51,6 +52,7 @@ final readonly class PublishedWebsiteSnapshot
         public array $sections,
         public array $assets,
         public array $sectionContents,
+        public LogoDisplaySize $logoDisplaySize = LogoDisplaySize::Standard,
     ) {
         if ($publishedVersion < 1 || $sourceWebsiteVersion < 0 || preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $publishedBy) !== 1 || preg_match('/^[0-9a-f]{64}$/', $contentFingerprint) !== 1) {
             throw new InvalidWebsiteValueException('Published Website Snapshot state is invalid.');

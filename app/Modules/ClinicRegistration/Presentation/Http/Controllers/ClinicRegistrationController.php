@@ -24,7 +24,9 @@ use App\Modules\ClinicRegistration\Presentation\Http\Requests\TransitionClinicRe
 use App\Modules\ClinicRegistration\Presentation\Http\Requests\UpdateClinicRegistrationDraftRequest;
 use App\Modules\ClinicRegistration\Presentation\Http\Resources\ClinicRegistrationResource;
 use App\Modules\ClinicRegistration\Presentation\Http\Responses\ProblemDetailsResponse;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\PublicWebsiteAddressAvailabilityInterface;
 use DateTimeImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -67,14 +69,29 @@ final readonly class ClinicRegistrationController
         return (new ClinicRegistrationResource($registration))->response();
     }
 
-    public function update(UpdateClinicRegistrationDraftRequest $request, UpdateClinicRegistrationDraftService $registrations): JsonResponse
-    {
+    public function update(
+        UpdateClinicRegistrationDraftRequest $request,
+        UpdateClinicRegistrationDraftService $registrations,
+        PublicWebsiteAddressAvailabilityInterface $addresses,
+    ): JsonResponse {
         $credential = $this->tracking->current();
         if ($credential === null) {
             return $this->notFound($request);
         }
 
         $validated = $request->validated();
+        $preferredSubdomain = $validated['preferred_subdomain'] ?? null;
+        if (is_string($preferredSubdomain)
+            && ! $addresses->available($preferredSubdomain, $credential)) {
+            return ProblemDetailsResponse::make(
+                $request,
+                'clinic_registration.website_address_unavailable',
+                'Website Address Unavailable',
+                422,
+                'The selected Website address is no longer available.',
+                ['preferred_subdomain' => ['Alamat Website ini telah digunakan.']],
+            );
+        }
 
         try {
             $registration = $registrations->execute(new UpdateClinicRegistrationDraftCommand(
@@ -90,6 +107,8 @@ final readonly class ClinicRegistrationController
                 new DateTimeImmutable,
                 $this->correlationId($request),
                 $request->declarations(),
+                $validated['preferred_subdomain'] ?? null,
+                $validated['selected_website_template'] ?? null,
             ));
         } catch (ClinicRegistrationNotFoundException) {
             return $this->notFound($request);
@@ -97,6 +116,19 @@ final readonly class ClinicRegistrationController
             return $this->conflict($request, 'clinic_registration.concurrency_conflict', 'Clinic registration version does not match.');
         } catch (InvalidClinicRegistrationTransitionException $exception) {
             return $this->conflict($request, 'clinic_registration.invalid_transition', $exception->getMessage());
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() !== '23505') {
+                throw $exception;
+            }
+
+            return ProblemDetailsResponse::make(
+                $request,
+                'clinic_registration.website_address_unavailable',
+                'Website Address Unavailable',
+                422,
+                'The selected Website address is no longer available.',
+                ['preferred_subdomain' => ['Alamat Website ini telah digunakan.']],
+            );
         }
 
         return (new ClinicRegistrationResource($registration))->response();
@@ -172,6 +204,8 @@ final readonly class ClinicRegistrationController
                 $request->declarations(),
                 (int) $validated['expected_version'],
                 new DateTimeImmutable,
+                $validated['preferred_subdomain'] ?? null,
+                $validated['selected_website_template'] ?? null,
             ));
         } catch (ClinicRegistrationNotFoundException) {
             return $this->notFound($request);

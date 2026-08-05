@@ -25,7 +25,7 @@ final class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{logout_url: ?string}
+     * @return array{logout_url: ?string, login_url: string}
      */
     private function authenticationPresentation(): array
     {
@@ -37,6 +37,7 @@ final class HandleInertiaRequests extends Middleware
                 ActorType::PlatformIdentity->value => url('/api/v1/platform/sessions/current'),
                 default => null,
             },
+            'login_url' => route('login'),
         ];
     }
 }

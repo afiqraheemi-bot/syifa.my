@@ -41,7 +41,14 @@ final readonly class UpdateClinicRegistrationDraftService
         }
 
         $registration->updateDraft(
-            new ClinicRegistrationProfile($command->clinicName, $command->clinicEmail, $command->clinicPhone, $command->clinicAddress),
+            new ClinicRegistrationProfile(
+                $command->clinicName,
+                $command->clinicEmail,
+                $command->clinicPhone,
+                $command->clinicAddress,
+                $command->preferredSubdomain,
+                $command->selectedWebsiteTemplate,
+            ),
             array_map(
                 static fn ($declaration): DeclarationAcceptance => new DeclarationAcceptance(
                     $declaration->key,

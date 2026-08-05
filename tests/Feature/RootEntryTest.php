@@ -26,6 +26,7 @@ final class RootEntryTest extends TestCase
     {
         self::assertTrue(Route::has('public-website.home'));
         self::assertTrue(Route::has('root'));
+        self::assertTrue(Route::has('login'));
 
         $route = collect(Route::getRoutes()->getRoutes())
             ->first(static fn ($route): bool => $route->uri() === '/');
@@ -34,9 +35,41 @@ final class RootEntryTest extends TestCase
         self::assertContains('GET', $route->methods());
     }
 
-    public function test_unauthenticated_visitor_on_the_app_host_receives_the_login_experience(): void
+    public function test_unauthenticated_visitor_on_the_app_host_receives_the_marketing_home_page(): void
     {
         $this->get('/')
+            ->assertOk()
+            ->assertInertia(
+                static fn ($page) => $page
+                    ->component('Shared/Marketing/HomePage', false)
+                    ->where('loginUrl', route('login', [], false))
+                    ->where('clinicRegistrationUrl', route('clinic-registration.browser', [], false))
+                    ->where('privacyUrl', route('public-website.privacy', [], false))
+                    ->where('termsUrl', route('public-website.terms', [], false)),
+            );
+    }
+
+    public function test_unauthenticated_visitor_on_the_127_0_0_1_alias_sees_the_same_marketing_home_page(): void
+    {
+        $this->get('/', ['Host' => '127.0.0.1'])
+            ->assertOk()
+            ->assertInertia(
+                static fn ($page) => $page->component('Shared/Marketing/HomePage', false),
+            );
+    }
+
+    public function test_unauthenticated_visitor_on_the_localhost_alias_sees_the_same_marketing_home_page(): void
+    {
+        $this->get('/', ['Host' => 'localhost'])
+            ->assertOk()
+            ->assertInertia(
+                static fn ($page) => $page->component('Shared/Marketing/HomePage', false),
+            );
+    }
+
+    public function test_unauthenticated_visitor_on_the_login_route_receives_the_login_experience(): void
+    {
+        $this->get('/login')
             ->assertOk()
             ->assertInertia(
                 static fn ($page) => $page
@@ -44,40 +77,30 @@ final class RootEntryTest extends TestCase
                     ->where('clinicPortal', false)
                     ->where('localClinicOwnerLogin', true)
                     ->where('clinicOwnerSessionUrl', url('/api/v1/sessions'))
+                    ->where('clinicOwnerForgotPasswordUrl', route('clinic-owner.password.forgot'))
+                    ->where('platformForgotPasswordUrl', route('platform.password.forgot'))
                     ->where('platformSessionUrl', url('/api/v1/platform/sessions'))
                     ->where('platformMfaUrl', route('platform-sessions.mfa'))
                     ->where('dashboardUrl', url('/dashboard'))
-                    ->where('clinicRegistrationUrl', route('clinic-registration.browser'))
+                    ->where('clinicRegistrationUrl', route('clinic-registration.browser', [], false))
                     ->has('clinicPortalBaseDomains'),
             );
     }
 
-    public function test_unauthenticated_visitor_on_the_127_0_0_1_alias_sees_the_same_login(): void
+    public function test_authenticated_visitor_on_the_login_route_is_redirected_to_the_dashboard(): void
     {
-        $this->get('/', ['Host' => '127.0.0.1'])
-            ->assertOk()
-            ->assertInertia(
-                static fn ($page) => $page
-                    ->component('Shared/Authentication/LoginEntry', false)
-                    ->where('clinicPortal', false),
-            );
-    }
-
-    public function test_unauthenticated_visitor_on_the_localhost_alias_sees_the_same_login(): void
-    {
-        $this->get('/', ['Host' => 'localhost'])
-            ->assertOk()
-            ->assertInertia(
-                static fn ($page) => $page
-                    ->component('Shared/Authentication/LoginEntry', false),
-            );
-    }
-
-    public function test_local_login_experience_links_to_operations_health(): void
-    {
-        $this->get('/')->assertInertia(
-            static fn ($page) => $page->where('operationsHealthUrl', url('/health/ready')),
+        $this->app->instance(
+            CurrentUserInterface::class,
+            new class implements CurrentUserInterface
+            {
+                public function resolve(): ?AuthenticatedIdentityInterface
+                {
+                    return new AuthenticatedIdentity(ActorType::PlatformIdentity, 'identity-1', null, 'super_admin', 'Test User');
+                }
+            },
         );
+
+        $this->get('/login')->assertRedirect(route('dashboard'));
     }
 
     public function test_clinic_admin_host_receives_the_host_bound_clinic_owner_login(): void

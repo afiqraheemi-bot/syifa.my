@@ -8,7 +8,7 @@
         @vite('resources/js/app.js')
         @inertiaHead
     </head>
-    <body>
+    <body style="overflow-x: hidden;">
         @inertia
     </body>
 </html>

@@ -23,19 +23,24 @@ final readonly class ReserveProvisionedWebsiteAddressService implements ReserveP
         string $websiteId,
         string $clinicName,
         DateTimeImmutable $occurredAt,
+        ?string $preferredSubdomain = null,
     ): WebsitePublicAddressData {
         $existing = $this->addresses->forWebsite($tenantId, $websiteId);
         if ($existing !== null) {
             return $existing;
         }
 
-        $label = strtolower(trim((string) preg_replace('/[^a-z0-9]+/i', '-', $clinicName), '-'));
+        $label = $preferredSubdomain
+            ?? strtolower(trim((string) preg_replace('/[^a-z0-9]+/i', '-', $clinicName), '-'));
         $label = substr($label, 0, 50);
         if (strlen($label) < 3) {
             $label = 'clinic';
         }
         $host = $this->subdomains->host($label);
-        if (! $this->addresses->isAvailable($host, $websiteId)) {
+        if ($preferredSubdomain !== null && ! $this->addresses->isAvailable($host, $websiteId)) {
+            throw new \RuntimeException('The selected Website address is no longer available.');
+        }
+        if ($preferredSubdomain === null && ! $this->addresses->isAvailable($host, $websiteId)) {
             $host = $this->subdomains->host(substr($label, 0, 50).'-'.substr(str_replace('-', '', $tenantId), 0, 8));
         }
 

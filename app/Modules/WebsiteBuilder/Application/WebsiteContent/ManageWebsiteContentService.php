@@ -8,6 +8,8 @@ use App\Modules\WebsiteBuilder\Application\WebsiteAuthorization;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\LogoDisplaySize;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
@@ -60,12 +62,13 @@ final readonly class ManageWebsiteContentService
             $command->tagline,
             $command->primaryColor,
             $command->secondaryColor,
-            $currentBranding->logoReference,
+            $command->logoReference === null ? null : new AssetId($command->logoReference),
             $currentBranding->faviconReference,
             $command->contactEmail,
             $command->contactPhone,
             $command->address,
             $command->socialLinks,
+            LogoDisplaySize::fromStored($command->logoDisplaySize),
         ), $at);
 
         $currentSeo = $website->seo();

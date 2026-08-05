@@ -12,6 +12,7 @@ use App\Modules\WebsiteBuilder\Application\Delivery\PublicAssetUrlResolverInterf
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicRoute;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicRoutePolicy;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContext;
+use App\Modules\WebsiteBuilder\Application\Delivery\PublicUrl;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteDocument;
 use App\Modules\WebsiteBuilder\Application\Delivery\SeoDocumentHeadFactory;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRenderModel;
@@ -23,6 +24,7 @@ final readonly class DraftPreviewDocumentFactory
     public function make(
         PublicWebsiteRenderModel $model,
         PublicSiteContext $context,
+        ?PublicUrl $bookingDestination = null,
     ): PublicWebsiteDocument {
         $assetUrls = [];
         $assetDimensions = [];
@@ -34,7 +36,7 @@ final readonly class DraftPreviewDocumentFactory
             $assetDimensions[$asset->assetId] = [$asset->width, $asset->height];
         }
         $routes = (new PublicRoutePolicy)->available($model, $context, false);
-        $booking = $routes[PublicRoute::Booking->value] ?? $context->url();
+        $booking = $bookingDestination ?? $routes[PublicRoute::Booking->value] ?? $context->url();
 
         return new PublicWebsiteDocument(
             $model,

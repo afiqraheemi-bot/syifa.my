@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\WebsiteBuilder\Infrastructure\Delivery;
 
+use App\Modules\Booking\Contracts\Queries\ActiveServiceCatalogueReaderInterface;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderData;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormServiceData;
@@ -21,7 +22,12 @@ final class BookingFormConfigurationReaderAdapterTest extends TestCase
             ]),
         );
 
-        $configuration = (new BookingFormConfigurationReaderAdapter($reader))->forTrustedTenant('tenant-1');
+        $services = $this->createStub(ActiveServiceCatalogueReaderInterface::class);
+        $services->method('forTenant')->willReturn([
+            new PublicBookingFormServiceData('service-1', 'General Consultation'),
+        ]);
+
+        $configuration = (new BookingFormConfigurationReaderAdapter($reader, $services))->forTrustedTenant('tenant-1');
 
         self::assertTrue($configuration->serviceSelectionEnabled);
         self::assertTrue($configuration->serviceSelectionRequired);
@@ -41,8 +47,30 @@ final class BookingFormConfigurationReaderAdapterTest extends TestCase
             ]),
         );
 
-        $configuration = (new BookingFormConfigurationReaderAdapter($reader))->forTrustedTenant('tenant-1');
+        $services = $this->createStub(ActiveServiceCatalogueReaderInterface::class);
+        $services->method('forTenant')->willReturn([
+            new PublicBookingFormServiceData('service-1', 'General Consultation'),
+        ]);
+
+        $configuration = (new BookingFormConfigurationReaderAdapter($reader, $services))->forTrustedTenant('tenant-1');
 
         self::assertFalse($configuration->services[0]->featured);
+    }
+
+    public function test_active_catalogue_remains_available_when_booking_service_selection_is_disabled(): void
+    {
+        $reader = $this->createStub(PublicBookingFormReaderInterface::class);
+        $reader->method('forTrustedTenant')->willReturn(
+            new PublicBookingFormReaderData(false, false, false, false, []),
+        );
+        $services = $this->createMock(ActiveServiceCatalogueReaderInterface::class);
+        $services->expects(self::once())->method('forTenant')->with('tenant-1')->willReturn([
+            new PublicBookingFormServiceData('service-1', 'General Consultation'),
+        ]);
+
+        $configuration = (new BookingFormConfigurationReaderAdapter($reader, $services))->forTrustedTenant('tenant-1');
+
+        self::assertFalse($configuration->serviceSelectionEnabled);
+        self::assertCount(1, $configuration->services);
     }
 }

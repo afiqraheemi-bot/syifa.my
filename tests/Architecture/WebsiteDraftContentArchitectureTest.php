@@ -119,6 +119,29 @@ final class WebsiteDraftContentArchitectureTest extends TestCase
         self::assertStringNotContainsString('publishGallery', $component);
     }
 
+    public function test_website_image_upload_uses_a_reusable_client_side_crop_before_the_scoped_upload(): void
+    {
+        $component = $this->source(
+            'resources/js/Modules/PlatformAdministration/Onboarding/WebsiteImageUpload.vue',
+        );
+        $controller = $this->source(
+            'app/Support/Dashboard/Presentation/Http/Controllers/WebsiteDesignerWebsiteAssetController.php',
+        );
+
+        foreach (['<dialog', '<canvas', 'cropZoom', 'cropX', 'cropY', 'cropAspectRatio', 'Logo shape', 'Crop and upload', 'FileReader', 'Remove plain background', 'applyPlainBackgroundRemoval'] as $contract) {
+            self::assertStringContainsString($contract, $component);
+        }
+        self::assertStringContainsString('browserHttpRequest(props.uploadUrl', $component);
+        self::assertStringNotContainsString('fetch(', $component);
+        self::assertStringNotContainsString('URL.createObjectURL', $component);
+        self::assertStringContainsString(
+            '$assignments->detail($context->identityId, $jobId)',
+            $controller,
+        );
+        self::assertStringNotContainsString("\$request->input('tenant", $controller);
+        self::assertStringNotContainsString("\$request->input('website", $controller);
+    }
+
     public function test_testimonials_editor_uses_only_existing_manual_testimonial_fields(): void
     {
         $component = $this->source(
@@ -182,7 +205,7 @@ final class WebsiteDraftContentArchitectureTest extends TestCase
         self::assertStringContainsString('readyForReview($at)', $service);
         self::assertStringNotContainsString('->publish(', $service);
         self::assertStringContainsString(
-            "\$request->input('workspace') === 'ready_for_review'",
+            "'ready_for_review' => \$this->readyForReview(",
             $controller,
         );
         self::assertStringContainsString('in:ready_for_review', $controller);
@@ -206,6 +229,7 @@ final class WebsiteDraftContentArchitectureTest extends TestCase
         self::assertStringNotContainsString('->save(', $service);
         self::assertStringNotContainsString('->publish(', $service);
         self::assertStringNotContainsString('readyForReview(', $service);
+        self::assertSame(2, substr_count($service, '$branding->logoDisplaySize->value'));
         self::assertStringContainsString(
             'authorize.context:platform_identity,website_designer',
             $routes,
@@ -213,7 +237,7 @@ final class WebsiteDraftContentArchitectureTest extends TestCase
         self::assertStringContainsString('dashboard.onboarding.preview', $routes);
         self::assertStringContainsString('noindex,nofollow,noarchive', $view);
         self::assertStringNotContainsString('rel="canonical"', $view);
-        self::assertStringContainsString('Preview Website', $component);
+        self::assertStringContainsString('Preview Current Draft', $component);
         self::assertStringContainsString("window.open('', '_blank')", $component);
     }
 

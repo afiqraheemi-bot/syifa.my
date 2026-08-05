@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace App\Support\Provisioning;
 
 use App\Modules\Booking\Contracts\ServiceSetup\ServiceSetupAuditInterface;
+use App\Modules\ClinicRegistration\Contracts\Checkout\CompleteLocalDemoAcquisitionInterface;
 use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewAuditInterface;
 use App\Modules\Onboarding\Contracts\Administration\OnboardingAuditInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\WebsiteApprovalAuditInterface;
+use App\Modules\SubscriptionBilling\Application\Subscription\ActivateSubscriptionFromVerifiedPaymentService;
+use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementComputationInterface;
 use App\Modules\WebsiteBuilder\Contracts\Publication\WebsitePublicationApprovalReadInterface;
+use App\Support\Provisioning\Application\CompleteLocalDemoAcquisitionService;
+use App\Support\Provisioning\Application\LocalDemoSubscriptionEntitlementComputation;
 use App\Support\Provisioning\Application\ProvisioningWorkflowRepositoryInterface;
 use App\Support\Provisioning\Infrastructure\BookingServiceSetupPlatformAuditAdapter;
 use App\Support\Provisioning\Infrastructure\ClinicRegistrationPlatformAuditAdapter;
@@ -28,6 +33,15 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 $application->make('db')->connection(),
             ),
         );
+        $this->app->singleton(
+            CompleteLocalDemoAcquisitionInterface::class,
+            CompleteLocalDemoAcquisitionService::class,
+        );
+        if ($this->app->environment(['local', 'testing'])) {
+            $this->app->when(ActivateSubscriptionFromVerifiedPaymentService::class)
+                ->needs(SubscriptionEntitlementComputationInterface::class)
+                ->give(LocalDemoSubscriptionEntitlementComputation::class);
+        }
         $this->app->singleton(OnboardingAuditInterface::class, OnboardingPlatformAuditAdapter::class);
         $this->app->alias(OnboardingAuditInterface::class, WebsiteApprovalAuditInterface::class);
         $this->app->singleton(

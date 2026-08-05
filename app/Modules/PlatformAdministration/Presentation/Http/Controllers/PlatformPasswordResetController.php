@@ -11,14 +11,29 @@ use App\Modules\PlatformAdministration\Presentation\Http\Requests\PlatformResetP
 use App\Modules\PlatformAdministration\Presentation\Http\Responses\ProblemDetailsResponse;
 use DateTimeImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 /**
- * Both actions always return the same shape regardless of whether the email
- * exists or the token is valid — email enumeration is prevented at the HTTP
- * boundary, never left to the caller to infer from a differing response.
+ * `forgotPassword`/`resetPassword` always return the same shape regardless of
+ * whether the email exists or the token is valid — email enumeration is
+ * prevented at the HTTP boundary, never left to the caller to infer from a
+ * differing response. `show` is presentation-only: the token is opaque to
+ * this controller and is verified only when the form is actually submitted.
  */
 final readonly class PlatformPasswordResetController
 {
+    public function show(string $token, Request $request): Response
+    {
+        return Inertia::render('PlatformAdministration/Authentication/PlatformPasswordReset', [
+            'token' => $token,
+            'email' => (string) $request->query('email', ''),
+            'submitUrl' => route('platform.password.reset.submit'),
+            'loginUrl' => route('login'),
+        ]);
+    }
+
     public function forgotPassword(
         PlatformForgotPasswordRequest $request,
         RequestPlatformPasswordResetService $resets,

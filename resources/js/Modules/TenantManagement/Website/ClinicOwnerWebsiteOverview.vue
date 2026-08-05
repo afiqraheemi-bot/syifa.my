@@ -1,6 +1,6 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { browserHttpRequest } from '../../../Shared/Authentication/session.js';
 import {
     createDashboardNavigation,
@@ -27,6 +27,7 @@ const props = defineProps({
     quickActions: { type: Array, required: true },
     websiteApproval: { type: Object, default: null },
     websiteApprovalDecisionUrl: { type: String, required: true },
+    websiteApprovalPreviewUrl: { type: String, required: true },
     onboardingTasks: { type: Object, default: null },
     onboardingTaskUrlTemplate: { type: String, default: null },
     launchReadiness: { type: Object, default: null },
@@ -41,6 +42,17 @@ const approvalError = ref('');
 const approvalSuccess = ref('');
 const taskBusy = ref(null);
 const taskError = ref('');
+const unmetLaunchConditions = computed(
+    () => props.launchReadiness?.conditions?.filter((condition) => !condition.satisfied) ?? [],
+);
+const approvalIsPending = computed(() =>
+    ['requested', 'resubmitted'].includes(props.websiteApproval?.approvalStatus),
+);
+const awaitingUpdatedSubmission = computed(
+    () =>
+        unmetLaunchConditions.value.some((condition) => condition.key === 'approval') &&
+        props.websiteApproval?.approvalStatus === 'approved',
+);
 
 async function completeOwnerTask(task) {
     if (!props.onboardingTasks || !props.onboardingTaskUrlTemplate || taskBusy.value) return;
@@ -176,6 +188,14 @@ async function decideWebsiteApproval(selectedDecision) {
                 />
             </label>
             <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+                <a
+                    :href="websiteApprovalPreviewUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-700 bg-white px-5 font-semibold text-slate-900"
+                >
+                    Preview submitted Website
+                </a>
                 <button
                     type="button"
                     :disabled="busy"
@@ -266,6 +286,21 @@ async function decideWebsiteApproval(selectedDecision) {
                 >
                     {{ launchReadiness.ready ? 'Ready' : 'Blocked' }}
                 </span>
+            </div>
+            <div
+                v-if="approvalIsPending"
+                class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-slate-800"
+            >
+                <strong>Action required:</strong> Review and approve the latest Website version in
+                the approval panel above.
+            </div>
+            <div
+                v-else-if="awaitingUpdatedSubmission"
+                class="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-slate-800"
+            >
+                <strong>No action is required from you yet.</strong> The Website changed after your
+                previous approval. The Website Designer must submit the updated version first; a new
+                approval panel will then appear on this page.
             </div>
             <ul class="mt-4 grid gap-2 sm:grid-cols-2">
                 <li

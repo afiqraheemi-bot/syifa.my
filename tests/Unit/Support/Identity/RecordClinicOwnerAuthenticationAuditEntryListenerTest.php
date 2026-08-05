@@ -43,6 +43,7 @@ final class RecordClinicOwnerAuthenticationAuditEntryListenerTest extends TestCa
         $entry = $recorder->entries[0];
         self::assertSame(AuditActorType::ClinicOwner->value, $entry->actor->type);
         self::assertSame('00000000-0000-4000-8000-000000000002', $entry->actor->identityId);
+        self::assertSame('00000000-0000-4000-8000-000000000001', $entry->tenantId);
         self::assertSame('clinic_owner.authentication.login', $entry->action);
         self::assertSame(AuditOutcomeType::Succeeded->value, $entry->outcome->outcome);
         self::assertNull($entry->outcome->reasonCode);

@@ -54,6 +54,9 @@ final readonly class PublicSiteContext
 
     private static function isLocalHost(string $host): bool
     {
-        return in_array(explode(':', $host, 2)[0], ['localhost', '127.0.0.1'], true);
+        $hostname = explode(':', $host, 2)[0];
+
+        return in_array($hostname, ['localhost', '127.0.0.1'], true)
+            || str_ends_with($hostname, '.localhost');
     }
 }

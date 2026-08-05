@@ -13,6 +13,8 @@ final readonly class ClinicRegistrationProfile
         public ?string $clinicEmail,
         public ?string $clinicPhone,
         public ?string $clinicAddress,
+        public ?string $preferredSubdomain = null,
+        public ?string $selectedWebsiteTemplate = null,
     ) {
         foreach ([
             'clinic name' => [$clinicName, 200],
@@ -27,6 +29,21 @@ final readonly class ClinicRegistrationProfile
             if ($value !== null && mb_strlen($value) > $maximumLength) {
                 throw new InvalidClinicRegistrationValueException(sprintf('%s is too long.', ucfirst((string) $label)));
             }
+        }
+
+        if ($preferredSubdomain !== null
+            && preg_match('/^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/', $preferredSubdomain) !== 1) {
+            throw new InvalidClinicRegistrationValueException('Preferred Website subdomain is invalid.');
+        }
+
+        if ($selectedWebsiteTemplate !== null && ! in_array($selectedWebsiteTemplate, [
+            'SYIFA_ESSENTIAL',
+            'SYIFA_CARE',
+            'SYIFA_DENTAL',
+            'SYIFA_AESTHETIC',
+            'SYIFA_SPECIALIST',
+        ], true)) {
+            throw new InvalidClinicRegistrationValueException('Selected Website template is invalid.');
         }
     }
 

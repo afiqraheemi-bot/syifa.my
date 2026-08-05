@@ -25,5 +25,18 @@ interface ProvisioningWorkflowRepositoryInterface
         DateTimeImmutable $now,
     ): bool;
 
+    /**
+     * Terminally stops a workflow that has exhausted its retry budget. The
+     * workflow leaves the claim/lease cycle for good — it is never returned
+     * by {@see claimNext()} again — so it must be surfaced to an operator
+     * through another channel rather than silently retried forever.
+     */
+    public function deadLetter(
+        string $workflowId,
+        string $claimToken,
+        string $safeFailureLabel,
+        DateTimeImmutable $now,
+    ): bool;
+
     public function complete(string $workflowId, string $claimToken, DateTimeImmutable $now): bool;
 }

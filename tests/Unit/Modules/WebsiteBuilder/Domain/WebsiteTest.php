@@ -178,13 +178,28 @@ final class WebsiteTest extends TestCase
         $this->website()->archive($this->at('+1 hour'));
     }
 
-    public function test_template_changes_before_but_not_after_publication(): void
+    public function test_template_can_change_after_publication_without_mutating_the_published_snapshot(): void
     {
         $website = $this->website();
         $website->selectTemplate(TemplateId::SyifaCare, $this->at('+1 hour'));
         $website->readyForReview($this->at('+2 hours'));
         $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(82)), $this->uuid(90), $this->at('+3 hours'));
         self::assertSame(TemplateId::SyifaCare, $website->templateId());
+        self::assertSame(TemplateId::SyifaCare, $website->publishedSnapshot()?->templateId);
+
+        $website->selectTemplate(TemplateId::SyifaDental, $this->at('+4 hours'));
+
+        self::assertSame(TemplateId::SyifaDental, $website->templateId());
+        self::assertSame(TemplateId::SyifaCare, $website->publishedSnapshot()?->templateId);
+    }
+
+    public function test_archived_website_template_cannot_change(): void
+    {
+        $website = $this->website();
+        $website->readyForReview($this->at('+1 hour'));
+        $website->publish(new WebsitePublicationEvidence(true, true), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(83)), $this->uuid(90), $this->at('+2 hours'));
+        $website->archive($this->at('+3 hours'));
+
         $this->expectException(InvalidWebsiteValueException::class);
         $website->selectTemplate(TemplateId::SyifaDental, $this->at('+4 hours'));
     }

@@ -114,6 +114,8 @@ final class PostgresClinicRegistrationRepository implements ClinicRegistrationRe
             'clinic_email' => $record->clinicEmail,
             'clinic_phone' => $record->clinicPhone,
             'clinic_address' => $record->clinicAddress,
+            'preferred_subdomain' => $record->preferredSubdomain,
+            'selected_website_template' => $record->selectedWebsiteTemplate,
             'selected_plan_offering_reference' => $record->selectedPlanOfferingReference,
             'selected_billing_option_reference' => $record->selectedBillingOptionReference,
             'commercial_snapshot_version' => $record->commercialSnapshotVersion,
@@ -168,6 +170,8 @@ final class PostgresClinicRegistrationRepository implements ClinicRegistrationRe
             $this->nullableDateTimeValue($row->cancelled_at ?? null),
             $this->nullableDateTimeValue($row->expired_at ?? null),
             $this->integerValue($row, 'version'),
+            $this->nullableStringValue($row, 'preferred_subdomain'),
+            $this->nullableStringValue($row, 'selected_website_template'),
         );
 
         $declarationRows = $this->connection->table('clinic_registration_declaration_acceptances')

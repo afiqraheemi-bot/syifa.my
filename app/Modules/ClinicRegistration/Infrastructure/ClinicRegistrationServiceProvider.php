@@ -12,6 +12,7 @@ use App\Modules\ClinicRegistration\Application\ClinicRegistrationTenantIdGenerat
 use App\Modules\ClinicRegistration\Application\CompleteClinicRegistrationFromTrustedHandoffService;
 use App\Modules\ClinicRegistration\Application\Provisioning\ClinicRegistrationProvisioningReadService;
 use App\Modules\ClinicRegistration\Application\TrustedCompletionSources;
+use App\Modules\ClinicRegistration\Contracts\Authentication\ClinicRegistrationAccessInterface;
 use App\Modules\ClinicRegistration\Contracts\Completion\TrustedClinicRegistrationCompletionInterface;
 use App\Modules\ClinicRegistration\Contracts\Events\ClinicRegistrationEventPublisherInterface;
 use App\Modules\ClinicRegistration\Contracts\Language\ClinicRegistrationLanguageRegistryInterface;
@@ -21,6 +22,8 @@ use App\Modules\ClinicRegistration\Contracts\Repositories\ClinicRegistrationRepo
 use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationDecisionTransactionInterface;
 use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewReadInterface;
 use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialInterface;
+use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialWriterInterface;
+use App\Modules\ClinicRegistration\Infrastructure\Authentication\PostgresClinicRegistrationAccess;
 use App\Modules\ClinicRegistration\Infrastructure\Events\LaravelClinicRegistrationEventPublisher;
 use App\Modules\ClinicRegistration\Infrastructure\Language\ConfigClinicRegistrationLanguageRegistry;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\ClinicRegistrationDatabaseTransaction;
@@ -30,6 +33,7 @@ use App\Modules\ClinicRegistration\Infrastructure\Persistence\Queries\PostgresCl
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Repositories\PostgresClinicRegistrationRepository;
 use App\Modules\ClinicRegistration\Infrastructure\Tracking\LaravelRegistrationTrackingCredential;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Support\ServiceProvider;
 
 final class ClinicRegistrationServiceProvider extends ServiceProvider
@@ -58,7 +62,16 @@ final class ClinicRegistrationServiceProvider extends ServiceProvider
         $this->app->singleton(ClinicRegistrationIdentifierGeneratorInterface::class, ClinicRegistrationIdentifierGenerator::class);
         $this->app->singleton(ClinicRegistrationTenantIdGeneratorInterface::class, ClinicRegistrationTenantIdGenerator::class);
         $this->app->singleton(ClinicRegistrationEventPublisherInterface::class, LaravelClinicRegistrationEventPublisher::class);
-        $this->app->singleton(RegistrationTrackingCredentialInterface::class, LaravelRegistrationTrackingCredential::class);
+        $this->app->singleton(LaravelRegistrationTrackingCredential::class);
+        $this->app->alias(LaravelRegistrationTrackingCredential::class, RegistrationTrackingCredentialInterface::class);
+        $this->app->alias(LaravelRegistrationTrackingCredential::class, RegistrationTrackingCredentialWriterInterface::class);
+        $this->app->singleton(
+            ClinicRegistrationAccessInterface::class,
+            static fn (Application $application): PostgresClinicRegistrationAccess => new PostgresClinicRegistrationAccess(
+                $application->make('db')->connection(),
+                $application->make(Hasher::class),
+            ),
+        );
         $this->app->singleton(ClinicRegistrationPersistenceMapper::class);
         $this->app->singleton(
             ClinicRegistrationDecisionTransactionInterface::class,

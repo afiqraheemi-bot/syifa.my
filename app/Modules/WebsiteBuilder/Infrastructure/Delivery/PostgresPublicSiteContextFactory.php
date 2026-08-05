@@ -17,6 +17,9 @@ final readonly class PostgresPublicSiteContextFactory implements PublicSiteConte
         private SubscriptionSummaryReadInterface $subscriptions,
         private array $localSites = [],
         private bool $runtimeAddressing = true,
+        private ?string $localAliasBaseDomain = null,
+        private ?int $localAliasPort = null,
+        private string $canonicalBaseDomain = 'syifa.my',
     ) {}
 
     public function forHost(string $host): ?PublicSiteContext
@@ -39,6 +42,8 @@ final readonly class PostgresPublicSiteContextFactory implements PublicSiteConte
         if (! $this->runtimeAddressing) {
             return null;
         }
+        $requestedHost = $normalized;
+        $normalized = $this->canonicalHostForLocalAlias($normalized) ?? $normalized;
         $address = $this->addresses->resolveActiveHost($normalized);
         if ($address === null) {
             return null;
@@ -50,12 +55,35 @@ final readonly class PostgresPublicSiteContextFactory implements PublicSiteConte
             return null;
         }
 
+        $localAlias = $requestedHost !== $normalized;
+
         return new PublicSiteContext(
-            'https',
-            $address->host,
+            $localAlias ? 'http' : 'https',
+            $localAlias ? $this->localHostWithPort($requestedHost) : $address->host,
             '',
             $address->websiteId,
             $address->tenantId,
         );
+    }
+
+    private function canonicalHostForLocalAlias(string $host): ?string
+    {
+        if ($this->localAliasBaseDomain === null) {
+            return null;
+        }
+
+        $suffix = '.'.strtolower($this->localAliasBaseDomain);
+        if (! str_ends_with($host, $suffix)) {
+            return null;
+        }
+
+        $label = substr($host, 0, -strlen($suffix));
+
+        return $label === '' ? null : $label.'.'.strtolower($this->canonicalBaseDomain);
+    }
+
+    private function localHostWithPort(string $host): string
+    {
+        return $this->localAliasPort === null ? $host : $host.':'.$this->localAliasPort;
     }
 }

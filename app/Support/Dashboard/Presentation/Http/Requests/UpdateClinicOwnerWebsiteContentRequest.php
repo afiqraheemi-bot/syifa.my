@@ -19,11 +19,13 @@ final class UpdateClinicOwnerWebsiteContentRequest extends FormRequest
     {
         return [
             'version' => ['required', 'integer', 'min:1'],
-            'branding' => ['required', 'array:clinic_name,tagline,primary_color,secondary_color,contact_email,contact_phone,address,social_links'],
+            'branding' => ['required', 'array:clinic_name,tagline,primary_color,secondary_color,logo_reference,logo_display_size,contact_email,contact_phone,address,social_links'],
             'branding.clinic_name' => ['required', 'string', 'max:200'],
             'branding.tagline' => ['nullable', 'string', 'max:240'],
-            'branding.primary_color' => ['required', 'regex:/^#[0-9A-F]{6}$/'],
-            'branding.secondary_color' => ['required', 'regex:/^#[0-9A-F]{6}$/'],
+            'branding.primary_color' => ['required', 'regex:/^#[0-9A-F]{6}$/i'],
+            'branding.secondary_color' => ['required', 'regex:/^#[0-9A-F]{6}$/i'],
+            'branding.logo_reference' => ['nullable', 'uuid'],
+            'branding.logo_display_size' => ['required', Rule::in(['compact', 'standard', 'large'])],
             'branding.contact_email' => ['required', 'email:rfc', 'max:254'],
             'branding.contact_phone' => ['required', 'string', 'max:40'],
             'branding.address' => ['required', 'string', 'max:500'],

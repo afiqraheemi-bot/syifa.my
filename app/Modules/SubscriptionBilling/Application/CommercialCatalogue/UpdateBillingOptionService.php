@@ -28,7 +28,12 @@ use ValueError;
  */
 final readonly class UpdateBillingOptionService
 {
-    public function __construct(private BillingOptionRepositoryInterface $billingOptions) {}
+    private const string AUDIT_ACTION = 'commercial_catalogue.billing_option.update';
+
+    public function __construct(
+        private BillingOptionRepositoryInterface $billingOptions,
+        private BillingOptionAuditTrail $audit,
+    ) {}
 
     public function execute(UpdateBillingOptionCommand $command): BillingOption
     {
@@ -53,6 +58,14 @@ final readonly class UpdateBillingOptionService
         );
 
         $this->billingOptions->save($updated);
+        $this->audit->record(
+            self::AUDIT_ACTION,
+            $updated,
+            $billingOption->version(),
+            $command->occurredAt,
+            $command->actorPlatformIdentityId,
+            $command->correlationId,
+        );
 
         return $updated;
     }

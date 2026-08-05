@@ -42,6 +42,7 @@ final readonly class RecordClinicOwnerAuthenticationAuditEntryListener
         $this->record(
             $signal->occurredAt,
             $signal->authorityId,
+            $signal->tenantId,
             AuditOutcomeType::Succeeded->value,
             null,
         );
@@ -49,12 +50,13 @@ final readonly class RecordClinicOwnerAuthenticationAuditEntryListener
 
     public function handleRejected(ClinicOwnerAuthenticationRejected $signal): void
     {
-        $this->record($signal->occurredAt, null, AuditOutcomeType::Failed->value, 'invalid_credentials');
+        $this->record($signal->occurredAt, null, null, AuditOutcomeType::Failed->value, 'invalid_credentials');
     }
 
     private function record(
         DateTimeImmutable $occurredAt,
         ?string $authorityId,
+        ?string $tenantId,
         string $outcome,
         ?string $reasonCode,
     ): void {
@@ -68,22 +70,24 @@ final readonly class RecordClinicOwnerAuthenticationAuditEntryListener
                     $authorityId === null ? AuditActorType::Anonymous->value : AuditActorType::ClinicOwner->value,
                     $authorityId,
                 ),
-                null,
+                $tenantId,
                 'clinic_owner.authentication.login',
                 new AuditTargetData('clinic_owner_session', $authorityId),
                 new AuditOutcomeData($outcome, $reasonCode),
                 $correlationId,
                 [],
             ));
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
             $this->logger->critical('tenant_management.security.audit.emergency', [
                 'correlation_id' => $correlationId,
                 'actor_type' => $authorityId === null ? AuditActorType::Anonymous->value : AuditActorType::ClinicOwner->value,
                 'actor_identity_id' => $authorityId,
+                'tenant_id' => $tenantId,
                 'action' => 'clinic_owner.authentication.login',
                 'outcome' => $outcome,
                 'reason_code' => $reasonCode,
                 'timestamp' => $occurredAt->format('Y-m-d\TH:i:s\Z'),
+                'exception' => $exception->getMessage(),
             ]);
         }
     }

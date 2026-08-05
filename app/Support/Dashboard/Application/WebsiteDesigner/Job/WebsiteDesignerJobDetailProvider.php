@@ -37,6 +37,8 @@ final readonly class WebsiteDesignerJobDetailProvider
     /** @return array<string, mixed> */
     private function project(WebsiteDesignerJobDetailData $job): array
     {
+        $progress = $this->progress($job);
+
         return [
             'id' => $job->onboardingJobId,
             'tenantId' => $job->tenantId,
@@ -45,8 +47,8 @@ final readonly class WebsiteDesignerJobDetailProvider
             'version' => $job->version,
             'statusLabel' => $this->label($job->status),
             'progress' => [
-                'value' => self::PROGRESS[$job->status] ?? 0,
-                'label' => (self::PROGRESS[$job->status] ?? 0).'% complete',
+                'value' => $progress,
+                'label' => $progress.'% complete',
             ],
             'stages' => [
                 $this->stage('content-collection', 'Content collection', $job->status, ['awaiting_inputs']),
@@ -81,6 +83,29 @@ final readonly class WebsiteDesignerJobDetailProvider
             'assignedAtLabel' => $job->assignedAt->format('j M Y, g:i A'),
             'updatedAtLabel' => $job->updatedAt->format('j M Y, g:i A'),
         ];
+    }
+
+    private function progress(WebsiteDesignerJobDetailData $job): int
+    {
+        if ($job->tasks === []) {
+            return self::PROGRESS[$job->status] ?? 0;
+        }
+
+        $completedStatuses = ['completed', 'waived'];
+        $trackedTasks = ['clinic_inputs', 'service_setup', 'website_setup', 'booking_setup'];
+        $completed = 1; // An assigned Job has completed the assignment checkpoint.
+
+        foreach ($job->tasks as $task) {
+            if (in_array($task['key'] ?? null, $trackedTasks, true)
+                && in_array($task['status'] ?? null, $completedStatuses, true)) {
+                $completed++;
+            }
+        }
+        if (in_array($job->status, ['ready_for_launch', 'completed'], true)) {
+            $completed++;
+        }
+
+        return (int) round(($completed / 6) * 100);
     }
 
     /**

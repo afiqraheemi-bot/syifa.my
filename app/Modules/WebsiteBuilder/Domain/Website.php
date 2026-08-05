@@ -239,14 +239,16 @@ final class Website
     public function updateBranding(WebsiteBranding $branding, DateTimeImmutable $at): void
     {
         $this->assertNotArchived();
+        $this->assertAssetAvailable($branding->logoReference, AssetUsage::Logo);
+        $this->assertAssetAvailable($branding->faviconReference, AssetUsage::Favicon);
         $this->branding = $branding;
         $this->updatedAt = $at;
     }
 
     public function selectTemplate(TemplateId $templateId, DateTimeImmutable $at): void
     {
-        if (in_array($this->lifecycle, [WebsiteLifecycle::Published, WebsiteLifecycle::Archived], true)) {
-            throw new InvalidWebsiteValueException('Website template cannot change after publication.');
+        if ($this->lifecycle === WebsiteLifecycle::Archived) {
+            throw new InvalidWebsiteValueException('Archived Website template cannot be changed.');
         }
         $this->templateId = $templateId;
         $this->updatedAt = $at;
@@ -302,7 +304,7 @@ final class Website
         $seo = $this->seo;
         $contentFingerprint = hash('sha256', json_encode([
             'templateId' => $this->templateId->value,
-            'branding' => [$branding->clinicName, $branding->tagline, $branding->primaryColor, $branding->secondaryColor, $branding->logoReference?->value, $branding->faviconReference?->value],
+            'branding' => [$branding->clinicName, $branding->tagline, $branding->primaryColor, $branding->secondaryColor, $branding->logoReference?->value, $branding->faviconReference?->value, $branding->logoDisplaySize->value],
             'seo' => [$seo->metaTitle(), $seo->metaDescription(), $seo->metaKeywords(), $seo->canonicalUrl(), $seo->robotsDirective()->value, $seo->openGraphTitle(), $seo->openGraphDescription(), $seo->openGraphImageReference()?->value, $seo->indexingEnabled()],
             'sections' => array_map(
                 static fn (PublishedSectionContentSnapshot $section, int $index): array => [$section->sectionId->value, $section->sectionType->value, $index + 1, $sections[$index]->enabled, $section->contentFingerprint],
@@ -317,7 +319,7 @@ final class Website
             $branding->faviconReference, $branding->contactEmail, $branding->contactPhone, $branding->address, $branding->socialLinks,
             $seo->metaTitle(), $seo->metaDescription(), $seo->metaKeywords(), $seo->canonicalUrl(), $seo->robotsDirective(),
             $seo->openGraphTitle(), $seo->openGraphDescription(), $seo->openGraphImageReference(), $seo->indexingEnabled(),
-            $contentFingerprint, $sections, $assets, $sectionContents,
+            $contentFingerprint, $sections, $assets, $sectionContents, $branding->logoDisplaySize,
         );
         $history = new WebsitePublicationHistoryEntry($publicationId, $this->id, $publishedVersion, $at, $publishedBy, PublicationResult::Published);
         $this->publishedSnapshot = $snapshot;

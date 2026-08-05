@@ -75,8 +75,85 @@ async function assign(job) {
 }
 
 function ownerForm(job) {
-    ownerForms[job.id] ??= { name: '', email: '' };
+    ownerForms[job.id] ??= { name: job.ownerName ?? '', email: job.ownerEmail ?? '' };
     return ownerForms[job.id];
+}
+
+function task(job, key) {
+    return job.tasks.find((item) => item.key === key || item.taskKey === key);
+}
+
+function taskComplete(job, key) {
+    return ['completed', 'waived'].includes(task(job, key)?.status);
+}
+
+function deliveryComplete(job) {
+    return ['service_setup', 'website_setup', 'booking_setup'].every((key) =>
+        taskComplete(job, key),
+    );
+}
+
+function checkpoints(job) {
+    return [
+        {
+            label: 'Payment and workspace created',
+            description: 'Subscription, tenant, website and onboarding workspace are ready.',
+            state: 'complete',
+        },
+        {
+            label: 'Clinic Owner access',
+            description: job.ownerVerified
+                ? `${job.ownerName} can access the clinic workspace.`
+                : job.ownerAuthorityId
+                  ? `Setup email is pending for ${job.ownerEmail}.`
+                  : 'Confirm the owner name and email, then send secure setup access.',
+            state: job.ownerVerified ? 'complete' : 'current',
+        },
+        {
+            label: 'Website Designer assigned',
+            description: job.designerName
+                ? `${job.designerName} owns this onboarding job.`
+                : 'Choose the Website Designer responsible for delivery.',
+            state: job.designerName ? 'complete' : job.ownerVerified ? 'current' : 'upcoming',
+        },
+        {
+            label: 'Clinic information received',
+            description: taskComplete(job, 'clinic_inputs')
+                ? 'The clinic has supplied the required information.'
+                : 'Waiting for the Clinic Owner to complete the required inputs.',
+            state: taskComplete(job, 'clinic_inputs')
+                ? 'complete'
+                : job.ownerVerified && job.designerName
+                  ? 'current'
+                  : 'upcoming',
+        },
+        {
+            label: 'Website delivery completed',
+            description: `${job.taskSummary.completed}/${job.taskSummary.total} onboarding tasks complete.`,
+            state: deliveryComplete(job)
+                ? 'complete'
+                : taskComplete(job, 'clinic_inputs')
+                  ? 'current'
+                  : 'upcoming',
+        },
+        {
+            label: 'Review and launch',
+            description: job.launchReadiness?.ready
+                ? 'All authoritative launch evidence is ready.'
+                : 'Website approval and launch evidence are not complete yet.',
+            state: job.launchReadiness?.ready ? 'complete' : 'upcoming',
+        },
+    ];
+}
+
+function nextAction(job) {
+    if (!job.ownerVerified) return 'Complete Clinic Owner access';
+    if (!job.designerName) return 'Assign a Website Designer';
+    if (!taskComplete(job, 'clinic_inputs')) return 'Clinic Owner supplies clinic information';
+    if (!deliveryComplete(job)) return 'Website Designer completes delivery tasks';
+    if (!job.launchReadiness?.ready) return 'Complete review and launch evidence';
+
+    return 'Complete onboarding';
 }
 
 async function establishOwner(job) {
@@ -245,165 +322,288 @@ async function waiveTask(job, task) {
             title="No onboarding jobs"
             description="Provisioned clinic onboarding jobs will appear here."
         />
-        <div v-else class="grid gap-4">
+        <div v-else class="grid gap-6">
             <article
                 v-for="job in onboarding.jobs"
                 :key="job.id"
-                class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
             >
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">
-                            {{ job.status.replaceAll('_', ' ') }}
-                        </p>
-                        <h2 class="mt-1 text-lg font-bold text-slate-950">{{ job.clinicName }}</h2>
-                        <p class="mt-1 text-sm text-slate-600">
-                            {{
-                                job.designerName ? `Assigned to ${job.designerName}` : 'Unassigned'
-                            }}
-                        </p>
-                        <p
-                            v-if="job.launchReadiness"
-                            class="mt-2 text-sm font-semibold"
-                            :class="
-                                job.launchReadiness.ready ? 'text-emerald-700' : 'text-amber-700'
-                            "
-                        >
-                            Launch readiness:
-                            {{ job.launchReadiness.ready ? 'Ready' : 'Blocked' }}
-                        </p>
-                    </div>
-                    <div class="flex flex-col gap-2 sm:flex-row">
-                        <select
-                            v-model="selections[job.id]"
-                            :disabled="busyJob === job.id"
-                            class="min-h-11 min-w-64 rounded-xl border border-slate-300 px-3"
-                            :aria-label="`Website Designer for ${job.clinicName}`"
-                        >
-                            <option value="">Select Website Designer</option>
-                            <option
-                                v-for="designer in onboarding.designers"
-                                :key="designer.id"
-                                :value="designer.id"
-                                :disabled="designer.id === job.designerId"
-                            >
-                                {{ designer.name }} — {{ designer.email }}
-                            </option>
-                        </select>
-                        <button
-                            type="button"
-                            :disabled="!selections[job.id] || busyJob !== null"
-                            class="min-h-11 rounded-xl bg-emerald-700 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                            @click="assign(job)"
-                        >
-                            {{
-                                busyJob === job.id
-                                    ? job.assignmentId
-                                        ? 'Reassigning…'
-                                        : 'Assigning…'
-                                    : job.assignmentId
-                                      ? 'Reassign'
-                                      : 'Assign'
-                            }}
-                        </button>
-                    </div>
-                </div>
-                <div class="mt-5 border-t border-slate-200 pt-5">
-                    <div v-if="job.ownerAuthorityId" class="text-sm text-slate-700">
-                        <strong>{{ job.ownerName }}</strong>
-                        <span class="ml-2">{{ job.ownerEmail }}</span>
-                        <span
-                            class="ml-2 rounded-full px-2 py-1 text-xs font-bold"
-                            :class="
-                                job.ownerVerified
-                                    ? 'bg-emerald-100 text-emerald-800'
-                                    : 'bg-amber-100 text-amber-800'
-                            "
-                        >
-                            {{ job.ownerVerified ? 'Access active' : 'Setup pending' }}
-                        </span>
-                    </div>
-                    <div v-else class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                        <input
-                            v-model="ownerForm(job).name"
-                            maxlength="120"
-                            placeholder="Verified Clinic Owner name"
-                            class="min-h-11 rounded-xl border border-slate-300 px-3"
-                        />
-                        <input
-                            v-model="ownerForm(job).email"
-                            type="email"
-                            maxlength="254"
-                            placeholder="Verified Clinic Owner email"
-                            class="min-h-11 rounded-xl border border-slate-300 px-3"
-                        />
-                        <button
-                            type="button"
-                            :disabled="
-                                !ownerForm(job).name || !ownerForm(job).email || busyJob !== null
-                            "
-                            class="min-h-11 rounded-xl border border-emerald-700 px-5 font-semibold text-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
-                            @click="establishOwner(job)"
-                        >
-                            {{ busyJob === `owner:${job.id}` ? 'Sending…' : 'Set up owner' }}
-                        </button>
-                    </div>
-                </div>
-                <div class="mt-5 flex flex-wrap gap-2 border-t border-slate-200 pt-5">
-                    <button
-                        v-for="operation in lifecycleOperations(job)"
-                        :key="operation"
-                        type="button"
-                        :disabled="busyJob !== null"
-                        class="min-h-10 rounded-xl border px-4 text-sm font-semibold disabled:opacity-50"
-                        :class="
-                            operation === 'complete'
-                                ? 'border-emerald-700 text-emerald-800'
-                                : operation === 'cancel'
-                                  ? 'border-red-300 text-red-700'
-                                  : 'border-slate-400 text-slate-800'
-                        "
-                        @click="manageLifecycle(job, operation)"
-                    >
-                        {{
-                            busyJob === `lifecycle:${job.id}`
-                                ? 'Updating…'
-                                : `${lifecycleLabel(operation)} job`
-                        }}
-                    </button>
-                </div>
-                <div class="mt-5 border-t border-slate-200 pt-5">
-                    <div class="flex items-center justify-between gap-3">
-                        <h3 class="font-bold text-slate-950">Onboarding tasks</h3>
-                        <span class="text-sm font-semibold text-slate-600">
-                            {{ job.taskSummary.completed }}/{{ job.taskSummary.total }} complete
-                        </span>
-                    </div>
-                    <div class="mt-3 grid gap-2">
+                <div class="border-b border-slate-200 bg-slate-50 px-5 py-5 sm:px-7">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                                {{ job.status.replaceAll('_', ' ') }}
+                            </p>
+                            <h2 class="mt-1 text-xl font-bold text-slate-950">
+                                {{ job.clinicName }}
+                            </h2>
+                            <p class="mt-2 text-sm text-slate-600">
+                                Next: <strong class="text-slate-900">{{ nextAction(job) }}</strong>
+                            </p>
+                        </div>
                         <div
-                            v-for="task in job.tasks"
-                            :key="task.id"
-                            class="flex flex-col gap-2 rounded-lg bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                            class="rounded-2xl bg-white px-4 py-3 text-sm shadow-sm ring-1 ring-slate-200"
                         >
-                            <div>
-                                <p class="text-sm font-semibold text-slate-900">{{ task.title }}</p>
-                                <p class="text-xs text-slate-600">
-                                    {{ task.responsibility.replaceAll('_', ' ') }} ·
-                                    {{ task.status.replaceAll('_', ' ') }}
-                                </p>
-                            </div>
-                            <button
-                                v-if="!['completed', 'waived', 'cancelled'].includes(task.status)"
-                                type="button"
-                                :disabled="busyJob !== null"
-                                class="min-h-9 rounded-lg border border-amber-400 px-3 text-sm font-semibold text-amber-800 disabled:opacity-50"
-                                @click="waiveTask(job, task)"
-                            >
-                                {{ busyJob === `task:${task.id}` ? 'Waiving…' : 'Waive' }}
-                            </button>
+                            <span class="font-bold text-slate-950">
+                                {{ job.taskSummary.completed }}/{{ job.taskSummary.total }}
+                            </span>
+                            <span class="text-slate-600"> tasks complete</span>
                         </div>
                     </div>
                 </div>
+
+                <div
+                    class="grid gap-8 px-5 py-6 sm:px-7 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]"
+                >
+                    <div>
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">
+                            Onboarding checkpoints
+                        </h3>
+                        <ol class="mt-5 space-y-0">
+                            <li
+                                v-for="(checkpoint, index) in checkpoints(job)"
+                                :key="checkpoint.label"
+                                class="relative grid grid-cols-[2rem_1fr] gap-3 pb-6 last:pb-0"
+                            >
+                                <span
+                                    v-if="index < checkpoints(job).length - 1"
+                                    class="absolute left-[0.9375rem] top-8 h-[calc(100%-1.25rem)] w-px bg-slate-200"
+                                    aria-hidden="true"
+                                />
+                                <span
+                                    class="relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ring-4 ring-white"
+                                    :class="{
+                                        'bg-emerald-700 text-white':
+                                            checkpoint.state === 'complete',
+                                        'bg-amber-100 text-amber-800 ring-amber-50':
+                                            checkpoint.state === 'current',
+                                        'bg-slate-100 text-slate-500':
+                                            checkpoint.state === 'upcoming',
+                                    }"
+                                >
+                                    {{ checkpoint.state === 'complete' ? '✓' : index + 1 }}
+                                </span>
+                                <div class="pt-1">
+                                    <p class="font-semibold text-slate-950">
+                                        {{ checkpoint.label }}
+                                    </p>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600">
+                                        {{ checkpoint.description }}
+                                    </p>
+                                </div>
+                            </li>
+                        </ol>
+                    </div>
+
+                    <aside class="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5">
+                        <p class="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                            Action required now
+                        </p>
+                        <h3 class="mt-2 text-lg font-bold text-slate-950">{{ nextAction(job) }}</h3>
+
+                        <div v-if="!job.ownerAuthorityId" class="mt-5 grid gap-3">
+                            <p class="text-sm leading-6 text-slate-700">
+                                Confirm the Clinic Owner who will access this tenant workspace.
+                            </p>
+                            <input
+                                v-model="ownerForm(job).name"
+                                maxlength="120"
+                                placeholder="Clinic Owner name"
+                                class="min-h-11 rounded-xl border border-slate-300 bg-white px-3"
+                            />
+                            <input
+                                v-model="ownerForm(job).email"
+                                type="email"
+                                maxlength="254"
+                                placeholder="Clinic Owner email"
+                                class="min-h-11 rounded-xl border border-slate-300 bg-white px-3"
+                            />
+                            <button
+                                type="button"
+                                :disabled="
+                                    !ownerForm(job).name ||
+                                    !ownerForm(job).email ||
+                                    busyJob !== null
+                                "
+                                class="min-h-11 rounded-xl bg-emerald-700 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                @click="establishOwner(job)"
+                            >
+                                {{
+                                    busyJob === `owner:${job.id}` ? 'Sending…' : 'Send secure setup'
+                                }}
+                            </button>
+                        </div>
+
+                        <div v-else-if="!job.ownerVerified" class="mt-5">
+                            <div
+                                class="rounded-xl bg-white p-4 text-sm text-slate-700 ring-1 ring-amber-200"
+                            >
+                                <strong class="block text-slate-950">{{ job.ownerName }}</strong>
+                                <span>{{ job.ownerEmail }}</span>
+                                <span class="mt-2 block font-semibold text-amber-700">
+                                    Secure account setup is pending
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                :disabled="busyJob !== null"
+                                class="mt-3 min-h-11 w-full rounded-xl border border-emerald-700 bg-white px-5 font-semibold text-emerald-800 disabled:opacity-50"
+                                @click="establishOwner(job)"
+                            >
+                                {{
+                                    busyJob === `owner:${job.id}`
+                                        ? 'Sending…'
+                                        : 'Resend setup email'
+                                }}
+                            </button>
+                        </div>
+
+                        <div v-else-if="!job.designerName" class="mt-5 grid gap-3">
+                            <p class="text-sm leading-6 text-slate-700">
+                                Assign one Website Designer to own the delivery from setup to
+                                launch.
+                            </p>
+                            <select
+                                v-model="selections[job.id]"
+                                :disabled="busyJob === job.id"
+                                class="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3"
+                                :aria-label="`Website Designer for ${job.clinicName}`"
+                            >
+                                <option value="">Select Website Designer</option>
+                                <option
+                                    v-for="designer in onboarding.designers"
+                                    :key="designer.id"
+                                    :value="designer.id"
+                                >
+                                    {{ designer.name }} — {{ designer.email }}
+                                </option>
+                            </select>
+                            <button
+                                type="button"
+                                :disabled="!selections[job.id] || busyJob !== null"
+                                class="min-h-11 rounded-xl bg-emerald-700 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                @click="assign(job)"
+                            >
+                                {{ busyJob === job.id ? 'Assigning…' : 'Assign Website Designer' }}
+                            </button>
+                        </div>
+
+                        <div
+                            v-else
+                            class="mt-5 rounded-xl bg-white p-4 text-sm leading-6 text-slate-700 ring-1 ring-slate-200"
+                        >
+                            <strong class="block text-slate-950">No admin action required</strong>
+                            {{ nextAction(job) }}. Progress will update from the authoritative
+                            workflow.
+                        </div>
+                    </aside>
+                </div>
+
+                <details class="border-t border-slate-200 px-5 py-4 sm:px-7">
+                    <summary class="cursor-pointer font-semibold text-slate-700">
+                        View tasks and advanced controls
+                    </summary>
+                    <div class="mt-5 grid gap-5 lg:grid-cols-2">
+                        <section>
+                            <div class="flex items-center justify-between gap-3">
+                                <h3 class="font-bold text-slate-950">Detailed tasks</h3>
+                                <span class="text-sm text-slate-600">
+                                    {{ job.taskSummary.completed }}/{{ job.taskSummary.total }}
+                                    complete
+                                </span>
+                            </div>
+                            <div class="mt-3 grid gap-2">
+                                <div
+                                    v-for="item in job.tasks"
+                                    :key="item.id"
+                                    class="flex flex-col gap-2 rounded-xl bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                                >
+                                    <div>
+                                        <p class="text-sm font-semibold text-slate-900">
+                                            {{ item.title }}
+                                        </p>
+                                        <p class="text-xs capitalize text-slate-600">
+                                            {{ item.responsibility.replaceAll('_', ' ') }} ·
+                                            {{ item.status.replaceAll('_', ' ') }}
+                                        </p>
+                                    </div>
+                                    <button
+                                        v-if="
+                                            !['completed', 'waived', 'cancelled'].includes(
+                                                item.status,
+                                            )
+                                        "
+                                        type="button"
+                                        :disabled="busyJob !== null"
+                                        class="min-h-9 rounded-lg border border-amber-400 px-3 text-sm font-semibold text-amber-800 disabled:opacity-50"
+                                        @click="waiveTask(job, item)"
+                                    >
+                                        {{ busyJob === `task:${item.id}` ? 'Waiving…' : 'Waive' }}
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="rounded-2xl border border-slate-200 p-4">
+                            <h3 class="font-bold text-slate-950">Assignment and lifecycle</h3>
+                            <p class="mt-1 text-sm text-slate-600">
+                                Use these controls only for reassignment or exception handling.
+                            </p>
+                            <div v-if="job.assignmentId" class="mt-4 grid gap-2">
+                                <p class="text-sm font-semibold text-slate-800">
+                                    Assigned to {{ job.designerName }}
+                                </p>
+                                <select
+                                    v-model="selections[job.id]"
+                                    :disabled="busyJob === job.id"
+                                    class="min-h-11 w-full rounded-xl border border-slate-300 px-3"
+                                    :aria-label="`Website Designer for ${job.clinicName}`"
+                                >
+                                    <option value="">Select replacement designer</option>
+                                    <option
+                                        v-for="designer in onboarding.designers"
+                                        :key="designer.id"
+                                        :value="designer.id"
+                                        :disabled="designer.id === job.designerId"
+                                    >
+                                        {{ designer.name }} — {{ designer.email }}
+                                    </option>
+                                </select>
+                                <button
+                                    type="button"
+                                    :disabled="!selections[job.id] || busyJob !== null"
+                                    class="min-h-10 rounded-xl border border-slate-400 px-4 text-sm font-semibold text-slate-800 disabled:opacity-50"
+                                    @click="assign(job)"
+                                >
+                                    {{ busyJob === job.id ? 'Reassigning…' : 'Reassign designer' }}
+                                </button>
+                            </div>
+                            <div class="mt-5 flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+                                <button
+                                    v-for="operation in lifecycleOperations(job)"
+                                    :key="operation"
+                                    type="button"
+                                    :disabled="busyJob !== null"
+                                    class="min-h-10 rounded-xl border px-4 text-sm font-semibold disabled:opacity-50"
+                                    :class="
+                                        operation === 'complete'
+                                            ? 'border-emerald-700 text-emerald-800'
+                                            : operation === 'cancel'
+                                              ? 'border-red-300 text-red-700'
+                                              : 'border-slate-400 text-slate-800'
+                                    "
+                                    @click="manageLifecycle(job, operation)"
+                                >
+                                    {{
+                                        busyJob === `lifecycle:${job.id}`
+                                            ? 'Updating…'
+                                            : `${lifecycleLabel(operation)} job`
+                                    }}
+                                </button>
+                            </div>
+                        </section>
+                    </div>
+                </details>
             </article>
         </div>
     </DashboardShell>

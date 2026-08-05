@@ -27,5 +27,6 @@ final readonly class WebsiteStorageRecord
         public DateTimeImmutable $domainCreatedAt,
         public DateTimeImmutable $domainUpdatedAt,
         public int $version,
+        public string $logoDisplaySize = 'standard',
     ) {}
 }

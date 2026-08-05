@@ -25,6 +25,8 @@ final class UpdateClinicRegistrationDraftRequest extends FormRequest
             'clinic_email' => ['nullable', 'string', 'email', 'max:254'],
             'clinic_phone' => ['nullable', 'string', 'max:40'],
             'clinic_address' => ['nullable', 'string', 'max:1000'],
+            'preferred_subdomain' => ['nullable', 'string', 'min:3', 'max:63', 'regex:/^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/'],
+            'selected_website_template' => ['nullable', 'string', 'in:SYIFA_ESSENTIAL,SYIFA_CARE,SYIFA_DENTAL,SYIFA_AESTHETIC,SYIFA_SPECIALIST'],
             'selected_plan_offering_reference' => ['nullable', 'string', 'max:120'],
             'selected_billing_option_reference' => ['nullable', 'string', 'max:120'],
             'commercial_snapshot_version' => ['nullable', 'string', 'max:64'],

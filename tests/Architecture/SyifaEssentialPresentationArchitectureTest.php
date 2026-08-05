@@ -30,8 +30,32 @@ final class SyifaEssentialPresentationArchitectureTest extends TestCase
         foreach (['@media (min-width: 48rem)', '@media (min-width: 64rem)', '@media (max-width: 35rem)', 'prefers-reduced-motion: reduce', 'forced-colors: active', 'overflow-wrap: anywhere'] as $rule) {
             self::assertStringContainsString($rule, $css);
         }
+        foreach (['.hero__content', '.hero__media', 'min-width: 0;', 'max-width: 100%;'] as $responsiveGuard) {
+            self::assertStringContainsString($responsiveGuard, $css);
+        }
         self::assertStringNotContainsString('glassmorphism', $css);
         self::assertStringNotContainsString('animation:', $css);
+    }
+
+    public function test_each_official_variant_has_a_governed_runtime_presentation(): void
+    {
+        $css = (string) file_get_contents($this->root().'/resources/css/public-website.css');
+
+        foreach (['syifa-care', 'syifa-dental', 'syifa-aesthetic', 'syifa-specialist'] as $template) {
+            self::assertStringContainsString("[data-template='{$template}'] .hero__content", $css);
+            self::assertStringContainsString("[data-template='{$template}'] .hero__media", $css);
+            self::assertStringContainsString("[data-template='{$template}'] .service-card", $css);
+            self::assertStringContainsString("[data-template='{$template}'] .booking-panel", $css);
+        }
+
+        foreach (['preview.blade.php', 'document.blade.php'] as $view) {
+            $source = (string) file_get_contents($this->root().'/resources/views/public-website/'.$view);
+            self::assertLessThan(
+                strpos($source, '<style>:root{--brand-primary:'),
+                strpos($source, "@vite('resources/js/public-website.js')"),
+                'Tenant brand tokens must load after the governed template stylesheet.',
+            );
+        }
     }
 
     public function test_progressive_enhancement_is_small_safe_and_nonessential(): void

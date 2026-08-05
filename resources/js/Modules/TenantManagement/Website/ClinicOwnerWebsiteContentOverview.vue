@@ -103,18 +103,53 @@ const inputClass =
                         Primary colour
                         <input
                             v-model="form.branding.primary_color"
-                            :class="inputClass"
-                            pattern="#[0-9A-F]{6}"
+                            type="color"
+                            class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
                         />
+                        <span class="mt-1 block text-xs font-normal text-slate-500">
+                            Choose the main brand colour.
+                        </span>
                     </label>
                     <label class="text-sm font-semibold text-slate-800">
                         Secondary colour
                         <input
                             v-model="form.branding.secondary_color"
-                            :class="inputClass"
-                            pattern="#[0-9A-F]{6}"
+                            type="color"
+                            class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
                         />
+                        <span class="mt-1 block text-xs font-normal text-slate-500">
+                            Choose the supporting brand colour.
+                        </span>
                     </label>
+                    <fieldset
+                        v-if="form.branding.logo_reference"
+                        class="rounded-xl border border-slate-200 p-4 md:col-span-2"
+                    >
+                        <legend class="px-1 text-sm font-semibold text-slate-800">Logo size</legend>
+                        <p class="mb-3 text-xs text-slate-500">
+                            Choose how prominently the clinic logo appears in the website header.
+                        </p>
+                        <div class="grid gap-2 sm:grid-cols-3">
+                            <label
+                                v-for="option in [
+                                    ['compact', 'Compact'],
+                                    ['standard', 'Standard'],
+                                    ['large', 'Large'],
+                                ]"
+                                :key="option[0]"
+                                class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-800 transition has-[:checked]:border-teal-700 has-[:checked]:bg-teal-50"
+                            >
+                                <input
+                                    v-model="form.branding.logo_display_size"
+                                    type="radio"
+                                    name="clinic_owner_logo_display_size"
+                                    :value="option[0]"
+                                    class="text-teal-700 focus:ring-teal-600"
+                                />
+                                {{ option[1] }}
+                            </label>
+                        </div>
+                    </fieldset>
                     <label class="text-sm font-semibold text-slate-800">
                         Contact email
                         <input

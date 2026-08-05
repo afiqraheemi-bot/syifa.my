@@ -94,6 +94,8 @@ final readonly class PostgresClinicRegistrationQueryAdapter implements ClinicReg
             $this->integerValue($row, 'version'),
             $declarations,
             $decisions,
+            $this->nullableStringValue($row, 'preferred_subdomain'),
+            $this->nullableStringValue($row, 'selected_website_template'),
         );
     }
 

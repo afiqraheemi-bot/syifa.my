@@ -57,6 +57,21 @@ final class ReadyForReviewServiceTest extends TestCase
         self::assertNull($website->publishedSnapshot());
     }
 
+    public function test_current_ready_for_review_website_can_revalidate_without_a_second_transition(): void
+    {
+        $website = $this->website();
+        $repository = new ReviewWebsiteRepository($website);
+        $service = $this->service($repository, $this->draft(true));
+        $first = $service->handle($this->command());
+
+        $result = $service->handle($this->command(expectedVersion: 2));
+
+        self::assertSame('ready_for_review', $result->toArray()['lifecycle']);
+        self::assertSame(2, $website->version());
+        self::assertSame(1, $repository->saves);
+        self::assertSame(2, $first->toArray()['version']);
+    }
+
     public function test_incomplete_enabled_content_is_rejected_without_persistence(): void
     {
         $website = $this->website();

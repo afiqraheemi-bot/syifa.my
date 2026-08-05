@@ -26,7 +26,7 @@
 
 - Public Booking Form, availability UI, or any Booking Engine change — Booking remains CTA-only per ADR-013/ADR-024's existing boundary;
 - dashboard or tenant-configuration workflows;
-- Syifa Care, Syifa Dental, Syifa Aesthetic, or Syifa Specialist visual variants — not designed or built;
+- Syifa Aesthetic visual variant — not designed or built; the only remaining official template slot. Syifa Care and Syifa Dental are locked separately — see [`18_CARE_DENTAL_REFERENCE_LOCK_V1.md`](18_CARE_DENTAL_REFERENCE_LOCK_V1.md); Syifa Specialist is locked separately — see [`19_SPECIALIST_REFERENCE_LOCK_V1.md`](19_SPECIALIST_REFERENCE_LOCK_V1.md);
 - approved production Privacy/Terms copy — routes remain fail-closed (404) until Product/Legal approval;
 - real field performance measurement (LCP/INP/CLS) and formal human usability/Ferrari-scorecard sign-off — structurally supported, not yet independently measured or signed off by the named accountable reviewers in `09_DESIGN_SYSTEM_GOVERNANCE.md`.
 

@@ -246,12 +246,18 @@ final class PublicWebsiteDeliveryTest extends TestCase
     ): void {
         $this->bindWebsite($this->renderModel('Klinik Syifa', TemplateId::from($templateId)));
 
-        $this->get('https://clinic.example/')
+        $response = $this->get('https://clinic.example/')
             ->assertOk()
             ->assertSee('data-template="'.$selector.'"', false)
             ->assertSee('Book Appointment')
             ->assertSee('id="services"', false)
             ->assertSee('id="contact"', false);
+
+        if ($templateId === TemplateId::SyifaEssential->value) {
+            $response->assertDontSee('hero__media--fallback', false);
+        } else {
+            $response->assertSee('hero__media--fallback', false);
+        }
     }
 
     /** @return array<string, array{string, string}> */

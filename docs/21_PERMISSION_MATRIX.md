@@ -242,7 +242,7 @@ Nineteen resources, matching 20_API_DESIGN.md's Resource Catalogue exactly. Colu
 | Update | ❌ | 🔒 Own (where approved self-service controls permit) | 🔒 Assigned | 🔒 Privileged |
 | Delete | N/A [R1] — retirement is a lifecycle state | same | same | same |
 | Approve | N/A [R7] — belongs to Onboarding Jobs' Website Approval workflow | same | same | same |
-| Publish | ❌ | ✅ Own | ❌ — a Website Designer prepares but never publishes on the Clinic Owner's behalf | 🔒 Privileged |
+| Publish | ❌ | 🔒 Own — approves publication; the assigned Website Designer executes it (2026-08-12 amendment) | ✅ Assigned — executes publication once the Clinic Owner has approved (2026-08-12 amendment) | 🔒 Privileged |
 | Assign | N/A [R3] | N/A [R3] | N/A [R3] | N/A [R3] |
 | Cancel | N/A [R10] — use Update (unpublication) instead | same | same | same |
 | Confirm | N/A [R4] | N/A [R4] | N/A [R4] | N/A [R4] |
@@ -670,7 +670,7 @@ The same data as Section 1, pivoted by role rather than by resource — useful f
 | Session | Full (own) | Own session only |
 | Profile | Full (own) | Own profile only |
 | Clinic | View/update | Assigned onboarding scope only |
-| Website | Content/theme preparation | Assigned onboarding scope only; cannot publish |
+| Website | Content/theme preparation, executes publication after Clinic Owner approval | Assigned onboarding scope only (2026-08-12 amendment) |
 | Website Pages | Create/edit, delete draft only | Assigned onboarding scope only; cannot approve own prepared content |
 | Custom Domains | Request/verify/activate | Assigned onboarding scope only; cannot detach |
 | Template | Read + selection | No authoring authority |
@@ -685,7 +685,7 @@ The same data as Section 1, pivoted by role rather than by resource — useful f
 | Reports | Own workload only | Assigned-project progress and workload views only |
 | Platform Settings | None | No standing |
 
-**Summary:** Website Designer access exists **only** through an active Website Designer Assignment to a specific Onboarding Job, and even within that assignment it is deliberately narrower than Clinic Owner's own authority (no Booking access, no commercial resource access, no publish authority, no ability to approve its own prepared content). This directly implements the brief's explicit rule: **Website Designer only has access to assigned Tenants** — see Assignment Rules below for exactly how that boundary is established and enforced.
+**Summary:** Website Designer access exists **only** through an active Website Designer Assignment to a specific Onboarding Job, and even within that assignment it is deliberately narrower than Clinic Owner's own authority (no Booking access, no commercial resource access, no ability to approve its own prepared content). Per the 2026-08-12 Website Publishing Pipeline Foundation amendment, the assigned Website Designer executes publication itself once the Clinic Owner has approved — the Clinic Owner never loses ultimate control since publication is blocked until their approval is recorded. This directly implements the brief's explicit rule: **Website Designer only has access to assigned Tenants** — see Assignment Rules below for exactly how that boundary is established and enforced.
 
 ### 2.4 Super Admin
 

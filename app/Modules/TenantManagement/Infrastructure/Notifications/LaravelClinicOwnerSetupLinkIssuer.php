@@ -7,12 +7,13 @@ namespace App\Modules\TenantManagement\Infrastructure\Notifications;
 use App\Modules\TenantManagement\Contracts\Administration\ClinicOwnerSetupCredentialData;
 use App\Modules\TenantManagement\Contracts\Administration\ClinicOwnerSetupLinkIssuerInterface;
 use App\Modules\TenantManagement\Contracts\Administration\ClinicOwnerSetupTokenVerifierInterface;
+use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerPasswordResetLinkIssuerInterface;
 use App\Modules\TenantManagement\Infrastructure\Authentication\ClinicOwnerAuthenticatable;
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Str;
 
-final readonly class LaravelClinicOwnerSetupLinkIssuer implements ClinicOwnerSetupLinkIssuerInterface, ClinicOwnerSetupTokenVerifierInterface
+final readonly class LaravelClinicOwnerSetupLinkIssuer implements ClinicOwnerPasswordResetLinkIssuerInterface, ClinicOwnerSetupLinkIssuerInterface, ClinicOwnerSetupTokenVerifierInterface
 {
     public function __construct(private ConnectionInterface $connection) {}
 
@@ -37,6 +38,26 @@ final readonly class LaravelClinicOwnerSetupLinkIssuer implements ClinicOwnerSet
         ])));
 
         return true;
+    }
+
+    public function issueForEmail(string $email): void
+    {
+        $normalizedEmail = mb_strtolower(trim($email));
+        $owners = ClinicOwnerAuthenticatable::query()
+            ->where('email', $normalizedEmail)
+            ->where('authority_status', 'active')
+            ->get(['tenant_id', 'email']);
+
+        // Fail closed when the address is absent or ambiguous. The HTTP
+        // response remains identical, so account existence is never exposed.
+        if ($owners->count() !== 1) {
+            return;
+        }
+
+        $owner = $owners->first();
+        if ($owner instanceof ClinicOwnerAuthenticatable) {
+            $this->issue((string) $owner->tenant_id, (string) $owner->email);
+        }
     }
 
     public function resolve(string $email, string $token): ?ClinicOwnerSetupCredentialData

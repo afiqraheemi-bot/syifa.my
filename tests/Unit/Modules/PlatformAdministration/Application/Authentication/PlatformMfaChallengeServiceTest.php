@@ -27,6 +27,37 @@ use PHPUnit\Framework\TestCase;
 
 final class PlatformMfaChallengeServiceTest extends TestCase
 {
+    public function test_local_demo_code_is_accepted_only_when_explicitly_enabled_for_identity(): void
+    {
+        $fixture = new MfaHarness;
+        $demoIdentityId = '00000000-0000-4000-8000-100000000001';
+        $principal = new PlatformPrincipal($demoIdentityId, 'super_admin', 'Demo Super Admin');
+        $fixture->pending->establish(new PendingPlatformAuthenticationData(
+            $principal,
+            false,
+            new DateTimeImmutable('2026-01-01T00:00:00Z'),
+            new DateTimeImmutable('2026-01-01T00:05:00Z'),
+            null,
+        ));
+        $service = new PlatformMfaChallengeService(
+            $fixture->enrollments,
+            $fixture->pending,
+            $fixture->sessions,
+            $fixture->audit,
+            new MfaCorrelationResolver,
+            $fixture->encrypter,
+            true,
+            '123456',
+            [$demoIdentityId],
+        );
+
+        self::assertSame(
+            $principal,
+            $service->complete('123456', new DateTimeImmutable('2026-01-01T00:01:00Z')),
+        );
+        self::assertSame(1, $fixture->sessions->establishCount);
+    }
+
     public function test_first_challenge_enrolls_totp_and_only_then_establishes_the_privileged_session(): void
     {
         $harness = new MfaHarness;

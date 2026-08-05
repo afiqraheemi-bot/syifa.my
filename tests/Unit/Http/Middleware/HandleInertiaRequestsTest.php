@@ -49,6 +49,7 @@ final class HandleInertiaRequestsTest extends TestCase
 
         self::assertIsCallable($authentication);
         self::assertSame(url($expectedPath), $authentication()['logout_url']);
+        self::assertSame(route('login'), $authentication()['login_url']);
     }
 
     /** @return iterable<string, array{ActorType, string, ?string, string}> */

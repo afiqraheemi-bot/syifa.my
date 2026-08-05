@@ -13,12 +13,13 @@ final class HttpSecurityHeadersTest extends TestCase
     {
         Config::set('http_security.environment', 'production');
         Config::set('http_security.strict_transport_security.enabled', true);
+        Config::set('public_website_delivery.asset_origin', 'https://assets.syifa.my');
 
         $response = $this->get('/api/v1/platform/sessions/current');
 
         $response->assertHeader(
             'Content-Security-Policy',
-            "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; upgrade-insecure-requests",
+            "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: https://assets.syifa.my; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; upgrade-insecure-requests",
         );
         $response->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         $response->assertHeader('X-Frame-Options', 'DENY');
@@ -40,13 +41,34 @@ final class HttpSecurityHeadersTest extends TestCase
     {
         Config::set('http_security.environment', 'development');
         Config::set('http_security.strict_transport_security.enabled', false);
+        Config::set('public_website_delivery.asset_origin', 'http://localhost:8000');
 
         $response = $this->get('/api/v1/platform/sessions/current');
 
         $response->assertHeader(
             'Content-Security-Policy',
-            "default-src 'self'; base-uri 'self'; connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:*; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self' 'unsafe-inline' http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:",
+            "default-src 'self'; base-uri 'self'; connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:*; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: http://localhost:8000; object-src 'none'; script-src 'self' 'unsafe-inline' http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:",
         );
         $response->assertHeaderMissing('Strict-Transport-Security');
+    }
+
+    public function test_public_website_assets_can_be_embedded_from_the_configured_asset_origin(): void
+    {
+        $response = $this->get('/assets/00000000-0000-4000-8000-000000000000');
+
+        $response->assertHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    }
+
+    public function test_invalid_asset_origin_is_not_added_to_the_content_security_policy(): void
+    {
+        Config::set('http_security.environment', 'production');
+        Config::set('public_website_delivery.asset_origin', 'https://assets.syifa.my; script-src *');
+
+        $response = $this->get('/api/v1/platform/sessions/current');
+
+        $response->assertHeader(
+            'Content-Security-Policy',
+            "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; upgrade-insecure-requests",
+        );
     }
 }

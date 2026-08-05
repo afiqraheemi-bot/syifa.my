@@ -9,6 +9,8 @@ use App\Modules\Booking\Application\Configuration\UpdateBookingFormConfiguration
 use App\Modules\Booking\Domain\Exceptions\InvalidBookingFormConfigurationValueException;
 use App\Modules\Booking\Domain\Exceptions\StaleBookingFormConfigurationWriteException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidOnboardingJobLifecycleTransitionException;
+use App\Modules\WebsiteBuilder\Application\ClinicBooking\ManageClinicBookingScheduleService;
+use App\Modules\WebsiteBuilder\Application\ClinicBooking\UpdateClinicBookingScheduleCommand;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\OptionalContactValue;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileCommand;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileService;
@@ -16,6 +18,7 @@ use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\UpdateWebsiteContentCommand;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidClinicContactProfileException;
+use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidClinicOperationalTimeException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleClinicWriteException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
@@ -40,6 +43,7 @@ final readonly class WebsiteDesignerJobDetailController
         ManageWebsiteContentService $websiteContent,
         ManageBookingFormConfigurationService $bookingConfiguration,
         UpdateClinicContactProfileService $clinicContact,
+        ManageClinicBookingScheduleService $clinicBookingSchedule,
         SubmitWebsiteForReviewApplication $readyForReview,
         string $jobId,
     ): Response|RedirectResponse|JsonResponse {
@@ -51,83 +55,112 @@ final readonly class WebsiteDesignerJobDetailController
         abort_if($view === null, 404);
 
         if ($request->isMethod('patch')) {
-            if ($request->input('workspace') === 'ready_for_review') {
-                return $this->readyForReview(
+            $request->validate([
+                'workspace' => ['required', Rule::in([
+                    'ready_for_review',
+                    'booking_configuration',
+                    'booking_schedule',
+                    'clinic_contact',
+                    'website_setup',
+                ])],
+            ]);
+
+            return match ($request->input('workspace')) {
+                'ready_for_review' => $this->readyForReview(
                     $request,
                     $context,
                     $view->props,
                     $readyForReview,
-                );
-            }
-            if ($request->input('workspace') === 'booking_configuration') {
-                return $this->updateBookingConfiguration(
+                ),
+                'booking_configuration' => $this->updateBookingConfiguration(
                     $request,
                     $view->props,
                     $bookingConfiguration,
-                );
-            }
-            if ($request->input('workspace') === 'clinic_contact') {
-                return $this->updateClinicContact(
+                ),
+                'booking_schedule' => $this->updateBookingSchedule(
+                    $request,
+                    $context,
+                    $view->props,
+                    $clinicBookingSchedule,
+                ),
+                'clinic_contact' => $this->updateClinicContact(
                     $request,
                     $context,
                     $view->props,
                     $clinicContact,
-                );
-            }
-
-            $rules = (new UpdateClinicOwnerWebsiteContentRequest)->rules();
-            $rules['template_id'] = ['required', Rule::enum(TemplateId::class)];
-            /** @var array<string, mixed> $data */
-            $data = $request->validate($rules);
-            $branding = $data['branding'];
-            $seo = $data['seo'];
-            $tenantId = (string) $view->props['job']['tenantId'];
-
-            try {
-                $websiteContent->update(new UpdateWebsiteContentCommand(
-                    new WebsiteAuthorizationContext(
-                        $context->identityId,
-                        $context->role,
-                        assignedTenantId: $tenantId,
-                    ),
-                    $tenantId,
-                    (int) $data['version'],
-                    trim((string) $branding['clinic_name']),
-                    $this->optional($branding['tagline'] ?? null),
-                    (string) $branding['primary_color'],
-                    (string) $branding['secondary_color'],
-                    trim((string) $branding['contact_email']),
-                    trim((string) $branding['contact_phone']),
-                    trim((string) $branding['address']),
-                    array_filter(
-                        $branding['social_links'],
-                        static fn (mixed $value): bool => is_string($value) && trim($value) !== '',
-                    ),
-                    trim((string) $seo['meta_title']),
-                    trim((string) $seo['meta_description']),
-                    $this->optional($seo['meta_keywords'] ?? null),
-                    $this->optional($seo['canonical_url'] ?? null),
-                    (string) $seo['robots_directive'],
-                    trim((string) $seo['open_graph_title']),
-                    trim((string) $seo['open_graph_description']),
-                    (bool) $seo['indexing_enabled'],
-                    $data['sections'],
-                    (string) $data['template_id'],
-                ));
-            } catch (StaleWebsiteWriteException) {
-                return back()->withErrors([
-                    'version' => 'This Website configuration changed while you were editing. Refresh and review the latest values before saving again.',
-                ]);
-            } catch (InvalidWebsiteValueException $exception) {
-                return back()->withErrors([
-                    'template_id' => $exception->getMessage(),
-                ]);
-            }
-
-            return back()->with('website_setup_saved', true);
+                ),
+                'website_setup' => $this->updateWebsiteContent(
+                    $request,
+                    $context,
+                    $view->props,
+                    $websiteContent,
+                ),
+                default => abort(422),
+            };
         }
 
         return Inertia::render($view->component, $view->props);
+    }
+
+    /** @param array<string, mixed> $props */
+    private function updateWebsiteContent(
+        Request $request,
+        AuthorizationContext $context,
+        array $props,
+        ManageWebsiteContentService $websiteContent,
+    ): RedirectResponse {
+        $rules = (new UpdateClinicOwnerWebsiteContentRequest)->rules();
+        $rules['template_id'] = ['required', Rule::enum(TemplateId::class)];
+        /** @var array<string, mixed> $data */
+        $data = $request->validate($rules);
+        $branding = $data['branding'];
+        $seo = $data['seo'];
+        $tenantId = (string) $props['job']['tenantId'];
+
+        try {
+            $websiteContent->update(new UpdateWebsiteContentCommand(
+                new WebsiteAuthorizationContext(
+                    $context->identityId,
+                    $context->role,
+                    assignedTenantId: $tenantId,
+                ),
+                $tenantId,
+                (int) $data['version'],
+                trim((string) $branding['clinic_name']),
+                $this->optional($branding['tagline'] ?? null),
+                strtoupper((string) $branding['primary_color']),
+                strtoupper((string) $branding['secondary_color']),
+                trim((string) $branding['contact_email']),
+                trim((string) $branding['contact_phone']),
+                trim((string) $branding['address']),
+                array_filter(
+                    $branding['social_links'],
+                    static fn (mixed $value): bool => is_string($value) && trim($value) !== '',
+                ),
+                trim((string) $seo['meta_title']),
+                trim((string) $seo['meta_description']),
+                $this->optional($seo['meta_keywords'] ?? null),
+                $this->optional($seo['canonical_url'] ?? null),
+                (string) $seo['robots_directive'],
+                trim((string) $seo['open_graph_title']),
+                trim((string) $seo['open_graph_description']),
+                (bool) $seo['indexing_enabled'],
+                $data['sections'],
+                (string) $data['template_id'],
+                $this->optional($branding['logo_reference'] ?? null),
+                (string) $branding['logo_display_size'],
+            ));
+        } catch (StaleWebsiteWriteException) {
+            return back()->withErrors([
+                'version' => 'This Website configuration changed while you were editing. Refresh and review the latest values before saving again.',
+            ]);
+        } catch (InvalidWebsiteValueException $exception) {
+            return back()->withErrors([
+                'template_id' => $exception->getMessage(),
+            ]);
+        }
+
+        return back()->with('website_setup_saved', true);
     }
 
     private function context(Request $request): AuthorizationContext
@@ -212,6 +245,58 @@ final readonly class WebsiteDesignerJobDetailController
         }
 
         return back()->with('booking_configuration_saved', true);
+    }
+
+    /** @param array<string, mixed> $props */
+    private function updateBookingSchedule(
+        Request $request,
+        AuthorizationContext $context,
+        array $props,
+        ManageClinicBookingScheduleService $schedule,
+    ): RedirectResponse {
+        /** @var array{workspace: string, version: int, timezone: string, appointment_duration_minutes: int, booking_capacity_per_slot: int, operating_intervals: list<array{day: int, opens_at: string, closes_at: string}>} $data */
+        $data = $request->validate([
+            'workspace' => ['required', 'in:booking_schedule'],
+            'version' => ['required', 'integer', 'min:1'],
+            'timezone' => ['required', 'in:Asia/Kuala_Lumpur'],
+            'appointment_duration_minutes' => ['required', 'integer', Rule::in([15, 20, 30, 45, 60])],
+            'booking_capacity_per_slot' => ['required', 'integer', 'between:1,10'],
+            'operating_intervals' => ['required', 'array', 'min:1', 'max:7'],
+            'operating_intervals.*.day' => ['required', 'integer', 'between:1,7', 'distinct'],
+            'operating_intervals.*.opens_at' => ['required', 'date_format:H:i'],
+            'operating_intervals.*.closes_at' => ['required', 'date_format:H:i'],
+        ]);
+        $tenantId = (string) $props['job']['tenantId'];
+        $authorization = new WebsiteAuthorizationContext(
+            $context->identityId,
+            $context->role,
+            assignedTenantId: $tenantId,
+        );
+        $clinic = $schedule->read($tenantId, $authorization);
+
+        try {
+            $schedule->update(new UpdateClinicBookingScheduleCommand(
+                $tenantId,
+                $clinic->clinicId,
+                $authorization,
+                (int) $data['version'],
+                (string) $data['timezone'],
+                $data['operating_intervals'],
+                (int) $data['appointment_duration_minutes'],
+                (int) $data['booking_capacity_per_slot'],
+                new \DateTimeImmutable,
+            ));
+        } catch (StaleClinicWriteException) {
+            return back()->withErrors([
+                'booking_schedule.version' => 'Booking schedule changed while you were editing. Refresh and try again.',
+            ]);
+        } catch (InvalidClinicOperationalTimeException $exception) {
+            return back()->withErrors([
+                'booking_schedule.configuration' => $exception->getMessage(),
+            ]);
+        }
+
+        return back()->with('booking_schedule_saved', true);
     }
 
     /** @param array<string, mixed> $props */

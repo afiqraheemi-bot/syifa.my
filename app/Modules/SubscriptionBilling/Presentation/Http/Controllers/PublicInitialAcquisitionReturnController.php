@@ -43,7 +43,7 @@ final readonly class PublicInitialAcquisitionReturnController
             'lastChangedAt' => $payment->lastChangedAt,
             'offersUrl' => route('clinic-registration.offers'),
             'refreshUrl' => route('clinic-registration.payment-return'),
-            'homeUrl' => route('root'),
+            'homeUrl' => route('root', [], false),
         ]);
     }
 

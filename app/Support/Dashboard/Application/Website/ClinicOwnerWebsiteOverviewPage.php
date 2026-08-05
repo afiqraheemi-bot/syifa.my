@@ -60,6 +60,7 @@ final readonly class ClinicOwnerWebsiteOverviewPage
             'quickActions' => $this->quickActions->provide($context)->data,
             'websiteApproval' => $approval,
             'websiteApprovalDecisionUrl' => route('dashboard.website.approval'),
+            'websiteApprovalPreviewUrl' => route('dashboard.website.preview'),
             'onboardingTasks' => $tasks,
             'launchReadiness' => $readiness?->toArray(),
             'onboardingTaskUrlTemplate' => $tasks === null ? null : route('dashboard.website.onboarding-tasks.update', [

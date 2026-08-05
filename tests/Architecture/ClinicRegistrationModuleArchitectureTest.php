@@ -63,9 +63,20 @@ final class ClinicRegistrationModuleArchitectureTest extends TestCase
                 'CreateTenant',
                 'TenantProvisioning',
                 'OnboardingJob',
-                'WebsiteBuilder',
                 'Booking',
                 'EMR',
+            ] as $forbidden) {
+                self::assertStringNotContainsString($forbidden, $source, $file);
+            }
+
+            // WebsiteBuilder is a sanctioned exception, but only through its Contracts
+            // boundary (public website-address availability, template catalogue) —
+            // Domain/Application/Infrastructure internals must never leak in, same
+            // rule already applied to Commercial and SubscriptionBilling above.
+            foreach ([
+                'App\\Modules\\WebsiteBuilder\\Domain',
+                'App\\Modules\\WebsiteBuilder\\Application',
+                'App\\Modules\\WebsiteBuilder\\Infrastructure',
             ] as $forbidden) {
                 self::assertStringNotContainsString($forbidden, $source, $file);
             }

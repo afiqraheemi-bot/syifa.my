@@ -20,6 +20,7 @@ final readonly class WebsiteBranding
         public string $contactPhone,
         public string $address,
         public array $socialLinks = [],
+        public LogoDisplaySize $logoDisplaySize = LogoDisplaySize::Standard,
     ) {
         if (trim($clinicName) === '' || mb_strlen($clinicName) > 200) {
             throw new InvalidWebsiteValueException('Clinic name is invalid.');

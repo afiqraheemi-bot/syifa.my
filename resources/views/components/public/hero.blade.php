@@ -6,9 +6,11 @@
     $phone = $document->website->footer->contactPhone;
     $address = $document->website->footer->address;
     $todayHours = $document->todayHoursLabel;
+    $templateId = $document->website->website->templateId;
+    $showTemplateVisual = $imageUrl !== null || $templateId !== 'SYIFA_ESSENTIAL';
 @endphp
 <section class="hero" id="home" aria-labelledby="hero-title">
-    <div class="public-container hero__layout {{ $imageUrl === null ? 'hero__layout--text' : '' }}">
+    <div class="public-container hero__layout {{ $showTemplateVisual ? '' : 'hero__layout--text' }}">
         <div class="hero__content">
             <p class="eyebrow">{{ $document->website->branding->clinicName }}</p>
             <h1 id="hero-title">{{ $section->headline }}</h1>
@@ -27,9 +29,13 @@
                 </ul>
             @endif
         </div>
-        @if ($imageUrl !== null)
-            <div class="hero__media">
-                <x-public.responsive-image :url="$imageUrl->value" alt="" :width="$imageDimensions[0]" :height="$imageDimensions[1]" :priority="true" class="hero__image" />
+        @if ($showTemplateVisual)
+            <div class="hero__media {{ $imageUrl === null ? 'hero__media--fallback' : '' }}">
+                @if ($imageUrl !== null)
+                    <x-public.responsive-image :url="$imageUrl->value" alt="" :width="$imageDimensions[0]" :height="$imageDimensions[1]" :priority="true" class="hero__image" />
+                @else
+                    <span class="hero__media-symbol" aria-hidden="true"><x-public.icon name="medical" /></span>
+                @endif
             </div>
         @endif
     </div>

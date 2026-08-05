@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Dashboard\Presentation\Http\Controllers;
 
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContext;
+use App\Modules\WebsiteBuilder\Application\Delivery\PublicUrl;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Application\WebsitePreview\DraftPreviewDocumentFactory;
 use App\Modules\WebsiteBuilder\Application\WebsitePreview\PreviewWebsiteDraftCommand;
@@ -45,7 +46,11 @@ final readonly class WebsiteDesignerDraftPreviewController
         );
 
         return response()->view('public-website.preview', [
-            'document' => $documents->make($website, $previewContext),
+            'document' => $documents->make(
+                $website,
+                $previewContext,
+                new PublicUrl(route('dashboard.onboarding.booking-preview', $jobId)),
+            ),
         ])->withHeaders([
             'X-Robots-Tag' => 'noindex, nofollow, noarchive',
             'Cache-Control' => 'private, no-store, max-age=0',

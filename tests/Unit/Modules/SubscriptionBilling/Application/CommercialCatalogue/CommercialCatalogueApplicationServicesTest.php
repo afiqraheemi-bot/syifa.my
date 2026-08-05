@@ -13,6 +13,8 @@ use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutco
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ActivateCapabilityDefinitionService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ActivatePlanOfferingService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ActivatePlanService;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\BillingOptionAuditTrail;
+use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\CapabilityDefinitionAuditTrail;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\CommercialCatalogueIdentifierGeneratorInterface;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\ComputeSubscriptionEntitlementService;
 use App\Modules\SubscriptionBilling\Application\CommercialCatalogue\CreateBillingOptionService;
@@ -140,8 +142,8 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
 
         $createAudit = $this->auditRecorder();
         $plan = (new CreatePlanService($identifierGenerator, $planRepository, $createAudit))->execute($this->createPlanCommand());
-        $billingOption = (new CreateBillingOptionService($identifierGenerator, $billingOptionRepository))->execute($this->createBillingOptionCommand());
-        $capability = (new CreateCapabilityDefinitionService($identifierGenerator, $capabilityRepository))->execute($this->createCapabilityCommand());
+        $billingOption = (new CreateBillingOptionService($identifierGenerator, $billingOptionRepository, $this->billingOptionAudit()))->execute($this->createBillingOptionCommand());
+        $capability = (new CreateCapabilityDefinitionService($identifierGenerator, $capabilityRepository, $this->capabilityAudit()))->execute($this->createCapabilityCommand());
         $planOffering = (new CreatePlanOfferingService($identifierGenerator, $planOfferingRepository, $this->offeringAudit()))->execute(
             $this->createPlanOfferingCommand($plan->id->value, $billingOption->id->value),
         );
@@ -254,7 +256,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 correlationId: $this->uuid(501),
             ),
         );
-        $updatedBillingOption = (new UpdateBillingOptionService($billingOptionRepository))->execute(
+        $updatedBillingOption = (new UpdateBillingOptionService($billingOptionRepository, $this->billingOptionAudit()))->execute(
             new UpdateBillingOptionCommand(
                 billingOptionId: $billingOption->id->value,
                 name: 'Updated billing option',
@@ -271,7 +273,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 correlationId: $this->uuid(503),
             ),
         );
-        $updatedCapability = (new UpdateCapabilityDefinitionService($capabilityRepository))->execute(
+        $updatedCapability = (new UpdateCapabilityDefinitionService($capabilityRepository, $this->capabilityAudit()))->execute(
             new UpdateCapabilityDefinitionCommand(
                 capabilityId: $capability->id->value,
                 name: 'Updated Feature',
@@ -399,7 +401,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         self::assertSame(4, $planRepository->saveCalls);
         self::assertSame(5, $retiredPlan->version());
 
-        $activatedCapability = (new ActivateCapabilityDefinitionService($capabilityRepository))->execute(
+        $activatedCapability = (new ActivateCapabilityDefinitionService($capabilityRepository, $this->capabilityAudit()))->execute(
             new ActivateCapabilityDefinitionCommand(
                 capabilityId: $capabilityRepository->capabilityId(),
                 expectedVersion: 1,
@@ -408,7 +410,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 correlationId: $this->uuid(609),
             ),
         );
-        $deprecatedCapability = (new DeprecateCapabilityDefinitionService($capabilityRepository))->execute(
+        $deprecatedCapability = (new DeprecateCapabilityDefinitionService($capabilityRepository, $this->capabilityAudit()))->execute(
             new DeprecateCapabilityDefinitionCommand(
                 capabilityId: $activatedCapability->id->value,
                 expectedVersion: 2,
@@ -417,7 +419,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 correlationId: $this->uuid(611),
             ),
         );
-        $retiredCapability = (new RetireCapabilityDefinitionService($capabilityRepository))->execute(
+        $retiredCapability = (new RetireCapabilityDefinitionService($capabilityRepository, $this->capabilityAudit()))->execute(
             new RetireCapabilityDefinitionCommand(
                 capabilityId: $deprecatedCapability->id->value,
                 expectedVersion: 3,
@@ -441,7 +443,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 correlationId: $this->uuid(615),
             ),
         );
-        $unavailablePlanOffering = (new MakePlanOfferingUnavailableService($planOfferingRepository))->execute(
+        $unavailablePlanOffering = (new MakePlanOfferingUnavailableService($planOfferingRepository, $this->offeringAudit()))->execute(
             new MakePlanOfferingUnavailableCommand(
                 planOfferingId: $activatedPlanOffering->id->value,
                 expectedVersion: 2,
@@ -450,7 +452,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 correlationId: $this->uuid(617),
             ),
         );
-        $grandfatheredPlanOffering = (new GrandfatherPlanOfferingService($planOfferingRepository))->execute(
+        $grandfatheredPlanOffering = (new GrandfatherPlanOfferingService($planOfferingRepository, $this->offeringAudit()))->execute(
             new GrandfatherPlanOfferingCommand(
                 planOfferingId: $unavailablePlanOffering->id->value,
                 expectedVersion: 3,
@@ -548,7 +550,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                     correlationId: $this->uuid(812),
                 ),
             ),
-            'BillingOption' => fn () => (new UpdateBillingOptionService(new RecordingBillingOptionRepository($this->billingOption(version: 3))))->execute(
+            'BillingOption' => fn () => (new UpdateBillingOptionService(new RecordingBillingOptionRepository($this->billingOption(version: 3)), $this->billingOptionAudit()))->execute(
                 new UpdateBillingOptionCommand(
                     billingOptionId: $this->uuid(813),
                     name: 'Billing Option',
@@ -565,7 +567,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                     correlationId: $this->uuid(815),
                 ),
             ),
-            'CapabilityDefinition' => fn () => (new UpdateCapabilityDefinitionService(new RecordingCapabilityDefinitionRepository($this->capability(version: 3))))->execute(
+            'CapabilityDefinition' => fn () => (new UpdateCapabilityDefinitionService(new RecordingCapabilityDefinitionRepository($this->capability(version: 3)), $this->capabilityAudit()))->execute(
                 new UpdateCapabilityDefinitionCommand(
                     capabilityId: $this->uuid(816),
                     name: 'Feature',
@@ -624,7 +626,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 $billingOption = $this->billingOption(version: 3);
                 $repository = new RecordingBillingOptionRepository($billingOption);
 
-                return [$repository, fn () => (new UpdateBillingOptionService($repository))->execute(
+                return [$repository, fn () => (new UpdateBillingOptionService($repository, $this->billingOptionAudit()))->execute(
                     new UpdateBillingOptionCommand(
                         billingOptionId: $billingOption->id->value,
                         name: 'Billing Option',
@@ -646,7 +648,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 $capability = $this->capability(version: 3);
                 $repository = new RecordingCapabilityDefinitionRepository($capability);
 
-                return [$repository, fn () => (new UpdateCapabilityDefinitionService($repository))->execute(
+                return [$repository, fn () => (new UpdateCapabilityDefinitionService($repository, $this->capabilityAudit()))->execute(
                     new UpdateCapabilityDefinitionCommand(
                         capabilityId: $capability->id->value,
                         name: 'Feature',
@@ -706,7 +708,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                     correlationId: $this->uuid(832),
                 ),
             ),
-            'CapabilityDefinition' => fn () => (new ActivateCapabilityDefinitionService(new RecordingCapabilityDefinitionRepository(null)))->execute(
+            'CapabilityDefinition' => fn () => (new ActivateCapabilityDefinitionService(new RecordingCapabilityDefinitionRepository(null), $this->capabilityAudit()))->execute(
                 new ActivateCapabilityDefinitionCommand(
                     capabilityId: $this->uuid(833),
                     expectedVersion: 1,
@@ -754,7 +756,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
                 $capability = $this->capability(version: 3);
                 $repository = new RecordingCapabilityDefinitionRepository($capability);
 
-                return [$repository, fn () => (new ActivateCapabilityDefinitionService($repository))->execute(
+                return [$repository, fn () => (new ActivateCapabilityDefinitionService($repository, $this->capabilityAudit()))->execute(
                     new ActivateCapabilityDefinitionCommand(
                         capabilityId: $capability->id->value,
                         expectedVersion: 2,
@@ -816,7 +818,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $capabilityRepository = new RecordingCapabilityDefinitionRepository($this->capability(version: 1));
 
         try {
-            (new DeprecateCapabilityDefinitionService($capabilityRepository))->execute(
+            (new DeprecateCapabilityDefinitionService($capabilityRepository, $this->capabilityAudit()))->execute(
                 new DeprecateCapabilityDefinitionCommand(
                     capabilityId: $capabilityRepository->capabilityId(),
                     expectedVersion: 1,
@@ -834,7 +836,7 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
         $planOfferingRepository = new RecordingPlanOfferingRepository($this->planOffering(version: 1));
 
         try {
-            (new MakePlanOfferingUnavailableService($planOfferingRepository))->execute(
+            (new MakePlanOfferingUnavailableService($planOfferingRepository, $this->offeringAudit()))->execute(
                 new MakePlanOfferingUnavailableCommand(
                     planOfferingId: $planOfferingRepository->planOfferingId(),
                     expectedVersion: 1,
@@ -1191,6 +1193,16 @@ final class CommercialCatalogueApplicationServicesTest extends TestCase
     private function offeringAudit(): PlanOfferingAuditTrail
     {
         return new PlanOfferingAuditTrail($this->auditRecorder());
+    }
+
+    private function billingOptionAudit(): BillingOptionAuditTrail
+    {
+        return new BillingOptionAuditTrail($this->auditRecorder());
+    }
+
+    private function capabilityAudit(): CapabilityDefinitionAuditTrail
+    {
+        return new CapabilityDefinitionAuditTrail($this->auditRecorder());
     }
 
     /**

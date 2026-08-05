@@ -7,6 +7,7 @@ namespace Tests\Unit\Modules\WebsiteBuilder\Domain;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\PublishedBusinessHour;
 use App\Modules\WebsiteBuilder\Domain\PublishedContactProjection;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetAvailabilityEvidence;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetMimeType;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\PublicationId;
@@ -154,9 +155,11 @@ final class WebsitePublishingTest extends TestCase
     {
         $website = $this->website();
         $logo = WebsiteAsset::register(new AssetId($this->uuid(70)), new TenantId($this->uuid(2)), 'tenant/assets/logo.png', AssetMimeType::Png, 100, 100, 100, str_repeat('c', 64), $this->at());
+        $logo->markAvailable(new AssetAvailabilityEvidence(true, true), $this->at('+15 minutes'));
         $website->registerAsset($logo, $this->at());
         $website->updateBranding($this->branding('Klinik Syifa', $logo->id), $this->at());
         $website->readyForReview($this->at('+1 hour'));
+        $logo->archive($this->at('+90 minutes'));
 
         try {
             $website->publish($this->evidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(80)), $this->uuid(90), $this->at('+2 hours'));

@@ -19,5 +19,7 @@ final readonly class ResubmitClinicRegistrationCorrectionCommand
         public array $declarations,
         public int $expectedVersion,
         public DateTimeImmutable $occurredAt,
+        public ?string $preferredSubdomain = null,
+        public ?string $selectedWebsiteTemplate = null,
     ) {}
 }

@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\MarketingHomeController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\RootEntryController;
+use App\Http\Controllers\TemplatePreviewController;
 use App\Modules\Booking\Presentation\Http\Controllers\ClinicOwnerBookingOperationController;
 use App\Modules\Booking\Presentation\Http\Controllers\ClinicOwnerManualBookingController;
 use App\Modules\PlatformAdministration\Presentation\Http\Controllers\PlatformEmailVerificationController;
@@ -17,6 +19,7 @@ use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCata
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCatalogueCapabilityDefinitionController;
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanController;
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\CommercialCataloguePlanOfferingController;
+use App\Modules\TenantManagement\Presentation\Http\Controllers\ClinicOwnerPasswordResetController;
 use App\Modules\TenantManagement\Presentation\Http\Controllers\ClinicOwnerSessionController;
 use App\Modules\TenantManagement\Presentation\Http\Controllers\ClinicOwnerSetupController;
 use App\Modules\TenantManagement\Presentation\Http\Middleware\AuthenticateClinicOwnerSessionMiddleware;
@@ -29,6 +32,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\AuthenticatedDashboardCo
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerCustomDomainController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerDraftPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerServiceSetupController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerSubscriptionController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteApprovalController;
@@ -51,12 +55,15 @@ use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminRegistrationRe
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionOperationController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminTenantOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerBookingPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerDraftContentController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerDraftPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerJobDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerOnboardingQueueController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerPublishWebsiteController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerWebsiteAddressController;
+use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerWebsiteAssetController;
+use App\Support\PublicWebsite\Presentation\Http\Controllers\PublicWebsiteAssetController;
 use Illuminate\Support\Facades\Route;
 
 // Application entry point (distinct from a tenant's public Website): only
@@ -70,7 +77,8 @@ foreach (RootEntryController::tenantAdminBaseDomains() as $tenantAdminBaseDomain
         ->name('clinic-owner.login');
 }
 foreach (RootEntryController::appEntryHosts() as $appEntryHost) {
-    Route::domain($appEntryHost)->get('/', RootEntryController::class)->name('root');
+    Route::domain($appEntryHost)->get('/', MarketingHomeController::class)->name('root');
+    Route::domain($appEntryHost)->get('/login', RootEntryController::class)->name('login');
 }
 Route::get('/', PublicWebsiteController::class)->name('public-website.home');
 Route::get('/clinic-owner/setup/{token}', [ClinicOwnerSetupController::class, 'show'])
@@ -79,8 +87,18 @@ Route::get('/clinic-owner/setup/{token}', [ClinicOwnerSetupController::class, 's
 Route::post('/clinic-owner/setup', [ClinicOwnerSetupController::class, 'complete'])
     ->middleware('throttle:platform.password-reset')
     ->name('clinic-owner.setup.complete');
+Route::get('/platform/password/reset/{token}', [PlatformPasswordResetController::class, 'show'])
+    ->middleware('throttle:public.default')
+    ->name('platform.password.reset');
 Route::get('/privacy', [PublicLegalDocumentController::class, 'privacy'])->name('public-website.privacy');
 Route::get('/terms', [PublicLegalDocumentController::class, 'terms'])->name('public-website.terms');
+Route::get('/templates/preview/{slug}', TemplatePreviewController::class)
+    ->middleware('throttle:public.default')
+    ->name('templates.preview');
+Route::get('/assets/{assetId}', PublicWebsiteAssetController::class)
+    ->whereUuid('assetId')
+    ->middleware('throttle:public.default')
+    ->name('public-website.assets.show');
 Route::get('/dashboard', AuthenticatedDashboardController::class)
     ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
     ->name('dashboard');
@@ -103,6 +121,10 @@ Route::get('/dashboard/onboarding/{jobId}/preview', WebsiteDesignerDraftPreviewC
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,website_designer')
     ->name('dashboard.onboarding.preview');
+Route::match(['get', 'post'], '/dashboard/onboarding/{jobId}/preview/booking', WebsiteDesignerBookingPreviewController::class)
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.booking-preview');
 Route::post('/dashboard/onboarding/{jobId}/publish', WebsiteDesignerPublishWebsiteController::class)
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,website_designer')
@@ -119,6 +141,10 @@ Route::prefix('/api/v1/platform/onboarding/{jobId}/website-draft')
         Route::get('/', [WebsiteDesignerDraftContentController::class, 'show'])->name('show');
         Route::patch('/', [WebsiteDesignerDraftContentController::class, 'update'])->name('update');
     });
+Route::post('/api/v1/platform/onboarding/{jobId}/website-assets', WebsiteDesignerWebsiteAssetController::class)
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('website-designer.website-assets.store');
 Route::get('/dashboard/tenants', SuperAdminTenantOverviewController::class)
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.tenants');
@@ -287,6 +313,9 @@ Route::prefix('/dashboard/website/domain')
 Route::post('/dashboard/website/approval', ClinicOwnerWebsiteApprovalController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.approval');
+Route::get('/dashboard/website/preview', ClinicOwnerDraftPreviewController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website.preview');
 Route::patch('/dashboard/website/onboarding-tasks/{jobId}/{taskId}', OnboardingTaskController::class)
     ->whereUuid(['jobId', 'taskId'])
     ->middleware('authorize.context:clinic_owner,clinic_owner')
@@ -393,6 +422,9 @@ if ((bool) config('operations.enabled', true)) {
 
 Route::prefix('api/v1')
     ->group(function (): void {
+        Route::post('/password/forgot', ClinicOwnerPasswordResetController::class)
+            ->middleware('throttle:platform.password-reset')
+            ->name('clinic-owner.password.forgot');
         Route::post('/sessions', [ClinicOwnerSessionController::class, 'store'])
             ->middleware([
                 'guest.guard:clinic_owner',
@@ -431,8 +463,10 @@ Route::prefix('api/v1/platform/sessions')
 Route::prefix('api/v1/platform/password')
     ->middleware('throttle:platform.password-reset')
     ->group(function (): void {
-        Route::post('/forgot', [PlatformPasswordResetController::class, 'forgotPassword']);
-        Route::post('/reset', [PlatformPasswordResetController::class, 'resetPassword']);
+        Route::post('/forgot', [PlatformPasswordResetController::class, 'forgotPassword'])
+            ->name('platform.password.forgot');
+        Route::post('/reset', [PlatformPasswordResetController::class, 'resetPassword'])
+            ->name('platform.password.reset.submit');
     });
 
 Route::post('/api/v1/platform/password/confirm', [PlatformPasswordConfirmationController::class, 'confirm'])

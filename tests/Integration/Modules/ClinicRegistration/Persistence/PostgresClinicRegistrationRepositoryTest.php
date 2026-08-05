@@ -40,6 +40,8 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
 
     private ?Migration $reviewMigration = null;
 
+    private ?Migration $websitePreferencesMigration = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -87,6 +89,13 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
         $this->reviewMigration = $reviewMigration;
         $this->reviewMigration->up();
 
+        $websitePreferencesMigration = require base_path(
+            'database/migrations/clinic_registration/2026_09_10_000001_add_website_preferences_to_clinic_registrations.php',
+        );
+        self::assertInstanceOf(Migration::class, $websitePreferencesMigration);
+        $this->websitePreferencesMigration = $websitePreferencesMigration;
+        $this->websitePreferencesMigration->up();
+
         $mapper = new ClinicRegistrationPersistenceMapper;
         $this->repository = new PostgresClinicRegistrationRepository($this->connection, $mapper);
         $this->query = new PostgresClinicRegistrationQueryAdapter($this->connection);
@@ -94,6 +103,10 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->websitePreferencesMigration !== null) {
+            $this->websitePreferencesMigration->down();
+        }
+
         if ($this->reviewMigration !== null) {
             $this->connection?->table('clinic_registrations')->delete();
             $this->reviewMigration->down();
@@ -123,6 +136,8 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
         self::assertNotNull($current);
         self::assertSame(1, $reloaded->version());
         self::assertSame('draft', $current->status);
+        self::assertSame('klinik-syifa', $current->preferredSubdomain);
+        self::assertSame('SYIFA_DENTAL', $current->selectedWebsiteTemplate);
         self::assertCount(1, $current->declarations);
     }
 
@@ -298,7 +313,14 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
             $this->time(),
         );
         $registration->updateDraft(
-            new ClinicRegistrationProfile('Klinik Syifa', 'owner@clinic.test', '+60123456789', '1 Jalan Klinik'),
+            new ClinicRegistrationProfile(
+                'Klinik Syifa',
+                'owner@clinic.test',
+                '+60123456789',
+                '1 Jalan Klinik',
+                'klinik-syifa',
+                'SYIFA_DENTAL',
+            ),
             [new DeclarationAcceptance('terms.acceptance', '2026-07-20', $this->time())],
             new CommercialSelectionReference('offering-basic-monthly', 'monthly', 'catalogue-v1'),
         );

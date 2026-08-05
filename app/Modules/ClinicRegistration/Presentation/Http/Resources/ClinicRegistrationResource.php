@@ -26,6 +26,13 @@ final class ClinicRegistrationResource extends JsonResource
                 'phone' => $registration->clinicPhone,
                 'address' => $registration->clinicAddress,
             ],
+            'website_preferences' => [
+                'subdomain' => $registration->preferredSubdomain,
+                'host' => $registration->preferredSubdomain === null
+                    ? null
+                    : $registration->preferredSubdomain.'.'.config('public_website_delivery.base_domain'),
+                'template' => $registration->selectedWebsiteTemplate,
+            ],
             'commercial_selection' => [
                 'plan_offering_reference' => $registration->selectedPlanOfferingReference,
                 'billing_option_reference' => $registration->selectedBillingOptionReference,

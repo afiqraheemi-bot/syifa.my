@@ -62,6 +62,9 @@ final class AuthenticationUiArchitectureTest extends TestCase
         self::assertStringContainsString('ActorType::ClinicOwner', $middleware);
         self::assertStringContainsString('ActorType::PlatformIdentity', $middleware);
         self::assertStringContainsString('page.props.authentication?.logout_url', $shell);
+        self::assertStringContainsString('page.props.authentication?.login_url', $shell);
+        self::assertStringContainsString('window.location.assign(loginUrl.value)', $shell);
+        self::assertStringNotContainsString("window.location.assign('/')", $shell);
         self::assertStringNotContainsString('clinic_owner', $shell);
         self::assertStringNotContainsString('platform_identity', $shell);
     }

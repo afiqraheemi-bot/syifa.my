@@ -49,8 +49,8 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
                 (int) $data['version'],
                 trim((string) $branding['clinic_name']),
                 $this->optional($branding['tagline'] ?? null),
-                (string) $branding['primary_color'],
-                (string) $branding['secondary_color'],
+                strtoupper((string) $branding['primary_color']),
+                strtoupper((string) $branding['secondary_color']),
                 trim((string) $branding['contact_email']),
                 trim((string) $branding['contact_phone']),
                 trim((string) $branding['address']),
@@ -64,6 +64,8 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
                 trim((string) $seo['open_graph_description']),
                 (bool) $seo['indexing_enabled'],
                 $data['sections'],
+                logoReference: $this->optional($branding['logo_reference'] ?? null),
+                logoDisplaySize: (string) $branding['logo_display_size'],
             ));
         } catch (StaleWebsiteWriteException) {
             return back()->withErrors([

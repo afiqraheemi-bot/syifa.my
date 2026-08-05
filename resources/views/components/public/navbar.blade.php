@@ -6,14 +6,15 @@
     <div class="public-container navbar">
         <a class="brand" href="{{ $document->context->url()->value }}" aria-label="{{ $document->website->header->clinicName }} home">
             @if ($logoUrl !== null)
-                <img class="brand__logo" src="{{ $logoUrl->value }}" alt="" width="48" height="48">
+                <img class="brand__logo brand__logo--{{ $document->website->header->logoDisplaySize }}" src="{{ $logoUrl->value }}" alt="">
+            @else
+                <span class="brand__copy">
+                    <strong>{{ $document->website->header->clinicName }}</strong>
+                    @if ($document->website->header->tagline !== null)
+                        <span>{{ $document->website->header->tagline }}</span>
+                    @endif
+                </span>
             @endif
-            <span class="brand__copy">
-                <strong>{{ $document->website->header->clinicName }}</strong>
-                @if ($document->website->header->tagline !== null)
-                    <span>{{ $document->website->header->tagline }}</span>
-                @endif
-            </span>
         </a>
         <div class="navbar__cluster">
             <nav id="public-navigation" class="public-navigation" aria-label="Primary navigation" data-public-menu>

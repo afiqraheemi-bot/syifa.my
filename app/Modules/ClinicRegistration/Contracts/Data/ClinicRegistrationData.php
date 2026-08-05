@@ -31,5 +31,7 @@ final readonly class ClinicRegistrationData
         public int $version,
         public array $declarations,
         public array $decisions = [],
+        public ?string $preferredSubdomain = null,
+        public ?string $selectedWebsiteTemplate = null,
     ) {}
 }

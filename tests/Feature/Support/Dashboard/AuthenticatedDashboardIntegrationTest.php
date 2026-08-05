@@ -99,6 +99,7 @@ use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTim
 use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTimelineReadInterface;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewData;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\Assets\WebsiteAssetBinaryStorageInterface;
 use App\Modules\WebsiteBuilder\Contracts\CustomDomain\CustomDomainRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfiguration;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfigurationReaderInterface;
@@ -152,6 +153,7 @@ use App\Support\Identity\CurrentUserInterface;
 use App\Support\Identity\PermissionResolverInterface;
 use App\Support\Identity\RoleResolverInterface;
 use DateTimeImmutable;
+use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -1320,7 +1322,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
                     ->where('websiteSetup.configuration.lifecycle', 'ready_for_review')
-                    ->where('websiteSetup.canSubmitForReview', false)
+                    ->where('websiteSetup.canSubmitForReview', true)
                     ->where('job.timeline.3.key', 'website_ready_for_review'),
             );
     }
@@ -1658,6 +1660,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertSee('Draft Preview')
             ->assertSee('Trusted healthcare')
             ->assertSee('data-template="syifa-essential"', false)
+            ->assertSee(route('dashboard.onboarding.booking-preview', $jobId), false)
             ->assertSee('<meta name="robots" content="noindex,nofollow,noarchive">', false)
             ->assertDontSee('About Klinik');
 
@@ -1672,6 +1675,68 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertDontSee('About Klinik');
         self::assertSame('draft', $this->websiteRepository->lifecycle());
         self::assertFalse($this->websiteRepository->hasPublishedSnapshot());
+    }
+
+    public function test_clinic_owner_previews_only_their_current_draft_before_approval(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                DashboardLaunchReadinessRead::TENANT_ID,
+                identityId: '00000000-0000-4000-8000-000000000040',
+            ),
+        );
+
+        $this->get(route('dashboard.website.preview'))
+            ->assertOk()
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertSee('Draft Preview')
+            ->assertSee('Trusted healthcare');
+
+        self::assertSame('draft', $this->websiteRepository->lifecycle());
+        self::assertFalse($this->websiteRepository->hasPublishedSnapshot());
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000099',
+                identityId: '00000000-0000-4000-8000-000000000041',
+            ),
+        );
+        $this->get(route('dashboard.website.preview'))->assertNotFound();
+    }
+
+    public function test_assigned_designer_opens_the_protected_booking_form_preview(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $jobId = '00000000-0000-4000-8000-000000000101';
+
+        $this->get(route('dashboard.onboarding.booking-preview', $jobId))
+            ->assertOk()
+            ->assertSee('Booking Preview')
+            ->assertSee('Book an appointment')
+            ->assertSee('Appointment date')
+            ->assertSee('Check available times')
+            ->assertSee('Submit booking')
+            ->assertSee('<meta name="robots" content="noindex">', false);
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->get(route('dashboard.onboarding.booking-preview', $jobId))->assertForbidden();
     }
 
     public function test_draft_preview_rejects_other_roles_public_visitors_and_unassigned_jobs(): void
@@ -1712,13 +1777,16 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $jobId = '00000000-0000-4000-8000-000000000101';
 
         $this->patch('/dashboard/onboarding/'.$jobId, [
+            'workspace' => 'website_setup',
             'version' => 1,
             'template_id' => 'SYIFA_CARE',
             'branding' => [
                 'clinic_name' => 'Klinik Designer',
                 'tagline' => 'Configured with care',
-                'primary_color' => '#AABBCC',
-                'secondary_color' => '#DDEEFF',
+                'primary_color' => '#aabbcc',
+                'secondary_color' => '#ddeeff',
+                'logo_reference' => null,
+                'logo_display_size' => 'large',
                 'contact_email' => 'designer@example.test',
                 'contact_phone' => '+60123456789',
                 'address' => 'Kuala Lumpur',
@@ -1758,6 +1826,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
                     ->where('websiteSetup.configuration.branding.clinic_name', 'Klinik Designer')
+                    ->where('websiteSetup.configuration.branding.primary_color', '#AABBCC')
+                    ->where('websiteSetup.configuration.branding.secondary_color', '#DDEEFF')
                     ->where('websiteSetup.configuration.template_id', 'SYIFA_CARE')
                     ->where('websiteSetup.configuration.seo.meta_title', 'Klinik Designer SEO')
                     ->where('websiteSetup.configuration.seo.canonical_url', 'https://clinic.example.test')
@@ -1774,6 +1844,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
 
         $this->from('/dashboard/onboarding/'.$jobId)
             ->patch('/dashboard/onboarding/'.$jobId, [
+                'workspace' => 'website_setup',
                 'version' => 2,
                 'template_id' => 'ARBITRARY_TEMPLATE',
                 'branding' => ['clinic_name' => ''],
@@ -1838,6 +1909,43 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             $this->app->instance(AuthorizationService::class, $this->authorization($actorType, $role));
             $this->getJson(route('dashboard.services'))->assertForbidden();
         }
+    }
+
+    public function test_assigned_website_designer_uploads_a_website_image_without_request_owned_scope(): void
+    {
+        $storage = new DashboardWebsiteAssetStorage;
+        $this->app->instance(WebsiteAssetBinaryStorageInterface::class, $storage);
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $jobId = '00000000-0000-4000-8000-000000000101';
+        $png = (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+
+        $this->postJson(route('website-designer.website-assets.store', $jobId), [
+            'image' => UploadedFile::fake()->createWithContent('clinic.png', $png),
+            'tenant_id' => '00000000-0000-4000-8000-000000000999',
+            'website_id' => '00000000-0000-4000-8000-000000000999',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.mime_type', 'image/png')
+            ->assertJsonPath('data.width', 1)
+            ->assertJsonPath('data.height', 1);
+
+        self::assertCount(1, $storage->files);
+        self::assertSame(1, $this->websiteRepository->assetCount());
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->postJson(route('website-designer.website-assets.store', $jobId), [
+            'image' => UploadedFile::fake()->createWithContent('clinic.png', $png),
+        ])->assertForbidden();
     }
 
     public function test_website_designer_updates_the_assigned_booking_form_configuration(): void
@@ -1908,6 +2016,60 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('bookingSetup.configuration.version', 2)
                     ->where('bookingSetup.configuration.service_selection_enabled', true),
             );
+    }
+
+    public function test_website_designer_configures_assignment_scoped_booking_availability(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $jobId = '00000000-0000-4000-8000-000000000101';
+        $schedule = [
+            'workspace' => 'booking_schedule',
+            'version' => 1,
+            'timezone' => 'Asia/Kuala_Lumpur',
+            'appointment_duration_minutes' => 30,
+            'booking_capacity_per_slot' => 2,
+            'operating_intervals' => [
+                ['day' => 1, 'opens_at' => '09:00', 'closes_at' => '17:00'],
+                ['day' => 2, 'opens_at' => '09:00', 'closes_at' => '17:00'],
+                ['day' => 6, 'opens_at' => '09:00', 'closes_at' => '13:00'],
+            ],
+        ];
+
+        $this->patch('/dashboard/onboarding/'.$jobId, $schedule)->assertRedirect();
+
+        $this->get('/dashboard/onboarding/'.$jobId)
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('bookingSetup.schedule.version', 2)
+                    ->where('bookingSetup.schedule.timezone', 'Asia/Kuala_Lumpur')
+                    ->where('bookingSetup.schedule.appointment_duration_minutes', 30)
+                    ->where('bookingSetup.schedule.booking_capacity_per_slot', 2)
+                    ->has('bookingSetup.schedule.operating_intervals', 3)
+                    ->where('bookingSetup.schedule.operating_intervals.2.day', 6)
+                    ->where('bookingSetup.schedule.operating_intervals.2.closes_at', '13:00'),
+            );
+
+        $schedule['version'] = 2;
+        $schedule['operating_intervals'][0]['opens_at'] = '18:00';
+        $schedule['operating_intervals'][0]['closes_at'] = '09:00';
+        $this->from('/dashboard/onboarding/'.$jobId)
+            ->patch('/dashboard/onboarding/'.$jobId, $schedule)
+            ->assertRedirect('/dashboard/onboarding/'.$jobId)
+            ->assertSessionHasErrors('booking_schedule.configuration');
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->patch('/dashboard/onboarding/'.$jobId, $schedule)->assertForbidden();
     }
 
     public function test_website_designer_updates_the_assigned_clinic_contact_profile(): void
@@ -2047,7 +2209,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('domainStatus.value', 'Live')
                     ->where('domainStatus.detail', 'klinik-aisyah.syifa.my')
                     ->where('domainStatus.url', 'https://klinik-aisyah.syifa.my')
-                    ->where('domainStatus.actionLabel', 'Open Website')
+                    ->where('domainStatus.actionLabel', 'Open Published Website')
                     ->where('themeInformation.value', 'syifa-essential')
                     ->where('seoStatus.value', 'Indexing enabled')
                     ->has('quickActions', 1)
@@ -2097,8 +2259,10 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             'branding' => [
                 'clinic_name' => 'Klinik Baharu',
                 'tagline' => 'Trusted care',
-                'primary_color' => '#AABBCC',
-                'secondary_color' => '#DDEEFF',
+                'primary_color' => '#aabbcc',
+                'secondary_color' => '#ddeeff',
+                'logo_reference' => null,
+                'logo_display_size' => 'large',
                 'contact_email' => 'hello@example.test',
                 'contact_phone' => '+60123456789',
                 'address' => 'Kuala Lumpur',
@@ -2132,6 +2296,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
                     ->where('editableContent.branding.clinic_name', 'Klinik Baharu')
+                    ->where('editableContent.branding.primary_color', '#AABBCC')
+                    ->where('editableContent.branding.secondary_color', '#DDEEFF')
+                    ->where('editableContent.branding.logo_display_size', 'large')
                     ->where('editableContent.sections.8.enabled', false)
                     ->where('editableContent.version', 2),
             );
@@ -3121,6 +3288,11 @@ final class DashboardFixedWebsiteRepository implements WebsiteRepositoryInterfac
         return $this->website->publishedSnapshot() !== null;
     }
 
+    public function assetCount(): int
+    {
+        return count($this->website->assets()->assets());
+    }
+
     public function publishedHeadline(): ?string
     {
         return $this->website->publishedSnapshot()
@@ -3136,6 +3308,22 @@ final class DashboardFixedWebsiteRepository implements WebsiteRepositoryInterfac
             $this->website->sections()->sections()[1]->id,
             new DateTimeImmutable('2026-01-01T00:02:00Z'),
         );
+    }
+}
+
+final class DashboardWebsiteAssetStorage implements WebsiteAssetBinaryStorageInterface
+{
+    /** @var array<string, string> */
+    public array $files = [];
+
+    public function store(string $storageKey, string $contents): void
+    {
+        $this->files[$storageKey] = $contents;
+    }
+
+    public function delete(string $storageKey): void
+    {
+        unset($this->files[$storageKey]);
     }
 }
 

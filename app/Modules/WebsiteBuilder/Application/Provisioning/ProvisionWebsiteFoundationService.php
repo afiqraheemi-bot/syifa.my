@@ -58,7 +58,7 @@ final readonly class ProvisionWebsiteFoundationService implements ProvisionWebsi
                 $this->websites->save(Website::create(
                     $websiteId,
                     $tenantId,
-                    TemplateId::SyifaEssential,
+                    TemplateId::fromStored($command->templateId),
                     new WebsiteBranding(
                         $command->clinicName,
                         null,

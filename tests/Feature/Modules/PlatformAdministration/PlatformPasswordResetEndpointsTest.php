@@ -88,6 +88,48 @@ final class PlatformPasswordResetEndpointsTest extends TestCase
         self::assertSame(AuditOutcomeType::Succeeded->value, $this->auditRecorder->entries[0]->outcome->outcome);
     }
 
+    /**
+     * Notification::fake() intercepts before the notification is ever
+     * rendered, so it alone cannot catch a broken `resetUrl()` — Laravel's
+     * native ResetPassword notification hardcodes the "password.reset" route
+     * name unless overridden (see PlatformAdministrationServiceProvider's
+     * ResetPassword::createUrlUsing hook), and that route does not exist in
+     * this app. This test renders the captured notification's mail message
+     * for real, so a regression here throws instead of passing silently.
+     */
+    public function test_forgot_password_notification_builds_a_working_reset_url_without_crashing(): void
+    {
+        Notification::fake();
+
+        $this->postJson('/api/v1/platform/password/forgot', ['email' => self::EMAIL])->assertOk();
+
+        Notification::assertSentTo(
+            $this->notifiable(),
+            ResetPassword::class,
+            function (ResetPassword $notification): bool {
+                $mail = $notification->toMail($this->notifiable());
+                self::assertStringContainsString('/platform/password/reset/', $mail->actionUrl);
+                self::assertStringContainsString(urlencode(self::EMAIL), $mail->actionUrl);
+
+                return true;
+            },
+        );
+    }
+
+    public function test_password_reset_page_renders_for_a_valid_looking_token(): void
+    {
+        $response = $this->get('/platform/password/reset/some-token?email='.urlencode(self::EMAIL));
+
+        $response->assertOk()->assertInertia(
+            static fn ($page) => $page
+                ->component('PlatformAdministration/Authentication/PlatformPasswordReset', false)
+                ->where('token', 'some-token')
+                ->where('email', self::EMAIL)
+                ->where('submitUrl', route('platform.password.reset.submit'))
+                ->where('loginUrl', route('login')),
+        );
+    }
+
     public function test_forgot_password_with_an_unknown_email_returns_the_same_acknowledgement(): void
     {
         Notification::fake();

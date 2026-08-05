@@ -12,6 +12,7 @@ interface ProvisionOnboardingJobInterface
         string $onboardingJobId,
         string $tenantId,
         string $websiteId,
+        string $clinicRegistrationReference,
         DateTimeImmutable $occurredAt,
     ): string;
 }

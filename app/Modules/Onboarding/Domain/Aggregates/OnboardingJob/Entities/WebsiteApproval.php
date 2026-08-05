@@ -107,9 +107,11 @@ final readonly class WebsiteApproval
         PlatformIdentityId $requestedBy,
         DateTimeImmutable $at,
     ): self {
-        if ($this->status !== WebsiteApprovalStatus::CorrectionRequested) {
+        $isUpdatedApprovedVersion = $this->status === WebsiteApprovalStatus::Approved
+            && ($this->websiteVersion !== $websiteVersion || $this->draftVersion !== $draftVersion);
+        if ($this->status !== WebsiteApprovalStatus::CorrectionRequested && ! $isUpdatedApprovedVersion) {
             throw new InvalidOnboardingJobLifecycleTransitionException(
-                'Only a correction-requested Website Approval may be resubmitted.',
+                'Only a correction-requested or newly updated approved Website may be resubmitted.',
             );
         }
 

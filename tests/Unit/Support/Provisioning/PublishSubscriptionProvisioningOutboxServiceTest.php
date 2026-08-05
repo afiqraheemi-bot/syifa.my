@@ -177,6 +177,15 @@ final class ProvisioningWorkflowRepositoryStub implements ProvisioningWorkflowRe
         return false;
     }
 
+    public function deadLetter(
+        string $workflowId,
+        string $claimToken,
+        string $safeFailureLabel,
+        DateTimeImmutable $now,
+    ): bool {
+        return false;
+    }
+
     public function complete(string $workflowId, string $claimToken, DateTimeImmutable $now): bool
     {
         return false;

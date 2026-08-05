@@ -56,8 +56,10 @@ use App\Modules\PlatformAdministration\Infrastructure\Persistence\WorkforceCrede
 use App\Modules\PlatformAdministration\Infrastructure\Session\LaravelPendingPlatformAuthenticationStore;
 use App\Modules\PlatformAdministration\Infrastructure\Session\LaravelPlatformSessionStore;
 use App\Modules\PlatformAdministration\Infrastructure\Support\RequestAuditCorrelationIdResolver;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Auth\PasswordBrokerFactory;
@@ -236,14 +238,26 @@ final class PlatformAdministrationServiceProvider extends ServiceProvider
         );
         $this->app->singleton(
             PlatformMfaChallengeService::class,
-            static fn (Application $application): PlatformMfaChallengeService => new PlatformMfaChallengeService(
-                $application->make(PlatformMfaEnrollmentRepositoryInterface::class),
-                $application->make(PendingPlatformAuthenticationStoreInterface::class),
-                $application->make(PlatformSessionStoreInterface::class),
-                $application->make(AuditEntryRecorderInterface::class),
-                $application->make(AuditCorrelationIdResolverInterface::class),
-                $application->make(Encrypter::class),
-            ),
+            static function (Application $application): PlatformMfaChallengeService {
+                $demoIdentityIds = [];
+                foreach ((array) config('platform_administration.local_demo_mfa.platform_identity_ids', []) as $identityId) {
+                    if (is_string($identityId)) {
+                        $demoIdentityIds[] = $identityId;
+                    }
+                }
+
+                return new PlatformMfaChallengeService(
+                    $application->make(PlatformMfaEnrollmentRepositoryInterface::class),
+                    $application->make(PendingPlatformAuthenticationStoreInterface::class),
+                    $application->make(PlatformSessionStoreInterface::class),
+                    $application->make(AuditEntryRecorderInterface::class),
+                    $application->make(AuditCorrelationIdResolverInterface::class),
+                    $application->make(Encrypter::class),
+                    (bool) config('platform_administration.local_demo_mfa.enabled', false),
+                    (string) config('platform_administration.local_demo_mfa.code', ''),
+                    $demoIdentityIds,
+                );
+            },
         );
         $this->app->alias(PlatformMfaChallengeService::class, PlatformMfaChallengeInterface::class);
 
@@ -367,6 +381,18 @@ final class PlatformAdministrationServiceProvider extends ServiceProvider
                 now()->addMinutes((int) config('auth.verification.expire', 60)),
                 ['id' => $notifiable->getAuthIdentifier(), 'hash' => sha1($notifiable->getEmailForVerification())],
             );
+        });
+
+        // Laravel's native ResetPassword notification hardcodes the
+        // "password.reset" route name unless told otherwise — this module
+        // has no such route (the reset page lives at "platform.password.reset"
+        // instead), so without this hook the notification throws
+        // RouteNotFoundException while building the reset email.
+        ResetPassword::createUrlUsing(static function (AuthenticatableContract&CanResetPassword $notifiable, string $token): string {
+            return route('platform.password.reset', [
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ]);
         });
     }
 }

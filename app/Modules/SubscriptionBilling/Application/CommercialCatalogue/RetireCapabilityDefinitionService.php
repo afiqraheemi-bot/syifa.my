@@ -19,7 +19,12 @@ use App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObjects\Capa
  */
 final readonly class RetireCapabilityDefinitionService
 {
-    public function __construct(private CapabilityDefinitionRepositoryInterface $capabilities) {}
+    private const string AUDIT_ACTION = 'commercial_catalogue.capability_definition.retire';
+
+    public function __construct(
+        private CapabilityDefinitionRepositoryInterface $capabilities,
+        private CapabilityDefinitionAuditTrail $audit,
+    ) {}
 
     public function execute(RetireCapabilityDefinitionCommand $command): CapabilityDefinition
     {
@@ -28,6 +33,15 @@ final readonly class RetireCapabilityDefinitionService
 
         $updated = $capabilityDefinition->retire();
         $this->capabilities->save($updated);
+        $this->audit->record(
+            self::AUDIT_ACTION,
+            $updated,
+            $capabilityDefinition->version(),
+            $capabilityDefinition->status->value,
+            $command->occurredAt,
+            $command->actorPlatformIdentityId,
+            $command->correlationId,
+        );
 
         return $updated;
     }

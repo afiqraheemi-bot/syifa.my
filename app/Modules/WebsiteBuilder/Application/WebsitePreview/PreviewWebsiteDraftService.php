@@ -114,6 +114,7 @@ final readonly class PreviewWebsiteDraftService
                 $branding->secondaryColor,
                 $branding->logoReference?->value,
                 $branding->faviconReference?->value,
+                $branding->logoDisplaySize->value,
             ),
             new SeoRenderModel(
                 $website->seo()->metaTitle(),
@@ -130,6 +131,7 @@ final readonly class PreviewWebsiteDraftService
                 $branding->clinicName,
                 $branding->tagline,
                 $branding->logoReference?->value,
+                $branding->logoDisplaySize->value,
             ),
             new FooterRenderModel(
                 $branding->clinicName,

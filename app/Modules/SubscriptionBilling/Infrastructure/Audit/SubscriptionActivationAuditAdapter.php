@@ -21,7 +21,7 @@ final readonly class SubscriptionActivationAuditAdapter implements SubscriptionA
     {
         $this->audit->record(new AuditEntryData(
             auditEntryId: $this->id($action, $applicationId), occurredAt: $occurredAt,
-            actor: new AuditActorData('system', null), tenantId: $tenantId, action: $action,
+            actor: new AuditActorData('system', null), tenantId: null, action: $action,
             target: new AuditTargetData('subscription', $subscriptionId), outcome: new AuditOutcomeData('succeeded', null),
             correlationId: $applicationId, safeMetadata: [
                 'resource_type' => 'subscription_activation', 'resource_label' => $resultCode->value,

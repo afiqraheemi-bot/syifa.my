@@ -3,18 +3,22 @@ import { computed, nextTick, ref } from 'vue';
 import {
     completePlatformMfa,
     createBrowserSession,
+    requestClinicOwnerPasswordReset,
+    requestPlatformPasswordReset,
 } from '../../../Shared/Authentication/session.js';
 
 const props = defineProps({
     clinicPortal: { type: Boolean, required: true },
     localClinicOwnerLogin: { type: Boolean, required: true },
     clinicOwnerSessionUrl: { type: String, required: true },
+    clinicOwnerForgotPasswordUrl: { type: String, required: true },
+    platformForgotPasswordUrl: { type: String, required: true },
     platformSessionUrl: { type: String, required: true },
     platformMfaUrl: { type: String, required: true },
     dashboardUrl: { type: String, required: true },
     clinicRegistrationUrl: { type: String, required: true },
+    clinicRegistrationLoginUrl: { type: String, required: true },
     clinicPortalBaseDomains: { type: Array, required: true },
-    operationsHealthUrl: { type: String, default: null },
 });
 
 const actor = ref(props.clinicPortal ? 'clinic_owner' : 'website_designer');
@@ -28,6 +32,9 @@ const errorPanel = ref(null);
 const mfaState = ref(null);
 const mfaCode = ref('');
 const mfaSetupKey = ref('');
+const recoveryOpen = ref(false);
+const recoveryLoading = ref(false);
+const recoveryMessage = ref('');
 
 const isClinicOwner = computed(() => actor.value === 'clinic_owner');
 const canAuthenticateClinicOwner = computed(
@@ -45,6 +52,8 @@ function chooseActor(nextActor) {
     mfaState.value = null;
     mfaCode.value = '';
     mfaSetupKey.value = '';
+    recoveryOpen.value = false;
+    recoveryMessage.value = '';
 }
 
 function openClinicPortal() {
@@ -66,16 +75,32 @@ async function submit() {
     error.value = '';
     loading.value = true;
     let result;
+    let redirectUrl = props.dashboardUrl;
 
     try {
-        const endpoint = isClinicOwner.value
-            ? props.clinicOwnerSessionUrl
-            : props.platformSessionUrl;
-        result = await createBrowserSession(
-            endpoint,
-            { email: email.value, password: password.value },
-            remember.value,
-        );
+        const credentials = { email: email.value, password: password.value };
+
+        if (isClinicOwner.value && !props.clinicPortal) {
+            result = await createBrowserSession(
+                props.clinicRegistrationLoginUrl,
+                credentials,
+                remember.value,
+            );
+            if (result.ok && result.body?.data?.authenticated === true) {
+                redirectUrl = result.body.data.redirect ?? props.clinicRegistrationUrl;
+            } else if (result.status === 401) {
+                result = await createBrowserSession(
+                    props.clinicOwnerSessionUrl,
+                    credentials,
+                    remember.value,
+                );
+            }
+        } else {
+            const endpoint = isClinicOwner.value
+                ? props.clinicOwnerSessionUrl
+                : props.platformSessionUrl;
+            result = await createBrowserSession(endpoint, credentials, remember.value);
+        }
     } catch {
         showError('Perkhidmatan log masuk tidak dapat dihubungi. Sila cuba lagi sebentar nanti.');
         loading.value = false;
@@ -96,7 +121,7 @@ async function submit() {
 
     if (result.ok) {
         error.value = '';
-        window.location.assign(props.dashboardUrl);
+        window.location.assign(redirectUrl);
         return;
     }
 
@@ -136,6 +161,25 @@ async function showError(message) {
     error.value = message;
     await nextTick();
     errorPanel.value?.focus();
+}
+
+async function requestPasswordReset() {
+    if (recoveryLoading.value) return;
+
+    recoveryLoading.value = true;
+    recoveryMessage.value = '';
+    try {
+        const result = isClinicOwner.value
+            ? await requestClinicOwnerPasswordReset(props.clinicOwnerForgotPasswordUrl, email.value)
+            : await requestPlatformPasswordReset(props.platformForgotPasswordUrl, email.value);
+        recoveryMessage.value = result.ok
+            ? 'Jika akaun tersebut wujud, pautan menetapkan semula kata laluan telah dihantar.'
+            : 'Permintaan tidak dapat diproses. Semak alamat e-mel dan cuba lagi.';
+    } catch {
+        recoveryMessage.value = 'Perkhidmatan tidak dapat dihubungi. Sila cuba lagi.';
+    } finally {
+        recoveryLoading.value = false;
+    }
 }
 </script>
 
@@ -178,7 +222,7 @@ async function showError(message) {
                         :href="clinicRegistrationUrl"
                         class="mt-5 inline-flex min-h-11 items-center font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
                     >
-                        Daftarkan klinik anda
+                        Daftar klinik
                     </a>
 
                     <div
@@ -245,6 +289,34 @@ async function showError(message) {
                                 required
                                 class="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-200"
                             />
+                            <button
+                                type="button"
+                                class="mt-3 min-h-11 font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                                @click="recoveryOpen = !recoveryOpen"
+                            >
+                                Lupa kata laluan?
+                            </button>
+                        </div>
+
+                        <div
+                            v-if="recoveryOpen"
+                            class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"
+                        >
+                            <p>
+                                Gunakan alamat e-mel di atas untuk menerima pautan menetapkan semula
+                                kata laluan.
+                            </p>
+                            <button
+                                type="button"
+                                :disabled="recoveryLoading || !email"
+                                class="mt-3 min-h-11 rounded-lg bg-emerald-700 px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                @click="requestPasswordReset"
+                            >
+                                {{ recoveryLoading ? 'Sedang menghantar…' : 'Hantar pautan reset' }}
+                            </button>
+                            <p v-if="recoveryMessage" class="mt-3 leading-6" role="status">
+                                {{ recoveryMessage }}
+                            </p>
                         </div>
 
                         <label
@@ -375,14 +447,6 @@ async function showError(message) {
                             Buka portal klinik
                         </button>
                     </form>
-
-                    <a
-                        v-if="operationsHealthUrl"
-                        :href="operationsHealthUrl"
-                        class="mt-8 inline-flex min-h-11 items-center text-sm font-semibold text-emerald-700 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                    >
-                        Status operasi tempatan
-                    </a>
                 </div>
             </section>
         </div>

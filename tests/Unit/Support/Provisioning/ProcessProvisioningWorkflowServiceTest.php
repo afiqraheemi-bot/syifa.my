@@ -59,6 +59,9 @@ final class ProcessProvisioningWorkflowServiceTest extends TestCase
             null,
             2,
             [],
+            [],
+            'klinik-syifa-baru',
+            'SYIFA_DENTAL',
         );
 
         $registrations = $this->createMock(ClinicRegistrationProvisioningReadInterface::class);
@@ -66,15 +69,30 @@ final class ProcessProvisioningWorkflowServiceTest extends TestCase
         $tenants = $this->createMock(ProvisionTenantInterface::class);
         $tenants->expects(self::once())->method('execute')->willReturn(new ProvisionedTenantData($workflow->tenantId, 'provisioning', 1, false));
         $websites = $this->createMock(ProvisionWebsiteFoundationInterface::class);
-        $websites->expects(self::once())->method('execute')->willReturn(
-            new ProvisionedWebsiteFoundationData($workflow->tenantId, $this->uuid(9), $this->uuid(10)),
-        );
+        $websites->expects(self::once())->method('execute')
+            ->with(self::callback(static function ($command): bool {
+                self::assertSame('SYIFA_DENTAL', $command->templateId);
+
+                return true;
+            }))
+            ->willReturn(
+                new ProvisionedWebsiteFoundationData($workflow->tenantId, $this->uuid(9), $this->uuid(10)),
+            );
         $booking = $this->createMock(ProvisionBookingFoundationInterface::class);
         $booking->expects(self::once())->method('execute')->with($workflow->tenantId)->willReturn(1);
         $addresses = $this->createMock(ReserveProvisionedWebsiteAddressInterface::class);
-        $addresses->expects(self::once())->method('execute')->willReturn(
-            new WebsitePublicAddressData($this->uuid(10), $workflow->tenantId, 'klinik-syifa-baru.syifa.my', 'https://klinik-syifa-baru.syifa.my', false),
-        );
+        $addresses->expects(self::once())->method('execute')
+            ->with(
+                self::anything(),
+                $workflow->tenantId,
+                self::anything(),
+                'Klinik Syifa Baru',
+                $workflow->occurredAt,
+                'klinik-syifa-baru',
+            )
+            ->willReturn(
+                new WebsitePublicAddressData($this->uuid(10), $workflow->tenantId, 'klinik-syifa-baru.syifa.my', 'https://klinik-syifa-baru.syifa.my', false),
+            );
         $onboarding = $this->createMock(ProvisionOnboardingJobInterface::class);
         $onboarding->expects(self::once())->method('execute')->willReturn($this->uuid(11));
         $completion = $this->createMock(TrustedClinicRegistrationCompletionInterface::class);
@@ -99,6 +117,66 @@ final class ProcessProvisioningWorkflowServiceTest extends TestCase
         self::assertSame('completed', $workflows->workflow->currentStep);
     }
 
+    public function test_it_dead_letters_a_workflow_that_exhausts_its_retry_budget(): void
+    {
+        $workflow = new ProvisioningWorkflowData(
+            $this->uuid(1),
+            $this->uuid(2),
+            $this->uuid(3),
+            $this->uuid(4),
+            $this->uuid(5),
+            'processing',
+            'tenant_provisioning',
+            10,
+            new DateTimeImmutable('2026-09-01T00:00:00Z'),
+        );
+        $workflows = new InMemoryProvisioningWorkflowRepository($workflow);
+        $registrations = $this->createMock(ClinicRegistrationProvisioningReadInterface::class);
+        $registrations->method('approved')->willReturn(new ClinicRegistrationData(
+            $workflow->clinicRegistrationId,
+            $this->uuid(6),
+            'approved',
+            'Klinik Syifa Baru',
+            'owner@syifa.test',
+            '+60123456789',
+            'Kuala Lumpur',
+            $this->uuid(7),
+            $this->uuid(8),
+            '1',
+            'registration-correlation',
+            $workflow->tenantId,
+            null,
+            '2026-09-01T00:00:00+00:00',
+            null,
+            null,
+            null,
+            2,
+            [],
+            [],
+            'klinik-syifa-baru',
+            'SYIFA_DENTAL',
+        ));
+        $tenants = $this->createMock(ProvisionTenantInterface::class);
+        $tenants->method('execute')->willThrowException(new \RuntimeException('Tenant provisioning is permanently broken.'));
+
+        $processor = new ProcessProvisioningWorkflowService(
+            $workflows,
+            $registrations,
+            $tenants,
+            $this->createMock(ProvisionWebsiteFoundationInterface::class),
+            $this->createMock(ProvisionBookingFoundationInterface::class),
+            $this->createMock(ReserveProvisionedWebsiteAddressInterface::class),
+            $this->createMock(ProvisionOnboardingJobInterface::class),
+            $this->createMock(TrustedClinicRegistrationCompletionInterface::class),
+        );
+
+        self::assertTrue($processor->processNext());
+
+        self::assertSame(1, $workflows->deadLetterCalls);
+        self::assertSame('failed', $workflows->workflow->status);
+        self::assertFalse($processor->processNext());
+    }
+
     private function uuid(int $suffix): string
     {
         return sprintf('00000000-0000-4000-8000-%012d', $suffix);
@@ -107,6 +185,8 @@ final class ProcessProvisioningWorkflowServiceTest extends TestCase
 
 final class InMemoryProvisioningWorkflowRepository implements ProvisioningWorkflowRepositoryInterface
 {
+    public int $deadLetterCalls = 0;
+
     public function __construct(public ProvisioningWorkflowData $workflow) {}
 
     public function register(SubscriptionActivatedIntegrationEvent $event): ProvisioningWorkflowData
@@ -121,7 +201,7 @@ final class InMemoryProvisioningWorkflowRepository implements ProvisioningWorkfl
 
     public function claimNext(DateTimeImmutable $now): ?ClaimedProvisioningWorkflow
     {
-        if ($this->workflow->status === 'completed') {
+        if (in_array($this->workflow->status, ['completed', 'failed'], true)) {
             return null;
         }
 
@@ -152,6 +232,40 @@ final class InMemoryProvisioningWorkflowRepository implements ProvisioningWorkfl
         string $safeFailureLabel,
         DateTimeImmutable $now,
     ): bool {
+        $this->workflow = new ProvisioningWorkflowData(
+            $this->workflow->id,
+            $this->workflow->sourceEventId,
+            $this->workflow->subscriptionId,
+            $this->workflow->tenantId,
+            $this->workflow->clinicRegistrationId,
+            'retry_pending',
+            $this->workflow->currentStep,
+            $this->workflow->attemptCount + 1,
+            $this->workflow->occurredAt,
+        );
+
+        return true;
+    }
+
+    public function deadLetter(
+        string $workflowId,
+        string $claimToken,
+        string $safeFailureLabel,
+        DateTimeImmutable $now,
+    ): bool {
+        $this->deadLetterCalls++;
+        $this->workflow = new ProvisioningWorkflowData(
+            $this->workflow->id,
+            $this->workflow->sourceEventId,
+            $this->workflow->subscriptionId,
+            $this->workflow->tenantId,
+            $this->workflow->clinicRegistrationId,
+            'failed',
+            $this->workflow->currentStep,
+            $this->workflow->attemptCount,
+            $this->workflow->occurredAt,
+        );
+
         return true;
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Onboarding\Domain\Aggregates\OnboardingJob;
 
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\OnboardingTask;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\OnboardingJobCompleted;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\OnboardingJobCreated;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Events\OnboardingJobReopened;
@@ -16,6 +17,9 @@ use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\ClinicOwnerAuthorityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobStatus;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskResponsibility;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingTaskStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalId;
@@ -195,6 +199,56 @@ final class OnboardingJobTest extends TestCase
         $job->start($this->time('10:01:00'));
     }
 
+    public function test_it_cancels_every_outstanding_task_when_the_job_is_cancelled(): void
+    {
+        $job = $this->jobWithAssignment();
+        $inProgressTaskId = new OnboardingTaskId($this->uuid(300));
+        $job->addTask(new OnboardingTask(
+            $inProgressTaskId,
+            $job->id,
+            $job->tenantId,
+            'service_setup',
+            'Configure active clinic services',
+            OnboardingTaskResponsibility::WebsiteDesigner,
+            OnboardingTaskStatus::InProgress,
+            true,
+            true,
+            null,
+            null,
+            null,
+            null,
+            null,
+            $this->time('10:00:00'),
+            $this->time('10:00:00'),
+        ));
+        $completedTaskId = new OnboardingTaskId($this->uuid(301));
+        $job->addTask(new OnboardingTask(
+            $completedTaskId,
+            $job->id,
+            $job->tenantId,
+            'clinic_inputs',
+            'Provide clinic information and content',
+            OnboardingTaskResponsibility::ClinicOwner,
+            OnboardingTaskStatus::Completed,
+            true,
+            true,
+            null,
+            null,
+            'evidence',
+            null,
+            null,
+            $this->time('10:00:00'),
+            $this->time('10:00:00'),
+            $this->time('10:00:00'),
+        ));
+
+        $job->cancel($this->time('10:02:00'));
+
+        self::assertSame(OnboardingJobStatus::Cancelled, $job->status());
+        self::assertSame(OnboardingTaskStatus::Cancelled, $job->findTask($inProgressTaskId)?->status);
+        self::assertSame(OnboardingTaskStatus::Completed, $job->findTask($completedTaskId)?->status);
+    }
+
     public function test_website_approval_is_owned_by_the_job_and_only_the_owner_decision_makes_it_launch_ready(): void
     {
         $job = $this->jobWithAssignment();
@@ -229,6 +283,31 @@ final class OnboardingJobTest extends TestCase
         self::assertSame(OnboardingJobStatus::ReadyForLaunch, $job->status());
         self::assertTrue($job->hasApprovedWebsiteVersions(3, 5));
         self::assertFalse($job->hasApprovedWebsiteVersions(2, 4));
+    }
+
+    public function test_updated_website_can_be_resubmitted_after_an_earlier_version_was_approved(): void
+    {
+        $job = $this->jobWithAssignment();
+        $job->requestWebsiteApproval(
+            new WebsiteApprovalId($this->uuid(30)),
+            $this->platformIdentityId(20),
+            2,
+            4,
+            $this->time('10:02:00'),
+        );
+        $job->approveWebsite(new ClinicOwnerAuthorityId($this->uuid(40)), $this->time('10:03:00'));
+
+        $job->requestWebsiteApproval(
+            new WebsiteApprovalId($this->uuid(30)),
+            $this->platformIdentityId(20),
+            3,
+            5,
+            $this->time('10:04:00'),
+        );
+
+        self::assertSame(OnboardingJobStatus::InReview, $job->status());
+        self::assertSame(WebsiteApprovalStatus::Resubmitted, $job->websiteApproval()?->status);
+        self::assertFalse($job->hasApprovedWebsiteVersions(3, 5));
     }
 
     private function jobWithAssignment(): OnboardingJob

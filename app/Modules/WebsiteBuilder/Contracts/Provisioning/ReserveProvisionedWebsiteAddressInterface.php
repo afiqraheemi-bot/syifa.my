@@ -15,5 +15,6 @@ interface ReserveProvisionedWebsiteAddressInterface
         string $websiteId,
         string $clinicName,
         DateTimeImmutable $occurredAt,
+        ?string $preferredSubdomain = null,
     ): WebsitePublicAddressData;
 }

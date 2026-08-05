@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\WebsiteBuilder\Infrastructure\Delivery;
 
+use App\Modules\Booking\Contracts\Queries\ActiveServiceCatalogueReaderInterface;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormServiceData;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfiguration;
@@ -27,7 +28,10 @@ use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingServiceOption;
  */
 final readonly class BookingFormConfigurationReaderAdapter implements PublicBookingFormConfigurationReaderInterface
 {
-    public function __construct(private PublicBookingFormReaderInterface $reader) {}
+    public function __construct(
+        private PublicBookingFormReaderInterface $reader,
+        private ActiveServiceCatalogueReaderInterface $services,
+    ) {}
 
     public function forTrustedTenant(string $trustedTenantId): PublicBookingFormConfiguration
     {
@@ -44,7 +48,7 @@ final readonly class BookingFormConfigurationReaderAdapter implements PublicBook
                     $service->name,
                     false,
                 ),
-                $data->services,
+                $this->services->forTenant($trustedTenantId),
             ),
         );
     }

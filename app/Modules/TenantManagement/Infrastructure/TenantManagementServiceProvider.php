@@ -14,6 +14,7 @@ use App\Modules\TenantManagement\Contracts\Administration\ClinicOwnerSetupTokenV
 use App\Modules\TenantManagement\Contracts\Authentication\AuthenticationSignalDispatcherInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticationInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerCredentialVerificationInterface;
+use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerPasswordResetLinkIssuerInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\TrustedTenantSelectorInterface;
 use App\Modules\TenantManagement\Contracts\Provisioning\ProvisionTenantInterface;
 use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionStoreInterface;
@@ -77,6 +78,7 @@ final class TenantManagementServiceProvider extends ServiceProvider
         );
         $this->app->alias(LaravelClinicOwnerSetupLinkIssuer::class, ClinicOwnerSetupLinkIssuerInterface::class);
         $this->app->alias(LaravelClinicOwnerSetupLinkIssuer::class, ClinicOwnerSetupTokenVerifierInterface::class);
+        $this->app->alias(LaravelClinicOwnerSetupLinkIssuer::class, ClinicOwnerPasswordResetLinkIssuerInterface::class);
 
         $this->app->bind(ClinicOwnerAuthenticationInterface::class, AuthenticateClinicOwnerService::class);
         $this->app->bind(AuthenticationSignalDispatcherInterface::class, LaravelAuthenticationSignalDispatcher::class);
