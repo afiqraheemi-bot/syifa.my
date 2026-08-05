@@ -1,4 +1,4 @@
-<section class="public-section anchor-section" id="booking" aria-labelledby="booking-title">
+<section class="public-section public-section--booking anchor-section" id="booking" aria-labelledby="booking-title">
     <div class="public-container">
         <div class="booking-panel">
             <div>

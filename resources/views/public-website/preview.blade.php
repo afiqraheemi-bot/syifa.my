@@ -23,6 +23,15 @@
     <x-public.skip-link />
     <x-public.navbar :document="$document" />
 
+    @php
+        $contactSection = null;
+
+        foreach ($document->website->sections as $renderedSection) {
+            if ($renderedSection->type() === 'CONTACT') {
+                $contactSection = $renderedSection;
+            }
+        }
+    @endphp
     <main id="main-content">
         @foreach ($document->website->sections as $section)
             @switch($section->type())
@@ -48,7 +57,6 @@
                     <x-public.faq :section="$section" />
                     @break
                 @case('CONTACT')
-                    <x-public.contact :section="$section" :actions="$document->contactActions" :booking-url="$document->bookingDestination" />
                     @break
                 @case('BOOKING_CTA')
                     <x-public.booking-cta :section="$section" :booking-url="$document->bookingDestination" :phone-url="$document->contactActions->telephone" />
@@ -57,6 +65,6 @@
         @endforeach
     </main>
 
-    <x-public.footer :document="$document" />
+    <x-public.footer :document="$document" :contact-section="$contactSection" />
 </body>
 </html>

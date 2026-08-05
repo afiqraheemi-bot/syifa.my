@@ -93,7 +93,7 @@ final class PublicWebsiteDeliveryTest extends TestCase
         self::assertSame(1, substr_count($html, '<h1'));
         self::assertLessThan(strpos($html, 'id="services"'), strpos($html, 'id="about"'));
         self::assertLessThan(strpos($html, 'id="gallery"'), strpos($html, 'id="doctors"'));
-        self::assertLessThan(strpos($html, 'id="booking"'), strpos($html, 'id="contact"'));
+        self::assertLessThan(strpos($html, 'id="contact"'), strpos($html, 'id="booking"'));
     }
 
     public function test_optional_sections_and_images_are_omitted_without_empty_wrappers(): void
