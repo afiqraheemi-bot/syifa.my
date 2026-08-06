@@ -576,7 +576,7 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
         foreach ([
             'DashboardShell',
             'ContentHealthSummary',
-            'ContentSectionSummary',
+            ':sections="contentSections"',
             'createDashboardNavigation(props.navigation)',
         ] as $contract) {
             self::assertStringContainsString($contract, $page);

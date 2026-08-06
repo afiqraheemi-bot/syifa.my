@@ -2,10 +2,12 @@
 import { computed, onMounted, ref, toRaw } from 'vue';
 import { browserHttpRequest } from '../../../Shared/Authentication/session.js';
 import WebsiteImageUpload from '../../../Shared/Website/WebsiteImageUpload.vue';
+import SyifaAiAssistant from '../../PlatformAdministration/Onboarding/SyifaAiAssistant.vue';
 
 const props = defineProps({
     websiteDraft: { type: Object, required: true },
     templateId: { type: String, default: '' },
+    syifaAi: { type: Object, required: true },
 });
 const cloneData = (value) => structuredClone(toRaw(value));
 const draft = ref(null);
@@ -144,6 +146,13 @@ function addTestimonial() {
 function addFaq() {
     faq.value.entries.push({ id: crypto.randomUUID(), question: '', answer: '' });
 }
+
+function applySyifaAiSuggestion(suggestion) {
+    const target = byType(suggestion.section);
+    if (!target || !Object.prototype.hasOwnProperty.call(target, suggestion.field)) return;
+    target[suggestion.field] = suggestion.proposed_value;
+    success.value = 'Suggestion added to the form. Review it, then save the private draft.';
+}
 </script>
 
 <template>
@@ -179,6 +188,12 @@ function addFaq() {
             Loading website draft…
         </p>
         <div v-else-if="draft" class="mt-6 space-y-4">
+            <SyifaAiAssistant
+                :endpoint="syifaAi.assistUrl"
+                :enabled="syifaAi.enabled"
+                :image-assistance-enabled="syifaAi.imageAssistanceEnabled"
+                @apply="applySyifaAiSuggestion"
+            />
             <details class="rounded-xl border border-slate-200 p-4" open>
                 <summary class="cursor-pointer text-lg font-bold">Homepage</summary>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
@@ -399,13 +414,18 @@ function addFaq() {
                     </button>
                 </div>
             </details>
-            <div class="rounded-xl border border-slate-200 p-4">
-                <h3 class="text-lg font-bold">Contact</h3>
-                <p class="mt-1 text-sm text-slate-600">
-                    Contact details are edited in “Clinic and brand” above, avoiding duplicate
-                    contact records.
-                </p>
-            </div>
+            <details class="rounded-xl border border-slate-200 p-4">
+                <summary class="cursor-pointer text-lg font-bold">Contact</summary>
+                <div class="mt-4">
+                    <slot name="contact" />
+                </div>
+            </details>
+            <details class="rounded-xl border border-slate-200 p-4">
+                <summary class="cursor-pointer text-lg font-bold">Search and sharing</summary>
+                <div class="mt-4">
+                    <slot name="search-sharing" />
+                </div>
+            </details>
         </div>
     </section>
 </template>

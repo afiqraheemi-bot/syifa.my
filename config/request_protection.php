@@ -55,6 +55,16 @@ return [
             'key_parts' => ['host', 'tenant', 'actor', 'session', 'network'],
         ],
 
+        'syifa_ai' => [
+            'limiter' => 'syifa-ai',
+            'max_attempts' => (int) env('REQUEST_PROTECTION_SYIFA_AI_MAX_ATTEMPTS', 12),
+            'decay_seconds' => (int) env('REQUEST_PROTECTION_SYIFA_AI_DECAY_SECONDS', 60),
+            'type' => 'syifa_ai_temporarily_unavailable',
+            'title' => 'SYIFA AI Temporarily Unavailable',
+            'detail' => 'Too many AI requests were made. Please wait before trying again.',
+            'key_parts' => ['host', 'tenant', 'actor', 'session', 'network'],
+        ],
+
         'public' => [
             'limiter' => 'public.default',
             'max_attempts' => (int) env('REQUEST_PROTECTION_PUBLIC_MAX_ATTEMPTS', 120),

@@ -8,15 +8,22 @@ use PHPUnit\Framework\TestCase;
 
 final class AuthenticationUiArchitectureTest extends TestCase
 {
-    public function test_login_ui_reuses_only_existing_actor_specific_session_endpoints(): void
+    public function test_actor_neutral_login_ui_reuses_the_existing_separate_session_boundaries(): void
     {
         $controller = $this->source('app/Http/Controllers/RootEntryController.php');
         $component = $this->source('resources/js/Modules/Shared/Authentication/LoginEntry.vue');
+        $session = $this->source('resources/js/Shared/Authentication/session.js');
 
         self::assertStringContainsString("url('/api/v1/sessions')", $controller);
         self::assertStringContainsString("url('/api/v1/platform/sessions')", $controller);
+        self::assertStringContainsString("route('clinic-registration.access.login')", $controller);
         self::assertStringContainsString('clinicOwnerSessionUrl', $component);
         self::assertStringContainsString('platformSessionUrl', $component);
+        self::assertStringContainsString('clinicRegistrationLoginUrl', $component);
+        self::assertStringContainsString('createUnifiedBrowserSession', $component);
+        self::assertStringContainsString("['clinic_registration', urls.clinicRegistration]", $session);
+        self::assertStringContainsString("['clinic_owner', urls.clinicOwner]", $session);
+        self::assertStringContainsString("['platform_identity', urls.platform]", $session);
 
         foreach ([
             'Auth::',
@@ -75,11 +82,11 @@ final class AuthenticationUiArchitectureTest extends TestCase
         $logout = $this->source('resources/js/Shared/Dashboard/DashboardLogoutAction.vue');
 
         foreach ([
-            'role="tablist"',
-            ':aria-selected',
             'role="alert"',
             'autocomplete="username"',
             'autocomplete="current-password"',
+            "'Paparkan kata laluan'",
+            ':aria-pressed="passwordVisible"',
             ':disabled="loading"',
             'focus-visible:',
         ] as $expected) {
@@ -103,13 +110,16 @@ final class AuthenticationUiArchitectureTest extends TestCase
         self::assertStringContainsString('remember,', $session);
     }
 
-    public function test_local_clinic_login_receives_only_a_server_boolean_never_tenant_identity(): void
+    public function test_login_page_never_accepts_role_or_tenant_authority_from_the_visitor(): void
     {
         $controller = $this->source('app/Http/Controllers/RootEntryController.php');
         $component = $this->source('resources/js/Modules/Shared/Authentication/LoginEntry.vue');
 
-        self::assertStringContainsString('localClinicOwnerLogin', $controller);
-        self::assertStringContainsString('localClinicOwnerLogin', $component);
+        self::assertStringNotContainsString('localClinicOwnerLogin', $controller);
+        self::assertStringNotContainsString('localClinicOwnerLogin', $component);
+        self::assertStringNotContainsString('v-model="actor"', $component);
+        self::assertStringNotContainsString('role="tablist"', $component);
+        self::assertStringNotContainsString('Pilih ruang kerja', $component);
         self::assertStringNotContainsString('tenantId', $component);
         self::assertStringNotContainsString('tenant_id', $component);
         self::assertStringNotContainsString('demo-clinic', $component);

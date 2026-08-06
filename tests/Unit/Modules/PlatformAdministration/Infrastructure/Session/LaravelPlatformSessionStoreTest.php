@@ -9,11 +9,13 @@ use App\Modules\PlatformAdministration\Infrastructure\Authentication\PlatformIde
 use App\Modules\PlatformAdministration\Infrastructure\Session\LaravelPlatformSessionStore;
 use DateTimeImmutable;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Mockery;
 use Tests\TestCase;
 
 final class LaravelPlatformSessionStoreTest extends TestCase
@@ -115,6 +117,34 @@ final class LaravelPlatformSessionStoreTest extends TestCase
         self::assertNull($expired);
         self::assertNull($this->session->get('platform_administration_authentication'));
         self::assertFalse($guard->check());
+    }
+
+    public function test_current_restores_approved_state_from_a_valid_remembered_platform_identity(): void
+    {
+        $identityId = '00000000-0000-4000-8000-000000000666';
+        $user = (new PlatformIdentityAuthenticatable)->forceFill([
+            'platform_identity_id' => $identityId,
+            'account_status' => 'active',
+            'email_verification_status' => 'verified',
+            'email_verified_at' => new DateTimeImmutable,
+            'role' => 'website_designer',
+            'name' => 'Website Designer',
+        ]);
+        $guard = Mockery::mock(StatefulGuard::class);
+        $guard->shouldReceive('user')->once()->andReturn($user);
+        $guard->shouldReceive('viaRemember')->once()->andReturnTrue();
+        $auth = Mockery::mock(AuthFactory::class);
+        $auth->shouldReceive('guard')->once()->with('platform_identity')->andReturn($guard);
+        $store = new LaravelPlatformSessionStore($this->session, $auth, 120, 720);
+        $restoredAt = new DateTimeImmutable('2026-07-19T10:00:00Z');
+
+        $state = $store->current($restoredAt);
+
+        self::assertNotNull($state);
+        self::assertSame($identityId, $state->principal->platformIdentityId);
+        self::assertSame('website_designer', $state->principal->role);
+        self::assertSame($restoredAt, $state->authenticatedAt);
+        self::assertIsArray($this->session->get('platform_administration_authentication'));
     }
 
     private function seedCredential(string $identityId, string $role, string $name): void

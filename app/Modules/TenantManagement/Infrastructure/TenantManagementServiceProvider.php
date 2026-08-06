@@ -82,7 +82,14 @@ final class TenantManagementServiceProvider extends ServiceProvider
 
         $this->app->bind(ClinicOwnerAuthenticationInterface::class, AuthenticateClinicOwnerService::class);
         $this->app->bind(AuthenticationSignalDispatcherInterface::class, LaravelAuthenticationSignalDispatcher::class);
-        $this->app->bind(ClinicOwnerSessionStoreInterface::class, LaravelClinicOwnerSessionStore::class);
+        $this->app->bind(
+            ClinicOwnerSessionStoreInterface::class,
+            static fn (Application $application): LaravelClinicOwnerSessionStore => new LaravelClinicOwnerSessionStore(
+                $application->make('session.store'),
+                $application->make('auth'),
+                (int) config('tenant_management.session.absolute_lifetime_minutes'),
+            ),
+        );
 
         $this->app->bind(
             CreateClinicOwnerSessionService::class,

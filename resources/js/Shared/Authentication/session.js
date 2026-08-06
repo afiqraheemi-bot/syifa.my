@@ -57,6 +57,28 @@ export async function createBrowserSession(url, credentials, remember = false) {
     });
 }
 
+export async function createUnifiedBrowserSession(urls, credentials, remember = false) {
+    const attempts = [
+        ['clinic_registration', urls.clinicRegistration],
+        ['clinic_owner', urls.clinicOwner],
+        ['platform_identity', urls.platform],
+    ];
+    let lastResult = null;
+
+    for (const [boundary, url] of attempts) {
+        const result = await createBrowserSession(url, credentials, remember);
+
+        if (result.status === 401) {
+            lastResult = result;
+            continue;
+        }
+
+        return { ...result, boundary };
+    }
+
+    return { ...(lastResult ?? { ok: false, status: 401, body: {} }), boundary: null };
+}
+
 export async function completePlatformMfa(url, code) {
     return browserHttpRequest(url, {
         method: 'POST',
@@ -85,6 +107,17 @@ export async function requestPlatformPasswordReset(url, email) {
         },
         body: JSON.stringify({ email }),
     });
+}
+
+export async function requestUnifiedPasswordReset(urls, email) {
+    const requests = await Promise.allSettled([
+        requestClinicOwnerPasswordReset(urls.clinicOwner, email),
+        requestPlatformPasswordReset(urls.platform, email),
+    ]);
+
+    return {
+        ok: requests.some((request) => request.status === 'fulfilled' && request.value.ok),
+    };
 }
 
 export async function submitPlatformPasswordReset(

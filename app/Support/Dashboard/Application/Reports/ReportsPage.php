@@ -16,6 +16,7 @@ use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\ClinicOwnerDashboardNavigation;
 use App\Support\Dashboard\Application\DashboardNavigationItem;
 use App\Support\Dashboard\Application\DashboardPageView;
+use App\Support\Dashboard\Application\WebsiteDesignerDashboardNavigation;
 use DateTimeImmutable;
 use Illuminate\Support\Str;
 use LogicException;
@@ -93,7 +94,7 @@ final readonly class ReportsPage
             (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
         ];
         if ($role === 'website_designer') {
-            $items[] = (new DashboardNavigationItem('onboarding', 'Onboarding', route('dashboard.onboarding'), false))->toArray();
+            return WebsiteDesignerDashboardNavigation::items('reports');
         } else {
             $items[] = (new DashboardNavigationItem('registrations', 'Registrations', route('dashboard.registrations'), false))->toArray();
             $items[] = (new DashboardNavigationItem('tenants', 'Tenants', route('dashboard.tenants'), false))->toArray();

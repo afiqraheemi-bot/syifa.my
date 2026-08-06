@@ -120,6 +120,10 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         self::assertInstanceOf(Migration::class, $renderingContractMigration);
         $renderingContractMigration->up();
         $this->migrations[] = $renderingContractMigration;
+        $logoDisplaySizeMigration = require base_path('database/migrations/website_builder/2026_09_06_000001_add_logo_display_size_to_websites.php');
+        self::assertInstanceOf(Migration::class, $logoDisplaySizeMigration);
+        $logoDisplaySizeMigration->up();
+        $this->migrations[] = $logoDisplaySizeMigration;
     }
 
     protected function tearDown(): void
@@ -210,6 +214,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $website->publish($this->publicationEvidence(), $this->readiness(), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(849)), $this->uuid(900), $this->at('+2 hours'));
         $this->repository()->save($website);
 
+        $logoDisplaySizeMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $logoDisplaySizeMigration);
+        $logoDisplaySizeMigration->down();
         $renderingContractMigration = array_pop($this->migrations);
         self::assertInstanceOf(Migration::class, $renderingContractMigration);
         $renderingContractMigration->down();
@@ -223,6 +230,8 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $this->migrations[] = $migration;
         $renderingContractMigration->up();
         $this->migrations[] = $renderingContractMigration;
+        $logoDisplaySizeMigration->up();
+        $this->migrations[] = $logoDisplaySizeMigration;
         $row = $this->db()->table('website_service_section_items')->first();
         self::assertNotNull($row);
         self::assertSame($this->uuid(702), $row->service_id);
@@ -232,6 +241,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
 
     public function test_rendering_contract_migration_applies_and_reverses_without_touching_historic_content(): void
     {
+        $logoDisplaySizeMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $logoDisplaySizeMigration);
+        $logoDisplaySizeMigration->down();
         $migration = array_pop($this->migrations);
         self::assertInstanceOf(Migration::class, $migration);
         $migration->down();
@@ -244,6 +256,8 @@ final class PostgresWebsiteRepositoryTest extends TestCase
 
         $migration->up();
         $this->migrations[] = $migration;
+        $logoDisplaySizeMigration->up();
+        $this->migrations[] = $logoDisplaySizeMigration;
         self::assertTrue(Schema::connection(self::CONNECTION)->hasTable('website_published_service_items'));
         self::assertTrue(Schema::connection(self::CONNECTION)->hasTable('website_published_contact_projections'));
         self::assertTrue(Schema::connection(self::CONNECTION)->hasTable('website_published_business_hours'));
@@ -538,6 +552,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
 
     public function test_migration_backfills_all_sections_for_an_existing_website(): void
     {
+        $logoDisplaySizeMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $logoDisplaySizeMigration);
+        $logoDisplaySizeMigration->down();
         $renderingContractMigration = array_pop($this->migrations);
         self::assertInstanceOf(Migration::class, $renderingContractMigration);
         $renderingContractMigration->down();
@@ -582,6 +599,8 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $this->migrations[] = $servicePresentationMigration;
         $renderingContractMigration->up();
         $this->migrations[] = $renderingContractMigration;
+        $logoDisplaySizeMigration->up();
+        $this->migrations[] = $logoDisplaySizeMigration;
         $rows = $this->db()->table('website_sections')->where('website_id', $this->uuid(30))->orderBy('display_order')->get();
         self::assertCount(9, $rows);
         self::assertSame(['HERO', 'ABOUT', 'SERVICES', 'DOCTORS', 'TESTIMONIALS', 'GALLERY', 'FAQ', 'CONTACT', 'BOOKING_CTA'], $rows->pluck('section_type')->all());
@@ -591,6 +610,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
     public function test_seo_migration_backfills_existing_website_with_safe_defaults(): void
     {
         $this->repository()->save($this->website());
+        $logoDisplaySizeMigration = array_pop($this->migrations);
+        self::assertInstanceOf(Migration::class, $logoDisplaySizeMigration);
+        $logoDisplaySizeMigration->down();
         $renderingContractMigration = array_pop($this->migrations);
         self::assertInstanceOf(Migration::class, $renderingContractMigration);
         $renderingContractMigration->down();
@@ -622,6 +644,8 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         $this->migrations[] = $servicePresentationMigration;
         $renderingContractMigration->up();
         $this->migrations[] = $renderingContractMigration;
+        $logoDisplaySizeMigration->up();
+        $this->migrations[] = $logoDisplaySizeMigration;
         $row = $this->db()->table('website_seo_configurations')->where('website_id', $this->uuid(3))->first();
         self::assertNotNull($row);
         self::assertSame('Klinik Syifa', $row->meta_title);

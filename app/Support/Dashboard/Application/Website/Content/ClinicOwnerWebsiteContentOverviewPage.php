@@ -64,6 +64,11 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
                 'mediaUploadUrl' => route('clinic-owner.website-assets.store'),
                 'assetUrlTemplate' => route('public-website.assets.show', '__ASSET_ID__'),
             ],
+            'syifaAi' => [
+                'enabled' => (bool) config('syifa_ai.enabled'),
+                'assistUrl' => route('clinic-owner.syifa-ai.assist'),
+                'imageAssistanceEnabled' => false,
+            ],
         ]);
     }
 }

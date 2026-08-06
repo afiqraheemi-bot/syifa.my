@@ -9,6 +9,8 @@ import {
     DashboardShell,
 } from '../../../Shared/Dashboard/index.js';
 import WebsiteImageUpload from '../../../Shared/Website/WebsiteImageUpload.vue';
+import DesignerWorkspacePanel from './DesignerWorkspacePanel.vue';
+import SyifaAiAssistant from './SyifaAiAssistant.vue';
 
 const props = defineProps({
     navigation: { type: Array, required: true },
@@ -22,6 +24,7 @@ const props = defineProps({
     bookingSetup: { type: Object, required: true },
     clinicContact: { type: Object, required: true },
     websiteDraft: { type: Object, required: true },
+    syifaAi: { type: Object, required: true },
     taskUpdateUrlTemplate: { type: String, required: true },
     launchReadiness: { type: Object, default: null },
 });
@@ -168,6 +171,20 @@ const bookingCtaForm = ref({
 const bookingCtaSaving = ref(false);
 const bookingCtaSuccess = ref('');
 const bookingCtaError = ref('');
+
+function applySyifaAiSuggestion(suggestion) {
+    if (suggestion.section === 'HERO' && suggestion.field in heroForm.value) {
+        heroForm.value[suggestion.field] = suggestion.proposed_value;
+        heroSuccess.value = 'SYIFA AI suggestion added to the form. Review and save when ready.';
+        document.querySelector('#hero-editor')?.scrollIntoView({ behavior: 'smooth' });
+        return;
+    }
+    if (suggestion.section === 'ABOUT' && suggestion.field in aboutForm.value) {
+        aboutForm.value[suggestion.field] = suggestion.proposed_value;
+        aboutSuccess.value = 'SYIFA AI suggestion added to the form. Review and save when ready.';
+        document.querySelector('#about-editor')?.scrollIntoView({ behavior: 'smooth' });
+    }
+}
 const bookingCtaConflict = ref(false);
 const reviewSubmitting = ref(false);
 const reviewSuccess = ref('');
@@ -1443,6 +1460,61 @@ function completionEvidence(task) {
             </div>
         </section>
 
+        <SyifaAiAssistant
+            :endpoint="syifaAi.assistUrl"
+            :enabled="syifaAi.enabled"
+            :image-assistance-enabled="syifaAi.imageAssistanceEnabled"
+            @apply="applySyifaAiSuggestion"
+        />
+
+        <nav
+            aria-label="Website workspace shortcuts"
+            class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+        >
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+                        Website workspace
+                    </p>
+                    <p class="mt-1 text-sm text-slate-600">
+                        Open only the area you need. Your saved work remains in the private draft.
+                    </p>
+                </div>
+                <a
+                    href="#website-review"
+                    class="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-800 focus:ring-offset-2"
+                >
+                    Review and publish
+                </a>
+            </div>
+            <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <a
+                    href="#website-setup"
+                    class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 transition hover:border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                >
+                    1. Website setup
+                </a>
+                <a
+                    href="#hero-editor"
+                    class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 transition hover:border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                >
+                    2. Content sections
+                </a>
+                <a
+                    href="#booking-setup"
+                    class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 transition hover:border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                >
+                    3. Booking form
+                </a>
+                <a
+                    href="#workflow"
+                    class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 transition hover:border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                >
+                    View checkpoints
+                </a>
+            </div>
+        </nav>
+
         <section
             v-if="launchReadiness"
             class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
@@ -1712,10 +1784,12 @@ function completionEvidence(task) {
             </p>
         </section>
 
-        <section
+        <DesignerWorkspacePanel
             id="website-setup"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="website-setup-title"
+            title="Website setup"
+            description="Choose the approved template, manage the public identity and control search and section settings."
+            eyebrow="Foundation"
+            open
         >
             <div class="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div class="flex flex-wrap items-start justify-between gap-4">
@@ -1783,13 +1857,8 @@ function completionEvidence(task) {
                     {{ addressError }}
                 </p>
             </div>
-            <h2 id="website-setup-title" class="text-xl font-bold text-slate-950">Website setup</h2>
-            <p class="mt-1 text-sm text-slate-600">
-                Configure the assigned clinic Website. Saving does not publish the Website.
-            </p>
-
-            <form class="mt-6 space-y-6" novalidate @submit.prevent="saveWebsiteSetup">
-                <fieldset>
+            <form class="space-y-6" novalidate @submit.prevent="saveWebsiteSetup">
+                <fieldset class="rounded-xl border border-slate-200 bg-slate-50 p-5">
                     <legend class="font-bold text-slate-900">Approved template</legend>
                     <label class="mt-4 block text-sm font-semibold text-slate-800">
                         Website template
@@ -1809,150 +1878,196 @@ function completionEvidence(task) {
                     </p>
                 </fieldset>
 
-                <fieldset>
-                    <legend class="font-bold text-slate-900">Clinic and branding</legend>
-                    <div class="mt-4 grid gap-5 md:grid-cols-2">
-                        <label class="text-sm font-semibold text-slate-800">
-                            Clinic name
-                            <input
-                                v-model="form.branding.clinic_name"
-                                :class="inputClass"
-                                required
-                                maxlength="200"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Tagline
-                            <input
-                                v-model="form.branding.tagline"
-                                :class="inputClass"
-                                maxlength="240"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Primary colour
-                            <input
-                                v-model="form.branding.primary_color"
-                                type="color"
-                                class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
-                            />
-                            <span class="mt-1 block text-xs font-normal text-slate-500">
-                                Choose the main brand colour.
-                            </span>
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Secondary colour
-                            <input
-                                v-model="form.branding.secondary_color"
-                                type="color"
-                                class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
-                            />
-                            <span class="mt-1 block text-xs font-normal text-slate-500">
-                                Choose the supporting brand colour.
-                            </span>
-                        </label>
-                    </div>
-                    <WebsiteImageUpload
-                        v-model="form.branding.logo_reference"
-                        class="mt-5"
-                        label="Clinic logo"
-                        :upload-url="websiteDraft.assetUploadUrl"
-                        :asset-url-template="websiteDraft.assetUrlTemplate"
-                        :aspect-ratio="6"
-                        :aspect-ratio-options="[
-                            { label: 'Wide wordmark', value: 6 },
-                            { label: 'Landscape logo', value: 3 },
-                            { label: 'Square symbol', value: 1 },
-                        ]"
-                        :disabled="form.processing"
-                        @uploaded="synchronizeWebsiteVersion"
-                    />
-                    <p class="mt-2 text-sm text-slate-600">
-                        Crop the logo closely using Wide, Landscape, or Square. It appears in
-                        preview after saving and becomes public after the Website is published.
-                    </p>
-                    <fieldset v-if="form.branding.logo_reference" class="mt-5">
-                        <legend class="text-sm font-semibold text-slate-800">Logo size</legend>
-                        <div class="mt-2 grid gap-2 sm:grid-cols-3">
-                            <label
-                                v-for="option in [
-                                    ['compact', 'Compact'],
-                                    ['standard', 'Standard'],
-                                    ['large', 'Large'],
-                                ]"
-                                :key="option[0]"
-                                class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-800 transition has-[:checked]:border-emerald-700 has-[:checked]:bg-emerald-50"
+                <details class="group rounded-xl border border-slate-200 bg-white">
+                    <summary
+                        class="flex min-h-20 cursor-pointer list-none items-center justify-between gap-4 rounded-xl px-5 py-4 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
+                    >
+                        <span>
+                            <span
+                                class="block text-xs font-bold uppercase tracking-[0.16em] text-emerald-800"
                             >
-                                <input
-                                    v-model="form.branding.logo_display_size"
-                                    type="radio"
-                                    name="logo_display_size"
-                                    :value="option[0]"
-                                    class="text-emerald-700 focus:ring-emerald-600"
-                                />
-                                {{ option[1] }}
-                            </label>
-                        </div>
-                    </fieldset>
-                </fieldset>
-
-                <fieldset>
-                    <legend class="font-bold text-slate-900">Contact configuration</legend>
-                    <div class="mt-4 grid gap-5 md:grid-cols-2">
-                        <label class="text-sm font-semibold text-slate-800">
-                            Contact email
-                            <input
-                                v-model="form.branding.contact_email"
-                                :class="inputClass"
-                                type="email"
-                                required
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Contact phone
-                            <input
-                                v-model="form.branding.contact_phone"
-                                :class="inputClass"
-                                required
-                                maxlength="40"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                            Clinic address
-                            <textarea
-                                v-model="form.branding.address"
-                                :class="inputClass"
-                                rows="3"
-                                required
-                                maxlength="500"
-                            />
-                        </label>
-                    </div>
-                    <div class="mt-5 grid gap-4 md:grid-cols-2">
-                        <label
-                            v-for="channel in socialChannels"
-                            :key="channel"
-                            class="text-sm font-medium capitalize text-slate-700"
+                                Clinic and brand
+                            </span>
+                            <span class="mt-1 block text-lg font-bold text-slate-950">Contact</span>
+                            <span class="mt-1 block text-sm font-normal leading-6 text-slate-600">
+                                Clinic identity, logo, public contact details and social channels.
+                            </span>
+                        </span>
+                        <span
+                            class="shrink-0 text-xl text-slate-500 transition group-open:rotate-90"
+                            aria-hidden="true"
                         >
-                            {{ channel }}
-                            <input
-                                v-model="form.branding.social_links[channel]"
-                                :class="inputClass"
-                                type="url"
-                                inputmode="url"
-                                placeholder="https://"
+                            ›
+                        </span>
+                    </summary>
+                    <div class="border-t border-slate-200 p-5">
+                        <fieldset>
+                            <legend class="font-bold text-slate-900">Clinic and branding</legend>
+                            <div class="mt-4 grid gap-5 md:grid-cols-2">
+                                <label class="text-sm font-semibold text-slate-800">
+                                    Clinic name
+                                    <input
+                                        v-model="form.branding.clinic_name"
+                                        :class="inputClass"
+                                        required
+                                        maxlength="200"
+                                    />
+                                </label>
+                                <label class="text-sm font-semibold text-slate-800">
+                                    Tagline
+                                    <input
+                                        v-model="form.branding.tagline"
+                                        :class="inputClass"
+                                        maxlength="240"
+                                    />
+                                </label>
+                                <label class="text-sm font-semibold text-slate-800">
+                                    Primary colour
+                                    <input
+                                        v-model="form.branding.primary_color"
+                                        type="color"
+                                        class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
+                                    />
+                                    <span class="mt-1 block text-xs font-normal text-slate-500">
+                                        Choose the main brand colour.
+                                    </span>
+                                </label>
+                                <label class="text-sm font-semibold text-slate-800">
+                                    Secondary colour
+                                    <input
+                                        v-model="form.branding.secondary_color"
+                                        type="color"
+                                        class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
+                                    />
+                                    <span class="mt-1 block text-xs font-normal text-slate-500">
+                                        Choose the supporting brand colour.
+                                    </span>
+                                </label>
+                            </div>
+                            <WebsiteImageUpload
+                                v-model="form.branding.logo_reference"
+                                class="mt-5"
+                                label="Clinic logo"
+                                :upload-url="websiteDraft.assetUploadUrl"
+                                :asset-url-template="websiteDraft.assetUrlTemplate"
+                                :aspect-ratio="6"
+                                :aspect-ratio-options="[
+                                    { label: 'Wide wordmark', value: 6 },
+                                    { label: 'Landscape logo', value: 3 },
+                                    { label: 'Square symbol', value: 1 },
+                                ]"
+                                :disabled="form.processing"
+                                @uploaded="synchronizeWebsiteVersion"
                             />
-                        </label>
-                    </div>
-                </fieldset>
+                            <p class="mt-2 text-sm text-slate-600">
+                                Crop the logo closely using Wide, Landscape, or Square. It appears
+                                in preview after saving and becomes public after the Website is
+                                published.
+                            </p>
+                            <fieldset v-if="form.branding.logo_reference" class="mt-5">
+                                <legend class="text-sm font-semibold text-slate-800">
+                                    Logo size
+                                </legend>
+                                <div class="mt-2 grid gap-2 sm:grid-cols-3">
+                                    <label
+                                        v-for="option in [
+                                            ['compact', 'Compact'],
+                                            ['standard', 'Standard'],
+                                            ['large', 'Large'],
+                                        ]"
+                                        :key="option[0]"
+                                        class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-800 transition has-[:checked]:border-emerald-700 has-[:checked]:bg-emerald-50"
+                                    >
+                                        <input
+                                            v-model="form.branding.logo_display_size"
+                                            type="radio"
+                                            name="logo_display_size"
+                                            :value="option[0]"
+                                            class="text-emerald-700 focus:ring-emerald-600"
+                                        />
+                                        {{ option[1] }}
+                                    </label>
+                                </div>
+                            </fieldset>
+                        </fieldset>
 
-                <fieldset>
-                    <legend class="font-bold text-slate-900">SEO configuration</legend>
-                    <p class="mt-1 text-sm text-slate-600">
-                        Configure existing search and sharing metadata. Saving does not publish the
-                        Website.
-                    </p>
-                    <div class="mt-4 grid gap-5 md:grid-cols-2">
+                        <fieldset class="mt-6 border-t border-slate-200 pt-5">
+                            <legend class="font-bold text-slate-900">Contact details</legend>
+                            <div class="mt-4 grid gap-5 md:grid-cols-2">
+                                <label class="text-sm font-semibold text-slate-800">
+                                    Contact email
+                                    <input
+                                        v-model="form.branding.contact_email"
+                                        :class="inputClass"
+                                        type="email"
+                                        required
+                                    />
+                                </label>
+                                <label class="text-sm font-semibold text-slate-800">
+                                    Contact phone
+                                    <input
+                                        v-model="form.branding.contact_phone"
+                                        :class="inputClass"
+                                        required
+                                        maxlength="40"
+                                    />
+                                </label>
+                                <label class="text-sm font-semibold text-slate-800 md:col-span-2">
+                                    Clinic address
+                                    <textarea
+                                        v-model="form.branding.address"
+                                        :class="inputClass"
+                                        rows="3"
+                                        required
+                                        maxlength="500"
+                                    />
+                                </label>
+                            </div>
+                            <div class="mt-5 grid gap-4 md:grid-cols-2">
+                                <label
+                                    v-for="channel in socialChannels"
+                                    :key="channel"
+                                    class="text-sm font-medium capitalize text-slate-700"
+                                >
+                                    {{ channel }}
+                                    <input
+                                        v-model="form.branding.social_links[channel]"
+                                        :class="inputClass"
+                                        type="url"
+                                        inputmode="url"
+                                        placeholder="https://"
+                                    />
+                                </label>
+                            </div>
+                        </fieldset>
+                    </div>
+                </details>
+
+                <details class="group rounded-xl border border-slate-200 bg-white">
+                    <summary
+                        class="flex min-h-20 cursor-pointer list-none items-center justify-between gap-4 rounded-xl px-5 py-4 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
+                    >
+                        <span>
+                            <span
+                                class="block text-xs font-bold uppercase tracking-[0.16em] text-emerald-800"
+                            >
+                                Discoverability
+                            </span>
+                            <span class="mt-1 block text-lg font-bold text-slate-950">
+                                Search and sharing
+                            </span>
+                            <span class="mt-1 block text-sm font-normal leading-6 text-slate-600">
+                                Search metadata, social previews and indexing controls.
+                            </span>
+                        </span>
+                        <span
+                            class="shrink-0 text-xl text-slate-500 transition group-open:rotate-90"
+                            aria-hidden="true"
+                        >
+                            ›
+                        </span>
+                    </summary>
+                    <div class="grid gap-5 border-t border-slate-200 p-5 md:grid-cols-2">
                         <label class="text-sm font-semibold text-slate-800">
                             Meta title
                             <input
@@ -2033,9 +2148,9 @@ function completionEvidence(task) {
                             Allow search-engine indexing
                         </label>
                     </div>
-                </fieldset>
+                </details>
 
-                <fieldset>
+                <fieldset class="rounded-xl border border-slate-200 bg-white p-5">
                     <legend class="font-bold text-slate-900">Section visibility</legend>
                     <p class="mt-1 text-sm text-slate-600">
                         Choose which Website sections are enabled. Sections without publishable
@@ -2090,19 +2205,14 @@ function completionEvidence(task) {
                     {{ form.processing ? 'Saving…' : 'Save Website setup' }}
                 </button>
             </form>
-        </section>
+        </DesignerWorkspacePanel>
 
-        <section
+        <DesignerWorkspacePanel
             id="hero-editor"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="hero-editor-title"
+            title="Homepage"
+            description="Edit the opening message, calls to action and Hero image in the private draft."
         >
-            <h2 id="hero-editor-title" class="text-xl font-bold text-slate-950">Hero section</h2>
-            <p class="mt-1 text-sm text-slate-600">
-                Edit the opening message and calls to action. Saving updates the draft only.
-            </p>
-
-            <form class="mt-6 space-y-6" novalidate @submit.prevent="saveHero">
+            <form class="space-y-6" novalidate @submit.prevent="saveHero">
                 <div class="grid gap-5 md:grid-cols-2">
                     <label class="text-sm font-semibold text-slate-800 md:col-span-2">
                         Headline
@@ -2198,19 +2308,14 @@ function completionEvidence(task) {
                     {{ heroSaving ? 'Saving Hero…' : 'Save Hero section' }}
                 </button>
             </form>
-        </section>
+        </DesignerWorkspacePanel>
 
-        <section
+        <DesignerWorkspacePanel
             id="about-editor"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="about-editor-title"
+            title="About"
+            description="Maintain the clinic introduction and supporting image in the private draft."
         >
-            <h2 id="about-editor-title" class="text-xl font-bold text-slate-950">About section</h2>
-            <p class="mt-1 text-sm text-slate-600">
-                Maintain the clinic introduction in the Website draft. Saving does not publish it.
-            </p>
-
-            <form class="mt-6 space-y-6" novalidate @submit.prevent="saveAbout">
+            <form class="space-y-6" novalidate @submit.prevent="saveAbout">
                 <div class="grid gap-5 md:grid-cols-2">
                     <label class="text-sm font-semibold text-slate-800 md:col-span-2">
                         Heading
@@ -2269,22 +2374,14 @@ function completionEvidence(task) {
                     {{ aboutSaving ? 'Saving About…' : 'Save About section' }}
                 </button>
             </form>
-        </section>
+        </DesignerWorkspacePanel>
 
-        <section
+        <DesignerWorkspacePanel
             id="services-editor"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="services-editor-title"
+            title="Services"
+            description="Choose and order active clinic Services without duplicating Booking records."
         >
-            <h2 id="services-editor-title" class="text-xl font-bold text-slate-950">
-                Services section
-            </h2>
-            <p class="mt-1 text-sm text-slate-600">
-                Choose and order active clinic Services for the Website draft. Service records are
-                managed by Booking.
-            </p>
-
-            <form class="mt-6 space-y-6" novalidate @submit.prevent="saveServices">
+            <form class="space-y-6" novalidate @submit.prevent="saveServices">
                 <fieldset>
                     <legend class="font-bold text-slate-900">Active tenant Services</legend>
                     <p class="mt-1 text-sm text-slate-600">
@@ -2392,23 +2489,14 @@ function completionEvidence(task) {
                     {{ servicesSaving ? 'Saving Services…' : 'Save Services section' }}
                 </button>
             </form>
-        </section>
+        </DesignerWorkspacePanel>
 
-        <section
+        <DesignerWorkspacePanel
             id="doctors-editor"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="doctors-editor-title"
+            title="Doctors"
+            description="Maintain public Website profiles only; scheduling and credentials remain outside this editor."
         >
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <h2 id="doctors-editor-title" class="text-xl font-bold text-slate-950">
-                        Doctors section
-                    </h2>
-                    <p class="mt-1 text-sm text-slate-600">
-                        Maintain Website presentation profiles only. This does not manage scheduling
-                        or clinical credentials.
-                    </p>
-                </div>
+            <div class="flex justify-end">
                 <button
                     type="button"
                     :disabled="doctorsSaving"
@@ -2535,23 +2623,14 @@ function completionEvidence(task) {
                     {{ doctorsSaving ? 'Saving Doctors…' : 'Save Doctors section' }}
                 </button>
             </form>
-        </section>
+        </DesignerWorkspacePanel>
 
-        <section
+        <DesignerWorkspacePanel
             id="testimonials-editor"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="testimonials-editor-title"
+            title="Testimonials"
+            description="Maintain governed clinic testimonials without connecting an external review provider."
         >
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <h2 id="testimonials-editor-title" class="text-xl font-bold text-slate-950">
-                        Testimonials section
-                    </h2>
-                    <p class="mt-1 text-sm text-slate-600">
-                        Maintain manual Website testimonials. No external review provider is
-                        connected.
-                    </p>
-                </div>
+            <div class="flex justify-end">
                 <button
                     type="button"
                     :disabled="testimonialsSaving"
@@ -2670,22 +2749,14 @@ function completionEvidence(task) {
                     {{ testimonialsSaving ? 'Saving Testimonials…' : 'Save Testimonials section' }}
                 </button>
             </form>
-        </section>
+        </DesignerWorkspacePanel>
 
-        <section
+        <DesignerWorkspacePanel
             id="gallery-editor"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="gallery-editor-title"
+            title="Gallery"
+            description="Upload, describe and arrange Website-owned gallery images."
         >
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <h2 id="gallery-editor-title" class="text-xl font-bold text-slate-950">
-                        Gallery section
-                    </h2>
-                    <p class="mt-1 text-sm text-slate-600">
-                        Upload and arrange Website-owned gallery images.
-                    </p>
-                </div>
+            <div class="flex justify-end">
                 <button
                     type="button"
                     :disabled="gallerySaving"
@@ -2813,22 +2884,14 @@ function completionEvidence(task) {
                     {{ gallerySaving ? 'Saving Gallery…' : 'Save Gallery section' }}
                 </button>
             </form>
-        </section>
+        </DesignerWorkspacePanel>
 
-        <section
+        <DesignerWorkspacePanel
             id="faq-editor"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="faq-editor-title"
+            title="FAQ"
+            description="Maintain clear, plain-text answers to common patient questions."
         >
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <h2 id="faq-editor-title" class="text-xl font-bold text-slate-950">
-                        FAQ section
-                    </h2>
-                    <p class="mt-1 text-sm text-slate-600">
-                        Maintain plain-text questions and answers in the Website draft.
-                    </p>
-                </div>
+            <div class="flex justify-end">
                 <button
                     type="button"
                     :disabled="faqSaving"
@@ -2931,22 +2994,14 @@ function completionEvidence(task) {
                     {{ faqSaving ? 'Saving FAQ…' : 'Save FAQ section' }}
                 </button>
             </form>
-        </section>
+        </DesignerWorkspacePanel>
 
-        <section
+        <DesignerWorkspacePanel
             id="booking-cta-editor"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="booking-cta-editor-title"
+            title="Booking call to action"
+            description="Maintain the Website message that guides patients to the existing Booking flow."
         >
-            <h2 id="booking-cta-editor-title" class="text-xl font-bold text-slate-950">
-                Booking CTA section
-            </h2>
-            <p class="mt-1 text-sm text-slate-600">
-                Maintain the Website booking call to action. This does not change Booking
-                configuration.
-            </p>
-
-            <form class="mt-6 space-y-6" novalidate @submit.prevent="saveBookingCta">
+            <form class="space-y-6" novalidate @submit.prevent="saveBookingCta">
                 <div class="grid gap-5 md:grid-cols-2">
                     <label class="text-sm font-semibold text-slate-800 md:col-span-2">
                         Heading
@@ -3007,21 +3062,15 @@ function completionEvidence(task) {
                     {{ bookingCtaSaving ? 'Saving Booking CTA…' : 'Save Booking CTA section' }}
                 </button>
             </form>
-        </section>
+        </DesignerWorkspacePanel>
 
-        <section
+        <DesignerWorkspacePanel
             id="clinic-contact"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="clinic-contact-title"
+            title="Extended clinic contact"
+            description="Maintain operational contact details without duplicating Website branding."
+            eyebrow="Clinic information"
         >
-            <h2 id="clinic-contact-title" class="text-xl font-bold text-slate-950">
-                Extended clinic contact
-            </h2>
-            <p class="mt-1 text-sm text-slate-600">
-                Maintain the clinic’s operational contact details without changing Website branding.
-            </p>
-
-            <form class="mt-6 space-y-6" novalidate @submit.prevent="saveClinicContact">
+            <form class="space-y-6" novalidate @submit.prevent="saveClinicContact">
                 <div class="grid gap-5 md:grid-cols-2">
                     <label class="text-sm font-semibold text-slate-800">
                         Operational phone
@@ -3112,22 +3161,15 @@ function completionEvidence(task) {
                     {{ contactForm.processing ? 'Saving…' : 'Save clinic contact' }}
                 </button>
             </form>
-        </section>
+        </DesignerWorkspacePanel>
 
-        <section
+        <DesignerWorkspacePanel
             id="booking-setup"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-            aria-labelledby="booking-setup-title"
+            title="Booking form"
+            description="Configure approved patient fields while the Clinic Owner remains responsible for availability."
+            eyebrow="Patient booking"
         >
-            <h2 id="booking-setup-title" class="text-xl font-bold text-slate-950">
-                Booking form configuration
-            </h2>
-            <p class="mt-1 text-sm text-slate-600">
-                Configure only the approved Booking fields. Active Services are supplied by the
-                clinic and cannot be selected individually here.
-            </p>
-
-            <form class="mt-6 space-y-6" novalidate @submit.prevent="saveBookingConfiguration">
+            <form class="space-y-6" novalidate @submit.prevent="saveBookingConfiguration">
                 <div
                     class="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-950"
                 >
@@ -3273,11 +3315,26 @@ function completionEvidence(task) {
                     {{ bookingForm.processing ? 'Saving…' : 'Save Booking configuration' }}
                 </button>
             </form>
-        </section>
+        </DesignerWorkspacePanel>
 
-        <section aria-labelledby="timeline-title">
-            <h2 id="timeline-title" class="text-lg font-bold text-slate-950">Timeline</h2>
-            <ol class="mt-4 space-y-3 border-l-2 border-slate-200 pl-5">
+        <details class="group rounded-xl border border-slate-200 bg-white">
+            <summary
+                class="flex min-h-20 cursor-pointer list-none items-center justify-between gap-4 rounded-xl px-5 py-4 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
+            >
+                <span>
+                    <span class="block text-lg font-bold text-slate-950">Activity timeline</span>
+                    <span class="mt-1 block text-sm font-normal text-slate-600">
+                        Review authoritative assignment and Website events.
+                    </span>
+                </span>
+                <span
+                    class="shrink-0 text-xl text-slate-500 transition group-open:rotate-90"
+                    aria-hidden="true"
+                >
+                    ›
+                </span>
+            </summary>
+            <ol class="mx-5 mb-5 space-y-3 border-l-2 border-slate-200 pl-5 pt-5">
                 <li v-for="event in job.timeline" :key="event.key" class="relative">
                     <span
                         class="absolute -left-[1.7rem] top-1.5 size-3 rounded-full bg-emerald-600 ring-4 ring-white"
@@ -3289,7 +3346,7 @@ function completionEvidence(task) {
                     </time>
                 </li>
             </ol>
-        </section>
+        </details>
 
         <DashboardQuickActions :actions="actions" />
     </DashboardShell>

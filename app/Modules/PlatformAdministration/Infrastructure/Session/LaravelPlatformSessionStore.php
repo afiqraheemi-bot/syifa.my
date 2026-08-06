@@ -72,7 +72,7 @@ final readonly class LaravelPlatformSessionStore implements PlatformSessionStore
         $state = $this->session->get(self::KEY);
 
         if (! is_array($state)) {
-            return null;
+            return $this->restoreRememberedState($at);
         }
 
         foreach ([
@@ -187,5 +187,44 @@ final readonly class LaravelPlatformSessionStore implements PlatformSessionStore
     private function absoluteExpiry(DateTimeImmutable $at): DateTimeImmutable
     {
         return $at->add(new DateInterval('PT'.$this->absoluteLifetimeMinutes.'M'));
+    }
+
+    private function restoreRememberedState(DateTimeImmutable $at): ?PlatformSessionState
+    {
+        $guard = $this->guard();
+        $user = $guard->user();
+
+        if (! $guard->viaRemember()
+            || ! $user instanceof PlatformIdentityAuthenticatable
+            || $user->account_status !== 'active'
+            || ! $user->hasVerifiedEmail()) {
+            return null;
+        }
+
+        $identityId = $user->getAuthIdentifier();
+        $role = $user->role;
+        $name = $user->name;
+
+        if (! is_string($identityId) || ! Str::isUuid($identityId)
+            || $role === ''
+            || $name === '') {
+            $this->invalidate();
+
+            return null;
+        }
+
+        $state = new PlatformSessionState(
+            new PlatformPrincipal($identityId, $role, $name),
+            $at,
+            $at,
+            $this->idleExpiry($at),
+            $this->absoluteExpiry($at),
+        );
+
+        $this->session->migrate(true);
+        $this->session->regenerateToken();
+        $this->session->put(self::KEY, $this->serialize($state));
+
+        return $state;
     }
 }

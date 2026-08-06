@@ -48,6 +48,8 @@ use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicBookingDateOverrideR
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteDraftRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiProviderInterface;
+use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiUsageRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\WebsitePublicationTransactionInterface;
 use App\Modules\WebsiteBuilder\Infrastructure\Assets\LaravelWebsiteAssetBinaryStorage;
@@ -80,6 +82,8 @@ use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsitePublishedSn
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteSeoSummaryReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteTenantResolver;
+use App\Modules\WebsiteBuilder\Infrastructure\SyifaAi\OpenAiSyifaAiProvider;
+use App\Modules\WebsiteBuilder\Infrastructure\SyifaAi\PostgresSyifaAiUsageRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Transactions\PostgresClinicTransaction;
 use App\Modules\WebsiteBuilder\Infrastructure\Transactions\PostgresWebsitePublicationTransaction;
 use Illuminate\Contracts\Foundation\Application;
@@ -236,6 +240,13 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
             static fn (Application $application): PostgresWebsiteDraftRepository => new PostgresWebsiteDraftRepository(
                 $application->make('db')->connection(),
                 $application->make(WebsiteDraftSectionCodec::class),
+            ),
+        );
+        $this->app->singleton(SyifaAiProviderInterface::class, OpenAiSyifaAiProvider::class);
+        $this->app->singleton(
+            SyifaAiUsageRepositoryInterface::class,
+            static fn (Application $application): PostgresSyifaAiUsageRepository => new PostgresSyifaAiUsageRepository(
+                $application->make('db')->connection(),
             ),
         );
         $this->app->singleton(

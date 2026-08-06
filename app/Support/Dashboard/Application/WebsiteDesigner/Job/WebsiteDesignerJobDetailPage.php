@@ -17,8 +17,8 @@ use App\Modules\WebsiteBuilder\Application\WebsiteDraft\ManageWebsiteDraftConten
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Support\Authorization\Application\AuthorizationContext;
-use App\Support\Dashboard\Application\DashboardNavigationItem;
 use App\Support\Dashboard\Application\DashboardPageView;
+use App\Support\Dashboard\Application\WebsiteDesignerDashboardNavigation;
 use LogicException;
 
 final readonly class WebsiteDesignerJobDetailPage
@@ -127,10 +127,7 @@ final readonly class WebsiteDesignerJobDetailPage
         );
 
         return new DashboardPageView('PlatformAdministration/Onboarding/WebsiteDesignerJobDetail', [
-            'navigation' => [
-                (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
-                (new DashboardNavigationItem('onboarding', 'Onboarding', route('dashboard.onboarding'), true))->toArray(),
-            ],
+            'navigation' => WebsiteDesignerDashboardNavigation::items('onboarding'),
             'breadcrumbs' => [
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
                 ['key' => 'onboarding', 'label' => 'Onboarding', 'href' => route('dashboard.onboarding')],
@@ -211,6 +208,14 @@ final readonly class WebsiteDesignerJobDetailPage
                     'public-website.assets.show',
                     '__ASSET_ID__',
                 ),
+            ],
+            'syifaAi' => [
+                'enabled' => (bool) config('syifa_ai.enabled', false),
+                'assistUrl' => route(
+                    'website-designer.syifa-ai.assist',
+                    (string) $job->data['id'],
+                ),
+                'imageAssistanceEnabled' => false,
             ],
         ]);
     }

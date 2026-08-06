@@ -60,18 +60,7 @@ final readonly class AuthenticatedDashboardPage
 
         if ($context->actorType === ActorType::PlatformIdentity->value && $context->role === 'website_designer') {
             $props['contextLabel'] = 'Website Designer workspace';
-            $props['navigation'][] = (new DashboardNavigationItem(
-                'onboarding',
-                'Onboarding',
-                route('dashboard.onboarding'),
-                false,
-            ))->toArray();
-            $props['navigation'][] = (new DashboardNavigationItem(
-                'reports',
-                'Reports',
-                route('dashboard.reports'),
-                false,
-            ))->toArray();
+            $props['navigation'] = WebsiteDesignerDashboardNavigation::items('dashboard');
 
             return new DashboardPageView(
                 'PlatformAdministration/Dashboard/WebsiteDesignerDashboardOverview',

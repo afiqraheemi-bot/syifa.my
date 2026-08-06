@@ -37,6 +37,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBusinessHours
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerDraftPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerServiceSetupController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerSubscriptionController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerSyifaAiController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteApprovalController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteAssetController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteContentOverviewController;
@@ -65,6 +66,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerDraftPrev
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerJobDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerOnboardingQueueController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerPublishWebsiteController;
+use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerSyifaAiController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerWebsiteAddressController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerWebsiteAssetController;
 use App\Support\PublicWebsite\Presentation\Http\Controllers\PublicWebsiteAssetController;
@@ -160,6 +162,10 @@ Route::post('/api/v1/platform/onboarding/{jobId}/website-assets', WebsiteDesigne
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,website_designer')
     ->name('website-designer.website-assets.store');
+Route::post('/api/v1/platform/onboarding/{jobId}/syifa-ai', WebsiteDesignerSyifaAiController::class)
+    ->whereUuid('jobId')
+    ->middleware(['authorize.context:platform_identity,website_designer', 'throttle:syifa-ai'])
+    ->name('website-designer.syifa-ai.assist');
 Route::get('/dashboard/tenants', SuperAdminTenantOverviewController::class)
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.tenants');
@@ -337,6 +343,9 @@ Route::get('/api/v1/clinic-owner/website-draft', [ClinicOwnerWebsiteContentOverv
 Route::patch('/api/v1/clinic-owner/website-draft', [ClinicOwnerWebsiteContentOverviewController::class, 'updateDraft'])
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('clinic-owner.website-draft.update');
+Route::post('/api/v1/clinic-owner/syifa-ai', ClinicOwnerSyifaAiController::class)
+    ->middleware(['authorize.context:clinic_owner,clinic_owner', 'throttle:syifa-ai'])
+    ->name('clinic-owner.syifa-ai.assist');
 Route::post('/api/v1/clinic-owner/website-assets', ClinicOwnerWebsiteAssetController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('clinic-owner.website-assets.store');

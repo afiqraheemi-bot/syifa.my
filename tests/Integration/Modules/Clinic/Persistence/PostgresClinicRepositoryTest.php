@@ -394,6 +394,8 @@ final class PostgresClinicRepositoryTest extends TestCase
         self::assertFalse(Schema::connection(self::CONNECTION)->hasTable('clinic_contact_profiles'));
         $this->configurationMigration?->down();
         $this->configurationMigration = null;
+        $this->bookingAvailabilityMigration?->down();
+        $this->bookingAvailabilityMigration = null;
         $this->clinicMigration?->down();
         $this->clinicMigration = null;
         self::assertFalse(Schema::connection(self::CONNECTION)->hasTable('clinics'));

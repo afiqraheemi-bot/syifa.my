@@ -35,6 +35,8 @@ use Illuminate\Notifications\Notifiable;
  * @property string $clinic_owner_identity_id
  * @property string $email
  * @property string $password_hash
+ * @property string $authority_status
+ * @property string $email_verification_status
  * @property ?string $remember_token
  */
 final class ClinicOwnerAuthenticatable extends Model implements AuthenticatableContract, CanResetPasswordContract, MustVerifyEmailContract

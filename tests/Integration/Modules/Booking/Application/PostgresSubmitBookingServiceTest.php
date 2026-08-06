@@ -99,6 +99,9 @@ final class PostgresSubmitBookingServiceTest extends TestCase
             return;
         }
 
+        $this->db()->table('booking_history')->delete();
+        $this->db()->table('booking_slot_reservation_buckets')->delete();
+        $this->db()->table('bookings')->delete();
         foreach ($this->migrations as $migration) {
             $migration->down();
         }

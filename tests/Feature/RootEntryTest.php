@@ -74,8 +74,6 @@ final class RootEntryTest extends TestCase
             ->assertInertia(
                 static fn ($page) => $page
                     ->component('Shared/Authentication/LoginEntry', false)
-                    ->where('clinicPortal', false)
-                    ->where('localClinicOwnerLogin', true)
                     ->where('clinicOwnerSessionUrl', url('/api/v1/sessions'))
                     ->where('clinicOwnerForgotPasswordUrl', route('clinic-owner.password.forgot'))
                     ->where('platformForgotPasswordUrl', route('platform.password.forgot'))
@@ -83,7 +81,7 @@ final class RootEntryTest extends TestCase
                     ->where('platformMfaUrl', route('platform-sessions.mfa'))
                     ->where('dashboardUrl', url('/dashboard'))
                     ->where('clinicRegistrationUrl', route('clinic-registration.browser', [], false))
-                    ->has('clinicPortalBaseDomains'),
+                    ->where('clinicRegistrationLoginUrl', route('clinic-registration.access.login')),
             );
     }
 
@@ -103,16 +101,16 @@ final class RootEntryTest extends TestCase
         $this->get('/login')->assertRedirect(route('dashboard'));
     }
 
-    public function test_clinic_admin_host_receives_the_host_bound_clinic_owner_login(): void
+    public function test_clinic_admin_host_receives_the_same_actor_neutral_login_experience(): void
     {
         $this->get('https://clinic.app.syifa.my/')
             ->assertOk()
             ->assertInertia(
                 static fn ($page) => $page
                     ->component('Shared/Authentication/LoginEntry', false)
-                    ->where('clinicPortal', true)
-                    ->where('localClinicOwnerLogin', true)
-                    ->where('clinicOwnerSessionUrl', 'https://clinic.app.syifa.my/api/v1/sessions'),
+                    ->where('clinicOwnerSessionUrl', 'https://clinic.app.syifa.my/api/v1/sessions')
+                    ->where('platformSessionUrl', 'https://clinic.app.syifa.my/api/v1/platform/sessions')
+                    ->where('clinicRegistrationLoginUrl', 'https://clinic.app.syifa.my/register/login'),
             );
     }
 

@@ -3,7 +3,6 @@ import { useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import {
     ContentHealthSummary,
-    ContentSectionSummary,
     createDashboardNavigation,
     DashboardShell,
 } from '../../../Shared/Dashboard/index.js';
@@ -25,6 +24,7 @@ const props = defineProps({
     updateUrl: { type: String, required: true },
     previewUrl: { type: String, required: true },
     websiteDraft: { type: Object, required: true },
+    syifaAi: { type: Object, required: true },
 });
 
 const navigation = createDashboardNavigation(props.navigation);
@@ -175,232 +175,246 @@ const inputClass =
             <ClinicOwnerDraftSections
                 :website-draft="websiteDraft"
                 :template-id="form.template_id"
-            />
-            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="text-xl font-bold text-slate-950">Clinic and brand</h2>
-                <p class="mt-1 text-sm text-slate-600">
-                    These changes update the current configuration. They do not publish
-                    automatically.
-                </p>
-                <div class="mt-5 grid gap-5 md:grid-cols-2">
-                    <label class="text-sm font-semibold text-slate-800">
-                        Clinic name
-                        <input
-                            v-model="form.branding.clinic_name"
-                            :class="inputClass"
-                            required
-                            maxlength="200"
-                        />
-                        <span
-                            v-if="form.errors['branding.clinic_name']"
-                            class="mt-1 block text-sm text-red-700"
-                        >
-                            {{ form.errors['branding.clinic_name'] }}
-                        </span>
-                    </label>
-                    <label class="text-sm font-semibold text-slate-800">
-                        Tagline
-                        <input
-                            v-model="form.branding.tagline"
-                            :class="inputClass"
-                            maxlength="240"
-                        />
-                    </label>
-                    <label class="text-sm font-semibold text-slate-800">
-                        Primary colour
-                        <input
-                            v-model="form.branding.primary_color"
-                            type="color"
-                            class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
-                        />
-                        <span class="mt-1 block text-xs font-normal text-slate-500">
-                            Choose the main brand colour.
-                        </span>
-                    </label>
-                    <label class="text-sm font-semibold text-slate-800">
-                        Secondary colour
-                        <input
-                            v-model="form.branding.secondary_color"
-                            type="color"
-                            class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
-                        />
-                        <span class="mt-1 block text-xs font-normal text-slate-500">
-                            Choose the supporting brand colour.
-                        </span>
-                    </label>
-                    <WebsiteImageUpload
-                        v-model="form.branding.logo_reference"
-                        class="md:col-span-2"
-                        label="Clinic logo"
-                        :upload-url="websiteDraft.mediaUploadUrl"
-                        :asset-url-template="websiteDraft.assetUrlTemplate"
-                        :aspect-ratio="6"
-                        :aspect-ratio-options="[
-                            { label: 'Wide wordmark', value: 6 },
-                            { label: 'Landscape logo', value: 3 },
-                            { label: 'Square symbol', value: 1 },
-                        ]"
-                        :disabled="form.processing"
-                        @uploaded="synchronizeWebsiteVersion"
-                    />
-                    <fieldset
-                        v-if="form.branding.logo_reference"
-                        class="rounded-xl border border-slate-200 p-4 md:col-span-2"
-                    >
-                        <legend class="px-1 text-sm font-semibold text-slate-800">Logo size</legend>
-                        <p class="mb-3 text-xs text-slate-500">
-                            Choose how prominently the clinic logo appears in the website header.
+                :syifa-ai="syifaAi"
+            >
+                <template #contact>
+                    <div class="rounded-xl bg-slate-50 p-4 sm:p-5">
+                        <p class="text-xs font-bold uppercase tracking-[0.16em] text-teal-800">
+                            Clinic and brand
                         </p>
-                        <div class="grid gap-2 sm:grid-cols-3">
-                            <label
-                                v-for="option in [
-                                    ['compact', 'Compact'],
-                                    ['standard', 'Standard'],
-                                    ['large', 'Large'],
-                                ]"
-                                :key="option[0]"
-                                class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-800 transition has-[:checked]:border-teal-700 has-[:checked]:bg-teal-50"
-                            >
-                                <input
-                                    v-model="form.branding.logo_display_size"
-                                    type="radio"
-                                    name="clinic_owner_logo_display_size"
-                                    :value="option[0]"
-                                    class="text-teal-700 focus:ring-teal-600"
-                                />
-                                {{ option[1] }}
-                            </label>
-                        </div>
-                    </fieldset>
-                    <label class="text-sm font-semibold text-slate-800">
-                        Contact email
-                        <input
-                            v-model="form.branding.contact_email"
-                            :class="inputClass"
-                            type="email"
-                            required
-                        />
-                    </label>
-                    <label class="text-sm font-semibold text-slate-800">
-                        Contact phone
-                        <input
-                            v-model="form.branding.contact_phone"
-                            :class="inputClass"
-                            required
-                            maxlength="40"
-                        />
-                    </label>
-                    <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                        Address
-                        <textarea
-                            v-model="form.branding.address"
-                            :class="inputClass"
-                            rows="3"
-                            required
-                            maxlength="500"
-                        />
-                    </label>
-                </div>
-                <fieldset class="mt-6">
-                    <legend class="text-sm font-semibold text-slate-800">Social links</legend>
-                    <div class="mt-2 grid gap-4 md:grid-cols-2">
-                        <label
-                            v-for="channel in socialChannels"
-                            :key="channel"
-                            class="text-sm font-medium capitalize text-slate-700"
-                        >
-                            {{ channel }}
+                        <h3 class="mt-2 text-lg font-bold text-slate-950">
+                            Identity, contact and social details
+                        </h3>
+                        <p class="mt-1 text-sm leading-6 text-slate-600">
+                            Keep the clinic identity and public contact information together. These
+                            changes remain private until the governed publication step.
+                        </p>
+                    </div>
+                    <div class="mt-5 grid gap-5 md:grid-cols-2">
+                        <label class="text-sm font-semibold text-slate-800">
+                            Clinic name
                             <input
-                                v-model="form.branding.social_links[channel]"
+                                v-model="form.branding.clinic_name"
                                 :class="inputClass"
-                                type="url"
-                                inputmode="url"
-                                placeholder="https://"
+                                required
+                                maxlength="200"
+                            />
+                            <span
+                                v-if="form.errors['branding.clinic_name']"
+                                class="mt-1 block text-sm text-red-700"
+                            >
+                                {{ form.errors['branding.clinic_name'] }}
+                            </span>
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800">
+                            Tagline
+                            <input
+                                v-model="form.branding.tagline"
+                                :class="inputClass"
+                                maxlength="240"
+                            />
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800">
+                            Primary colour
+                            <input
+                                v-model="form.branding.primary_color"
+                                type="color"
+                                class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                            />
+                            <span class="mt-1 block text-xs font-normal text-slate-500">
+                                Choose the main brand colour.
+                            </span>
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800">
+                            Secondary colour
+                            <input
+                                v-model="form.branding.secondary_color"
+                                type="color"
+                                class="mt-2 block h-14 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm transition focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+                            />
+                            <span class="mt-1 block text-xs font-normal text-slate-500">
+                                Choose the supporting brand colour.
+                            </span>
+                        </label>
+                        <WebsiteImageUpload
+                            v-model="form.branding.logo_reference"
+                            class="md:col-span-2"
+                            label="Clinic logo"
+                            :upload-url="websiteDraft.mediaUploadUrl"
+                            :asset-url-template="websiteDraft.assetUrlTemplate"
+                            :aspect-ratio="6"
+                            :aspect-ratio-options="[
+                                { label: 'Wide wordmark', value: 6 },
+                                { label: 'Landscape logo', value: 3 },
+                                { label: 'Square symbol', value: 1 },
+                            ]"
+                            :disabled="form.processing"
+                            @uploaded="synchronizeWebsiteVersion"
+                        />
+                        <fieldset
+                            v-if="form.branding.logo_reference"
+                            class="rounded-xl border border-slate-200 p-4 md:col-span-2"
+                        >
+                            <legend class="px-1 text-sm font-semibold text-slate-800">
+                                Logo size
+                            </legend>
+                            <p class="mb-3 text-xs text-slate-500">
+                                Choose how prominently the clinic logo appears in the website
+                                header.
+                            </p>
+                            <div class="grid gap-2 sm:grid-cols-3">
+                                <label
+                                    v-for="option in [
+                                        ['compact', 'Compact'],
+                                        ['standard', 'Standard'],
+                                        ['large', 'Large'],
+                                    ]"
+                                    :key="option[0]"
+                                    class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-medium text-slate-800 transition has-[:checked]:border-teal-700 has-[:checked]:bg-teal-50"
+                                >
+                                    <input
+                                        v-model="form.branding.logo_display_size"
+                                        type="radio"
+                                        name="clinic_owner_logo_display_size"
+                                        :value="option[0]"
+                                        class="text-teal-700 focus:ring-teal-600"
+                                    />
+                                    {{ option[1] }}
+                                </label>
+                            </div>
+                        </fieldset>
+                        <label class="text-sm font-semibold text-slate-800">
+                            Contact email
+                            <input
+                                v-model="form.branding.contact_email"
+                                :class="inputClass"
+                                type="email"
+                                required
+                            />
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800">
+                            Contact phone
+                            <input
+                                v-model="form.branding.contact_phone"
+                                :class="inputClass"
+                                required
+                                maxlength="40"
+                            />
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800 md:col-span-2">
+                            Address
+                            <textarea
+                                v-model="form.branding.address"
+                                :class="inputClass"
+                                rows="3"
+                                required
+                                maxlength="500"
                             />
                         </label>
                     </div>
-                </fieldset>
-            </section>
-
-            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="text-xl font-bold text-slate-950">Search and sharing</h2>
-                <div class="mt-5 grid gap-5 md:grid-cols-2">
-                    <label class="text-sm font-semibold text-slate-800">
-                        Meta title
-                        <input
-                            v-model="form.seo.meta_title"
-                            :class="inputClass"
-                            required
-                            maxlength="60"
-                        />
-                    </label>
-                    <label class="text-sm font-semibold text-slate-800">
-                        Meta keywords
-                        <input
-                            v-model="form.seo.meta_keywords"
-                            :class="inputClass"
-                            maxlength="255"
-                        />
-                    </label>
-                    <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                        Meta description
-                        <textarea
-                            v-model="form.seo.meta_description"
-                            :class="inputClass"
-                            rows="3"
-                            required
-                            maxlength="160"
-                        />
-                    </label>
-                    <label class="text-sm font-semibold text-slate-800">
-                        Open Graph title
-                        <input
-                            v-model="form.seo.open_graph_title"
-                            :class="inputClass"
-                            required
-                            maxlength="60"
-                        />
-                    </label>
-                    <label class="text-sm font-semibold text-slate-800">
-                        Canonical URL
-                        <input
-                            v-model="form.seo.canonical_url"
-                            :class="inputClass"
-                            type="url"
-                            placeholder="https://"
-                        />
-                    </label>
-                    <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                        Open Graph description
-                        <textarea
-                            v-model="form.seo.open_graph_description"
-                            :class="inputClass"
-                            rows="3"
-                            required
-                            maxlength="160"
-                        />
-                    </label>
-                    <label class="text-sm font-semibold text-slate-800">
-                        Robots directive
-                        <select v-model="form.seo.robots_directive" :class="inputClass">
-                            <option value="index,follow">Index, follow</option>
-                            <option value="index,nofollow">Index, no follow</option>
-                            <option value="noindex,follow">No index, follow</option>
-                            <option value="noindex,nofollow">No index, no follow</option>
-                        </select>
-                    </label>
-                    <label
-                        class="flex items-center gap-3 self-end rounded-lg border border-slate-200 p-3 text-sm font-semibold text-slate-800"
-                    >
-                        <input
-                            v-model="form.seo.indexing_enabled"
-                            type="checkbox"
-                            class="size-4 accent-teal-700"
-                        />
-                        Allow search-engine indexing
-                    </label>
-                </div>
-            </section>
+                    <fieldset class="mt-6 border-t border-slate-200 pt-5">
+                        <legend class="text-sm font-semibold text-slate-800">Social links</legend>
+                        <div class="mt-2 grid gap-4 md:grid-cols-2">
+                            <label
+                                v-for="channel in socialChannels"
+                                :key="channel"
+                                class="text-sm font-medium capitalize text-slate-700"
+                            >
+                                {{ channel }}
+                                <input
+                                    v-model="form.branding.social_links[channel]"
+                                    :class="inputClass"
+                                    type="url"
+                                    inputmode="url"
+                                    placeholder="https://"
+                                />
+                            </label>
+                        </div>
+                    </fieldset>
+                </template>
+                <template #search-sharing>
+                    <p class="text-sm leading-6 text-slate-600">
+                        Control how the clinic appears in search results and when its Website is
+                        shared. These settings remain private until publication.
+                    </p>
+                    <div class="mt-5 grid gap-5 md:grid-cols-2">
+                        <label class="text-sm font-semibold text-slate-800">
+                            Meta title
+                            <input
+                                v-model="form.seo.meta_title"
+                                :class="inputClass"
+                                required
+                                maxlength="60"
+                            />
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800">
+                            Meta keywords
+                            <input
+                                v-model="form.seo.meta_keywords"
+                                :class="inputClass"
+                                maxlength="255"
+                            />
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800 md:col-span-2">
+                            Meta description
+                            <textarea
+                                v-model="form.seo.meta_description"
+                                :class="inputClass"
+                                rows="3"
+                                required
+                                maxlength="160"
+                            />
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800">
+                            Open Graph title
+                            <input
+                                v-model="form.seo.open_graph_title"
+                                :class="inputClass"
+                                required
+                                maxlength="60"
+                            />
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800">
+                            Canonical URL
+                            <input
+                                v-model="form.seo.canonical_url"
+                                :class="inputClass"
+                                type="url"
+                                placeholder="https://"
+                            />
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800 md:col-span-2">
+                            Open Graph description
+                            <textarea
+                                v-model="form.seo.open_graph_description"
+                                :class="inputClass"
+                                rows="3"
+                                required
+                                maxlength="160"
+                            />
+                        </label>
+                        <label class="text-sm font-semibold text-slate-800">
+                            Robots directive
+                            <select v-model="form.seo.robots_directive" :class="inputClass">
+                                <option value="index,follow">Index, follow</option>
+                                <option value="index,nofollow">Index, no follow</option>
+                                <option value="noindex,follow">No index, follow</option>
+                                <option value="noindex,nofollow">No index, no follow</option>
+                            </select>
+                        </label>
+                        <label
+                            class="flex items-center gap-3 self-end rounded-lg border border-slate-200 p-3 text-sm font-semibold text-slate-800"
+                        >
+                            <input
+                                v-model="form.seo.indexing_enabled"
+                                type="checkbox"
+                                class="size-4 accent-teal-700"
+                            />
+                            Allow search-engine indexing
+                        </label>
+                    </div>
+                </template>
+            </ClinicOwnerDraftSections>
 
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="text-xl font-bold text-slate-950">Visible sections</h2>
@@ -449,20 +463,6 @@ const inputClass =
             </button>
         </form>
 
-        <div class="border-t border-slate-200 pt-8">
-            <ContentHealthSummary :health="contentHealth" />
-            <section aria-labelledby="content-sections-heading">
-                <h2 id="content-sections-heading" class="mb-4 text-xl font-bold text-slate-950">
-                    Content sections
-                </h2>
-                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    <ContentSectionSummary
-                        v-for="section in contentSections"
-                        :key="section.key"
-                        :section="section"
-                    />
-                </div>
-            </section>
-        </div>
+        <ContentHealthSummary :health="contentHealth" :sections="contentSections" />
     </DashboardShell>
 </template>

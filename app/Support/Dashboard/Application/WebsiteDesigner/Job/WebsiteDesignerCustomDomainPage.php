@@ -6,8 +6,8 @@ namespace App\Support\Dashboard\Application\WebsiteDesigner\Job;
 
 use App\Modules\WebsiteBuilder\Application\CustomDomain\ManageCustomDomainService;
 use App\Support\Authorization\Application\AuthorizationContext;
-use App\Support\Dashboard\Application\DashboardNavigationItem;
 use App\Support\Dashboard\Application\DashboardPageView;
+use App\Support\Dashboard\Application\WebsiteDesignerDashboardNavigation;
 use LogicException;
 
 final readonly class WebsiteDesignerCustomDomainPage
@@ -33,10 +33,7 @@ final readonly class WebsiteDesignerCustomDomainPage
         $domain = $this->domains->current($tenantId, $websiteId);
 
         return new DashboardPageView('PlatformAdministration/Onboarding/WebsiteDesignerCustomDomain', [
-            'navigation' => [
-                (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
-                (new DashboardNavigationItem('onboarding', 'Onboarding', route('dashboard.onboarding'), true))->toArray(),
-            ],
+            'navigation' => WebsiteDesignerDashboardNavigation::items('onboarding'),
             'breadcrumbs' => [
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
                 ['key' => 'onboarding', 'label' => 'Onboarding', 'href' => route('dashboard.onboarding')],

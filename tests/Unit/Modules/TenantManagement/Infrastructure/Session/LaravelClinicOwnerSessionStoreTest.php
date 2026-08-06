@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\TenantManagement\Infrastructure\Session;
 
 use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionState;
+use App\Modules\TenantManagement\Infrastructure\Authentication\ClinicOwnerAuthenticatable;
 use App\Modules\TenantManagement\Infrastructure\Session\LaravelClinicOwnerSessionStore;
 use DateTimeImmutable;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Contracts\Session\Session;
+use Mockery;
 use Tests\TestCase;
 
 final class LaravelClinicOwnerSessionStoreTest extends TestCase
@@ -65,6 +68,32 @@ final class LaravelClinicOwnerSessionStoreTest extends TestCase
         (new LaravelClinicOwnerSessionStore($session, $this->app->make(AuthFactory::class)))->invalidate();
 
         self::assertNull($session->get('clinic_owner_authentication'));
+    }
+
+    public function test_current_restores_approved_state_from_a_valid_remembered_owner(): void
+    {
+        $session = $this->app->make(Session::class);
+        $user = (new ClinicOwnerAuthenticatable)->forceFill([
+            'id' => '00000000-0000-4000-8000-000000000002',
+            'tenant_id' => '00000000-0000-4000-8000-000000000001',
+            'clinic_owner_identity_id' => '00000000-0000-4000-8000-000000000003',
+            'authority_status' => 'active',
+            'email_verification_status' => 'verified',
+            'email_verified_at' => new DateTimeImmutable,
+        ]);
+        $guard = Mockery::mock(StatefulGuard::class);
+        $guard->shouldReceive('user')->once()->andReturn($user);
+        $guard->shouldReceive('viaRemember')->once()->andReturnTrue();
+        $auth = Mockery::mock(AuthFactory::class);
+        $auth->shouldReceive('guard')->once()->with('clinic_owner')->andReturn($guard);
+
+        $state = (new LaravelClinicOwnerSessionStore($session, $auth, 720))->current();
+
+        self::assertNotNull($state);
+        self::assertSame($user->tenant_id, $state->tenantId);
+        self::assertSame($user->id, $state->authorityId);
+        self::assertSame($user->clinic_owner_identity_id, $state->clinicOwnerIdentityId);
+        self::assertIsArray($session->get('clinic_owner_authentication'));
     }
 
     private function state(): ClinicOwnerSessionState

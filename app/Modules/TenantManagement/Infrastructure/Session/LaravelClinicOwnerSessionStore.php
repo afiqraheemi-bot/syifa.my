@@ -34,6 +34,7 @@ final readonly class LaravelClinicOwnerSessionStore implements ClinicOwnerSessio
     public function __construct(
         private Session $session,
         private AuthFactory $auth,
+        private int $absoluteLifetimeMinutes = 720,
     ) {}
 
     public function establish(ClinicOwnerSessionState $state, bool $remember = false): void
@@ -78,7 +79,7 @@ final readonly class LaravelClinicOwnerSessionStore implements ClinicOwnerSessio
         $state = $this->session->get(self::KEY);
 
         if (! is_array($state)) {
-            return null;
+            return $this->restoreRememberedState();
         }
 
         foreach (['tenant_id', 'authority_id', 'identity_id', 'role', 'authenticated_at', 'last_activity_at', 'absolute_expires_at'] as $key) {
@@ -133,5 +134,55 @@ final readonly class LaravelClinicOwnerSessionStore implements ClinicOwnerSessio
         }
 
         return $guard;
+    }
+
+    private function restoreRememberedState(): ?ClinicOwnerSessionState
+    {
+        $guard = $this->guard();
+        $user = $guard->user();
+
+        if (! $guard->viaRemember()
+            || ! $user instanceof ClinicOwnerAuthenticatable
+            || $user->authority_status !== 'active'
+            || ! $user->hasVerifiedEmail()) {
+            return null;
+        }
+
+        $authorityId = $user->getAuthIdentifier();
+        $tenantId = $user->tenant_id;
+        $identityId = $user->clinic_owner_identity_id;
+
+        if (! is_string($authorityId) || $authorityId === ''
+            || $tenantId === ''
+            || $identityId === '') {
+            $this->invalidate();
+
+            return null;
+        }
+
+        $now = new DateTimeImmutable;
+        $state = new ClinicOwnerSessionState(
+            tenantId: $tenantId,
+            authorityId: $authorityId,
+            clinicOwnerIdentityId: $identityId,
+            role: 'clinic_owner',
+            authenticatedAt: $now,
+            lastActivityAt: $now,
+            absoluteExpiresAt: $now->modify(sprintf('+%d minutes', $this->absoluteLifetimeMinutes)),
+        );
+
+        $this->session->migrate(true);
+        $this->session->regenerateToken();
+        $this->session->put(self::KEY, [
+            'tenant_id' => $state->tenantId,
+            'authority_id' => $state->authorityId,
+            'identity_id' => $state->clinicOwnerIdentityId,
+            'role' => $state->role,
+            'authenticated_at' => $state->authenticatedAt->format(DATE_RFC3339),
+            'last_activity_at' => $state->lastActivityAt->format(DATE_RFC3339),
+            'absolute_expires_at' => $state->absoluteExpiresAt->format(DATE_RFC3339),
+        ]);
+
+        return $state;
     }
 }

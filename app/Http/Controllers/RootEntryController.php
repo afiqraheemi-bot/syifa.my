@@ -6,7 +6,6 @@ namespace App\Http\Controllers;
 
 use App\Support\Identity\CurrentUserInterface;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,24 +21,20 @@ use Inertia\Response;
  * Authenticated visitors are sent to the existing `dashboard` route, which
  * already branches by role — this never decides a role itself. Unauthenticated
  * visitors receive a presentation-only Inertia page configured with the
- * existing, actor-specific session endpoints.
+ * existing credential boundaries. The page never asks the visitor to select
+ * a role: authenticated authority remains an exclusive backend decision.
  */
 final readonly class RootEntryController
 {
     public function __construct(private CurrentUserInterface $currentUser) {}
 
-    public function __invoke(Request $request): Response|RedirectResponse
+    public function __invoke(): Response|RedirectResponse
     {
         if ($this->currentUser->resolve() !== null) {
             return redirect()->route('dashboard');
         }
 
-        $clinicPortal = is_string($request->route('tenantAdminLabel'));
-
         return Inertia::render('Shared/Authentication/LoginEntry', [
-            'clinicPortal' => $clinicPortal,
-            'localClinicOwnerLogin' => app()->environment(['local', 'testing'])
-                && config('tenant_management.local_demo_tenant.enabled') === true,
             'clinicOwnerSessionUrl' => url('/api/v1/sessions'),
             'clinicOwnerForgotPasswordUrl' => route('clinic-owner.password.forgot'),
             'platformForgotPasswordUrl' => route('platform.password.forgot'),
@@ -48,7 +43,6 @@ final readonly class RootEntryController
             'dashboardUrl' => url('/dashboard'),
             'clinicRegistrationUrl' => route('clinic-registration.browser', [], false),
             'clinicRegistrationLoginUrl' => route('clinic-registration.access.login'),
-            'clinicPortalBaseDomains' => $this->clinicPortalBaseDomains(),
         ]);
     }
 
@@ -79,11 +73,5 @@ final readonly class RootEntryController
                 : null,
             $domains,
         )));
-    }
-
-    /** @return list<string> */
-    private function clinicPortalBaseDomains(): array
-    {
-        return self::tenantAdminBaseDomains();
     }
 }
