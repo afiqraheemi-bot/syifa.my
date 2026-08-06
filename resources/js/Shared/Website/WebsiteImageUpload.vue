@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import { browserHttpRequest } from '../../../Shared/Authentication/session.js';
+import { browserHttpRequest } from '../Authentication/session.js';
 
 const props = defineProps({
     modelValue: { type: String, default: '' },
@@ -324,7 +324,7 @@ onBeforeUnmount(resetCrop);
             </div>
         </div>
         <label class="mt-3 block text-sm font-semibold text-slate-800">
-            {{ modelValue ? 'Replace image' : 'Choose image' }}
+            {{ modelValue ? 'Upload a replacement' : 'Upload a new image' }}
             <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"

@@ -6,8 +6,11 @@ namespace App\Support\Dashboard\Application\Booking;
 
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormServiceData;
+use App\Modules\WebsiteBuilder\Application\ClinicBooking\ManageClinicBookingDateOverridesService;
+use App\Modules\WebsiteBuilder\Application\ClinicBooking\ManageClinicBookingScheduleService;
+use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Support\Authorization\Application\AuthorizationContext;
-use App\Support\Dashboard\Application\DashboardNavigationItem;
+use App\Support\Dashboard\Application\ClinicOwnerDashboardNavigation;
 use App\Support\Dashboard\Application\DashboardPageView;
 use LogicException;
 
@@ -18,6 +21,8 @@ final readonly class ClinicOwnerBookingOverviewPage
         private BookingStatusSummaryProvider $statuses,
         private BookingSourceSummaryProvider $sources,
         private PublicBookingFormReaderInterface $bookingForm,
+        private ManageClinicBookingScheduleService $bookingSchedule,
+        private ManageClinicBookingDateOverridesService $dateOverrides,
     ) {}
 
     /** @param array<string, mixed> $query */
@@ -32,16 +37,25 @@ final readonly class ClinicOwnerBookingOverviewPage
             throw new LogicException('Booking overview requires a trusted Tenant identifier.');
         }
         $bookingForm = $this->bookingForm->forTrustedTenant($context->tenantId);
+        $bookingSchedule = $this->bookingSchedule->read(
+            $context->tenantId,
+            new WebsiteAuthorizationContext(
+                $context->identityId,
+                $context->role,
+                actorTenantId: $context->tenantId,
+            ),
+        );
+        $dateOverrides = $this->dateOverrides->read(
+            $context->tenantId,
+            new WebsiteAuthorizationContext(
+                $context->identityId,
+                $context->role,
+                actorTenantId: $context->tenantId,
+            ),
+        );
 
         return new DashboardPageView('TenantManagement/Booking/ClinicOwnerBookingOverview', [
-            'navigation' => [
-                (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
-                (new DashboardNavigationItem('website', 'Website', route('dashboard.website'), false))->toArray(),
-                (new DashboardNavigationItem('content', 'Content', route('dashboard.website.content'), false))->toArray(),
-                (new DashboardNavigationItem('domain', 'Custom domain', route('dashboard.website.domain'), false))->toArray(),
-                (new DashboardNavigationItem('services', 'Services', route('dashboard.services'), false))->toArray(),
-                (new DashboardNavigationItem('bookings', 'Bookings', route('dashboard.bookings'), true))->toArray(),
-            ],
+            'navigation' => ClinicOwnerDashboardNavigation::items('bookings'),
             'breadcrumbs' => [
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
                 ['key' => 'bookings', 'label' => 'Bookings'],
@@ -53,6 +67,14 @@ final readonly class ClinicOwnerBookingOverviewPage
             'bookingList' => $this->list->provide($context, $criteria)->data,
             'statusSummary' => $this->statuses->provide($context)->data,
             'sourceSummary' => $this->sources->provide($context)->data,
+            'bookingSchedule' => [
+                ...$bookingSchedule->toArray(),
+                'updateUrl' => route('dashboard.bookings.schedule.update'),
+                'businessHoursUpdateUrl' => route('dashboard.bookings.business-hours.update'),
+                'dateOverrideStoreUrl' => route('dashboard.bookings.date-overrides.store'),
+                'dateOverrideDeleteUrlTemplate' => route('dashboard.bookings.date-overrides.destroy', ['localDate' => '__DATE__']),
+                'dateOverrides' => array_map(static fn ($override): array => $override->toArray(), $dateOverrides),
+            ],
             'manualBooking' => [
                 'storeUrl' => route('dashboard.bookings.store'),
                 'sources' => [

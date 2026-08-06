@@ -10,8 +10,10 @@ const props = defineProps({
     pageDescription: { type: String, required: true },
     identityName: { type: String, required: true },
     contextLabel: { type: String, required: true },
+    job: { type: Object, required: true },
     domain: { type: Object, default: null },
     operationsUrl: { type: String, required: true },
+    backUrl: { type: String, required: true },
 });
 
 const hostname = ref('');
@@ -23,6 +25,7 @@ const navigation = createDashboardNavigation(props.navigation);
 
 function submit(path, payload, confirmation = null) {
     if (busy.value || (confirmation && !window.confirm(confirmation))) return;
+
     busy.value = true;
     feedback.value = '';
     error.value = '';
@@ -30,10 +33,11 @@ function submit(path, payload, confirmation = null) {
         preserveScroll: true,
         onSuccess: () => {
             feedback.value = 'Custom domain updated successfully.';
+            hostname.value = '';
         },
         onError: (errors) => {
             error.value =
-                Object.values(errors)[0] ?? 'The Custom Domain operation could not be completed.';
+                Object.values(errors)[0] ?? 'The custom domain operation could not be completed.';
         },
         onFinish: () => {
             busy.value = false;
@@ -56,7 +60,7 @@ function activateDomain() {
     submit(
         `${props.operationsUrl}/activate`,
         { domain_id: props.domain.id, version: props.domain.version },
-        'Activate this verified domain for the public Website?',
+        'Activate this verified custom domain for the public Website?',
     );
 }
 
@@ -64,7 +68,7 @@ function detachDomain() {
     submit(
         `${props.operationsUrl}/detach`,
         { domain_id: props.domain.id, version: props.domain.version },
-        'Detach this domain? Public routing through it will stop.',
+        'Detach this custom domain? Public routing through it will stop.',
     );
 }
 </script>
@@ -78,6 +82,18 @@ function detachDomain() {
         :identity-name="identityName"
         :context-label="contextLabel"
     >
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div class="rounded-full bg-violet-100 px-4 py-2 text-sm font-semibold text-violet-900">
+                Managed add-on service
+            </div>
+            <a
+                :href="backUrl"
+                class="rounded-xl border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-800 transition hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+                Back to assigned job
+            </a>
+        </div>
+
         <p
             v-if="feedback"
             role="status"
@@ -93,14 +109,20 @@ function detachDomain() {
             {{ error }}
         </p>
 
-        <section class="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <template v-if="!domain">
-                <h2 class="text-lg font-semibold text-slate-950">Connect a custom domain</h2>
-                <p class="mt-2 text-sm text-slate-600">
-                    Enter a domain controlled by your clinic. Your default SYIFA.my address remains
-                    available.
+        <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div class="mb-6 max-w-2xl">
+                <h2 class="text-xl font-semibold text-slate-950">Domain connection</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600">
+                    The clinic's default SYIFA.my address remains available. Connect a custom domain
+                    only after the add-on is confirmed and the clinic controls its DNS.
                 </p>
-                <form class="mt-5 flex flex-col gap-3 sm:flex-row" @submit.prevent="requestDomain">
+            </div>
+
+            <template v-if="!domain">
+                <form
+                    class="flex max-w-3xl flex-col gap-3 sm:flex-row"
+                    @submit.prevent="requestDomain"
+                >
                     <label class="flex-1">
                         <span class="text-sm font-medium text-slate-800">Domain hostname</span>
                         <input
@@ -114,7 +136,7 @@ function detachDomain() {
                     <button
                         type="submit"
                         :disabled="busy"
-                        class="self-end rounded-xl bg-emerald-700 px-5 py-3 font-semibold text-white disabled:opacity-60"
+                        class="self-stretch rounded-xl bg-emerald-700 px-5 py-3 font-semibold text-white disabled:opacity-60 sm:self-end"
                     >
                         {{ busy ? 'Requesting…' : 'Request domain' }}
                     </button>
@@ -127,7 +149,7 @@ function detachDomain() {
                         <p class="text-sm font-medium uppercase tracking-wide text-slate-500">
                             Custom domain
                         </p>
-                        <h2 class="mt-1 text-xl font-semibold text-slate-950">
+                        <h2 class="mt-1 break-all text-xl font-semibold text-slate-950">
                             {{ domain.hostname }}
                         </h2>
                     </div>

@@ -42,6 +42,21 @@ final class ClinicTest extends TestCase
         self::assertSame($changedAt, $clinic->updatedAt());
     }
 
+    public function test_booking_availability_changes_without_changing_business_hours(): void
+    {
+        $clinic = $this->clinic();
+        $changedAt = new DateTimeImmutable('2026-08-05T00:00:00Z');
+
+        $clinic->reconfigureBookingAvailability(new WeeklyOperatingHours([
+            3 => [new OpeningInterval(new LocalTime('10:00'), new LocalTime('15:00'))],
+        ]), $changedAt);
+
+        self::assertSame('09:00', $clinic->weeklyOperatingHours()->all()[1][0]->opensAt->value);
+        self::assertSame([], $clinic->weeklyBookingAvailability()->all()[1]);
+        self::assertSame('10:00', $clinic->weeklyBookingAvailability()->all()[3][0]->opensAt->value);
+        self::assertSame($changedAt, $clinic->updatedAt());
+    }
+
     public function test_invalid_persisted_schedule_fails_reconstitution(): void
     {
         $this->expectException(InvalidClinicOperationalTimeException::class);

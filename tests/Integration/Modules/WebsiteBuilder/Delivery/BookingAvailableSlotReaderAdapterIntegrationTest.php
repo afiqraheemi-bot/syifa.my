@@ -6,6 +6,9 @@ namespace Tests\Integration\Modules\WebsiteBuilder\Delivery;
 
 use App\Modules\Booking\Contracts\Queries\AvailableSlotReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicAvailabilityState;
+use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicBookingDateOverrideRepositoryInterface;
+use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleClinicWriteException;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\BookingAvailableSlotReaderAdapter;
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
@@ -48,7 +51,7 @@ final class BookingAvailableSlotReaderAdapterIntegrationTest extends TestCase
         $this->connection = DB::connection(self::CONNECTION);
 
         $schema = $this->connection->getSchemaBuilder();
-        if (! $schema->hasTable('clinic_operating_intervals') || ! $schema->hasTable('booking_slot_reservation_buckets') || ! $schema->hasTable('clinic_contact_profiles')) {
+        if (! $schema->hasTable('clinic_operating_intervals') || ! $schema->hasTable('clinic_booking_availability_intervals') || ! $schema->hasTable('clinic_booking_date_overrides') || ! $schema->hasTable('booking_slot_reservation_buckets') || ! $schema->hasTable('clinic_contact_profiles')) {
             self::markTestSkipped('Requires the full, freshly-migrated schema on the disposable database.');
         }
     }
@@ -58,6 +61,9 @@ final class BookingAvailableSlotReaderAdapterIntegrationTest extends TestCase
         if ($this->connection !== null) {
             foreach ($this->seededTenantIds as $tenantId) {
                 $this->connection->table('clinic_operating_intervals')->whereIn('clinic_id', function ($query) use ($tenantId): void {
+                    $query->select('id')->from('clinics')->where('tenant_id', $tenantId);
+                })->delete();
+                $this->connection->table('clinic_booking_date_overrides')->whereIn('clinic_id', function ($query) use ($tenantId): void {
                     $query->select('id')->from('clinics')->where('tenant_id', $tenantId);
                 })->delete();
                 $this->connection->table('clinic_contact_profiles')->where('tenant_id', $tenantId)->delete();
@@ -77,6 +83,9 @@ final class BookingAvailableSlotReaderAdapterIntegrationTest extends TestCase
         $this->connection->table('clinic_operating_intervals')->insert([
             'clinic_id' => $clinicId, 'day_of_week' => $dayOfWeek, 'opens_at' => '09:00:00', 'closes_at' => '10:00:00',
         ]);
+        $this->connection->table('clinic_booking_availability_intervals')->insert([
+            'clinic_id' => $clinicId, 'day_of_week' => $dayOfWeek, 'starts_at' => '09:00:00', 'ends_at' => '10:00:00',
+        ]);
 
         $reader = $this->app->make(AvailableSlotReaderInterface::class);
         $slots = (new BookingAvailableSlotReaderAdapter($reader))->forDate($tenantId, $localDate);
@@ -91,7 +100,7 @@ final class BookingAvailableSlotReaderAdapterIntegrationTest extends TestCase
     public function test_a_clinic_with_no_operating_hours_that_day_yields_an_empty_list(): void
     {
         [$tenantId] = $this->seedClinic();
-        // No clinic_operating_intervals row inserted at all for this clinic.
+        // No Booking availability interval is configured for this clinic.
         $localDate = (new DateTimeImmutable('next monday'))->format('Y-m-d');
 
         $reader = $this->app->make(AvailableSlotReaderInterface::class);
@@ -107,6 +116,38 @@ final class BookingAvailableSlotReaderAdapterIntegrationTest extends TestCase
         $slots = (new BookingAvailableSlotReaderAdapter($reader))->forDate((string) Str::uuid(), '2026-08-03');
 
         self::assertSame([], $slots);
+    }
+
+    public function test_public_slots_follow_closure_and_special_date_overrides(): void
+    {
+        [$tenantId, $clinicId] = $this->seedClinic();
+        $localDate = (new DateTimeImmutable('next monday'))->format('Y-m-d');
+        $dayOfWeek = (int) (new DateTimeImmutable($localDate))->format('N');
+        $this->connection->table('clinic_booking_availability_intervals')->insert([
+            'clinic_id' => $clinicId, 'day_of_week' => $dayOfWeek, 'starts_at' => '09:00:00', 'ends_at' => '10:00:00',
+        ]);
+        $overrides = $this->app->make(ClinicBookingDateOverrideRepositoryInterface::class);
+        $override = $overrides->replace(new ClinicId($clinicId), $localDate, true, [], 0);
+
+        $reader = $this->app->make(AvailableSlotReaderInterface::class);
+        self::assertSame([], (new BookingAvailableSlotReaderAdapter($reader))->forDate($tenantId, $localDate));
+
+        $overrides->replace(new ClinicId($clinicId), $localDate, false, [
+            ['opens_at' => '15:00', 'closes_at' => '16:00'],
+        ], $override->version);
+        $slots = (new BookingAvailableSlotReaderAdapter($reader))->forDate($tenantId, $localDate);
+        self::assertSame(['15:00', '15:30'], array_column($slots, 'localStart'));
+    }
+
+    public function test_date_override_writes_reject_stale_versions(): void
+    {
+        [, $clinicId] = $this->seedClinic();
+        $repository = $this->app->make(ClinicBookingDateOverrideRepositoryInterface::class);
+        $localDate = (new DateTimeImmutable('next monday'))->format('Y-m-d');
+        $repository->replace(new ClinicId($clinicId), $localDate, true, [], 0);
+
+        $this->expectException(StaleClinicWriteException::class);
+        $repository->replace(new ClinicId($clinicId), $localDate, true, [], 0);
     }
 
     /** @return array{0: string, 1: string} tenantId, clinicId */

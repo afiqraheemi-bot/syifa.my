@@ -61,6 +61,22 @@ final class AvailabilityDeliveryServiceTest extends TestCase
         $service->slotsForDate('website-1', '2026-08-04');
     }
 
+    public function test_tenant_invalidation_forces_an_authoritative_availability_read(): void
+    {
+        $tenants = $this->createStub(WebsiteTenantResolverInterface::class);
+        $tenants->method('forTrustedWebsite')->willReturn('tenant-1');
+
+        $availability = $this->createMock(PublicAvailabilityReaderInterface::class);
+        $availability->expects(self::exactly(2))->method('forDate')->willReturn([]);
+        $cache = new InMemoryPublicAvailabilityCache;
+        $service = new AvailabilityDeliveryService($tenants, $availability, $cache);
+
+        $service->slotsForDate('website-1', '2026-08-03');
+        $service->slotsForDate('website-1', '2026-08-03');
+        $cache->invalidateTenant('tenant-1');
+        $service->slotsForDate('website-1', '2026-08-03');
+    }
+
     private function cache(): PublicAvailabilityCacheInterface
     {
         return new InMemoryPublicAvailabilityCache;

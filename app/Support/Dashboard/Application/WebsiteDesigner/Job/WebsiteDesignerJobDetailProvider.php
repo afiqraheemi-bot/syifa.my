@@ -79,6 +79,15 @@ final readonly class WebsiteDesignerJobDetailProvider
                     'href' => '#website-setup',
                     'available' => true,
                 ],
+                [
+                    'key' => 'custom-domain',
+                    'label' => 'Custom domain add-on',
+                    'description' => 'Connect and verify a managed custom domain for this clinic.',
+                    'href' => route('dashboard.onboarding.custom-domain', [
+                        'jobId' => $job->onboardingJobId,
+                    ]),
+                    'available' => true,
+                ],
             ],
             'assignedAtLabel' => $job->assignedAt->format('j M Y, g:i A'),
             'updatedAtLabel' => $job->updatedAt->format('j M Y, g:i A'),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Dashboard\Presentation\Http\Requests;
 
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,6 +20,7 @@ final class UpdateClinicOwnerWebsiteContentRequest extends FormRequest
     {
         return [
             'version' => ['required', 'integer', 'min:1'],
+            'template_id' => ['sometimes', 'required', Rule::enum(TemplateId::class)],
             'branding' => ['required', 'array:clinic_name,tagline,primary_color,secondary_color,logo_reference,logo_display_size,contact_email,contact_phone,address,social_links'],
             'branding.clinic_name' => ['required', 'string', 'max:200'],
             'branding.tagline' => ['nullable', 'string', 'max:240'],

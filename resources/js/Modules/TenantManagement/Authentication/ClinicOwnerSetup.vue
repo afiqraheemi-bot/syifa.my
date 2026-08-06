@@ -28,14 +28,15 @@ function submit() {
     <main class="min-h-screen bg-slate-950 px-4 py-10">
         <section class="mx-auto max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-10">
             <p class="text-sm font-bold tracking-[0.18em] text-emerald-700">SYIFA.MY</p>
-            <h1 class="mt-3 text-3xl font-bold text-slate-950">Set up Clinic Owner access</h1>
+            <h1 class="mt-3 text-3xl font-bold text-slate-950">Tetapkan semula kata laluan</h1>
             <p class="mt-3 text-slate-600">
-                Verify the invited email and choose a secure password for your clinic workspace.
+                Sahkan alamat e-mel dan pilih kata laluan baharu yang selamat untuk ruang kerja
+                klinik anda.
             </p>
 
             <form class="mt-8 space-y-5" @submit.prevent="submit">
                 <label class="block text-sm font-semibold text-slate-800">
-                    Email
+                    Alamat e-mel
                     <input
                         v-model="form.email"
                         type="email"
@@ -45,7 +46,7 @@ function submit() {
                     />
                 </label>
                 <label class="block text-sm font-semibold text-slate-800">
-                    Password
+                    Kata laluan baharu
                     <input
                         v-model="form.password"
                         type="password"
@@ -55,7 +56,7 @@ function submit() {
                     />
                 </label>
                 <label class="block text-sm font-semibold text-slate-800">
-                    Confirm password
+                    Sahkan kata laluan baharu
                     <input
                         v-model="form.password_confirmation"
                         type="password"
@@ -76,14 +77,14 @@ function submit() {
                     :disabled="form.processing"
                     class="min-h-12 w-full rounded-xl bg-emerald-700 px-5 font-bold text-white disabled:opacity-50"
                 >
-                    {{ form.processing ? 'Activating…' : 'Activate my access' }}
+                    {{ form.processing ? 'Sedang menyimpan…' : 'Simpan kata laluan' }}
                 </button>
             </form>
             <a
                 :href="loginUrl"
                 class="mt-6 block text-center text-sm font-semibold text-emerald-700"
             >
-                Return to sign in
+                Kembali ke log masuk
             </a>
         </section>
     </main>

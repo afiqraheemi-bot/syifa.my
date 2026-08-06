@@ -22,4 +22,12 @@ final class WebsiteAuthorization
             throw new WebsiteOperationForbiddenException('Website operation is not authorized.');
         }
     }
+
+    public function assertCanManageClinicBooking(WebsiteAuthorizationContext $context, TenantId $tenantId): void
+    {
+        $validActor = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $context->actorId) === 1;
+        if (! $validActor || $context->role !== 'clinic_owner' || $context->actorTenantId !== $tenantId->value) {
+            throw new WebsiteOperationForbiddenException('Clinic Booking schedule operation is not authorized.');
+        }
+    }
 }

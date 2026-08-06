@@ -176,6 +176,9 @@ final class PublicBookingEndToEndIntegrationTest extends TestCase
         $this->connection->table('clinic_operating_intervals')->insert([
             'clinic_id' => $clinicId, 'day_of_week' => $dayOfWeek, 'opens_at' => '09:00:00', 'closes_at' => '12:00:00',
         ]);
+        $this->connection->table('clinic_booking_availability_intervals')->insert([
+            'clinic_id' => $clinicId, 'day_of_week' => $dayOfWeek, 'starts_at' => '09:00:00', 'ends_at' => '12:00:00',
+        ]);
 
         $tenant = new BookingTenantId($tenantId);
         $serviceId = (string) Str::uuid();

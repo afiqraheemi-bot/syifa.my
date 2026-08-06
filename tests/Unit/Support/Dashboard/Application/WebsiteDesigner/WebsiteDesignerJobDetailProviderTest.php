@@ -28,8 +28,12 @@ final class WebsiteDesignerJobDetailProviderTest extends TestCase
         self::assertSame(80, $job['progress']['value']);
         self::assertSame('current', $job['stages'][2]['state']);
         self::assertSame(['Job Created', 'Assigned', 'In Review'], array_column($job['timeline'], 'title'));
-        self::assertSame([true, true], array_column($job['actions'], 'available'));
+        self::assertSame([true, true, true], array_column($job['actions'], 'available'));
         self::assertSame('#website-setup', $job['actions'][1]['href']);
+        self::assertSame(
+            route('dashboard.onboarding.custom-domain', ['jobId' => 'job-1']),
+            $job['actions'][2]['href'],
+        );
     }
 
     public function test_it_calculates_progress_from_completed_workflow_checkpoints(): void

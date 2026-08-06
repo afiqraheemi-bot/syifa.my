@@ -30,13 +30,20 @@ async function completeDemoPayment() {
     try {
         const result = await browserHttpRequest(props.demoPaymentUrl, { method: 'POST' });
         if (!result.ok) {
-            throw new Error(result.body?.message ?? 'Demo payment could not be completed.');
+            throw new Error(
+                result.body?.detail ??
+                    result.body?.message ??
+                    'Pembayaran demo tidak dapat diselesaikan.',
+            );
         }
         demoCompleted.value = true;
-        message.value = `${result.body.message} The onboarding job is now ready for Super Admin assignment.`;
+        message.value =
+            'Pembayaran demo dan penyediaan akaun telah selesai. Klinik anda kini sedia untuk proses onboarding.';
     } catch (exception) {
         error.value =
-            exception instanceof Error ? exception.message : 'Demo payment could not be completed.';
+            exception instanceof Error
+                ? exception.message
+                : 'Pembayaran demo tidak dapat diselesaikan.';
     } finally {
         demoCompleting.value = false;
     }
@@ -84,24 +91,25 @@ async function selectOffer(offer) {
     <main class="min-h-screen bg-slate-950 px-4 py-8 text-slate-950 sm:px-6 sm:py-12">
         <section class="mx-auto max-w-4xl rounded-3xl bg-white p-6 shadow-2xl sm:p-10">
             <p class="text-sm font-bold tracking-[0.18em] text-emerald-700">SYIFA.MY</p>
-            <h1 class="mt-3 text-3xl font-bold tracking-tight">Choose your annual plan</h1>
+            <h1 class="mt-3 text-3xl font-bold tracking-tight">Pilih pelan tahunan anda</h1>
             <p class="mt-3 text-slate-600">
-                Registration for {{ clinicName || 'your clinic' }} has been submitted. Select the
-                approved annual offering to continue.
+                Permohonan {{ clinicName || 'klinik anda' }} telah diluluskan. Pilih tawaran tahunan
+                untuk meneruskan pembayaran.
             </p>
 
             <div class="mt-6 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900">
-                Registration status:
+                Status permohonan:
                 <strong class="capitalize">{{ registrationStatus }}</strong>
             </div>
             <div
                 v-if="demoPaymentUrl"
                 class="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950"
             >
-                <p class="font-bold">Local demo payment</p>
+                <p class="font-bold">Pembayaran demo tempatan</p>
                 <p class="mt-1 text-sm leading-6">
-                    Skip the external payment page and exercise the real subscription and
-                    provisioning workflow. This option is never available in production.
+                    Lengkapkan perjalanan demo menggunakan aliran subscription dan provisioning
+                    sebenar tanpa membuka penyedia pembayaran luar. Pilihan ini tidak tersedia dalam
+                    production.
                 </p>
                 <button
                     type="button"
@@ -111,15 +119,32 @@ async function selectOffer(offer) {
                 >
                     {{
                         demoCompleting
-                            ? 'Completing demo…'
+                            ? 'Memproses demo…'
                             : demoCompleted
-                              ? 'Demo Payment Completed'
-                              : 'Complete Demo Payment'
+                              ? 'Pembayaran Demo Selesai'
+                              : 'Selesaikan Pembayaran Demo'
                     }}
                 </button>
             </div>
 
-            <div v-if="offers.length" class="mt-8 grid gap-5 md:grid-cols-2">
+            <div
+                v-if="demoCompleted"
+                class="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950"
+            >
+                <p class="font-bold">Langkah seterusnya</p>
+                <p class="mt-1 text-sm leading-6">
+                    Login sebagai Clinic Owner untuk membuka dashboard. Super Admin kini boleh
+                    menetapkan Website Designer kepada onboarding klinik ini.
+                </p>
+                <a
+                    :href="homeUrl"
+                    class="mt-4 inline-flex min-h-11 items-center rounded-xl bg-emerald-800 px-5 font-bold text-white"
+                >
+                    Terus ke Login Klinik
+                </a>
+            </div>
+
+            <div v-else-if="offers.length" class="mt-8 grid gap-5 md:grid-cols-2">
                 <article
                     v-for="offer in offers"
                     :key="offer.planOfferingId"
@@ -133,7 +158,7 @@ async function selectOffer(offer) {
                     <p class="mt-1 text-sm text-slate-500">per annual billing cycle</p>
 
                     <div class="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-                        <strong class="block text-slate-900">Included setup</strong>
+                        <strong class="block text-slate-900">Termasuk penyediaan</strong>
                         {{ offer.includedSetup }}
                     </div>
 
@@ -145,15 +170,18 @@ async function selectOffer(offer) {
                     >
                         {{
                             selecting === offer.planOfferingId
-                                ? 'Preparing…'
-                                : 'Continue to Checkout'
+                                ? 'Menyediakan checkout…'
+                                : 'Teruskan ke Checkout'
                         }}
                     </button>
                 </article>
             </div>
 
-            <div v-else class="mt-8 rounded-2xl border border-slate-200 p-6 text-slate-700">
-                No purchasable annual offering is currently available. Please try again later.
+            <div
+                v-else-if="!demoCompleted"
+                class="mt-8 rounded-2xl border border-slate-200 p-6 text-slate-700"
+            >
+                Tiada tawaran tahunan yang boleh dibeli buat masa ini. Sila cuba lagi kemudian.
             </div>
 
             <p v-if="message" role="status" class="mt-5 text-sm font-semibold text-emerald-700">
@@ -166,7 +194,7 @@ async function selectOffer(offer) {
             <a
                 :href="homeUrl"
                 class="mt-8 inline-flex min-h-11 items-center font-semibold text-emerald-700 underline underline-offset-4"
-                >Return to the home page</a
+                >Kembali ke halaman utama</a
             >
         </section>
     </main>

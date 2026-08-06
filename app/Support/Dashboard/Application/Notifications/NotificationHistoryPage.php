@@ -6,6 +6,7 @@ namespace App\Support\Dashboard\Application\Notifications;
 
 use App\Modules\Notification\Contracts\NotificationReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
+use App\Support\Dashboard\Application\ClinicOwnerDashboardNavigation;
 use App\Support\Dashboard\Application\DashboardNavigationItem;
 use App\Support\Dashboard\Application\DashboardPageView;
 use Illuminate\Support\Str;
@@ -74,14 +75,7 @@ final readonly class NotificationHistoryPage
             ];
         }
 
-        return [
-            (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
-            (new DashboardNavigationItem('website', 'Website', route('dashboard.website'), false))->toArray(),
-            (new DashboardNavigationItem('content', 'Content', route('dashboard.website.content'), false))->toArray(),
-            (new DashboardNavigationItem('bookings', 'Bookings', route('dashboard.bookings'), false))->toArray(),
-            (new DashboardNavigationItem('subscription', 'Subscription', route('dashboard.subscription'), false))->toArray(),
-            (new DashboardNavigationItem('notifications', 'Notifications', route('dashboard.notifications'), true))->toArray(),
-        ];
+        return ClinicOwnerDashboardNavigation::items('notifications');
     }
 
     private function text(mixed $value): ?string

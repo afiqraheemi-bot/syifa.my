@@ -9,8 +9,6 @@ use App\Modules\Booking\Application\Configuration\UpdateBookingFormConfiguration
 use App\Modules\Booking\Domain\Exceptions\InvalidBookingFormConfigurationValueException;
 use App\Modules\Booking\Domain\Exceptions\StaleBookingFormConfigurationWriteException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidOnboardingJobLifecycleTransitionException;
-use App\Modules\WebsiteBuilder\Application\ClinicBooking\ManageClinicBookingScheduleService;
-use App\Modules\WebsiteBuilder\Application\ClinicBooking\UpdateClinicBookingScheduleCommand;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\OptionalContactValue;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileCommand;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileService;
@@ -18,7 +16,6 @@ use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\UpdateWebsiteContentCommand;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidClinicContactProfileException;
-use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidClinicOperationalTimeException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleClinicWriteException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
@@ -43,7 +40,6 @@ final readonly class WebsiteDesignerJobDetailController
         ManageWebsiteContentService $websiteContent,
         ManageBookingFormConfigurationService $bookingConfiguration,
         UpdateClinicContactProfileService $clinicContact,
-        ManageClinicBookingScheduleService $clinicBookingSchedule,
         SubmitWebsiteForReviewApplication $readyForReview,
         string $jobId,
     ): Response|RedirectResponse|JsonResponse {
@@ -59,7 +55,6 @@ final readonly class WebsiteDesignerJobDetailController
                 'workspace' => ['required', Rule::in([
                     'ready_for_review',
                     'booking_configuration',
-                    'booking_schedule',
                     'clinic_contact',
                     'website_setup',
                 ])],
@@ -76,12 +71,6 @@ final readonly class WebsiteDesignerJobDetailController
                     $request,
                     $view->props,
                     $bookingConfiguration,
-                ),
-                'booking_schedule' => $this->updateBookingSchedule(
-                    $request,
-                    $context,
-                    $view->props,
-                    $clinicBookingSchedule,
                 ),
                 'clinic_contact' => $this->updateClinicContact(
                     $request,
@@ -245,58 +234,6 @@ final readonly class WebsiteDesignerJobDetailController
         }
 
         return back()->with('booking_configuration_saved', true);
-    }
-
-    /** @param array<string, mixed> $props */
-    private function updateBookingSchedule(
-        Request $request,
-        AuthorizationContext $context,
-        array $props,
-        ManageClinicBookingScheduleService $schedule,
-    ): RedirectResponse {
-        /** @var array{workspace: string, version: int, timezone: string, appointment_duration_minutes: int, booking_capacity_per_slot: int, operating_intervals: list<array{day: int, opens_at: string, closes_at: string}>} $data */
-        $data = $request->validate([
-            'workspace' => ['required', 'in:booking_schedule'],
-            'version' => ['required', 'integer', 'min:1'],
-            'timezone' => ['required', 'in:Asia/Kuala_Lumpur'],
-            'appointment_duration_minutes' => ['required', 'integer', Rule::in([15, 20, 30, 45, 60])],
-            'booking_capacity_per_slot' => ['required', 'integer', 'between:1,10'],
-            'operating_intervals' => ['required', 'array', 'min:1', 'max:7'],
-            'operating_intervals.*.day' => ['required', 'integer', 'between:1,7', 'distinct'],
-            'operating_intervals.*.opens_at' => ['required', 'date_format:H:i'],
-            'operating_intervals.*.closes_at' => ['required', 'date_format:H:i'],
-        ]);
-        $tenantId = (string) $props['job']['tenantId'];
-        $authorization = new WebsiteAuthorizationContext(
-            $context->identityId,
-            $context->role,
-            assignedTenantId: $tenantId,
-        );
-        $clinic = $schedule->read($tenantId, $authorization);
-
-        try {
-            $schedule->update(new UpdateClinicBookingScheduleCommand(
-                $tenantId,
-                $clinic->clinicId,
-                $authorization,
-                (int) $data['version'],
-                (string) $data['timezone'],
-                $data['operating_intervals'],
-                (int) $data['appointment_duration_minutes'],
-                (int) $data['booking_capacity_per_slot'],
-                new \DateTimeImmutable,
-            ));
-        } catch (StaleClinicWriteException) {
-            return back()->withErrors([
-                'booking_schedule.version' => 'Booking schedule changed while you were editing. Refresh and try again.',
-            ]);
-        } catch (InvalidClinicOperationalTimeException $exception) {
-            return back()->withErrors([
-                'booking_schedule.configuration' => $exception->getMessage(),
-            ]);
-        }
-
-        return back()->with('booking_schedule_saved', true);
     }
 
     /** @param array<string, mixed> $props */

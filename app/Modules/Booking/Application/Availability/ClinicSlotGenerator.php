@@ -24,8 +24,20 @@ final class ClinicSlotGenerator
         $timezone = new DateTimeZone($clinic->timezone);
         $day = (int) (new DateTimeImmutable($date->value.' 00:00:00', $timezone))->format('N');
         $slots = [];
+        $intervals = $clinic->operatingIntervals;
+        foreach ($clinic->dateOverrides as $override) {
+            if ($override->localDate !== $date->value) {
+                continue;
+            }
+            if ($override->closed) {
+                return [];
+            }
+            $intervals = $override->intervals;
+            $day = 1;
+            break;
+        }
 
-        foreach ($clinic->operatingIntervals as $interval) {
+        foreach ($intervals as $interval) {
             if ($interval->dayOfWeek !== $day) {
                 continue;
             }

@@ -37,7 +37,12 @@ final readonly class AvailabilityDeliveryService
     public function slotsForDate(string $trustedWebsiteId, string $localDate): array
     {
         $tenantId = $this->tenants->forTrustedWebsite($trustedWebsiteId);
-        $key = sprintf('public-availability:%s:%s', $tenantId, $localDate);
+        $key = sprintf(
+            'public-availability:%s:%d:%s',
+            $tenantId,
+            $this->cache->tenantRevision($tenantId),
+            $localDate,
+        );
 
         return $this->cache->remember($key, self::CACHE_TTL_SECONDS, fn (): array => $this->availability->forDate($tenantId, $localDate));
     }

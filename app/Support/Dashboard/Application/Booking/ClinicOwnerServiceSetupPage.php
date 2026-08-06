@@ -7,7 +7,7 @@ namespace App\Support\Dashboard\Application\Booking;
 use App\Modules\Booking\Application\ServiceSetup\ManageServiceSetupService;
 use App\Modules\Booking\Application\ServiceSetup\ServiceSetupData;
 use App\Support\Authorization\Application\AuthorizationContext;
-use App\Support\Dashboard\Application\DashboardNavigationItem;
+use App\Support\Dashboard\Application\ClinicOwnerDashboardNavigation;
 use App\Support\Dashboard\Application\DashboardPageView;
 use LogicException;
 
@@ -22,15 +22,7 @@ final readonly class ClinicOwnerServiceSetupPage
         }
 
         return new DashboardPageView('TenantManagement/Booking/ClinicOwnerServiceSetup', [
-            'navigation' => [
-                (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
-                (new DashboardNavigationItem('website', 'Website', route('dashboard.website'), false))->toArray(),
-                (new DashboardNavigationItem('content', 'Content', route('dashboard.website.content'), false))->toArray(),
-                (new DashboardNavigationItem('domain', 'Custom domain', route('dashboard.website.domain'), false))->toArray(),
-                (new DashboardNavigationItem('services', 'Services', route('dashboard.services'), true))->toArray(),
-                (new DashboardNavigationItem('bookings', 'Bookings', route('dashboard.bookings'), false))->toArray(),
-                (new DashboardNavigationItem('subscription', 'Subscription', route('dashboard.subscription'), false))->toArray(),
-            ],
+            'navigation' => ClinicOwnerDashboardNavigation::items('services'),
             'breadcrumbs' => [
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
                 ['key' => 'services', 'label' => 'Services'],

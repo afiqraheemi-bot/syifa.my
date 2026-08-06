@@ -34,12 +34,23 @@ final class ClinicPersistenceMapper
         }
 
         $configuration = $clinic->bookingConfigurationOrNull();
+        $bookingAvailability = [];
+        foreach ($clinic->weeklyBookingAvailability()->all() as $day => $dayIntervals) {
+            foreach ($dayIntervals as $interval) {
+                $bookingAvailability[] = new OperatingIntervalStorageRecord(
+                    $day,
+                    $interval->opensAt->value,
+                    $interval->closesAt->value,
+                );
+            }
+        }
 
         return new ClinicStorageRecord(
             $clinic->id->value,
             $clinic->tenantId->value,
             $clinic->timezone()->value,
             $intervals,
+            $bookingAvailability,
             $clinic->createdAt,
             $clinic->updatedAt(),
             $clinic->version(),
@@ -59,6 +70,13 @@ final class ClinicPersistenceMapper
         $hours = [];
         foreach ($record->operatingIntervals as $interval) {
             $hours[$interval->dayOfWeek][] = new OpeningInterval(
+                new LocalTime($interval->opensAt),
+                new LocalTime($interval->closesAt),
+            );
+        }
+        $bookingAvailability = [];
+        foreach ($record->bookingAvailabilityIntervals as $interval) {
+            $bookingAvailability[$interval->dayOfWeek][] = new OpeningInterval(
                 new LocalTime($interval->opensAt),
                 new LocalTime($interval->closesAt),
             );
@@ -86,6 +104,7 @@ final class ClinicPersistenceMapper
                 $record->latitude,
                 $record->longitude,
             ),
+            new WeeklyOperatingHours($bookingAvailability),
         );
     }
 }

@@ -44,6 +44,7 @@ use App\Modules\WebsiteBuilder\Contracts\Queries\ClinicSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsitePublishedSnapshotReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteSeoSummaryReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicBookingDateOverrideRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteDraftRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
@@ -66,6 +67,7 @@ use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsitePersist
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSectionPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Mappers\WebsiteSeoConfigurationPersistenceMapper;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Queries\PostgresPublicWebsiteAddressAvailability;
+use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresClinicBookingDateOverrideRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresClinicRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresCustomDomainRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Persistence\Repositories\PostgresWebsiteDraftRepository;
@@ -197,6 +199,12 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
             static fn (Application $application): PostgresClinicRepository => new PostgresClinicRepository(
                 $application->make('db')->connection(),
                 $application->make(ClinicPersistenceMapper::class),
+            ),
+        );
+        $this->app->singleton(
+            ClinicBookingDateOverrideRepositoryInterface::class,
+            static fn (Application $application): PostgresClinicBookingDateOverrideRepository => new PostgresClinicBookingDateOverrideRepository(
+                $application->make('db')->connection(),
             ),
         );
         $this->app->singleton(

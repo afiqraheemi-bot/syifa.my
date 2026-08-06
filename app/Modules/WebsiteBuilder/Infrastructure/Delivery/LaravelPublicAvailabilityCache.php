@@ -18,4 +18,23 @@ final readonly class LaravelPublicAvailabilityCache implements PublicAvailabilit
         /** @var list<PublicAvailabilitySlot> */
         return $this->cache->remember($key, $seconds, Closure::fromCallable($resolve));
     }
+
+    public function tenantRevision(string $tenantId): int
+    {
+        $value = $this->cache->get($this->revisionKey($tenantId), 1);
+
+        return is_int($value) && $value > 0 ? $value : 1;
+    }
+
+    public function invalidateTenant(string $tenantId): void
+    {
+        $key = $this->revisionKey($tenantId);
+        $this->cache->add($key, 1);
+        $this->cache->increment($key);
+    }
+
+    private function revisionKey(string $tenantId): string
+    {
+        return sprintf('public-availability-revision:%s', $tenantId);
+    }
 }

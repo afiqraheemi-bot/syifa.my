@@ -6,6 +6,7 @@ namespace Tests\Unit\Modules\Booking\Application;
 
 use App\Modules\Booking\Application\Availability\ClinicSlotGenerator;
 use App\Modules\Booking\Application\Exceptions\InvalidClinicBookingConfigurationException;
+use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicDateOverrideData;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperatingIntervalData;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeData;
 use PHPUnit\Framework\TestCase;
@@ -36,6 +37,41 @@ final class ClinicSlotGeneratorTest extends TestCase
         $generator = new ClinicSlotGenerator;
         $this->expectException(InvalidClinicBookingConfigurationException::class);
         $generator->generate(new ClinicOperationalTimeData('clinic', 'tenant', 'America/New_York', [new ClinicOperatingIntervalData(7, '01:00', '02:00')], 30, 1), '2026-11-01');
+    }
+
+    public function test_closed_date_override_removes_all_weekly_slots(): void
+    {
+        $clinic = new ClinicOperationalTimeData(
+            'clinic',
+            'tenant',
+            'Asia/Kuala_Lumpur',
+            [new ClinicOperatingIntervalData(1, '09:00', '12:00')],
+            30,
+            1,
+            [new ClinicDateOverrideData('2026-08-10', true, [])],
+        );
+
+        self::assertSame([], (new ClinicSlotGenerator)->generate($clinic, '2026-08-10'));
+    }
+
+    public function test_special_date_sessions_replace_weekly_hours_only_for_that_date(): void
+    {
+        $clinic = new ClinicOperationalTimeData(
+            'clinic',
+            'tenant',
+            'Asia/Kuala_Lumpur',
+            [new ClinicOperatingIntervalData(1, '09:00', '10:00')],
+            30,
+            1,
+            [new ClinicDateOverrideData('2026-08-10', false, [
+                new ClinicOperatingIntervalData(1, '15:00', '16:00'),
+                new ClinicOperatingIntervalData(1, '20:00', '21:00'),
+            ])],
+        );
+
+        $generator = new ClinicSlotGenerator;
+        self::assertSame(['15:00', '15:30', '20:00', '20:30'], array_column($generator->generate($clinic, '2026-08-10'), 'localStart'));
+        self::assertSame(['09:00', '09:30'], array_column($generator->generate($clinic, '2026-08-17'), 'localStart'));
     }
 
     /** @param list<ClinicOperatingIntervalData> $intervals */

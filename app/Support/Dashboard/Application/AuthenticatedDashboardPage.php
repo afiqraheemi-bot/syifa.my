@@ -50,54 +50,7 @@ final readonly class AuthenticatedDashboardPage
 
         if ($context->actorType === ActorType::ClinicOwner->value && $context->role === 'clinic_owner') {
             $props['contextLabel'] = 'Clinic Owner workspace';
-            $props['navigation'][] = (new DashboardNavigationItem(
-                'website',
-                'Website',
-                route('dashboard.website'),
-                false,
-            ))->toArray();
-            $props['navigation'][] = (new DashboardNavigationItem(
-                'content',
-                'Content',
-                route('dashboard.website.content'),
-                false,
-            ))->toArray();
-            $props['navigation'][] = (new DashboardNavigationItem(
-                'domain',
-                'Custom domain',
-                route('dashboard.website.domain'),
-                false,
-            ))->toArray();
-            $props['navigation'][] = (new DashboardNavigationItem(
-                'services',
-                'Services',
-                route('dashboard.services'),
-                false,
-            ))->toArray();
-            $props['navigation'][] = (new DashboardNavigationItem(
-                'bookings',
-                'Bookings',
-                route('dashboard.bookings'),
-                false,
-            ))->toArray();
-            $props['navigation'][] = (new DashboardNavigationItem(
-                'subscription',
-                'Subscription',
-                route('dashboard.subscription'),
-                false,
-            ))->toArray();
-            $props['navigation'][] = (new DashboardNavigationItem(
-                'notifications',
-                'Notifications',
-                route('dashboard.notifications'),
-                false,
-            ))->toArray();
-            $props['navigation'][] = (new DashboardNavigationItem(
-                'reports',
-                'Reports',
-                route('dashboard.reports'),
-                false,
-            ))->toArray();
+            $props['navigation'] = ClinicOwnerDashboardNavigation::items('dashboard');
 
             return new DashboardPageView(
                 'TenantManagement/Dashboard/ClinicOwnerDashboardOverview',

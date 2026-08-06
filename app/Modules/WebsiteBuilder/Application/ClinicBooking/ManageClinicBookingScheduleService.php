@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\WebsiteBuilder\Application\ClinicBooking;
 
+use App\Modules\WebsiteBuilder\Application\Delivery\PublicAvailabilityCacheInterface;
 use App\Modules\WebsiteBuilder\Application\Exceptions\ClinicNotFoundException;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorization;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
@@ -14,7 +15,6 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\BookingAppointmentDuration;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\BookingCapacityPerSlot;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicBookingConfiguration;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
-use App\Modules\WebsiteBuilder\Domain\ValueObjects\IanaTimezone;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\LocalTime;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\OpeningInterval;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
@@ -26,6 +26,7 @@ final readonly class ManageClinicBookingScheduleService
         private ClinicRepositoryInterface $clinics,
         private ClinicTransactionInterface $transactions,
         private WebsiteAuthorization $authorization,
+        private PublicAvailabilityCacheInterface $availabilityCache,
     ) {}
 
     public function read(string $tenantId, WebsiteAuthorizationContext $authorization): ClinicBookingScheduleData
@@ -42,9 +43,9 @@ final readonly class ManageClinicBookingScheduleService
     {
         $tenant = new TenantId($command->tenantId);
         $clinicId = new ClinicId($command->clinicId);
-        $this->authorization->assertCanUpdate($command->authorization, $tenant);
+        $this->authorization->assertCanManageClinicBooking($command->authorization, $tenant);
 
-        return $this->transactions->run(function () use ($command, $tenant, $clinicId): ClinicBookingScheduleData {
+        $schedule = $this->transactions->run(function () use ($command, $tenant, $clinicId): ClinicBookingScheduleData {
             $clinic = $this->clinics->findById($tenant, $clinicId)
                 ?? throw new ClinicNotFoundException('Clinic was not found in the authorized Tenant.');
             if ($clinic->version() !== $command->expectedVersion) {
@@ -60,11 +61,7 @@ final readonly class ManageClinicBookingScheduleService
                 );
             }
 
-            $clinic->reconfigureOperationalTime(
-                new IanaTimezone($command->timezone),
-                new WeeklyOperatingHours($intervals),
-                $command->occurredAt,
-            );
+            $clinic->reconfigureBookingAvailability(new WeeklyOperatingHours($intervals), $command->occurredAt);
             $clinic->configureBooking(
                 new ClinicBookingConfiguration(
                     new BookingAppointmentDuration($command->appointmentDurationMinutes),
@@ -76,5 +73,9 @@ final readonly class ManageClinicBookingScheduleService
 
             return ClinicBookingScheduleData::fromClinic($clinic);
         });
+
+        $this->availabilityCache->invalidateTenant($command->tenantId);
+
+        return $schedule;
     }
 }

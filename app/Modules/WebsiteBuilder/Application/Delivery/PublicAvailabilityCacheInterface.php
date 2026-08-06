@@ -19,4 +19,8 @@ interface PublicAvailabilityCacheInterface
      * @return list<PublicAvailabilitySlot>
      */
     public function remember(string $key, int $seconds, callable $resolve): array;
+
+    public function tenantRevision(string $tenantId): int;
+
+    public function invalidateTenant(string $tenantId): void;
 }

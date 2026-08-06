@@ -21,6 +21,7 @@ use App\Modules\Booking\Application\Exceptions\BookingOperationNotFoundException
 use App\Modules\Booking\Application\Exceptions\SlotUnavailableException;
 use App\Modules\Booking\Application\RescheduleBookingService;
 use App\Modules\Booking\Application\SubmitBookingService;
+use App\Modules\Booking\Contracts\Capacity\ReservationSlotData;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperatingIntervalData;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeData;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeReaderInterface;
@@ -141,6 +142,25 @@ final class PostgresSubmitBookingServiceTest extends TestCase
         } finally {
             self::assertSame(1, $this->db()->table('bookings')->count());
             self::assertSame(1, $this->db()->table('booking_slot_reservation_buckets')->value('reserved_count'));
+        }
+    }
+
+    public function test_existing_slot_capacity_snapshot_is_not_rewritten_by_a_later_configuration_change(): void
+    {
+        $capacity = new PostgresSlotCapacityReservation($this->db());
+        $slot = new ReservationSlotData(
+            new DateTimeImmutable('2026-08-10T02:00:00Z'),
+            new DateTimeImmutable('2026-08-10T02:30:00Z'),
+        );
+        $this->db()->transaction(fn () => $capacity->reserve($this->uuid(1), $slot, 1));
+
+        self::assertSame(1, (int) $this->db()->table('booking_slot_reservation_buckets')->value('capacity_snapshot'));
+        $this->expectException(SlotUnavailableException::class);
+        try {
+            $this->db()->transaction(fn () => $capacity->reserve($this->uuid(1), $slot, 3));
+        } finally {
+            self::assertSame(1, (int) $this->db()->table('booking_slot_reservation_buckets')->value('capacity_snapshot'));
+            self::assertSame(1, (int) $this->db()->table('booking_slot_reservation_buckets')->value('reserved_count'));
         }
     }
 

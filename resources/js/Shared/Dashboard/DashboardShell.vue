@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import DashboardBreadcrumb from './DashboardBreadcrumb.vue';
 import DashboardPageHeader from './DashboardPageHeader.vue';
 import DashboardLogoutAction from './DashboardLogoutAction.vue';
@@ -43,6 +44,7 @@ defineProps({
 
 const collapsed = ref(false);
 const mobileOpen = ref(false);
+const operations = computed(() => usePage().props.superAdminOperations ?? null);
 </script>
 
 <template>
@@ -76,6 +78,18 @@ const mobileOpen = ref(false);
                 @open-navigation="mobileOpen = true"
             >
                 <template #actions>
+                    <a
+                        v-if="operations?.pending_jobs > 0"
+                        :href="operations.onboarding_url"
+                        class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber-50 px-3 text-sm font-bold text-amber-900 ring-1 ring-inset ring-amber-200 transition hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
+                        :aria-label="`${operations.pending_jobs} onboarding jobs need attention`"
+                    >
+                        <span aria-hidden="true">!</span>
+                        <span class="hidden sm:inline">Pending jobs</span>
+                        <span class="rounded-full bg-amber-600 px-2 py-0.5 text-xs text-white">{{
+                            operations.pending_jobs
+                        }}</span>
+                    </a>
                     <slot name="top-actions" />
                     <DashboardLogoutAction />
                 </template>

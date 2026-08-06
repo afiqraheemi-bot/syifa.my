@@ -5,13 +5,20 @@ declare(strict_types=1);
 namespace App\Support\Provisioning;
 
 use App\Modules\Booking\Contracts\ServiceSetup\ServiceSetupAuditInterface;
+use App\Modules\ClinicRegistration\Application\ViewCurrentClinicRegistrationService;
+use App\Modules\ClinicRegistration\Contracts\Authentication\ClinicRegistrationAccessInterface;
+use App\Modules\ClinicRegistration\Contracts\Authentication\ClinicRegistrationLoginInterface;
 use App\Modules\ClinicRegistration\Contracts\Checkout\CompleteLocalDemoAcquisitionInterface;
 use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewAuditInterface;
+use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialWriterInterface;
 use App\Modules\Onboarding\Contracts\Administration\OnboardingAuditInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\WebsiteApprovalAuditInterface;
 use App\Modules\SubscriptionBilling\Application\Subscription\ActivateSubscriptionFromVerifiedPaymentService;
 use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementComputationInterface;
+use App\Modules\TenantManagement\Application\Administration\ActivateSelfRegisteredClinicOwnerService;
+use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionStoreInterface;
 use App\Modules\WebsiteBuilder\Contracts\Publication\WebsitePublicationApprovalReadInterface;
+use App\Support\Provisioning\Application\ClinicRegistrationLoginService;
 use App\Support\Provisioning\Application\CompleteLocalDemoAcquisitionService;
 use App\Support\Provisioning\Application\LocalDemoSubscriptionEntitlementComputation;
 use App\Support\Provisioning\Application\ProvisioningWorkflowRepositoryInterface;
@@ -36,6 +43,17 @@ final class ProvisioningServiceProvider extends ServiceProvider
         $this->app->singleton(
             CompleteLocalDemoAcquisitionInterface::class,
             CompleteLocalDemoAcquisitionService::class,
+        );
+        $this->app->singleton(
+            ClinicRegistrationLoginInterface::class,
+            static fn (Application $application): ClinicRegistrationLoginService => new ClinicRegistrationLoginService(
+                $application->make(ClinicRegistrationAccessInterface::class),
+                $application->make(RegistrationTrackingCredentialWriterInterface::class),
+                $application->make(ViewCurrentClinicRegistrationService::class),
+                $application->make(ActivateSelfRegisteredClinicOwnerService::class),
+                $application->make(ClinicOwnerSessionStoreInterface::class),
+                (int) config('tenant_management.session.absolute_lifetime_minutes'),
+            ),
         );
         if ($this->app->environment(['local', 'testing'])) {
             $this->app->when(ActivateSubscriptionFromVerifiedPaymentService::class)

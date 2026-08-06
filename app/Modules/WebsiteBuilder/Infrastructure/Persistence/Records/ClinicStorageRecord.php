@@ -8,12 +8,16 @@ use DateTimeImmutable;
 
 final readonly class ClinicStorageRecord
 {
-    /** @param list<OperatingIntervalStorageRecord> $operatingIntervals */
+    /**
+     * @param  list<OperatingIntervalStorageRecord>  $operatingIntervals
+     * @param  list<OperatingIntervalStorageRecord>  $bookingAvailabilityIntervals
+     */
     public function __construct(
         public string $id,
         public string $tenantId,
         public string $timezone,
         public array $operatingIntervals,
+        public array $bookingAvailabilityIntervals,
         public DateTimeImmutable $domainCreatedAt,
         public DateTimeImmutable $domainUpdatedAt,
         public int $version,

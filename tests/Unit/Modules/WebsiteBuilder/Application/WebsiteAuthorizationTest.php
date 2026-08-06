@@ -47,6 +47,30 @@ final class WebsiteAuthorizationTest extends TestCase
         yield 'missing actor' => [new WebsiteAuthorizationContext('', 'clinic_owner', actorTenantId: $other)];
     }
 
+    public function test_only_same_tenant_clinic_owner_can_manage_booking_schedule(): void
+    {
+        $tenant = new TenantId($this->uuid(1));
+        $authorization = new WebsiteAuthorization;
+        $authorization->assertCanManageClinicBooking(
+            new WebsiteAuthorizationContext($this->uuid(9), 'clinic_owner', actorTenantId: $tenant->value),
+            $tenant,
+        );
+        self::addToAssertionCount(1);
+
+        foreach ([
+            new WebsiteAuthorizationContext($this->uuid(9), 'website_designer', assignedTenantId: $tenant->value),
+            new WebsiteAuthorizationContext($this->uuid(9), 'super_admin', supportAuthorized: true),
+            new WebsiteAuthorizationContext($this->uuid(9), 'clinic_owner', actorTenantId: $this->uuid(2)),
+        ] as $context) {
+            try {
+                $authorization->assertCanManageClinicBooking($context, $tenant);
+                self::fail('Non-owner Booking schedule mutation must be denied.');
+            } catch (WebsiteOperationForbiddenException) {
+                self::addToAssertionCount(1);
+            }
+        }
+    }
+
     private function uuid(int $suffix): string
     {
         return sprintf('00000000-0000-4000-8000-%012d', $suffix);

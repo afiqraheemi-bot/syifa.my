@@ -107,14 +107,14 @@ function checkpoints(job) {
                 : job.ownerAuthorityId
                   ? `Setup email is pending for ${job.ownerEmail}.`
                   : 'Confirm the owner name and email, then send secure setup access.',
-            state: job.ownerVerified ? 'complete' : 'current',
+            state: job.ownerVerified ? 'complete' : job.designerName ? 'current' : 'upcoming',
         },
         {
             label: 'Website Designer assigned',
             description: job.designerName
                 ? `${job.designerName} owns this onboarding job.`
                 : 'Choose the Website Designer responsible for delivery.',
-            state: job.designerName ? 'complete' : job.ownerVerified ? 'current' : 'upcoming',
+            state: job.designerName ? 'complete' : 'current',
         },
         {
             label: 'Clinic information received',
@@ -123,7 +123,7 @@ function checkpoints(job) {
                 : 'Waiting for the Clinic Owner to complete the required inputs.',
             state: taskComplete(job, 'clinic_inputs')
                 ? 'complete'
-                : job.ownerVerified && job.designerName
+                : job.designerName
                   ? 'current'
                   : 'upcoming',
         },
@@ -147,8 +147,8 @@ function checkpoints(job) {
 }
 
 function nextAction(job) {
-    if (!job.ownerVerified) return 'Complete Clinic Owner access';
     if (!job.designerName) return 'Assign a Website Designer';
+    if (!job.ownerVerified) return 'Complete Clinic Owner access';
     if (!taskComplete(job, 'clinic_inputs')) return 'Clinic Owner supplies clinic information';
     if (!deliveryComplete(job)) return 'Website Designer completes delivery tasks';
     if (!job.launchReadiness?.ready) return 'Complete review and launch evidence';
@@ -401,7 +401,38 @@ async function waiveTask(job, task) {
                         </p>
                         <h3 class="mt-2 text-lg font-bold text-slate-950">{{ nextAction(job) }}</h3>
 
-                        <div v-if="!job.ownerAuthorityId" class="mt-5 grid gap-3">
+                        <div v-if="!job.designerName" class="mt-5 grid gap-3">
+                            <p class="text-sm leading-6 text-slate-700">
+                                Assign one Website Designer to own delivery from setup to launch.
+                                Clinic Owner access continues separately and does not block this
+                                assignment.
+                            </p>
+                            <select
+                                v-model="selections[job.id]"
+                                :disabled="busyJob === job.id"
+                                class="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3"
+                                :aria-label="`Website Designer for ${job.clinicName}`"
+                            >
+                                <option value="">Select Website Designer</option>
+                                <option
+                                    v-for="designer in onboarding.designers"
+                                    :key="designer.id"
+                                    :value="designer.id"
+                                >
+                                    {{ designer.name }} — {{ designer.email }}
+                                </option>
+                            </select>
+                            <button
+                                type="button"
+                                :disabled="!selections[job.id] || busyJob !== null"
+                                class="min-h-11 rounded-xl bg-emerald-700 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                @click="assign(job)"
+                            >
+                                {{ busyJob === job.id ? 'Assigning…' : 'Assign Website Designer' }}
+                            </button>
+                        </div>
+
+                        <div v-else-if="!job.ownerAuthorityId" class="mt-5 grid gap-3">
                             <p class="text-sm leading-6 text-slate-700">
                                 Confirm the Clinic Owner who will access this tenant workspace.
                             </p>
@@ -455,36 +486,6 @@ async function waiveTask(job, task) {
                                         ? 'Sending…'
                                         : 'Resend setup email'
                                 }}
-                            </button>
-                        </div>
-
-                        <div v-else-if="!job.designerName" class="mt-5 grid gap-3">
-                            <p class="text-sm leading-6 text-slate-700">
-                                Assign one Website Designer to own the delivery from setup to
-                                launch.
-                            </p>
-                            <select
-                                v-model="selections[job.id]"
-                                :disabled="busyJob === job.id"
-                                class="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3"
-                                :aria-label="`Website Designer for ${job.clinicName}`"
-                            >
-                                <option value="">Select Website Designer</option>
-                                <option
-                                    v-for="designer in onboarding.designers"
-                                    :key="designer.id"
-                                    :value="designer.id"
-                                >
-                                    {{ designer.name }} — {{ designer.email }}
-                                </option>
-                            </select>
-                            <button
-                                type="button"
-                                :disabled="!selections[job.id] || busyJob !== null"
-                                class="min-h-11 rounded-xl bg-emerald-700 px-5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                                @click="assign(job)"
-                            >
-                                {{ busyJob === job.id ? 'Assigning…' : 'Assign Website Designer' }}
                             </button>
                         </div>
 

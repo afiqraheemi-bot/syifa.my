@@ -8,7 +8,7 @@ import {
     DashboardQuickActions,
     DashboardShell,
 } from '../../../Shared/Dashboard/index.js';
-import WebsiteImageUpload from './WebsiteImageUpload.vue';
+import WebsiteImageUpload from '../../../Shared/Website/WebsiteImageUpload.vue';
 
 const props = defineProps({
     navigation: { type: Array, required: true },
@@ -49,7 +49,6 @@ const form = useForm({
     ),
 });
 const bookingSaved = ref(false);
-const bookingScheduleSaved = ref(false);
 const contactSaved = ref(false);
 const contactForm = useForm({
     workspace: 'clinic_contact',
@@ -70,32 +69,6 @@ const bookingForm = useForm({
     labels: Object.fromEntries(
         bookingFields.map(([key]) => [key, props.bookingSetup.configuration.labels[key] ?? '']),
     ),
-});
-const weekdayOptions = [
-    [1, 'Monday'],
-    [2, 'Tuesday'],
-    [3, 'Wednesday'],
-    [4, 'Thursday'],
-    [5, 'Friday'],
-    [6, 'Saturday'],
-    [7, 'Sunday'],
-];
-const configuredIntervals = new Map(
-    props.bookingSetup.schedule.operating_intervals.map((interval) => [interval.day, interval]),
-);
-const bookingScheduleForm = useForm({
-    workspace: 'booking_schedule',
-    version: props.bookingSetup.schedule.version,
-    timezone: props.bookingSetup.schedule.timezone,
-    appointment_duration_minutes: props.bookingSetup.schedule.appointment_duration_minutes ?? 30,
-    booking_capacity_per_slot: props.bookingSetup.schedule.booking_capacity_per_slot ?? 1,
-    operating_intervals: weekdayOptions.map(([day, label]) => ({
-        day,
-        label,
-        enabled: configuredIntervals.has(day),
-        opens_at: configuredIntervals.get(day)?.opens_at ?? '09:00',
-        closes_at: configuredIntervals.get(day)?.closes_at ?? '17:00',
-    })),
 });
 const enabledBookingFields = computed(() =>
     bookingFields.filter(([key]) => {
@@ -1259,27 +1232,6 @@ function saveBookingConfiguration() {
             bookingSaved.value = true;
         },
     });
-}
-
-function saveBookingSchedule() {
-    bookingScheduleSaved.value = false;
-    bookingScheduleForm
-        .transform((data) => ({
-            ...data,
-            operating_intervals: data.operating_intervals
-                .filter((interval) => interval.enabled)
-                .map(({ day, opens_at, closes_at }) => ({ day, opens_at, closes_at })),
-        }))
-        .patch(props.bookingSetup.updateUrl, {
-            preserveScroll: true,
-            onSuccess: (page) => {
-                const current = page.props.bookingSetup?.schedule;
-                if (current) {
-                    bookingScheduleForm.version = current.version;
-                }
-                bookingScheduleSaved.value = true;
-            },
-        });
 }
 
 function saveClinicContact() {
@@ -3176,107 +3128,16 @@ function completionEvidence(task) {
             </p>
 
             <form class="mt-6 space-y-6" novalidate @submit.prevent="saveBookingConfiguration">
-                <fieldset class="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
-                    <legend class="px-2 font-bold text-slate-900">Appointment availability</legend>
-                    <p class="text-sm text-slate-600">
-                        Set the clinic hours used to generate bookable appointment slots. Times use
-                        Malaysia time.
+                <div
+                    class="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-950"
+                >
+                    <p class="font-bold">Appointment availability is managed by the Clinic Owner</p>
+                    <p class="mt-1">
+                        You may configure the Website Booking form below. Weekly Booking Hours,
+                        closures, appointment duration, and slot capacity remain authoritative in
+                        the Clinic Owner workspace.
                     </p>
-
-                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                        <label class="text-sm font-semibold text-slate-800">
-                            Appointment duration
-                            <select
-                                v-model.number="bookingScheduleForm.appointment_duration_minutes"
-                                :class="inputClass"
-                            >
-                                <option :value="15">15 minutes</option>
-                                <option :value="20">20 minutes</option>
-                                <option :value="30">30 minutes</option>
-                                <option :value="45">45 minutes</option>
-                                <option :value="60">60 minutes</option>
-                            </select>
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Patients per slot
-                            <select
-                                v-model.number="bookingScheduleForm.booking_capacity_per_slot"
-                                :class="inputClass"
-                            >
-                                <option v-for="capacity in 10" :key="capacity" :value="capacity">
-                                    {{ capacity }}
-                                </option>
-                            </select>
-                        </label>
-                    </div>
-
-                    <div class="mt-5 space-y-3">
-                        <div
-                            v-for="interval in bookingScheduleForm.operating_intervals"
-                            :key="interval.day"
-                            class="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-[9rem_1fr_1fr] sm:items-end"
-                        >
-                            <label class="flex min-h-11 items-center gap-3 text-sm font-semibold">
-                                <input
-                                    v-model="interval.enabled"
-                                    type="checkbox"
-                                    class="size-4 accent-emerald-700"
-                                />
-                                {{ interval.label }}
-                            </label>
-                            <label class="text-sm font-semibold text-slate-700">
-                                Opens
-                                <input
-                                    v-model="interval.opens_at"
-                                    type="time"
-                                    :disabled="!interval.enabled"
-                                    :class="inputClass"
-                                />
-                            </label>
-                            <label class="text-sm font-semibold text-slate-700">
-                                Closes
-                                <input
-                                    v-model="interval.closes_at"
-                                    type="time"
-                                    :disabled="!interval.enabled"
-                                    :class="inputClass"
-                                />
-                            </label>
-                        </div>
-                    </div>
-
-                    <div
-                        v-if="bookingScheduleForm.hasErrors"
-                        role="alert"
-                        class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-                    >
-                        <p class="font-semibold">Review the appointment availability.</p>
-                        <ul class="mt-2 list-disc space-y-1 pl-5">
-                            <li v-for="(message, field) in bookingScheduleForm.errors" :key="field">
-                                {{ message }}
-                            </li>
-                        </ul>
-                    </div>
-                    <div
-                        v-if="bookingScheduleSaved"
-                        role="status"
-                        class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"
-                    >
-                        Appointment availability saved successfully.
-                    </div>
-                    <button
-                        type="button"
-                        :disabled="bookingScheduleForm.processing"
-                        class="mt-4 min-h-11 rounded-lg bg-emerald-700 px-5 py-3 font-semibold text-white transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-                        @click="saveBookingSchedule"
-                    >
-                        {{
-                            bookingScheduleForm.processing
-                                ? 'Saving availability…'
-                                : 'Save appointment availability'
-                        }}
-                    </button>
-                </fieldset>
+                </div>
 
                 <fieldset>
                     <legend class="font-bold text-slate-900">Optional fields</legend>

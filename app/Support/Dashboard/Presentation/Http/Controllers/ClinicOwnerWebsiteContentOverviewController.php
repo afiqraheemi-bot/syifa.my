@@ -4,13 +4,20 @@ declare(strict_types=1);
 
 namespace App\Support\Dashboard\Presentation\Http\Controllers;
 
+use App\Modules\WebsiteBuilder\Application\Exceptions\WebsiteOperationForbiddenException;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\UpdateWebsiteContentCommand;
+use App\Modules\WebsiteBuilder\Application\WebsiteDraft\LoadDraftWebsiteContent;
+use App\Modules\WebsiteBuilder\Application\WebsiteDraft\ManageWebsiteDraftContentService;
+use App\Modules\WebsiteBuilder\Application\WebsiteDraft\SaveDraftWebsiteContent;
+use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
+use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\Website\Content\ClinicOwnerWebsiteContentOverviewPage;
 use App\Support\Dashboard\Presentation\Http\Requests\UpdateClinicOwnerWebsiteContentRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -64,6 +71,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
                 trim((string) $seo['open_graph_description']),
                 (bool) $seo['indexing_enabled'],
                 $data['sections'],
+                templateId: isset($data['template_id']) ? (string) $data['template_id'] : null,
                 logoReference: $this->optional($branding['logo_reference'] ?? null),
                 logoDisplaySize: (string) $branding['logo_display_size'],
             ));
@@ -71,9 +79,62 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
             return back()->withErrors([
                 'version' => 'This Website configuration changed while you were editing. Refresh and review the latest values before saving again.',
             ]);
+        } catch (WebsiteOperationForbiddenException $exception) {
+            return back()->withErrors(['template_id' => $exception->getMessage()]);
         }
 
         return back()->with('website_content_saved', true);
+    }
+
+    public function updateDraft(
+        Request $request,
+        ManageWebsiteDraftContentService $drafts,
+        WebsiteReadInterface $websites,
+    ): JsonResponse {
+        $context = $this->context($request);
+        $website = $websites->summary((string) $context->tenantId);
+        abort_if($website === null, 404);
+        /** @var array{version: int, sections: list<array<string, mixed>>} $input */
+        $input = $request->validate([
+            'version' => ['required', 'integer', 'min:1'],
+            'sections' => ['required', 'array', 'size:9'],
+            'sections.*' => ['required', 'array'],
+            'sections.*.section_id' => ['required', 'uuid', 'distinct'],
+            'sections.*.type' => ['required', 'string', 'distinct'],
+        ]);
+
+        try {
+            $draft = $drafts->save(new SaveDraftWebsiteContent(
+                $this->websiteAuthorization($context),
+                (string) $context->tenantId,
+                $website->id,
+                $input['version'],
+                $input['sections'],
+            ));
+        } catch (StaleWebsiteWriteException $exception) {
+            return response()->json(['detail' => $exception->getMessage()], 409);
+        } catch (InvalidWebsiteValueException $exception) {
+            return response()->json(['detail' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['data' => $draft->toArray()]);
+    }
+
+    public function showDraft(
+        Request $request,
+        ManageWebsiteDraftContentService $drafts,
+        WebsiteReadInterface $websites,
+    ): JsonResponse {
+        $context = $this->context($request);
+        $website = $websites->summary((string) $context->tenantId);
+        abort_if($website === null, 404);
+        $draft = $drafts->load(new LoadDraftWebsiteContent(
+            $this->websiteAuthorization($context),
+            (string) $context->tenantId,
+            $website->id,
+        ));
+
+        return response()->json(['data' => $draft->toArray()]);
     }
 
     private function context(Request $request): AuthorizationContext

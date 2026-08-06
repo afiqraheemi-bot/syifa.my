@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Onboarding\Infrastructure;
 
 use App\Modules\Onboarding\Application\Provisioning\ProvisionOnboardingJobService;
+use App\Modules\Onboarding\Contracts\Administration\PendingOnboardingJobsReadInterface;
 use App\Modules\Onboarding\Contracts\Administration\SuperAdminOnboardingReadInterface;
 use App\Modules\Onboarding\Contracts\Administration\WebsiteDesignerEligibilityInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
@@ -78,6 +79,7 @@ final class OnboardingServiceProvider extends ServiceProvider
             ),
         );
         $this->app->alias(PostgresSuperAdminOnboardingAdapter::class, SuperAdminOnboardingReadInterface::class);
+        $this->app->alias(PostgresSuperAdminOnboardingAdapter::class, PendingOnboardingJobsReadInterface::class);
         $this->app->alias(PostgresSuperAdminOnboardingAdapter::class, WebsiteDesignerEligibilityInterface::class);
     }
 

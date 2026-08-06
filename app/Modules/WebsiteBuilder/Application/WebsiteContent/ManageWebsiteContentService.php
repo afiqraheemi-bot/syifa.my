@@ -52,6 +52,11 @@ final readonly class ManageWebsiteContentService
         if ($command->templateId !== null) {
             $templateId = TemplateId::from($command->templateId);
             if ($website->templateId() !== $templateId) {
+                WebsiteTemplateChangePolicy::assertPermitted(
+                    $command->authorization->role,
+                    $website->publishedVersion(),
+                    true,
+                );
                 $website->selectTemplate($templateId, $at);
             }
         }

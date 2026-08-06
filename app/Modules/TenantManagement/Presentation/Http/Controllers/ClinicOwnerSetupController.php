@@ -21,7 +21,7 @@ final readonly class ClinicOwnerSetupController
             'token' => $token,
             'email' => (string) $request->query('email', ''),
             'submitUrl' => route('clinic-owner.setup.complete'),
-            'loginUrl' => route('root'),
+            'loginUrl' => route('login'),
         ]);
     }
 
@@ -54,6 +54,6 @@ final readonly class ClinicOwnerSetupController
             ]);
         }
 
-        return redirect()->route('root', ['clinic_owner_setup' => 'complete']);
+        return redirect()->route('login', ['clinic_owner_setup' => 'complete']);
     }
 }

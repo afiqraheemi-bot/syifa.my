@@ -13,6 +13,7 @@ use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActor
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 use App\Modules\ReportingAnalytics\Contracts\ReportReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
+use App\Support\Dashboard\Application\ClinicOwnerDashboardNavigation;
 use App\Support\Dashboard\Application\DashboardNavigationItem;
 use App\Support\Dashboard\Application\DashboardPageView;
 use DateTimeImmutable;
@@ -84,15 +85,14 @@ final readonly class ReportsPage
     /** @return list<array<string, mixed>> */
     private function navigation(string $role): array
     {
+        if ($role === 'clinic_owner') {
+            return ClinicOwnerDashboardNavigation::items('reports');
+        }
+
         $items = [
             (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
         ];
-        if ($role === 'clinic_owner') {
-            $items[] = (new DashboardNavigationItem('website', 'Website', route('dashboard.website'), false))->toArray();
-            $items[] = (new DashboardNavigationItem('bookings', 'Bookings', route('dashboard.bookings'), false))->toArray();
-            $items[] = (new DashboardNavigationItem('subscription', 'Subscription', route('dashboard.subscription'), false))->toArray();
-            $items[] = (new DashboardNavigationItem('notifications', 'Notifications', route('dashboard.notifications'), false))->toArray();
-        } elseif ($role === 'website_designer') {
+        if ($role === 'website_designer') {
             $items[] = (new DashboardNavigationItem('onboarding', 'Onboarding', route('dashboard.onboarding'), false))->toArray();
         } else {
             $items[] = (new DashboardNavigationItem('registrations', 'Registrations', route('dashboard.registrations'), false))->toArray();

@@ -6,7 +6,10 @@ namespace App\Modules\Booking\Contracts\ClinicOperationalTime;
 
 final readonly class ClinicOperationalTimeData
 {
-    /** @param list<ClinicOperatingIntervalData> $operatingIntervals */
+    /**
+     * @param  list<ClinicOperatingIntervalData>  $operatingIntervals
+     * @param  list<ClinicDateOverrideData>  $dateOverrides
+     */
     public function __construct(
         public string $clinicId,
         public string $tenantId,
@@ -14,5 +17,6 @@ final readonly class ClinicOperationalTimeData
         public array $operatingIntervals,
         public ?int $appointmentDurationMinutes,
         public ?int $bookingCapacityPerSlot,
+        public array $dateOverrides = [],
     ) {}
 }

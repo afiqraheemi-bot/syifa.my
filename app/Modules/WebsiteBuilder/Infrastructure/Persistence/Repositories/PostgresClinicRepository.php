@@ -68,9 +68,11 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
                     throw new StaleClinicWriteException('Clinic write rejected because its version is stale.');
                 }
                 $this->connection->table('clinic_operating_intervals')->where('clinic_id', $record->id)->delete();
+                $this->connection->table('clinic_booking_availability_intervals')->where('clinic_id', $record->id)->delete();
             }
 
             $this->insertIntervals($record);
+            $this->insertBookingAvailability($record);
             $this->saveContactProfile($record);
 
             return $newVersion;
@@ -110,6 +112,23 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
                 'closes_at' => $interval->closesAt,
             ],
             $record->operatingIntervals,
+        ));
+    }
+
+    private function insertBookingAvailability(ClinicStorageRecord $record): void
+    {
+        if ($record->bookingAvailabilityIntervals === []) {
+            return;
+        }
+
+        $this->connection->table('clinic_booking_availability_intervals')->insert(array_map(
+            static fn (OperatingIntervalStorageRecord $interval): array => [
+                'clinic_id' => $record->id,
+                'day_of_week' => $interval->dayOfWeek,
+                'starts_at' => $interval->opensAt,
+                'ends_at' => $interval->closesAt,
+            ],
+            $record->bookingAvailabilityIntervals,
         ));
     }
 
@@ -154,6 +173,17 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
             $this->time($interval, 'closes_at'),
         ), $intervalRows->all()));
 
+        $bookingIntervalRows = $this->connection->table('clinic_booking_availability_intervals')
+            ->where('clinic_id', $id)
+            ->orderBy('day_of_week')
+            ->orderBy('starts_at')
+            ->get();
+        $bookingIntervals = array_values(array_map(fn (stdClass $interval): OperatingIntervalStorageRecord => new OperatingIntervalStorageRecord(
+            $this->integer($interval, 'day_of_week'),
+            $this->time($interval, 'starts_at'),
+            $this->time($interval, 'ends_at'),
+        ), $bookingIntervalRows->all()));
+
         $profile = $this->connection->table('clinic_contact_profiles')
             ->where('clinic_id', $id)
             ->where('tenant_id', $this->string($row, 'tenant_id'))
@@ -167,6 +197,7 @@ final readonly class PostgresClinicRepository implements ClinicRepositoryInterfa
             $this->string($row, 'tenant_id'),
             $this->string($row, 'timezone'),
             $intervals,
+            $bookingIntervals,
             $this->dateTime($row, 'domain_created_at'),
             $this->dateTime($row, 'domain_updated_at'),
             $this->integer($row, 'version'),

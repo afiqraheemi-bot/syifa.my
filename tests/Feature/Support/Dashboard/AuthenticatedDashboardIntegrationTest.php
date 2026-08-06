@@ -99,6 +99,7 @@ use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTim
 use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTimelineReadInterface;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewData;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewReadInterface;
+use App\Modules\WebsiteBuilder\Application\ClinicBooking\ClinicBookingDateOverrideData;
 use App\Modules\WebsiteBuilder\Contracts\Assets\WebsiteAssetBinaryStorageInterface;
 use App\Modules\WebsiteBuilder\Contracts\CustomDomain\CustomDomainRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfiguration;
@@ -118,6 +119,7 @@ use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteSeoSummaryData;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteSeoSummaryReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteSummaryData;
+use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicBookingDateOverrideRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteDraftRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
@@ -125,6 +127,7 @@ use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface
 use App\Modules\WebsiteBuilder\Contracts\Transactions\WebsitePublicationTransactionInterface;
 use App\Modules\WebsiteBuilder\Domain\Clinic;
 use App\Modules\WebsiteBuilder\Domain\CustomDomain\CustomDomain;
+use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleClinicWriteException;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\AboutSectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\BookingCtaSectionContent;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\ContactSectionContent;
@@ -137,6 +140,8 @@ use App\Modules\WebsiteBuilder\Domain\SectionContent\TestimonialsSectionContent;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicContactProfile;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\IanaTimezone;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\LocalTime;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\OpeningInterval;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
@@ -189,6 +194,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             new DashboardFixedPublicBookingConfiguration,
         );
         $this->app->instance(ClinicRepositoryInterface::class, new DashboardFixedClinicRepository);
+        $this->app->instance(ClinicBookingDateOverrideRepositoryInterface::class, new DashboardClinicBookingDateOverrides);
         $this->websiteAddresses = new DashboardWebsitePublicAddressRepository;
         $this->app->instance(
             WebsitePublicAddressRepositoryInterface::class,
@@ -324,8 +330,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         if ($actorType === ActorType::ClinicOwner) {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 9)
-                    ->where('navigation.4.key', 'services')
+                    ->has('navigation', 8)
+                    ->where('navigation.3.key', 'services')
                     ->where('welcomeTitle', 'Welcome back, Authenticated User')
                     ->has('summaries', 4)
                     ->where('summaries.0.key', 'clinic')
@@ -492,7 +498,12 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
 
         $this->app->instance(
             AuthorizationService::class,
-            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                '00000000-0000-4000-8000-000000000010',
+            ),
         );
         $this->getJson('/dashboard/audit')->assertForbidden();
     }
@@ -1261,6 +1272,11 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->has('job.timeline', 3)
                     ->where('job.actions.0.available', true)
                     ->where('job.actions.1.available', true)
+                    ->where('job.actions.2.available', true)
+                    ->where(
+                        'job.actions.2.href',
+                        route('dashboard.onboarding.custom-domain', ['jobId' => $jobId]),
+                    )
                     ->where('websiteSetup.configuration.branding.clinic_name', 'Klinik Aisyah')
                     ->where('websiteSetup.configuration.template_id', 'SYIFA_ESSENTIAL')
                     ->has('websiteSetup.templateOptions', 5)
@@ -1896,7 +1912,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 static fn (AssertableInertia $page): AssertableInertia => $page
                     ->component('TenantManagement/Booking/ClinicOwnerServiceSetup', false)
                     ->where('pageTitle', 'Service Setup')
-                    ->where('navigation.4.key', 'services')
+                    ->where('navigation.3.key', 'services')
                     ->where('services.0.name', 'Consultation')
                     ->where('services.0.status', 'active')
                     ->where('operationsUrl', route('dashboard.services')),
@@ -1946,6 +1962,56 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->postJson(route('website-designer.website-assets.store', $jobId), [
             'image' => UploadedFile::fake()->createWithContent('clinic.png', $png),
         ])->assertForbidden();
+    }
+
+    public function test_clinic_owner_uploads_a_tenant_owned_website_image(): void
+    {
+        $storage = new DashboardWebsiteAssetStorage;
+        $this->app->instance(WebsiteAssetBinaryStorageInterface::class, $storage);
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $png = (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+
+        $response = $this->postJson(route('clinic-owner.website-assets.store'), [
+            'image' => UploadedFile::fake()->createWithContent('clinic.png', $png),
+            'tenant_id' => 'tenant-2',
+            'website_id' => '00000000-0000-4000-8000-000000000999',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.mime_type', 'image/png')
+            ->assertJsonPath('data.width', 1)
+            ->assertJsonPath('data.height', 1);
+
+        self::assertCount(1, $storage->files);
+        self::assertSame(1, $this->websiteRepository->assetCount());
+
+        $this->get(route('dashboard.website.content'))
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('websiteDraft.mediaUploadUrl', route('clinic-owner.website-assets.store'))
+                    ->where(
+                        'websiteDraft.assetUrlTemplate',
+                        route('public-website.assets.show', '__ASSET_ID__'),
+                    ),
+            );
+
+        foreach ([
+            [ActorType::PlatformIdentity, 'website_designer'],
+            [ActorType::PlatformIdentity, 'super_admin'],
+        ] as [$actorType, $role]) {
+            $this->app->instance(AuthorizationService::class, $this->authorization($actorType, $role));
+            $this->postJson(route('clinic-owner.website-assets.store'), [
+                'image' => UploadedFile::fake()->createWithContent('clinic.png', $png),
+            ])->assertForbidden();
+        }
     }
 
     public function test_website_designer_updates_the_assigned_booking_form_configuration(): void
@@ -2018,7 +2084,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             );
     }
 
-    public function test_website_designer_configures_assignment_scoped_booking_availability(): void
+    public function test_website_designer_cannot_mutate_clinic_owned_booking_availability(): void
     {
         $this->app->instance(
             AuthorizationService::class,
@@ -2042,34 +2108,20 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ],
         ];
 
-        $this->patch('/dashboard/onboarding/'.$jobId, $schedule)->assertRedirect();
+        $this->from('/dashboard/onboarding/'.$jobId)
+            ->patch('/dashboard/onboarding/'.$jobId, $schedule)
+            ->assertRedirect('/dashboard/onboarding/'.$jobId)
+            ->assertSessionHasErrors('workspace');
 
         $this->get('/dashboard/onboarding/'.$jobId)
             ->assertOk()
             ->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->where('bookingSetup.schedule.version', 2)
+                    ->where('bookingSetup.schedule.version', 1)
                     ->where('bookingSetup.schedule.timezone', 'Asia/Kuala_Lumpur')
-                    ->where('bookingSetup.schedule.appointment_duration_minutes', 30)
-                    ->where('bookingSetup.schedule.booking_capacity_per_slot', 2)
-                    ->has('bookingSetup.schedule.operating_intervals', 3)
-                    ->where('bookingSetup.schedule.operating_intervals.2.day', 6)
-                    ->where('bookingSetup.schedule.operating_intervals.2.closes_at', '13:00'),
+                    ->where('bookingSetup.schedule.appointment_duration_minutes', null)
+                    ->where('bookingSetup.schedule.booking_capacity_per_slot', null),
             );
-
-        $schedule['version'] = 2;
-        $schedule['operating_intervals'][0]['opens_at'] = '18:00';
-        $schedule['operating_intervals'][0]['closes_at'] = '09:00';
-        $this->from('/dashboard/onboarding/'.$jobId)
-            ->patch('/dashboard/onboarding/'.$jobId, $schedule)
-            ->assertRedirect('/dashboard/onboarding/'.$jobId)
-            ->assertSessionHasErrors('booking_schedule.configuration');
-
-        $this->app->instance(
-            AuthorizationService::class,
-            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
-        );
-        $this->patch('/dashboard/onboarding/'.$jobId, $schedule)->assertForbidden();
     }
 
     public function test_website_designer_updates_the_assigned_clinic_contact_profile(): void
@@ -2216,7 +2268,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.0.key', 'edit')
                     ->where('quickActions.0.available', true)
                     ->where('quickActions.0.href', route('dashboard.website.content'))
-                    ->has('navigation', 6),
+                    ->has('navigation', 8),
             );
     }
 
@@ -2242,8 +2294,19 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('contentSections.2.detail', 'Primary care · Vaccination · General practice')
                     ->where('editableContent.branding.clinic_name', 'Klinik Aisyah')
                     ->where('editableContent.version', 1)
+                    ->has('templateOptions', 5)
+                    ->where('canChangeTemplate', true)
+                    ->where('previewUrl', route('dashboard.website.preview'))
                     ->where('updateUrl', route('dashboard.website.content.update'))
-                    ->has('navigation', 6),
+                    ->where(
+                        'websiteDraft.mediaUploadUrl',
+                        route('clinic-owner.website-assets.store'),
+                    )
+                    ->where(
+                        'websiteDraft.assetUrlTemplate',
+                        route('public-website.assets.show', '__ASSET_ID__'),
+                    )
+                    ->has('navigation', 8),
             );
     }
 
@@ -2256,6 +2319,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
 
         $this->patch('/dashboard/website/content', [
             'version' => 1,
+            'template_id' => 'SYIFA_CARE',
             'branding' => [
                 'clinic_name' => 'Klinik Baharu',
                 'tagline' => 'Trusted care',
@@ -2296,6 +2360,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
                     ->where('editableContent.branding.clinic_name', 'Klinik Baharu')
+                    ->where('editableContent.template_id', 'SYIFA_CARE')
                     ->where('editableContent.branding.primary_color', '#AABBCC')
                     ->where('editableContent.branding.secondary_color', '#DDEEFF')
                     ->where('editableContent.branding.logo_display_size', 'large')
@@ -2319,14 +2384,70 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                         ->where('navigation.0.key', 'dashboard')
                         ->where('navigation.1.key', 'website')
                         ->where('navigation.2.key', 'content')
-                        ->where('navigation.3.key', 'domain')
-                        ->where('navigation.4.key', 'services')
-                        ->where('navigation.5.key', 'bookings'),
+                        ->where('navigation.3.key', 'services')
+                        ->where('navigation.4.key', 'bookings')
+                        ->where('navigation.5.key', 'subscription')
+                        ->where('navigation.6.key', 'notifications')
+                        ->where('navigation.7.key', 'reports')
+                        ->has('navigation', 8),
                 );
         }
     }
 
-    public function test_clinic_owner_can_open_the_tenant_scoped_custom_domain_workspace(): void
+    public function test_only_the_assigned_website_designer_can_open_the_custom_domain_add_on_workspace(): void
+    {
+        $jobId = '00000000-0000-4000-8000-000000000101';
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+
+        $this->get('/dashboard/onboarding/'.$jobId.'/custom-domain')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('PlatformAdministration/Onboarding/WebsiteDesignerCustomDomain', false)
+                    ->where('domain', null)
+                    ->where(
+                        'operationsUrl',
+                        route('dashboard.onboarding.custom-domain', ['jobId' => $jobId]),
+                    )
+                    ->where('job.tenantId', '00000000-0000-4000-8000-000000000002')
+                    ->where('job.websiteId', '00000000-0000-4000-8000-000000000001'),
+            );
+
+        $this->post('/dashboard/onboarding/'.$jobId.'/custom-domain', [
+            'hostname' => 'www.klinik-aisyah.my',
+        ])->assertRedirect();
+        $this->get('/dashboard/onboarding/'.$jobId.'/custom-domain')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('domain.hostname', 'www.klinik-aisyah.my')
+                    ->where('domain.status', 'verification_pending')
+                    ->where('domain.version', 1)
+                    ->where('domain.verificationValue', static fn (mixed $value): bool => is_string($value)
+                        && str_starts_with($value, 'syifa-verification=')),
+            );
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+            ),
+        );
+
+        $this->getJson('/dashboard/onboarding/'.$jobId.'/custom-domain')->assertForbidden();
+        $this->get('/dashboard/website/domain')->assertNotFound();
+    }
+
+    public function test_clinic_owner_receives_the_booking_overview_from_application_providers(): void
     {
         $this->app->instance(
             AuthorizationService::class,
@@ -2334,26 +2455,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 ActorType::ClinicOwner,
                 'clinic_owner',
                 '00000000-0000-4000-8000-000000000002',
-                '00000000-0000-4000-8000-000000000010',
+                '00000000-0000-4000-8000-000000000020',
             ),
-        );
-
-        $this->get('/dashboard/website/domain')
-            ->assertOk()
-            ->assertInertia(
-                static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->component('TenantManagement/Website/ClinicOwnerCustomDomain', false)
-                    ->where('domain', null)
-                    ->where('operationsUrl', route('dashboard.website.domain'))
-                    ->where('navigation.3.key', 'domain'),
-            );
-    }
-
-    public function test_clinic_owner_receives_the_booking_overview_from_application_providers(): void
-    {
-        $this->app->instance(
-            AuthorizationService::class,
-            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
         );
 
         $this->get('/dashboard/bookings?search=BOOK&status=submitted&source=WEBSITE&per_page=10')
@@ -2372,8 +2475,187 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('manualBooking.sources.0.value', 'phone')
                     ->where('manualBooking.serviceSelectionEnabled', true)
                     ->where('manualBooking.services.0.name', 'Consultation')
-                    ->has('navigation', 6),
+                    ->where('bookingSchedule.updateUrl', route('dashboard.bookings.schedule.update'))
+                    ->where('bookingSchedule.businessHoursUpdateUrl', route('dashboard.bookings.business-hours.update'))
+                    ->where('bookingSchedule.timezone', 'Asia/Kuala_Lumpur')
+                    ->has('navigation', 8),
             );
+    }
+
+    public function test_clinic_owner_can_update_the_authoritative_booking_schedule(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                '00000000-0000-4000-8000-000000000020',
+            ),
+        );
+
+        $this->patch(route('dashboard.bookings.schedule.update'), [
+            'version' => 1,
+            'timezone' => 'Asia/Kuala_Lumpur',
+            'appointment_duration_minutes' => 30,
+            'booking_capacity_per_slot' => 2,
+            'operating_intervals' => [
+                ['day' => 1, 'opens_at' => '09:00', 'closes_at' => '17:00'],
+                ['day' => 2, 'opens_at' => '09:00', 'closes_at' => '17:00'],
+            ],
+        ])->assertRedirect();
+
+        $clinic = $this->app->make(ClinicRepositoryInterface::class)->findByTenantId(
+            new TenantId('00000000-0000-4000-8000-000000000002'),
+        );
+        self::assertNotNull($clinic);
+        self::assertSame('09:00', $clinic->weeklyOperatingHours()->all()[1][0]->opensAt->value);
+        self::assertSame('09:00', $clinic->weeklyBookingAvailability()->all()[1][0]->opensAt->value);
+        self::assertSame([], $clinic->weeklyBookingAvailability()->all()[6]);
+
+        $this->get(route('dashboard.bookings'))
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('bookingSchedule.version', 2)
+                    ->where('bookingSchedule.appointment_duration_minutes', 30)
+                    ->where('bookingSchedule.booking_capacity_per_slot', 2)
+                    ->where('bookingSchedule.operating_intervals.0.day', 1)
+                    ->where('bookingSchedule.operating_intervals.0.opens_at', '09:00')
+                    ->where('bookingSchedule.operating_intervals.0.closes_at', '17:00'),
+            );
+    }
+
+    public function test_non_clinic_owner_cannot_update_a_clinic_booking_schedule(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                null,
+                '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+
+        $this->patch(route('dashboard.bookings.schedule.update'), [
+            'version' => 1,
+            'timezone' => 'Asia/Kuala_Lumpur',
+            'appointment_duration_minutes' => 30,
+            'booking_capacity_per_slot' => 1,
+            'operating_intervals' => [
+                ['day' => 1, 'opens_at' => '09:00', 'closes_at' => '17:00'],
+            ],
+        ])->assertForbidden();
+    }
+
+    public function test_only_clinic_owner_can_create_and_remove_a_booking_date_override(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                '00000000-0000-4000-8000-000000000020',
+            ),
+        );
+
+        $this->from(route('dashboard.bookings'))->post(route('dashboard.bookings.date-overrides.store'), [
+            'local_date' => '2099-08-10',
+            'closed' => true,
+            'version' => 0,
+        ])->assertRedirect(route('dashboard.bookings'))->assertSessionHasNoErrors();
+
+        $this->get(route('dashboard.bookings'))->assertOk()->assertInertia(
+            static fn (AssertableInertia $page): AssertableInertia => $page
+                ->where('bookingSchedule.dateOverrides.0.local_date', '2099-08-10')
+                ->where('bookingSchedule.dateOverrides.0.closed', true)
+                ->where('bookingSchedule.dateOverrides.0.version', 1),
+        );
+
+        $this->from(route('dashboard.bookings'))->delete(
+            route('dashboard.bookings.date-overrides.destroy', ['localDate' => '2099-08-10']),
+            ['version' => 1],
+        )->assertRedirect(route('dashboard.bookings'))->assertSessionHasNoErrors();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer', null, '00000000-0000-4000-8000-000000000010'),
+        );
+        $this->post(route('dashboard.bookings.date-overrides.store'), [
+            'local_date' => '2099-08-11',
+            'closed' => true,
+            'version' => 0,
+        ])->assertForbidden();
+    }
+
+    public function test_clinic_owner_can_update_business_hours_without_changing_booking_hours(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                '00000000-0000-4000-8000-000000000020',
+            ),
+        );
+
+        $this->from(route('dashboard.bookings'))->patch(route('dashboard.bookings.business-hours.update'), [
+            'version' => 1,
+            'timezone' => 'Asia/Kuala_Lumpur',
+            'operating_intervals' => [
+                ['day' => 1, 'opens_at' => '08:00', 'closes_at' => '18:00'],
+                ['day' => 2, 'opens_at' => '09:00', 'closes_at' => '13:00'],
+                ['day' => 2, 'opens_at' => '14:00', 'closes_at' => '18:00'],
+            ],
+        ])->assertRedirect(route('dashboard.bookings'))
+            ->assertSessionHasNoErrors();
+
+        $clinic = $this->app->make(ClinicRepositoryInterface::class)->findByTenantId(
+            new TenantId('00000000-0000-4000-8000-000000000002'),
+        );
+        self::assertNotNull($clinic);
+        self::assertSame('08:00', $clinic->weeklyOperatingHours()->all()[1][0]->opensAt->value);
+        self::assertCount(2, $clinic->weeklyOperatingHours()->all()[2]);
+        self::assertSame('09:00', $clinic->weeklyBookingAvailability()->all()[1][0]->opensAt->value);
+    }
+
+    public function test_clinic_owner_can_configure_multiple_booking_sessions_independently_of_business_hours(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                '00000000-0000-4000-8000-000000000020',
+            ),
+        );
+
+        $this->from(route('dashboard.bookings'))->patch(route('dashboard.bookings.schedule.update'), [
+            'version' => 1,
+            'timezone' => 'Asia/Kuala_Lumpur',
+            'appointment_duration_minutes' => 30,
+            'booking_capacity_per_slot' => 1,
+            'operating_intervals' => [
+                ['day' => 1, 'opens_at' => '09:00', 'closes_at' => '12:00'],
+                ['day' => 1, 'opens_at' => '15:00', 'closes_at' => '17:00'],
+                ['day' => 1, 'opens_at' => '20:00', 'closes_at' => '21:00'],
+            ],
+        ])->assertRedirect(route('dashboard.bookings'))
+            ->assertSessionHasNoErrors();
+
+        $clinic = $this->app->make(ClinicRepositoryInterface::class)->findByTenantId(
+            new TenantId('00000000-0000-4000-8000-000000000002'),
+        );
+        self::assertNotNull($clinic);
+        self::assertSame(2, $clinic->version());
+        self::assertSame('09:00', $clinic->weeklyOperatingHours()->all()[1][0]->opensAt->value);
+        self::assertCount(3, $clinic->weeklyBookingAvailability()->all()[1]);
+        self::assertSame('20:00', $clinic->weeklyBookingAvailability()->all()[1][2]->opensAt->value);
+        self::assertSame('21:00', $clinic->weeklyBookingAvailability()->all()[1][2]->closesAt->value);
     }
 
     public function test_clinic_owner_receives_tenant_scoped_booking_detail_and_history(): void
@@ -2611,17 +2893,36 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
 
 final class DashboardEmptyCustomDomainRepository implements CustomDomainRepositoryInterface
 {
+    private ?CustomDomain $domain = null;
+
     public function currentForWebsite(string $tenantId, string $websiteId): ?CustomDomain
     {
-        return null;
+        return $this->domain !== null
+            && $this->domain->tenantId === $tenantId
+            && $this->domain->websiteId === $websiteId
+            && $this->domain->status()->value !== 'detached'
+                ? $this->domain
+                : null;
     }
 
     public function findOwned(string $tenantId, string $domainId): ?CustomDomain
     {
-        return null;
+        return $this->domain !== null
+            && $this->domain->tenantId === $tenantId
+            && $this->domain->id === $domainId
+                ? $this->domain
+                : null;
     }
 
-    public function save(CustomDomain $domain): void {}
+    public function save(CustomDomain $domain): void
+    {
+        if ($domain->version() === 0) {
+            $domain->synchronizeVersion(1);
+        } else {
+            $domain->synchronizeVersion($domain->version() + 1);
+        }
+        $this->domain = $domain;
+    }
 }
 
 final class DashboardOnboardingJobRepository implements OnboardingJobRepositoryInterface
@@ -3166,7 +3467,11 @@ final class DashboardFixedClinicRepository implements ClinicRepositoryInterface
             new ClinicId('00000000-0000-4000-8000-000000000003'),
             new TenantId('00000000-0000-4000-8000-000000000002'),
             new IanaTimezone('Asia/Kuala_Lumpur'),
-            new WeeklyOperatingHours([]),
+            new WeeklyOperatingHours([
+                1 => [new OpeningInterval(new LocalTime('09:00'), new LocalTime('17:00'))],
+                2 => [new OpeningInterval(new LocalTime('09:00'), new LocalTime('17:00'))],
+                6 => [new OpeningInterval(new LocalTime('09:00'), new LocalTime('13:00'))],
+            ]),
             new DateTimeImmutable('2026-01-01T00:00:00Z'),
             new DateTimeImmutable('2026-01-01T00:00:00Z'),
             1,
@@ -3547,6 +3852,41 @@ final readonly class DashboardFixedBookingFormRead implements PublicBookingFormR
             true,
             [new PublicBookingFormServiceData('00000000-0000-4000-8000-000000000004', 'Consultation')],
         );
+    }
+}
+
+final class DashboardClinicBookingDateOverrides implements ClinicBookingDateOverrideRepositoryInterface
+{
+    /** @var array<string, ClinicBookingDateOverrideData> */
+    private array $items = [];
+
+    public function allForClinic(ClinicId $clinicId): array
+    {
+        return array_values(array_filter(
+            $this->items,
+            static fn (ClinicBookingDateOverrideData $item, string $key): bool => str_starts_with($key, $clinicId->value.'|'),
+            ARRAY_FILTER_USE_BOTH,
+        ));
+    }
+
+    public function replace(ClinicId $clinicId, string $localDate, bool $closed, array $intervals, int $expectedVersion): ClinicBookingDateOverrideData
+    {
+        $key = $clinicId->value.'|'.$localDate;
+        $current = $this->items[$key] ?? null;
+        if (($current?->version ?? 0) !== $expectedVersion) {
+            throw new StaleClinicWriteException('Booking date override changed since it was loaded.');
+        }
+
+        return $this->items[$key] = new ClinicBookingDateOverrideData($localDate, $closed, $intervals, $expectedVersion + 1);
+    }
+
+    public function delete(ClinicId $clinicId, string $localDate, int $expectedVersion): void
+    {
+        $key = $clinicId->value.'|'.$localDate;
+        if (($this->items[$key]->version ?? 0) !== $expectedVersion) {
+            throw new StaleClinicWriteException('Booking date override changed since it was loaded.');
+        }
+        unset($this->items[$key]);
     }
 }
 

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Onboarding\Infrastructure\Queries;
 
+use App\Modules\Onboarding\Contracts\Administration\PendingOnboardingJobsReadInterface;
 use App\Modules\Onboarding\Contracts\Administration\SuperAdminOnboardingReadInterface;
 use App\Modules\Onboarding\Contracts\Administration\WebsiteDesignerEligibilityInterface;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Support\Facades\Schema;
 
-final readonly class PostgresSuperAdminOnboardingAdapter implements SuperAdminOnboardingReadInterface, WebsiteDesignerEligibilityInterface
+final readonly class PostgresSuperAdminOnboardingAdapter implements PendingOnboardingJobsReadInterface, SuperAdminOnboardingReadInterface, WebsiteDesignerEligibilityInterface
 {
     public function __construct(private ConnectionInterface $connection) {}
 
@@ -130,5 +132,16 @@ final readonly class PostgresSuperAdminOnboardingAdapter implements SuperAdminOn
             ->where('account_status', 'active')
             ->where('email_verification_status', 'verified')
             ->exists();
+    }
+
+    public function countPending(): int
+    {
+        if (! Schema::hasTable('onboarding_jobs')) {
+            return 0;
+        }
+
+        return $this->connection->table('onboarding_jobs')
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->count();
     }
 }

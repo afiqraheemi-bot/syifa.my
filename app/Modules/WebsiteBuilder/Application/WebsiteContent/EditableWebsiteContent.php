@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\WebsiteBuilder\Application\WebsiteContent;
 
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetStatus;
 use App\Modules\WebsiteBuilder\Domain\Website;
+use App\Modules\WebsiteBuilder\Domain\WebsiteAsset;
 
 final readonly class EditableWebsiteContent
 {
@@ -17,6 +19,7 @@ final readonly class EditableWebsiteContent
         $seo = $this->website->seo();
 
         return [
+            'website_id' => $this->website->id->value,
             'version' => $this->website->version(),
             'lifecycle' => $this->website->lifecycle()->value,
             'lifecycle_label' => ucwords(str_replace('_', ' ', $this->website->lifecycle()->value)),
@@ -53,6 +56,20 @@ final readonly class EditableWebsiteContent
                 ],
                 $this->website->sections()->sections(),
             ),
+            'media_assets' => array_values(array_map(
+                static fn (WebsiteAsset $asset): array => [
+                    'asset_id' => $asset->id->value,
+                    'mime_type' => $asset->mimeType->value,
+                    'file_size_bytes' => $asset->fileSizeBytes,
+                    'width' => $asset->width,
+                    'height' => $asset->height,
+                    'created_at' => $asset->createdAt->format(DATE_ATOM),
+                ],
+                array_filter(
+                    $this->website->assets()->assets(),
+                    static fn (WebsiteAsset $asset): bool => $asset->status() === AssetStatus::Available,
+                ),
+            )),
         ];
     }
 }

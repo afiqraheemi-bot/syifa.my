@@ -7,6 +7,8 @@ namespace Tests\Contract\Modules\Booking;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeData;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeNotFoundException;
 use App\Modules\Booking\Contracts\ClinicOperationalTime\ClinicOperationalTimeReaderInterface;
+use App\Modules\WebsiteBuilder\Application\ClinicBooking\ClinicBookingDateOverrideData;
+use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicBookingDateOverrideRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Domain\Clinic;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\ClinicId;
@@ -24,7 +26,7 @@ final class ClinicOperationalTimeContractTest extends TestCase
     public function test_trusted_tenant_resolves_read_only_infrastructure_neutral_data(): void
     {
         $clinic = $this->clinic();
-        $reader = new BookingClinicOperationalTimeAdapter($this->repository($clinic));
+        $reader = new BookingClinicOperationalTimeAdapter($this->repository($clinic), $this->overrides());
 
         $result = $reader->forTrustedTenant($clinic->tenantId->value);
 
@@ -38,7 +40,7 @@ final class ClinicOperationalTimeContractTest extends TestCase
 
     public function test_missing_or_cross_tenant_profile_fails_explicitly_without_clinic_id_input(): void
     {
-        $reader = new BookingClinicOperationalTimeAdapter($this->repository($this->clinic()));
+        $reader = new BookingClinicOperationalTimeAdapter($this->repository($this->clinic()), $this->overrides());
 
         $this->expectException(ClinicOperationalTimeNotFoundException::class);
 
@@ -63,6 +65,24 @@ final class ClinicOperationalTimeContractTest extends TestCase
             }
 
             public function save(Clinic $clinic): void {}
+        };
+    }
+
+    private function overrides(): ClinicBookingDateOverrideRepositoryInterface
+    {
+        return new class implements ClinicBookingDateOverrideRepositoryInterface
+        {
+            public function allForClinic(ClinicId $clinicId): array
+            {
+                return [];
+            }
+
+            public function replace(ClinicId $clinicId, string $localDate, bool $closed, array $intervals, int $expectedVersion): ClinicBookingDateOverrideData
+            {
+                return new ClinicBookingDateOverrideData($localDate, $closed, $intervals, $expectedVersion + 1);
+            }
+
+            public function delete(ClinicId $clinicId, string $localDate, int $expectedVersion): void {}
         };
     }
 

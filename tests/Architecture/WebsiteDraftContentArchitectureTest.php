@@ -122,7 +122,7 @@ final class WebsiteDraftContentArchitectureTest extends TestCase
     public function test_website_image_upload_uses_a_reusable_client_side_crop_before_the_scoped_upload(): void
     {
         $component = $this->source(
-            'resources/js/Modules/PlatformAdministration/Onboarding/WebsiteImageUpload.vue',
+            'resources/js/Shared/Website/WebsiteImageUpload.vue',
         );
         $controller = $this->source(
             'app/Support/Dashboard/Presentation/Http/Controllers/WebsiteDesignerWebsiteAssetController.php',

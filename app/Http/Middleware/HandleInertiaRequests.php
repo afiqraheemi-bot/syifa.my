@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Modules\Onboarding\Contracts\Administration\PendingOnboardingJobsReadInterface;
+use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Identity\ActorType;
 use App\Support\Identity\CurrentUserInterface;
 use Illuminate\Http\Request;
@@ -13,6 +15,8 @@ final class HandleInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
 
+    public function __construct(private readonly PendingOnboardingJobsReadInterface $onboarding) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -21,6 +25,21 @@ final class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'authentication' => fn (): array => $this->authenticationPresentation(),
+            'superAdminOperations' => fn (): ?array => $this->superAdminOperations($request),
+        ];
+    }
+
+    /** @return array{pending_jobs: int, onboarding_url: string}|null */
+    private function superAdminOperations(Request $request): ?array
+    {
+        $context = $request->attributes->get(AuthorizationContext::class);
+        if (! $context instanceof AuthorizationContext || $context->role !== 'super_admin') {
+            return null;
+        }
+
+        return [
+            'pending_jobs' => $this->onboarding->countPending(),
+            'onboarding_url' => route('dashboard.onboarding-management'),
         ];
     }
 

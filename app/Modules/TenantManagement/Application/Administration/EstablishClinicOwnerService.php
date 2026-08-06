@@ -13,6 +13,7 @@ use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActor
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 use App\Modules\TenantManagement\Contracts\Administration\ClinicOwnerSetupLinkIssuerInterface;
 use App\Modules\TenantManagement\Contracts\Administration\EstablishClinicOwnerCommand;
+use App\Modules\TenantManagement\Contracts\Administration\EstablishedClinicOwnerData;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Exceptions\InvalidClinicOwnerAuthorityTransitionException;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Repositories\TenantRepositoryInterface;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\ValueObjects\ClinicOwnerAuthorityId;
@@ -32,6 +33,22 @@ final readonly class EstablishClinicOwnerService
     ) {}
 
     public function execute(EstablishClinicOwnerCommand $command): string
+    {
+        $owner = $this->establish($command);
+
+        if (! $this->setupLinks->issue($command->tenantId, (new ClinicOwnerEmail($command->email))->value)) {
+            throw new RuntimeException('Clinic Owner setup email could not be issued.');
+        }
+
+        return $owner->authorityId;
+    }
+
+    public function executeForSelfRegistration(EstablishClinicOwnerCommand $command): EstablishedClinicOwnerData
+    {
+        return $this->establish($command);
+    }
+
+    private function establish(EstablishClinicOwnerCommand $command): EstablishedClinicOwnerData
     {
         $tenant = $this->tenants->find(new TenantId($command->tenantId));
         if ($tenant === null) {
@@ -63,11 +80,16 @@ final readonly class EstablishClinicOwnerService
             $authorityId = $existing->id->value;
         }
 
-        if (! $this->setupLinks->issue($command->tenantId, $email->value)) {
-            throw new RuntimeException('Clinic Owner setup email could not be issued.');
+        $authority = $tenant->findClinicOwnerAuthority(new ClinicOwnerAuthorityId($authorityId));
+        if ($authority === null) {
+            throw new InvalidClinicOwnerAuthorityTransitionException('Clinic Owner authority is unavailable.');
         }
 
-        return $authorityId;
+        return new EstablishedClinicOwnerData(
+            $command->tenantId,
+            $authorityId,
+            $authority->clinicOwnerIdentity->id->value,
+        );
     }
 
     private function recordAudit(EstablishClinicOwnerCommand $command, string $authorityId): void

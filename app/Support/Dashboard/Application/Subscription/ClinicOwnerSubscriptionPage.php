@@ -6,7 +6,7 @@ namespace App\Support\Dashboard\Application\Subscription;
 
 use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\ClinicOwnerSubscriptionDetailReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
-use App\Support\Dashboard\Application\DashboardNavigationItem;
+use App\Support\Dashboard\Application\ClinicOwnerDashboardNavigation;
 use App\Support\Dashboard\Application\DashboardPageView;
 use LogicException;
 
@@ -23,15 +23,7 @@ final readonly class ClinicOwnerSubscriptionPage
         $detail = $this->subscriptions->detailForTenant($context->tenantId);
 
         return new DashboardPageView('SubscriptionBilling/Dashboard/ClinicOwnerSubscriptionDetail', [
-            'navigation' => [
-                (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
-                (new DashboardNavigationItem('website', 'Website', route('dashboard.website'), false))->toArray(),
-                (new DashboardNavigationItem('content', 'Content', route('dashboard.website.content'), false))->toArray(),
-                (new DashboardNavigationItem('domain', 'Custom domain', route('dashboard.website.domain'), false))->toArray(),
-                (new DashboardNavigationItem('services', 'Services', route('dashboard.services'), false))->toArray(),
-                (new DashboardNavigationItem('bookings', 'Bookings', route('dashboard.bookings'), false))->toArray(),
-                (new DashboardNavigationItem('subscription', 'Subscription', route('dashboard.subscription'), true))->toArray(),
-            ],
+            'navigation' => ClinicOwnerDashboardNavigation::items('subscription'),
             'breadcrumbs' => [
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
                 ['key' => 'subscription', 'label' => 'Subscription'],

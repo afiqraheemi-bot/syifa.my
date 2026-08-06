@@ -29,13 +29,16 @@ use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicLegalDocument
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicWebsiteController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\SuccessController;
 use App\Support\Dashboard\Presentation\Http\Controllers\AuthenticatedDashboardController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDateOverrideController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingOverviewController;
-use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerCustomDomainController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingScheduleController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBusinessHoursController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerDraftPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerServiceSetupController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerSubscriptionController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteApprovalController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteAssetController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteContentOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\LaunchReadinessController;
@@ -56,6 +59,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionDe
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionOperationController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminTenantOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerBookingPreviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerCustomDomainController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerDraftContentController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerDraftPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerJobDetailController;
@@ -133,6 +137,17 @@ Route::match(['get', 'post'], '/dashboard/onboarding/{jobId}/website-address', W
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,website_designer')
     ->name('dashboard.onboarding.website-address');
+Route::prefix('/dashboard/onboarding/{jobId}/custom-domain')
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.custom-domain')
+    ->group(function (): void {
+        Route::get('/', [WebsiteDesignerCustomDomainController::class, 'index'])->name('');
+        Route::post('/', [WebsiteDesignerCustomDomainController::class, 'store'])->name('.store');
+        Route::post('/verify', [WebsiteDesignerCustomDomainController::class, 'verify'])->name('.verify');
+        Route::post('/activate', [WebsiteDesignerCustomDomainController::class, 'activate'])->name('.activate');
+        Route::post('/detach', [WebsiteDesignerCustomDomainController::class, 'detach'])->name('.detach');
+    });
 Route::prefix('/api/v1/platform/onboarding/{jobId}/website-draft')
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,website_designer')
@@ -300,16 +315,6 @@ Route::prefix('/dashboard/billing/subscriptions/{subscriptionId}')
 Route::get('/dashboard/website', ClinicOwnerWebsiteOverviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website');
-Route::prefix('/dashboard/website/domain')
-    ->middleware('authorize.context:clinic_owner,clinic_owner')
-    ->name('dashboard.website.domain')
-    ->group(function (): void {
-        Route::get('/', [ClinicOwnerCustomDomainController::class, 'index'])->name('');
-        Route::post('/', [ClinicOwnerCustomDomainController::class, 'store'])->name('.store');
-        Route::post('/verify', [ClinicOwnerCustomDomainController::class, 'verify'])->name('.verify');
-        Route::post('/activate', [ClinicOwnerCustomDomainController::class, 'activate'])->name('.activate');
-        Route::post('/detach', [ClinicOwnerCustomDomainController::class, 'detach'])->name('.detach');
-    });
 Route::post('/dashboard/website/approval', ClinicOwnerWebsiteApprovalController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.approval');
@@ -326,9 +331,31 @@ Route::get('/dashboard/website/content', ClinicOwnerWebsiteContentOverviewContro
 Route::patch('/dashboard/website/content', [ClinicOwnerWebsiteContentOverviewController::class, 'update'])
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.content.update');
+Route::get('/api/v1/clinic-owner/website-draft', [ClinicOwnerWebsiteContentOverviewController::class, 'showDraft'])
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('clinic-owner.website-draft.show');
+Route::patch('/api/v1/clinic-owner/website-draft', [ClinicOwnerWebsiteContentOverviewController::class, 'updateDraft'])
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('clinic-owner.website-draft.update');
+Route::post('/api/v1/clinic-owner/website-assets', ClinicOwnerWebsiteAssetController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('clinic-owner.website-assets.store');
 Route::get('/dashboard/bookings', ClinicOwnerBookingOverviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.bookings');
+Route::patch('/dashboard/bookings/schedule', ClinicOwnerBookingScheduleController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.bookings.schedule.update');
+Route::patch('/dashboard/bookings/business-hours', ClinicOwnerBusinessHoursController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.bookings.business-hours.update');
+Route::post('/dashboard/bookings/date-overrides', [ClinicOwnerBookingDateOverrideController::class, 'store'])
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.bookings.date-overrides.store');
+Route::delete('/dashboard/bookings/date-overrides/{localDate}', [ClinicOwnerBookingDateOverrideController::class, 'destroy'])
+    ->where('localDate', '\\d{4}-\\d{2}-\\d{2}')
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.bookings.date-overrides.destroy');
 Route::prefix('/dashboard/services')
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.services')

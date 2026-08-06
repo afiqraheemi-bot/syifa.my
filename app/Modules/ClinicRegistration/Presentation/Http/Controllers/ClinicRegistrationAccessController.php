@@ -6,8 +6,8 @@ namespace App\Modules\ClinicRegistration\Presentation\Http\Controllers;
 
 use App\Modules\ClinicRegistration\Application\ViewCurrentClinicRegistrationService;
 use App\Modules\ClinicRegistration\Contracts\Authentication\ClinicRegistrationAccessInterface;
+use App\Modules\ClinicRegistration\Contracts\Authentication\ClinicRegistrationLoginInterface;
 use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialInterface;
-use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialWriterInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,27 +48,30 @@ final readonly class ClinicRegistrationAccessController
 
     public function login(
         Request $request,
-        ClinicRegistrationAccessInterface $access,
-        RegistrationTrackingCredentialWriterInterface $tracking,
+        ClinicRegistrationLoginInterface $login,
     ): JsonResponse {
         $validated = $request->validate([
             'email' => ['required', 'string', 'email', 'max:254'],
             'password' => ['required', 'string', 'max:255'],
             'remember' => ['sometimes', 'boolean'],
         ]);
-        $credential = $access->authenticate($validated['email'], $validated['password']);
-        if ($credential === null) {
+        $result = $login->execute(
+            $validated['email'],
+            $validated['password'],
+            $request->boolean('remember'),
+        );
+        if (! $result->authenticated) {
             return response()->json([
                 'message' => 'Permohonan tidak dapat disahkan.',
             ], 401);
         }
 
-        $tracking->resume($credential, $request->boolean('remember'));
-
         return response()->json([
             'data' => [
                 'authenticated' => true,
-                'redirect' => route('clinic-registration.browser'),
+                'redirect' => $result->clinicOwner
+                    ? route('dashboard')
+                    : route('clinic-registration.browser'),
             ],
         ]);
     }

@@ -136,7 +136,9 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Console\Concerns\InteractsWithIO;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -337,11 +339,14 @@ final class DemoSeeder extends Seeder
         $websites = app(WebsiteRepositoryInterface::class);
         $tenantId = new WebsiteBuilderTenantId(self::TENANT_ID);
 
+        // Keep the binary fixture repairable even when the aggregate was
+        // seeded previously. A database row marked available is not useful
+        // when its authoritative private-storage object has been removed.
+        $this->ensureGalleryFixture();
+
         if ($websites->findByTenant($tenantId) !== null) {
             return;
         }
-
-        $this->ensureGalleryFixture();
 
         $website = Website::create(
             new WebsiteId(self::WEBSITE_ID),
@@ -451,27 +456,36 @@ final class DemoSeeder extends Seeder
     private function ensureGalleryFixture(): void
     {
         $path = $this->galleryFixturePath();
+        $disk = Storage::disk('local');
 
-        if (is_file($path)) {
+        if (is_file($path) && $disk->exists('demo/gallery.png')) {
             return;
         }
 
-        @mkdir(dirname($path), 0755, true);
-        $image = imagecreatetruecolor(800, 600);
+        if (! is_file($path)) {
+            @mkdir(dirname($path), 0755, true);
+            $image = imagecreatetruecolor(800, 600);
 
-        if ($image === false) {
-            throw new RuntimeException('Unable to allocate the demo gallery fixture image.');
+            if ($image === false) {
+                throw new RuntimeException('Unable to allocate the demo gallery fixture image.');
+            }
+
+            $color = imagecolorallocate($image, 226, 232, 240);
+
+            if ($color === false) {
+                throw new RuntimeException('Unable to allocate the demo gallery fixture image color.');
+            }
+
+            imagefill($image, 0, 0, $color);
+            imagepng($image, $path);
+            imagedestroy($image);
         }
 
-        $color = imagecolorallocate($image, 226, 232, 240);
+        $contents = file_get_contents($path);
 
-        if ($color === false) {
-            throw new RuntimeException('Unable to allocate the demo gallery fixture image color.');
+        if ($contents === false || ! $disk->put('demo/gallery.png', $contents)) {
+            throw new RuntimeException('Unable to persist the demo gallery fixture image.');
         }
-
-        imagefill($image, 0, 0, $color);
-        imagepng($image, $path);
-        imagedestroy($image);
     }
 
     private function galleryFixturePath(): string
@@ -777,6 +791,15 @@ final class DemoSeeder extends Seeder
 
     private function seedOnboardingJob(DateTimeImmutable $at): void
     {
+        // Older local demo databases may contain task audit timestamps written
+        // before the fixed future-dated fixture creation time. Normalize only
+        // those invalid demo rows so the aggregate can be hydrated again.
+        DB::table('onboarding_tasks')
+            ->where('tenant_id', self::TENANT_ID)
+            ->where('onboarding_job_id', self::ONBOARDING_JOB_ID)
+            ->whereColumn('task_updated_at', '<', 'task_created_at')
+            ->update(['task_updated_at' => DB::raw('task_created_at')]);
+
         $jobs = app(OnboardingJobRepositoryInterface::class);
         $tenantId = new OnboardingTenantId(self::TENANT_ID);
         $jobId = new OnboardingJobId(self::ONBOARDING_JOB_ID);

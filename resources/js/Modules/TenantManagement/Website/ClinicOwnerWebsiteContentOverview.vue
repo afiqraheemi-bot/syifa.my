@@ -7,6 +7,8 @@ import {
     createDashboardNavigation,
     DashboardShell,
 } from '../../../Shared/Dashboard/index.js';
+import WebsiteImageUpload from '../../../Shared/Website/WebsiteImageUpload.vue';
+import ClinicOwnerDraftSections from './ClinicOwnerDraftSections.vue';
 
 const props = defineProps({
     navigation: { type: Array, required: true },
@@ -18,7 +20,11 @@ const props = defineProps({
     contentHealth: { type: Object, required: true },
     contentSections: { type: Array, required: true },
     editableContent: { type: Object, required: true },
+    templateOptions: { type: Array, required: true },
+    canChangeTemplate: { type: Boolean, required: true },
     updateUrl: { type: String, required: true },
+    previewUrl: { type: String, required: true },
+    websiteDraft: { type: Object, required: true },
 });
 
 const navigation = createDashboardNavigation(props.navigation);
@@ -26,6 +32,7 @@ const saved = ref(false);
 const socialChannels = ['facebook', 'instagram', 'youtube', 'tiktok', 'linkedin'];
 const form = useForm({
     version: props.editableContent.version,
+    template_id: props.editableContent.template_id,
     branding: {
         ...props.editableContent.branding,
         social_links: Object.fromEntries(
@@ -55,6 +62,10 @@ function save() {
     });
 }
 
+function synchronizeWebsiteVersion(asset) {
+    if (Number.isInteger(asset?.website_version)) form.version = asset.website_version;
+}
+
 const inputClass =
     'mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20';
 </script>
@@ -69,6 +80,102 @@ const inputClass =
         :context-label="contextLabel"
     >
         <form class="space-y-8" novalidate @submit.prevent="save">
+            <section
+                class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                aria-labelledby="website-design-heading"
+            >
+                <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.72fr)]">
+                    <div class="p-5 sm:p-6">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <h2
+                                id="website-design-heading"
+                                class="text-xl font-bold text-slate-950"
+                            >
+                                Website design
+                            </h2>
+                            <span
+                                v-if="!canChangeTemplate"
+                                class="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900"
+                            >
+                                Published website
+                            </span>
+                        </div>
+                        <p class="mt-1 text-sm leading-6 text-slate-600">
+                            <template v-if="canChangeTemplate">
+                                Choose an approved template. Your saved clinic content will remain
+                                unchanged.
+                            </template>
+                            <template v-else>
+                                Your Website Designer manages template changes after publication to
+                                protect the live layout.
+                            </template>
+                        </p>
+
+                        <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <label class="min-w-0 flex-1 text-sm font-semibold text-slate-800">
+                                Current template
+                                <select
+                                    v-model="form.template_id"
+                                    :disabled="!canChangeTemplate || form.processing"
+                                    :class="inputClass"
+                                >
+                                    <option
+                                        v-for="template in templateOptions"
+                                        :key="template.value"
+                                        :value="template.value"
+                                    >
+                                        {{ template.label }}
+                                    </option>
+                                </select>
+                            </label>
+                            <button
+                                v-if="canChangeTemplate"
+                                type="submit"
+                                :disabled="form.processing"
+                                class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-teal-700 bg-white px-5 font-bold text-teal-800 transition hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {{ form.processing ? 'Saving…' : 'Save template' }}
+                            </button>
+                        </div>
+                        <span
+                            v-if="form.errors.template_id"
+                            class="mt-2 block text-sm text-red-700"
+                        >
+                            {{ form.errors.template_id }}
+                        </span>
+                    </div>
+
+                    <div
+                        class="flex flex-col justify-center border-t border-teal-200 bg-teal-50 p-5 sm:p-6 lg:border-l lg:border-t-0"
+                    >
+                        <p class="text-xs font-bold uppercase tracking-[0.16em] text-teal-800">
+                            Private preview
+                        </p>
+                        <h3 class="mt-2 text-lg font-bold text-slate-950">
+                            Review your latest saved website
+                        </h3>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">
+                            Save your template or content first, then open the private preview in a
+                            new tab.
+                        </p>
+                        <a
+                            :href="previewUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-teal-700 px-5 font-bold text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2"
+                        >
+                            Preview website
+                            <span aria-hidden="true" class="ml-2">↗</span>
+                            <span class="sr-only"> (opens in a new tab)</span>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <ClinicOwnerDraftSections
+                :website-draft="websiteDraft"
+                :template-id="form.template_id"
+            />
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="text-xl font-bold text-slate-950">Clinic and brand</h2>
                 <p class="mt-1 text-sm text-slate-600">
@@ -121,6 +228,21 @@ const inputClass =
                             Choose the supporting brand colour.
                         </span>
                     </label>
+                    <WebsiteImageUpload
+                        v-model="form.branding.logo_reference"
+                        class="md:col-span-2"
+                        label="Clinic logo"
+                        :upload-url="websiteDraft.mediaUploadUrl"
+                        :asset-url-template="websiteDraft.assetUrlTemplate"
+                        :aspect-ratio="6"
+                        :aspect-ratio-options="[
+                            { label: 'Wide wordmark', value: 6 },
+                            { label: 'Landscape logo', value: 3 },
+                            { label: 'Square symbol', value: 1 },
+                        ]"
+                        :disabled="form.processing"
+                        @uploaded="synchronizeWebsiteVersion"
+                    />
                     <fieldset
                         v-if="form.branding.logo_reference"
                         class="rounded-xl border border-slate-200 p-4 md:col-span-2"

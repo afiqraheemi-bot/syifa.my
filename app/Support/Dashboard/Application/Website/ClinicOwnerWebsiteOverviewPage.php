@@ -8,7 +8,7 @@ use App\Modules\Onboarding\Contracts\LaunchReadiness\LaunchReadinessReadInterfac
 use App\Modules\Onboarding\Contracts\Tasks\OnboardingTaskReadInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\ClinicOwnerWebsiteApprovalReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
-use App\Support\Dashboard\Application\DashboardNavigationItem;
+use App\Support\Dashboard\Application\ClinicOwnerDashboardNavigation;
 use App\Support\Dashboard\Application\DashboardPageView;
 use LogicException;
 
@@ -36,14 +36,7 @@ final readonly class ClinicOwnerWebsiteOverviewPage
         $readiness = $context->tenantId === null ? null : $this->launchReadiness->forTenant($context->tenantId);
 
         return new DashboardPageView('TenantManagement/Website/ClinicOwnerWebsiteOverview', [
-            'navigation' => [
-                (new DashboardNavigationItem('dashboard', 'Dashboard', route('dashboard'), false))->toArray(),
-                (new DashboardNavigationItem('website', 'Website', route('dashboard.website'), true))->toArray(),
-                (new DashboardNavigationItem('content', 'Content', route('dashboard.website.content'), false))->toArray(),
-                (new DashboardNavigationItem('domain', 'Custom domain', route('dashboard.website.domain'), false))->toArray(),
-                (new DashboardNavigationItem('services', 'Services', route('dashboard.services'), false))->toArray(),
-                (new DashboardNavigationItem('bookings', 'Bookings', route('dashboard.bookings'), false))->toArray(),
-            ],
+            'navigation' => ClinicOwnerDashboardNavigation::items('website'),
             'breadcrumbs' => [
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
                 ['key' => 'website', 'label' => 'Website'],

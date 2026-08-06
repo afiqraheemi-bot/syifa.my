@@ -48,6 +48,8 @@ final class PostgresClinicRepositoryTest extends TestCase
 
     private ?Migration $configurationMigration = null;
 
+    private ?Migration $bookingAvailabilityMigration = null;
+
     private ?Migration $contactMigration = null;
 
     private ?PostgresClinicRepository $repository = null;
@@ -68,6 +70,7 @@ final class PostgresClinicRepositoryTest extends TestCase
         DB::purge(self::CONNECTION);
         $this->connection = DB::connection(self::CONNECTION);
         Schema::connection(self::CONNECTION)->dropIfExists('clinic_operating_intervals');
+        Schema::connection(self::CONNECTION)->dropIfExists('clinic_booking_availability_intervals');
         Schema::connection(self::CONNECTION)->dropIfExists('clinic_contact_profiles');
         Schema::connection(self::CONNECTION)->dropIfExists('clinics');
         Schema::connection(self::CONNECTION)->dropIfExists('clinic_owner_authorities');
@@ -76,18 +79,22 @@ final class PostgresClinicRepositoryTest extends TestCase
         $tenantMigration = require base_path('database/migrations/tenant_management/2026_07_13_000001_create_tenant_aggregate_tables.php');
         $clinicMigration = require base_path('database/migrations/website_builder/2026_08_04_000001_create_clinic_operational_time_tables.php');
         $configurationMigration = require base_path('database/migrations/website_builder/2026_08_05_000001_add_booking_configuration_to_clinics.php');
+        $bookingAvailabilityMigration = require base_path('database/migrations/website_builder/2026_08_06_000001_create_clinic_booking_availability_intervals.php');
         $contactMigration = require base_path('database/migrations/website_builder/2026_08_17_000001_create_clinic_contact_profiles.php');
         self::assertInstanceOf(Migration::class, $tenantMigration);
         self::assertInstanceOf(Migration::class, $clinicMigration);
         self::assertInstanceOf(Migration::class, $configurationMigration);
+        self::assertInstanceOf(Migration::class, $bookingAvailabilityMigration);
         self::assertInstanceOf(Migration::class, $contactMigration);
         $this->tenantMigration = $tenantMigration;
         $this->clinicMigration = $clinicMigration;
         $this->configurationMigration = $configurationMigration;
+        $this->bookingAvailabilityMigration = $bookingAvailabilityMigration;
         $this->contactMigration = $contactMigration;
         $tenantMigration->up();
         $clinicMigration->up();
         $configurationMigration->up();
+        $bookingAvailabilityMigration->up();
         $contactMigration->up();
         $this->repository = new PostgresClinicRepository($this->connection, new ClinicPersistenceMapper);
         $this->insertTenant(2);
@@ -103,6 +110,7 @@ final class PostgresClinicRepositoryTest extends TestCase
         }
 
         $this->contactMigration?->down();
+        $this->bookingAvailabilityMigration?->down();
         Schema::connection(self::CONNECTION)->dropIfExists('websites');
         $this->configurationMigration?->down();
         $this->clinicMigration?->down();
@@ -129,6 +137,10 @@ final class PostgresClinicRepositoryTest extends TestCase
             $loaded->weeklyOperatingHours()->all()[1],
         ));
         self::assertSame([], $loaded->weeklyOperatingHours()->all()[7]);
+        self::assertSame(['09:00', '13:00'], array_map(
+            static fn (OpeningInterval $interval): string => $interval->opensAt->value,
+            $loaded->weeklyBookingAvailability()->all()[1],
+        ));
     }
 
     public function test_tenant_scoped_lookup_cannot_resolve_another_tenants_clinic(): void
