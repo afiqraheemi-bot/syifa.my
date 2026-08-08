@@ -71,6 +71,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerPublishWe
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerSyifaAiController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerWebsiteAddressController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerWebsiteAssetController;
+use App\Support\Dashboard\Presentation\Http\Middleware\RedirectMisdirectedWebsitePreviewRequest;
 use App\Support\PublicWebsite\Presentation\Http\Controllers\PublicWebsiteAssetController;
 use Illuminate\Support\Facades\Route;
 
@@ -127,11 +128,17 @@ Route::patch('/dashboard/onboarding/{jobId}/tasks/{taskId}', OnboardingTaskContr
     ->name('dashboard.onboarding.tasks.update');
 Route::get('/dashboard/onboarding/{jobId}/preview', WebsiteDesignerDraftPreviewController::class)
     ->whereUuid('jobId')
-    ->middleware('authorize.context:platform_identity,website_designer')
+    ->middleware([
+        RedirectMisdirectedWebsitePreviewRequest::class,
+        'authorize.context:platform_identity,website_designer',
+    ])
     ->name('dashboard.onboarding.preview');
 Route::match(['get', 'post'], '/dashboard/onboarding/{jobId}/preview/booking', WebsiteDesignerBookingPreviewController::class)
     ->whereUuid('jobId')
-    ->middleware('authorize.context:platform_identity,website_designer')
+    ->middleware([
+        RedirectMisdirectedWebsitePreviewRequest::class,
+        'authorize.context:platform_identity,website_designer',
+    ])
     ->name('dashboard.onboarding.booking-preview');
 Route::post('/dashboard/onboarding/{jobId}/publish', WebsiteDesignerPublishWebsiteController::class)
     ->whereUuid('jobId')

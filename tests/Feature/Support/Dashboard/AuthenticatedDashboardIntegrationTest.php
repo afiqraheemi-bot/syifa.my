@@ -1859,7 +1859,33 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             AuthorizationService::class,
             $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
         );
-        $this->get(route('dashboard.onboarding.booking-preview', $jobId))->assertForbidden();
+        $this->get(route('dashboard.onboarding.booking-preview', $jobId))
+            ->assertRedirect(route('dashboard.website.booking-preview'));
+        $this->getJson(route('dashboard.onboarding.booking-preview', $jobId))->assertForbidden();
+    }
+
+    public function test_clinic_owner_document_navigation_from_a_designer_preview_is_redirected_to_the_owner_preview(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                DashboardLaunchReadinessRead::TENANT_ID,
+                identityId: '00000000-0000-4000-8000-000000000040',
+            ),
+        );
+
+        $jobId = '00000000-0000-4000-8000-000000000101';
+
+        $this->get(route('dashboard.onboarding.preview', $jobId))
+            ->assertRedirect(route('dashboard.website.preview'));
+        $this->get(route('dashboard.onboarding.booking-preview', $jobId))
+            ->assertRedirect(route('dashboard.website.booking-preview'));
+
+        $this->getJson(route('dashboard.onboarding.preview', $jobId))->assertForbidden();
+        $this->getJson(route('dashboard.onboarding.booking-preview', $jobId))->assertForbidden();
+        $this->post(route('dashboard.onboarding.booking-preview', $jobId))->assertForbidden();
     }
 
     public function test_draft_preview_rejects_other_roles_public_visitors_and_unassigned_jobs(): void

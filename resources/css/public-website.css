@@ -515,8 +515,8 @@
         max-width: min(7rem, 28vw);
     }
     .brand__logo--large {
-        height: 4.5rem;
-        max-width: min(15rem, 48vw);
+        height: 5.25rem;
+        max-width: min(17.5rem, 50vw);
     }
     .brand__copy {
         display: grid;
@@ -1402,8 +1402,8 @@
         max-width: min(8rem, 36vw);
     }
     .site-footer__logo--large {
-        height: 4rem;
-        max-width: min(16rem, 58vw);
+        height: 4.75rem;
+        max-width: min(18rem, 60vw);
     }
     .site-footer__brand p {
         max-width: 28rem;
@@ -3041,8 +3041,8 @@
 
     @media (max-width: 35rem) {
         .brand__logo--large {
-            height: 3.5rem;
-            max-width: min(10rem, 40vw);
+            height: 4rem;
+            max-width: min(11.5rem, 44vw);
         }
         [data-template='syifa-essential'] .hero__content {
             border-radius: 0;
