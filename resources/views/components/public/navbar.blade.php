@@ -31,9 +31,9 @@
                     <span class="navbar__booking-label">Book Appointment</span>
                     <span class="navbar__booking-label navbar__booking-label--short" aria-hidden="true">Book</span>
                 </a>
-                <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="public-navigation" data-public-menu-toggle>
+                <button class="menu-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="public-navigation" data-public-menu-toggle>
                     <span class="menu-toggle__icon" aria-hidden="true"><span></span><span></span><span></span></span>
-                    <span>Menu</span>
+                    <span class="menu-toggle__label">Menu</span>
                 </button>
             </div>
         </div>

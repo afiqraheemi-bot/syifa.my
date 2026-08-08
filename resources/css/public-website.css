@@ -501,6 +501,7 @@
         min-width: 0;
         align-items: center;
         gap: var(--space-3);
+        margin-inline-start: calc(var(--space-2) * -1);
         text-decoration: none;
     }
     .brand__logo {
@@ -552,6 +553,7 @@
     }
     .navbar__cluster {
         display: flex;
+        min-width: 0;
         align-items: center;
         gap: var(--space-4);
     }
@@ -2475,14 +2477,6 @@
                     white
                 );
         }
-        [data-template='syifa-aesthetic'] .about__media {
-            grid-column: 1;
-            grid-row: 1;
-        }
-        [data-template='syifa-aesthetic'] .about__content {
-            grid-column: 2;
-            grid-row: 1;
-        }
         [data-template='syifa-aesthetic'] .hero__layout--text::after {
             border-radius: var(--radius-small);
             background:
@@ -2723,6 +2717,9 @@
         .public-container {
             width: min(100% - (var(--space-8) * 2), var(--container-content));
         }
+        .navbar > .brand {
+            margin-inline-start: calc(var(--space-6) * -1);
+        }
         .hero {
             padding-block: var(--space-16) var(--space-20);
         }
@@ -2731,6 +2728,14 @@
         .contact-layout,
         .site-footer__visit {
             grid-template-columns: minmax(0, 1.05fr) minmax(18rem, 0.95fr);
+        }
+        .about:not(.about--text) .about__media {
+            grid-column: 1;
+            grid-row: 1;
+        }
+        .about:not(.about--text) .about__content {
+            grid-column: 2;
+            grid-row: 1;
         }
         .hero__layout--text {
             grid-template-columns: minmax(0, 48rem);
@@ -3040,9 +3045,25 @@
     }
 
     @media (max-width: 35rem) {
+        .navbar {
+            gap: var(--space-2);
+        }
+        .brand {
+            flex: 1 1 auto;
+            overflow: hidden;
+        }
         .brand__logo--large {
             height: 4rem;
-            max-width: min(11.5rem, 44vw);
+            max-width: min(11.5rem, 100%);
+        }
+        .navbar__cluster {
+            flex: none;
+        }
+        .navbar__actions {
+            gap: var(--space-2);
+        }
+        .menu-toggle {
+            padding-inline: var(--space-3);
         }
         [data-template='syifa-essential'] .hero__content {
             border-radius: 0;
@@ -3076,6 +3097,14 @@
     }
 
     @media (max-width: 23rem) {
+        .menu-toggle {
+            width: 2.75rem;
+            justify-content: center;
+            padding-inline: var(--space-2);
+        }
+        .menu-toggle__label {
+            display: none;
+        }
         .navbar__booking-label {
             display: none;
         }
