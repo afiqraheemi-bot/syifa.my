@@ -104,7 +104,22 @@ jobs:
               run: composer analyse
 
             - name: PHPUnit (Unit, Feature, Integration, Contract, Architecture)
-              run: vendor/bin/phpunit
+              shell: bash
+              run: |
+                  set +e
+                  vendor/bin/phpunit 2>&1 | tee /tmp/phpunit-output.log
+                  phpunit_status=${PIPESTATUS[0]}
+                  set -e
+
+                  if [ "$phpunit_status" -ne 0 ]; then
+                      failure_details=$(tail -n 100 /tmp/phpunit-output.log)
+                      failure_details=${failure_details//'%'/'%25'}
+                      failure_details=${failure_details//$'\r'/'%0D'}
+                      failure_details=${failure_details//$'\n'/'%0A'}
+                      echo "::error title=PHPUnit failure details::$failure_details"
+                  fi
+
+                  exit "$phpunit_status"
 
     frontend:
         name: Frontend (ESLint, Prettier, build)
