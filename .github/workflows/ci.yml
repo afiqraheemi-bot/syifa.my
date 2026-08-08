@@ -103,6 +103,16 @@ jobs:
             - name: PHPStan / Larastan (level 8)
               run: composer analyse
 
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: npm
+
+            - name: Build frontend assets for server-rendered feature tests
+              run: |
+                  npm ci
+                  npx vite build --mode production
+
             - name: PHPUnit (Unit, Feature, Integration, Contract, Architecture)
               shell: bash
               run: |
