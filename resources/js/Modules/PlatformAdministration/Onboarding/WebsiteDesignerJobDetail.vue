@@ -1340,11 +1340,46 @@ function completionEvidence(task) {
                         Assigned onboarding job
                     </p>
                     <h2 class="mt-1 text-2xl font-bold text-slate-950">{{ job.clinicName }}</h2>
+                    <a
+                        v-if="websiteAddress?.url"
+                        :href="websiteAddress.url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="mt-2 inline-flex break-all text-sm font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-900"
+                    >
+                        {{ websiteAddress.host }} ↗
+                    </a>
+                    <p v-else class="mt-2 text-sm text-slate-500">
+                        Website address is being prepared
+                    </p>
                     <details class="mt-2 text-sm text-slate-500">
                         <summary class="cursor-pointer font-semibold">Technical references</summary>
-                        <p class="mt-2 break-all">Job {{ job.id }}</p>
-                        <p class="mt-1 break-all">Tenant {{ job.tenantId }}</p>
-                        <p class="mt-1 break-all">Website {{ job.websiteId }}</p>
+                        <dl class="mt-3 grid gap-2 sm:grid-cols-3">
+                            <div>
+                                <dt class="text-xs font-semibold">Job</dt>
+                                <dd :title="job.id" class="mt-1 font-mono text-xs text-slate-800">
+                                    {{ job.jobReference }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs font-semibold">Tenant</dt>
+                                <dd
+                                    :title="job.tenantId"
+                                    class="mt-1 font-mono text-xs text-slate-800"
+                                >
+                                    {{ job.tenantReference }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs font-semibold">Website</dt>
+                                <dd
+                                    :title="job.websiteId"
+                                    class="mt-1 font-mono text-xs text-slate-800"
+                                >
+                                    {{ job.websiteReference }}
+                                </dd>
+                            </div>
+                        </dl>
                     </details>
                 </div>
                 <span

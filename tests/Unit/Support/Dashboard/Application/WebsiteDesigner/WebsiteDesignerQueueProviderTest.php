@@ -8,6 +8,11 @@ use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerJobDetailData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerQueueJobData;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressData;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteDetailData;
+use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteSummaryData;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\WebsiteDesigner\Queue\WebsiteDesignerQueueCriteria;
 use App\Support\Dashboard\Application\WebsiteDesigner\Queue\WebsiteDesignerQueueProvider;
@@ -19,7 +24,11 @@ final class WebsiteDesignerQueueProviderTest extends TestCase
     public function test_it_sanitizes_criteria_and_projects_a_cursor_page(): void
     {
         $read = new QueueRecordedRead;
-        $provider = new WebsiteDesignerQueueProvider($read);
+        $provider = new WebsiteDesignerQueueProvider(
+            $read,
+            new QueueWebsiteRead,
+            new QueueAddressRead,
+        );
         $context = new AuthorizationContext(
             'platform_identity', 'designer-1', null, 'website_designer', 'Alya',
             'platform_identity', [],
@@ -37,6 +46,59 @@ final class WebsiteDesignerQueueProviderTest extends TestCase
         self::assertStringContainsString('cursor=assignment-10', $projection->data['pagination']['nextHref']);
         self::assertSame('Current', $projection->data['items'][0]['websiteSetup']);
         self::assertSame('Not current', $projection->data['items'][0]['review']);
+        self::assertSame('Clinic 1', $projection->data['items'][0]['clinicName']);
+        self::assertSame('clinic-1.syifa.my', $projection->data['items'][0]['publicHost']);
+        self::assertSame('https://clinic-1.syifa.my', $projection->data['items'][0]['publicUrl']);
+        self::assertSame('JOB-JOB-1', $projection->data['items'][0]['jobReference']);
+        self::assertSame('TENANT-TENANT-1', $projection->data['items'][0]['tenantReference']);
+        self::assertSame('WEB-WEBSITE-', $projection->data['items'][0]['websiteReference']);
+    }
+}
+
+final class QueueWebsiteRead implements WebsiteReadInterface
+{
+    public function summary(string $trustedTenantId): WebsiteSummaryData
+    {
+        $suffix = str_replace('tenant-', '', $trustedTenantId);
+
+        return new WebsiteSummaryData(
+            'website-'.$suffix,
+            $trustedTenantId,
+            'Clinic '.$suffix,
+            'syifa-essential',
+            'draft',
+        );
+    }
+
+    public function detail(string $trustedTenantId): ?WebsiteDetailData
+    {
+        return null;
+    }
+}
+
+final class QueueAddressRead implements WebsitePublicAddressReadInterface
+{
+    public function forWebsite(string $trustedTenantId, string $websiteId): WebsitePublicAddressData
+    {
+        $suffix = str_replace('tenant-', '', $trustedTenantId);
+
+        return new WebsitePublicAddressData(
+            $websiteId,
+            $trustedTenantId,
+            'clinic-'.$suffix.'.syifa.my',
+            'https://clinic-'.$suffix.'.syifa.my',
+            true,
+        );
+    }
+
+    public function forTenant(string $trustedTenantId): ?WebsitePublicAddressData
+    {
+        return null;
+    }
+
+    public function resolveActiveHost(string $host): ?WebsitePublicAddressData
+    {
+        return null;
     }
 }
 

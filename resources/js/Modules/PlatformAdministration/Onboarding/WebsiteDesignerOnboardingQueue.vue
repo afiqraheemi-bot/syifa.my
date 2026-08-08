@@ -77,11 +77,23 @@ const navigation = createDashboardNavigation(props.navigation);
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <p class="text-xs font-bold uppercase tracking-wide text-slate-500">
-                                Onboarding job
+                                Assigned clinic
                             </p>
-                            <h2 class="mt-1 break-all text-base font-bold text-slate-950">
-                                {{ job.id }}
+                            <h2 class="mt-1 text-xl font-bold text-slate-950">
+                                {{ job.clinicName }}
                             </h2>
+                            <a
+                                v-if="job.publicUrl"
+                                :href="job.publicUrl"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="mt-2 inline-flex break-all text-sm font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-900"
+                            >
+                                {{ job.publicHost }} ↗
+                            </a>
+                            <p v-else class="mt-2 text-sm text-slate-500">
+                                Website address is being prepared
+                            </p>
                         </div>
                         <span
                             class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800"
@@ -91,14 +103,6 @@ const navigation = createDashboardNavigation(props.navigation);
                     </div>
 
                     <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-                        <div>
-                            <dt class="font-semibold text-slate-500">Tenant</dt>
-                            <dd class="mt-1 break-all text-slate-900">{{ job.tenantId }}</dd>
-                        </div>
-                        <div>
-                            <dt class="font-semibold text-slate-500">Website</dt>
-                            <dd class="mt-1 break-all text-slate-900">{{ job.websiteId }}</dd>
-                        </div>
                         <div
                             v-for="stage in [
                                 ['Content collection', job.contentCollection],
@@ -112,6 +116,38 @@ const navigation = createDashboardNavigation(props.navigation);
                             <dd class="mt-1 text-slate-900">{{ stage[1] }}</dd>
                         </div>
                     </dl>
+
+                    <details class="mt-5 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        <summary class="cursor-pointer font-bold text-slate-700">
+                            Technical references
+                        </summary>
+                        <dl class="mt-3 grid gap-2 sm:grid-cols-3">
+                            <div>
+                                <dt class="text-xs font-semibold text-slate-500">Job</dt>
+                                <dd :title="job.id" class="mt-1 font-mono text-xs text-slate-800">
+                                    {{ job.jobReference }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs font-semibold text-slate-500">Tenant</dt>
+                                <dd
+                                    :title="job.tenantId"
+                                    class="mt-1 font-mono text-xs text-slate-800"
+                                >
+                                    {{ job.tenantReference }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs font-semibold text-slate-500">Website</dt>
+                                <dd
+                                    :title="job.websiteId"
+                                    class="mt-1 font-mono text-xs text-slate-800"
+                                >
+                                    {{ job.websiteReference }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </details>
 
                     <p class="mt-5 text-xs text-slate-500">
                         Assigned <time :datetime="job.assignedAt">{{ job.assignedAtLabel }}</time> ·

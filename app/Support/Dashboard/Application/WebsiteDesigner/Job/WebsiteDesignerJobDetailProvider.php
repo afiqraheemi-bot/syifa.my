@@ -43,6 +43,9 @@ final readonly class WebsiteDesignerJobDetailProvider
             'id' => $job->onboardingJobId,
             'tenantId' => $job->tenantId,
             'websiteId' => $job->websiteId,
+            'jobReference' => $this->reference('JOB', $job->onboardingJobId),
+            'tenantReference' => $this->reference('TENANT', $job->tenantId),
+            'websiteReference' => $this->reference('WEB', $job->websiteId),
             'status' => $job->status,
             'version' => $job->version,
             'statusLabel' => $this->label($job->status),
@@ -153,5 +156,10 @@ final readonly class WebsiteDesignerJobDetailProvider
     private function label(string $value): string
     {
         return ucwords(str_replace('_', ' ', $value));
+    }
+
+    private function reference(string $prefix, string $value): string
+    {
+        return $prefix.'-'.strtoupper(substr($value, 0, 8));
     }
 }

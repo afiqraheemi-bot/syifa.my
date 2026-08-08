@@ -6,12 +6,18 @@ namespace App\Support\Dashboard\Application\WebsiteDesigner\Queue;
 
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerQueueJobData;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\DashboardSectionProjection;
 
 final readonly class WebsiteDesignerQueueProvider
 {
-    public function __construct(private WebsiteDesignerDashboardReadInterface $jobs) {}
+    public function __construct(
+        private WebsiteDesignerDashboardReadInterface $jobs,
+        private WebsiteReadInterface $websites,
+        private WebsitePublicAddressReadInterface $addresses,
+    ) {}
 
     public function provide(
         AuthorizationContext $context,
@@ -36,7 +42,7 @@ final readonly class WebsiteDesignerQueueProvider
             'search' => [
                 'action' => route('dashboard.onboarding'),
                 'value' => $criteria->search,
-                'placeholder' => 'Search job, tenant, or website ID',
+                'placeholder' => 'Search job, tenant or Website reference',
             ],
             'statusFilter' => [
                 'value' => $criteria->status,
@@ -58,10 +64,21 @@ final readonly class WebsiteDesignerQueueProvider
     /** @return array<string, mixed> */
     private function project(WebsiteDesignerQueueJobData $job): array
     {
+        $website = $this->websites->summary($job->tenantId);
+        $address = $this->addresses->forWebsite($job->tenantId, $job->websiteId);
+
         return [
             'id' => $job->onboardingJobId,
+            'clinicName' => $website !== null && $website->id === $job->websiteId
+                ? $website->clinicName
+                : 'Clinic',
+            'publicHost' => $address?->host,
+            'publicUrl' => $address?->url,
             'tenantId' => $job->tenantId,
             'websiteId' => $job->websiteId,
+            'jobReference' => $this->reference('JOB', $job->onboardingJobId),
+            'tenantReference' => $this->reference('TENANT', $job->tenantId),
+            'websiteReference' => $this->reference('WEB', $job->websiteId),
             'status' => $job->status,
             'statusLabel' => ucwords(str_replace('_', ' ', $job->status)),
             'contentCollection' => $this->stage($job->status, ['awaiting_inputs']),
@@ -74,6 +91,11 @@ final readonly class WebsiteDesignerQueueProvider
             'updatedAtLabel' => $job->updatedAt->format('j M Y, g:i A'),
             'detailHref' => route('dashboard.onboarding.show', ['jobId' => $job->onboardingJobId]),
         ];
+    }
+
+    private function reference(string $prefix, string $value): string
+    {
+        return $prefix.'-'.strtoupper(substr($value, 0, 8));
     }
 
     /** @param list<string> $activeStatuses */
