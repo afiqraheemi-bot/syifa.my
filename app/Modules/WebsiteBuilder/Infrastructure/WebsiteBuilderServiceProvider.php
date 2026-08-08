@@ -135,7 +135,7 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
                 $application->make(DomainControlVerifierInterface::class),
                 $application->make(SubscriptionEntitlementLookupInterface::class),
                 $application->make(WebsiteReadInterface::class),
-                (string) config('commercial.capabilities.custom_domain', ''),
+                (string) config('acquisition_offer.capabilities.custom_domain', ''),
             ),
         );
         $this->app->singleton(ClinicPersistenceMapper::class);

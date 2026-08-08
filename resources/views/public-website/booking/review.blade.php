@@ -1,5 +1,6 @@
-<x-public.booking.layout title="Review your booking">
+<x-public.booking.layout title="Review your booking" :theme="$theme">
     <x-public.booking.step-header title="Review your booking" :step-number="$viewModel->stepNumber" :total-steps="$viewModel->totalSteps" />
+    <p class="booking-intro">Check the details below before sending your appointment request.</p>
 
     <dl class="booking-review-list">
         @if ($viewModel->serviceLabel !== null)
@@ -34,11 +35,12 @@
         @endif
     </dl>
 
-    <form method="POST" action="{{ route('public-website.booking.submit') }}">
+    <form method="POST" action="{{ route('public-website.booking.submit') }}" data-booking-step-form>
         @csrf
         <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
-        <div class="booking-sticky-actions">
-            <button type="submit" class="button button--primary">Confirm Booking</button>
+        <div class="booking-form-actions">
+            <a class="booking-secondary-action" href="{{ route('public-website.booking.details') }}">Back</a>
+            <button type="submit" class="button button--primary" data-booking-submit data-pending-label="Confirming…">Confirm Booking</button>
         </div>
     </form>
 </x-public.booking.layout>

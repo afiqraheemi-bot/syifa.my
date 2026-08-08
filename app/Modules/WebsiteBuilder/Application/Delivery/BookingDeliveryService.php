@@ -6,6 +6,7 @@ namespace App\Modules\WebsiteBuilder\Application\Delivery;
 
 use App\Modules\WebsiteBuilder\Application\Delivery\ViewModels\AvailabilityChipViewData;
 use App\Modules\WebsiteBuilder\Application\Delivery\ViewModels\BookingLandingViewModel;
+use App\Modules\WebsiteBuilder\Application\Delivery\ViewModels\BookingThemeViewModel;
 use App\Modules\WebsiteBuilder\Application\Delivery\ViewModels\DateSelectionViewModel;
 use App\Modules\WebsiteBuilder\Application\Delivery\ViewModels\PatientDetailsViewModel;
 use App\Modules\WebsiteBuilder\Application\Delivery\ViewModels\ReviewViewModel;
@@ -65,6 +66,20 @@ final readonly class BookingDeliveryService
         return new BookingLandingViewModel(1, $this->totalSteps($formConfiguration), $this->whatsAppUrl($context));
     }
 
+    public function themeViewModel(PublicSiteContext $context): BookingThemeViewModel
+    {
+        $website = $this->websites->find($context);
+        if ($website === null) {
+            return (new BookingThemeViewModelFactory)->make(null);
+        }
+
+        return (new BookingThemeViewModelFactory)->make(
+            $website->website->templateId,
+            $website->branding->primaryColor,
+            $website->branding->secondaryColor,
+        );
+    }
+
     /** Returns null when Service Selection is disabled — the Controller redirects straight to Date Selection. */
     public function serviceSelectionViewModel(PublicSiteContext $context, BookingDraft $draft): ?ServiceSelectionViewModel
     {
@@ -81,7 +96,7 @@ final readonly class BookingDeliveryService
             $options[] = new ServiceOptionViewData('', 'Not sure / General appointment', false, $draft->serviceId === null);
         }
 
-        return new ServiceSelectionViewModel($this->stepNumber(2, $formConfiguration), $this->totalSteps($formConfiguration), $options, $formConfiguration->serviceSelectionRequired);
+        return new ServiceSelectionViewModel(1, $this->totalSteps($formConfiguration), $options, $formConfiguration->serviceSelectionRequired);
     }
 
     public function dateSelectionViewModel(PublicSiteContext $context, BookingDraft $draft): DateSelectionViewModel
@@ -130,7 +145,7 @@ final readonly class BookingDeliveryService
         $formConfiguration = $this->formConfigurationFor((string) $context->websiteId);
 
         return new PatientDetailsViewModel(
-            $this->stepNumber(3, $formConfiguration),
+            $this->stepNumber(2, $formConfiguration),
             $this->totalSteps($formConfiguration),
             $patientName,
             $phone,
@@ -158,7 +173,7 @@ final readonly class BookingDeliveryService
         }
 
         return new ReviewViewModel(
-            $this->stepNumber(4, $formConfiguration),
+            $this->stepNumber(3, $formConfiguration),
             $this->totalSteps($formConfiguration),
             $serviceLabel,
             $draft->appointmentDate,
@@ -221,12 +236,12 @@ final readonly class BookingDeliveryService
 
     public function dateStep(PublicBookingFormConfiguration $formConfiguration): int
     {
-        return $this->stepNumber(2, $formConfiguration);
+        return $this->stepNumber(1, $formConfiguration);
     }
 
     public function totalSteps(PublicBookingFormConfiguration $formConfiguration): int
     {
-        return $formConfiguration->serviceSelectionEnabled ? 5 : 4;
+        return $formConfiguration->serviceSelectionEnabled ? 4 : 3;
     }
 
     /** @param list<PublicAvailabilitySlot> $slots */

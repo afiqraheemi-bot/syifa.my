@@ -1,4 +1,4 @@
-<x-public.booking.layout title="Book an Appointment">
+<x-public.booking.layout title="Book an Appointment" :theme="$theme">
     <div class="booking-step-header">
         <p class="booking-progress">Booking Preview</p>
         <h1>Book an appointment</h1>
@@ -13,6 +13,25 @@
     @endif
 
     <form method="GET" action="{{ $submitUrl }}" class="booking-fieldset">
+        @if ($configuration->serviceSelectionEnabled)
+            <fieldset>
+                <legend class="booking-label">Choose a service</legend>
+                <div class="booking-option-list">
+                    @foreach ($configuration->services as $service)
+                        <label class="booking-option">
+                            <input
+                                type="radio"
+                                name="service_id"
+                                value="{{ $service->id }}"
+                                @checked($selectedServiceId === $service->id)
+                                @required($configuration->serviceSelectionRequired)
+                            >
+                            {{ $service->name }}
+                        </label>
+                    @endforeach
+                </div>
+            </fieldset>
+        @endif
         <div>
             <label class="booking-label" for="appointment_date_lookup">Appointment date</label>
             <input
@@ -32,26 +51,7 @@
         @csrf
         <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
         <input type="hidden" name="appointment_date" value="{{ $selectedDate }}">
-
-        @if ($configuration->serviceSelectionEnabled)
-            <fieldset>
-                <legend class="booking-label">Choose a service</legend>
-                <div class="booking-option-list">
-                    @foreach ($configuration->services as $service)
-                        <label class="booking-option">
-                            <input
-                                type="radio"
-                                name="service_id"
-                                value="{{ $service->id }}"
-                                @checked(old('service_id') === $service->id)
-                                @required($configuration->serviceSelectionRequired)
-                            >
-                            {{ $service->name }}
-                        </label>
-                    @endforeach
-                </div>
-            </fieldset>
-        @endif
+        <input type="hidden" name="service_id" value="{{ $selectedServiceId }}">
 
         <fieldset>
             <legend class="booking-label">Available time</legend>

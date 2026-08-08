@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\ClinicRegistration\Presentation\Http\Controllers;
 
+use App\Modules\AcquisitionOffer\Application\ListAvailableCommercialOffersService;
 use App\Modules\ClinicRegistration\Application\StartClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\ViewCurrentClinicRegistrationService;
 use App\Modules\ClinicRegistration\Contracts\Authentication\ClinicRegistrationAccessInterface;
 use App\Modules\ClinicRegistration\Contracts\Commands\StartClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Tracking\RegistrationTrackingCredentialInterface;
-use App\Modules\Commercial\Application\ListAvailableCommercialOffersService;
 use App\Modules\WebsiteBuilder\Contracts\PublicTemplate\PublicTemplateCatalogInterface;
 use App\Support\Identity\CurrentUserInterface;
 use DateTimeImmutable;

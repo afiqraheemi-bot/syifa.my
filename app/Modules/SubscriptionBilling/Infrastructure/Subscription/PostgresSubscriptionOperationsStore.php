@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\SubscriptionBilling\Infrastructure\Subscription;
 
-use App\Modules\Commercial\Contracts\Renewal\PreparedRenewalOffer;
+use App\Modules\AcquisitionOffer\Contracts\Renewal\PreparedRenewalOffer;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\AutoRenewCommand;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\AutoRenewOperationResult;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\ManualRenewSubscriptionCommand;

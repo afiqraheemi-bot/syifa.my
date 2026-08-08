@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\SubscriptionBilling\Application\Subscription;
 
-use App\Modules\Commercial\Contracts\Renewal\PreparedRenewalOffer;
-use App\Modules\Commercial\Contracts\Renewal\PrepareRenewalOfferInput;
-use App\Modules\Commercial\Contracts\Renewal\PrepareRenewalOfferInterface;
-use App\Modules\Commercial\Contracts\Renewal\RenewalUnavailable;
+use App\Modules\AcquisitionOffer\Contracts\Renewal\PreparedRenewalOffer;
+use App\Modules\AcquisitionOffer\Contracts\Renewal\PrepareRenewalOfferInput;
+use App\Modules\AcquisitionOffer\Contracts\Renewal\PrepareRenewalOfferInterface;
+use App\Modules\AcquisitionOffer\Contracts\Renewal\RenewalUnavailable;
 use App\Modules\SubscriptionBilling\Application\Subscription\ManageSubscriptionRenewalService;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\AutoRenewCommand;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\AutoRenewOperationResult;

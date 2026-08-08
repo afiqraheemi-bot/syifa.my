@@ -39,7 +39,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
     public function update(
         UpdateClinicOwnerWebsiteContentRequest $request,
         ManageWebsiteContentService $content,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $context = $this->context($request);
         $data = $request->validated();
         $branding = $data['branding'];
@@ -50,7 +50,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
         );
 
         try {
-            $content->update(new UpdateWebsiteContentCommand(
+            $updated = $content->update(new UpdateWebsiteContentCommand(
                 $this->websiteAuthorization($context),
                 (string) $context->tenantId,
                 (int) $data['version'],
@@ -74,13 +74,34 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
                 templateId: isset($data['template_id']) ? (string) $data['template_id'] : null,
                 logoReference: $this->optional($branding['logo_reference'] ?? null),
                 logoDisplaySize: (string) $branding['logo_display_size'],
+                whatsAppButtonStyle: (string) $branding['whatsapp_button_style'],
             ));
         } catch (StaleWebsiteWriteException) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'detail' => 'This Website configuration changed while you were editing.',
+                    'data' => [
+                        'editable_content' => $content->read(
+                            (string) $context->tenantId,
+                            $this->websiteAuthorization($context),
+                        )->toArray(),
+                    ],
+                ], 409);
+            }
+
             return back()->withErrors([
                 'version' => 'This Website configuration changed while you were editing. Refresh and review the latest values before saving again.',
             ]);
         } catch (WebsiteOperationForbiddenException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['detail' => $exception->getMessage()], 403);
+            }
+
             return back()->withErrors(['template_id' => $exception->getMessage()]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['data' => $updated->toArray()]);
         }
 
         return back()->with('website_content_saved', true);
@@ -102,6 +123,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
             'sections.*.section_id' => ['required', 'uuid', 'distinct'],
             'sections.*.type' => ['required', 'string', 'distinct'],
         ]);
+        $completeSections = $this->completeSections($request);
 
         try {
             $draft = $drafts->save(new SaveDraftWebsiteContent(
@@ -109,7 +131,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
                 (string) $context->tenantId,
                 $website->id,
                 $input['version'],
-                $input['sections'],
+                $completeSections,
             ));
         } catch (StaleWebsiteWriteException $exception) {
             return response()->json(['detail' => $exception->getMessage()], 409);
@@ -157,5 +179,24 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
         $value = is_string($value) ? trim($value) : '';
 
         return $value === '' ? null : $value;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function completeSections(Request $request): array
+    {
+        $sections = $request->input('sections');
+        if (! is_array($sections) || ! array_is_list($sections)) {
+            throw new InvalidWebsiteValueException('Website Draft Sections are invalid.');
+        }
+
+        $complete = [];
+        foreach ($sections as $section) {
+            if (! is_array($section)) {
+                throw new InvalidWebsiteValueException('Website Draft Section content is invalid.');
+            }
+            $complete[] = $section;
+        }
+
+        return $complete;
     }
 }

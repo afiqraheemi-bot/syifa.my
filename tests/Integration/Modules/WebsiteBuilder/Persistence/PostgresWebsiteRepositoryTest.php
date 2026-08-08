@@ -25,6 +25,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteBranding;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationEvidence;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationReadiness;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\WhatsAppButtonStyle;
 use App\Modules\WebsiteBuilder\Domain\Website;
 use App\Modules\WebsiteBuilder\Domain\WebsiteAsset;
 use App\Modules\WebsiteBuilder\Infrastructure\Delivery\PostgresPublicWebsiteRenderModelProvider;
@@ -124,6 +125,10 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         self::assertInstanceOf(Migration::class, $logoDisplaySizeMigration);
         $logoDisplaySizeMigration->up();
         $this->migrations[] = $logoDisplaySizeMigration;
+        $whatsAppButtonStyleMigration = require base_path('database/migrations/website_builder/2026_09_08_000001_add_whatsapp_button_style_to_websites.php');
+        self::assertInstanceOf(Migration::class, $whatsAppButtonStyleMigration);
+        $whatsAppButtonStyleMigration->up();
+        $this->migrations[] = $whatsAppButtonStyleMigration;
     }
 
     protected function tearDown(): void
@@ -151,6 +156,11 @@ final class PostgresWebsiteRepositoryTest extends TestCase
         self::assertSame(1, $loaded->version());
         self::assertSame(TemplateId::SyifaEssential, $loaded->templateId());
         self::assertSame('Klinik Syifa', $loaded->branding()->clinicName);
+        self::assertSame(WhatsAppButtonStyle::RoundedSquare, $loaded->branding()->whatsAppButtonStyle);
+        self::assertSame(
+            'rounded_square',
+            $this->db()->table('websites')->where('id', $website->id->value)->value('whatsapp_button_style'),
+        );
         self::assertNull($this->repository()->findByTenant(new TenantId($this->uuid(2))));
         $read = new PostgresWebsiteReadAdapter($this->db());
         self::assertSame('SYIFA_ESSENTIAL', $read->summary($this->uuid(1))?->templateId);
@@ -730,7 +740,19 @@ final class PostgresWebsiteRepositoryTest extends TestCase
 
     private function branding(string $name = 'Klinik Syifa'): WebsiteBranding
     {
-        return new WebsiteBranding($name, null, '#112233', '#AABBCC', null, null, 'hello@clinic.test', '+6012', 'Kuala Lumpur', ['instagram' => 'https://instagram.com/clinic']);
+        return new WebsiteBranding(
+            $name,
+            null,
+            '#112233',
+            '#AABBCC',
+            null,
+            null,
+            'hello@clinic.test',
+            '+6012',
+            'Kuala Lumpur',
+            ['instagram' => 'https://instagram.com/clinic'],
+            whatsAppButtonStyle: WhatsAppButtonStyle::RoundedSquare,
+        );
     }
 
     private function publicationEvidence(): WebsitePublicationEvidence

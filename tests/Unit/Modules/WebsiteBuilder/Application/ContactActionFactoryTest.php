@@ -24,7 +24,7 @@ final class ContactActionFactoryTest extends TestCase
         $actions = (new ContactActionFactory)->make($this->contact());
 
         self::assertSame(
-            'https://wa.me/60123456789?text=Hi%2C%20I%20would%20like%20to%20make%20an%20enquiry.',
+            'https://wa.me/60123456789?text=Hi%2C%20I%20have%20a%20question%20and%20would%20love%20your%20help.',
             $actions->whatsApp?->value,
         );
     }
@@ -40,10 +40,10 @@ final class ContactActionFactoryTest extends TestCase
     /** @return iterable<string, array{WhatsAppDeliveryIntent, string}> */
     public static function deliveryIntents(): iterable
     {
-        yield 'general enquiry' => [WhatsAppDeliveryIntent::GeneralEnquiry, 'Hi, I would like to make an enquiry.'];
-        yield 'service' => [WhatsAppDeliveryIntent::Service, 'Hi, I would like to enquire about a service.'];
-        yield 'doctor' => [WhatsAppDeliveryIntent::Doctor, 'Hi, I would like to enquire about a doctor.'];
-        yield 'booking' => [WhatsAppDeliveryIntent::Booking, 'Hi, I would like to enquire about booking an appointment.'];
+        yield 'general enquiry' => [WhatsAppDeliveryIntent::GeneralEnquiry, 'Hi, I have a question and would love your help.'];
+        yield 'service' => [WhatsAppDeliveryIntent::Service, "Hi, I'd like to find out more about one of your services."];
+        yield 'doctor' => [WhatsAppDeliveryIntent::Doctor, "Hi, I'd like to find out more about one of your doctors."];
+        yield 'booking' => [WhatsAppDeliveryIntent::Booking, "Hi, I'd like some help with booking an appointment."];
     }
 
     public function test_the_generated_url_never_contains_a_raw_space_or_comma(): void

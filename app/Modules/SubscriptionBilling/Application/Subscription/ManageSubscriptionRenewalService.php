@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\SubscriptionBilling\Application\Subscription;
 
-use App\Modules\Commercial\Contracts\Renewal\PrepareRenewalOfferInput;
-use App\Modules\Commercial\Contracts\Renewal\PrepareRenewalOfferInterface;
-use App\Modules\Commercial\Contracts\Renewal\RenewalUnavailable;
+use App\Modules\AcquisitionOffer\Contracts\Renewal\PrepareRenewalOfferInput;
+use App\Modules\AcquisitionOffer\Contracts\Renewal\PrepareRenewalOfferInterface;
+use App\Modules\AcquisitionOffer\Contracts\Renewal\RenewalUnavailable;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\AutoRenewCommand;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\AutoRenewOperationResult;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\CancelAutoRenewInterface;

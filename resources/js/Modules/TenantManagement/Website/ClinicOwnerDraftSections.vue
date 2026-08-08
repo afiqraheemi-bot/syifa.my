@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, toRaw } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { browserHttpRequest } from '../../../Shared/Authentication/session.js';
 import WebsiteImageUpload from '../../../Shared/Website/WebsiteImageUpload.vue';
 import SyifaAiAssistant from '../../PlatformAdministration/Onboarding/SyifaAiAssistant.vue';
@@ -9,14 +9,18 @@ const props = defineProps({
     templateId: { type: String, default: '' },
     syifaAi: { type: Object, required: true },
 });
-const cloneData = (value) => structuredClone(toRaw(value));
+const emit = defineEmits(['state', 'website-version']);
+// Serialising through the reactive proxy deliberately reads every nested field.
+// That keeps dirty-state computations subscribed to edits inside each section.
+const cloneData = (value) => JSON.parse(JSON.stringify(value));
 const draft = ref(null);
+const lastSavedSections = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const success = ref('');
 const error = ref('');
 const inputClass =
-    'mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20';
+    'website-theme-input mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 outline-none';
 const byType = (type) => draft.value?.sections.find((section) => section.type === type);
 const hero = computed(() => byType('HERO'));
 const about = computed(() => byType('ABOUT'));
@@ -26,6 +30,30 @@ const gallery = computed(() => byType('GALLERY'));
 const testimonials = computed(() => byType('TESTIMONIALS'));
 const faq = computed(() => byType('FAQ'));
 const heroAspectRatio = computed(() => (props.templateId === 'SYIFA_AESTHETIC' ? 4 / 5 : 4 / 3));
+const governedSectionTypes = [
+    'HERO',
+    'ABOUT',
+    'SERVICES',
+    'DOCTORS',
+    'GALLERY',
+    'TESTIMONIALS',
+    'FAQ',
+    'CONTACT',
+    'BOOKING_CTA',
+];
+
+function isCompleteDraft(value) {
+    if (!value || !Number.isInteger(value.version) || !Array.isArray(value.sections)) return false;
+
+    const sectionTypes = value.sections.map((section) => section?.type);
+
+    return (
+        sectionTypes.length === governedSectionTypes.length &&
+        governedSectionTypes.every(
+            (type) => sectionTypes.filter((sectionType) => sectionType === type).length === 1,
+        )
+    );
+}
 
 onMounted(async () => {
     try {
@@ -33,8 +61,14 @@ onMounted(async () => {
             credentials: 'same-origin',
             headers: { Accept: 'application/json' },
         });
-        if (response.ok) draft.value = cloneData(response.body.data);
-        else error.value = response.body?.detail ?? 'The website draft could not be loaded.';
+        if (response.ok && isCompleteDraft(response.body?.data)) {
+            draft.value = cloneData(response.body.data);
+            lastSavedSections.value = normalizeSections(response.body.data.sections);
+        } else {
+            error.value = response.ok
+                ? 'The website draft response was incomplete. No content has been changed.'
+                : (response.body?.detail ?? 'The website draft could not be loaded.');
+        }
     } catch {
         error.value = 'The website draft could not be loaded.';
     } finally {
@@ -47,8 +81,8 @@ function optional(value) {
     return normalized === '' ? null : normalized;
 }
 
-function normalize() {
-    const copy = cloneData(draft.value.sections);
+function normalizeSections(sections) {
+    const copy = cloneData(sections);
     const section = (type) => copy.find((item) => item.type === type);
     for (const key of [
         'headline',
@@ -87,28 +121,68 @@ function normalize() {
     return copy;
 }
 
+const hasUnsavedChanges = computed(() => {
+    if (!draft.value || !isCompleteDraft(draft.value)) return false;
+
+    return (
+        JSON.stringify(normalizeSections(draft.value.sections)) !==
+        JSON.stringify(lastSavedSections.value)
+    );
+});
+
+function savedDraftMatchesSubmission(savedDraft, submission) {
+    return (
+        isCompleteDraft(savedDraft) &&
+        savedDraft.version === submission.version + 1 &&
+        JSON.stringify(normalizeSections(savedDraft.sections)) ===
+            JSON.stringify(submission.sections)
+    );
+}
+
 async function save() {
-    if (saving.value || !draft.value) return;
+    if (saving.value || !draft.value) return false;
+    if (!hasUnsavedChanges.value) return true;
+
+    const submission = {
+        version: draft.value.version,
+        sections: normalizeSections(draft.value.sections),
+    };
+
     saving.value = true;
     success.value = '';
     error.value = '';
-    const response = await browserHttpRequest(props.websiteDraft.updateUrl, {
-        method: 'PATCH',
-        credentials: 'same-origin',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version: draft.value.version, sections: normalize() }),
-    });
-    if (response.ok) {
-        draft.value = cloneData(response.body.data);
-        success.value = 'Website draft saved. It remains private until review and publication.';
-    } else {
+
+    try {
+        const response = await browserHttpRequest(props.websiteDraft.updateUrl, {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify(submission),
+        });
+
+        if (response.ok && savedDraftMatchesSubmission(response.body?.data, submission)) {
+            draft.value = cloneData(response.body.data);
+            lastSavedSections.value = normalizeSections(response.body.data.sections);
+            success.value = 'All section changes were saved to the private draft.';
+            return true;
+        } else if (response.ok) {
+            error.value =
+                'The save response did not match your changes. Your form has been kept unchanged; please try again.';
+        } else {
+            error.value =
+                response.body?.detail ??
+                (response.status === 409
+                    ? 'The draft changed in another session. Your form is still intact; refresh only after copying any unsaved text.'
+                    : 'The website draft could not be saved. Your form is still intact; check the highlighted content.');
+        }
+    } catch {
         error.value =
-            response.body?.detail ??
-            (response.status === 409
-                ? 'The draft changed in another session. Refresh before saving again.'
-                : 'The website draft could not be saved. Check the highlighted content.');
+            'The save request could not be completed. Your form is still intact; check your connection and try again.';
+    } finally {
+        saving.value = false;
     }
-    saving.value = false;
+
+    return false;
 }
 
 function toggleService(serviceId) {
@@ -153,6 +227,20 @@ function applySyifaAiSuggestion(suggestion) {
     target[suggestion.field] = suggestion.proposed_value;
     success.value = 'Suggestion added to the form. Review it, then save the private draft.';
 }
+
+function synchronizeWebsiteVersion(asset) {
+    if (Number.isInteger(asset?.website_version)) emit('website-version', asset.website_version);
+}
+
+watch(
+    [loading, saving, hasUnsavedChanges],
+    ([isLoading, isSaving, isDirty]) => {
+        emit('state', { loading: isLoading, saving: isSaving, dirty: isDirty });
+    },
+    { immediate: true },
+);
+
+defineExpose({ save });
 </script>
 
 <template>
@@ -161,17 +249,24 @@ function applySyifaAiSuggestion(suggestion) {
             <div>
                 <h2 class="text-xl font-bold text-slate-950">Website pages and sections</h2>
                 <p class="mt-1 text-sm text-slate-600">
-                    Open a section, upload the images it needs and save the private draft once.
-                    Publishing remains a separate approval step.
+                    Open a section and make your changes. This save action covers Homepage, About,
+                    Services, Doctors, Gallery, Testimonials and FAQ. Publishing remains a separate
+                    approval step.
                 </p>
             </div>
             <button
                 type="button"
-                class="rounded-xl bg-teal-700 px-5 py-3 font-bold text-white disabled:opacity-60"
-                :disabled="saving || loading || !draft"
+                class="website-theme-primary rounded-xl px-5 py-3 font-bold disabled:opacity-60"
+                :disabled="saving || loading || !draft || !hasUnsavedChanges"
                 @click="save"
             >
-                {{ saving ? 'Saving…' : 'Save draft content' }}
+                {{
+                    saving
+                        ? 'Saving…'
+                        : hasUnsavedChanges
+                          ? 'Save all section changes'
+                          : 'All changes saved'
+                }}
             </button>
         </div>
         <p
@@ -231,6 +326,7 @@ function applySyifaAiSuggestion(suggestion) {
                         :asset-url-template="websiteDraft.assetUrlTemplate"
                         :aspect-ratio="heroAspectRatio"
                         :disabled="saving"
+                        @uploaded="synchronizeWebsiteVersion"
                     />
                 </div>
             </details>
@@ -253,6 +349,7 @@ function applySyifaAiSuggestion(suggestion) {
                         :upload-url="websiteDraft.mediaUploadUrl"
                         :asset-url-template="websiteDraft.assetUrlTemplate"
                         :disabled="saving"
+                        @uploaded="synchronizeWebsiteVersion"
                     />
                 </div>
             </details>
@@ -301,6 +398,7 @@ function applySyifaAiSuggestion(suggestion) {
                             :label="`Photo for ${doctor.name || `Doctor ${index + 1}`}`"
                             :aspect-ratio="1"
                             :disabled="saving"
+                            @uploaded="synchronizeWebsiteVersion"
                         />
                         <label class="flex items-center gap-2 text-sm"
                             ><input v-model="doctor.visible" type="checkbox" /> Visible</label
@@ -313,7 +411,7 @@ function applySyifaAiSuggestion(suggestion) {
                             Remove
                         </button>
                     </div>
-                    <button type="button" class="font-bold text-teal-700" @click="addDoctor">
+                    <button type="button" class="website-theme-link font-bold" @click="addDoctor">
                         + Add doctor
                     </button>
                 </div>
@@ -337,6 +435,7 @@ function applySyifaAiSuggestion(suggestion) {
                             :label="`Gallery image ${index + 1}`"
                             :disabled="saving"
                             required
+                            @uploaded="synchronizeWebsiteVersion"
                         />
                         <input
                             v-model="image.alt_text"
@@ -355,7 +454,11 @@ function applySyifaAiSuggestion(suggestion) {
                     <p v-if="gallery.images.length === 0" class="text-sm text-slate-500">
                         No gallery images added yet.
                     </p>
-                    <button type="button" class="font-bold text-teal-700" @click="addGalleryImage">
+                    <button
+                        type="button"
+                        class="website-theme-link font-bold"
+                        @click="addGalleryImage"
+                    >
                         + Add gallery image
                     </button>
                 </div>
@@ -386,7 +489,11 @@ function applySyifaAiSuggestion(suggestion) {
                             Remove
                         </button>
                     </div>
-                    <button type="button" class="font-bold text-teal-700" @click="addTestimonial">
+                    <button
+                        type="button"
+                        class="website-theme-link font-bold"
+                        @click="addTestimonial"
+                    >
                         + Add testimonial
                     </button>
                 </div>
@@ -409,7 +516,7 @@ function applySyifaAiSuggestion(suggestion) {
                             Remove
                         </button>
                     </div>
-                    <button type="button" class="font-bold text-teal-700" @click="addFaq">
+                    <button type="button" class="website-theme-link font-bold" @click="addFaq">
                         + Add FAQ
                     </button>
                 </div>
@@ -421,6 +528,12 @@ function applySyifaAiSuggestion(suggestion) {
                 </div>
             </details>
             <details class="rounded-xl border border-slate-200 p-4">
+                <summary class="cursor-pointer text-lg font-bold">WhatsApp button</summary>
+                <div class="mt-4">
+                    <slot name="whatsapp" />
+                </div>
+            </details>
+            <details class="rounded-xl border border-slate-200 p-4">
                 <summary class="cursor-pointer text-lg font-bold">Search and sharing</summary>
                 <div class="mt-4">
                     <slot name="search-sharing" />
@@ -429,3 +542,23 @@ function applySyifaAiSuggestion(suggestion) {
         </div>
     </section>
 </template>
+
+<style scoped>
+.website-theme-input:focus {
+    border-color: var(--website-theme-primary);
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--website-theme-primary) 20%, transparent);
+}
+
+.website-theme-primary {
+    color: white;
+    background-color: var(--website-theme-primary);
+}
+
+.website-theme-primary:hover {
+    background-color: var(--website-theme-primary-hover);
+}
+
+.website-theme-link {
+    color: var(--website-theme-primary);
+}
+</style>

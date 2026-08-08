@@ -14,6 +14,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteBranding;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\WhatsAppButtonStyle;
 use DateTimeImmutable;
 use RuntimeException;
 
@@ -74,6 +75,7 @@ final readonly class ManageWebsiteContentService
             $command->address,
             $command->socialLinks,
             LogoDisplaySize::fromStored($command->logoDisplaySize),
+            WhatsAppButtonStyle::fromStored($command->whatsAppButtonStyle),
         ), $at);
 
         $currentSeo = $website->seo();

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Modules\ClinicRegistration;
 
+use App\Modules\AcquisitionOffer\Contracts\ReferenceData\PlanOfferingQueryInterface;
+use App\Modules\AcquisitionOffer\Contracts\ReferenceData\PlanOfferingReferenceData;
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationIdentifierGeneratorInterface;
 use App\Modules\ClinicRegistration\Contracts\Authentication\ClinicRegistrationAccessInterface;
 use App\Modules\ClinicRegistration\Contracts\Checkout\CompleteLocalDemoAcquisitionInterface;
@@ -19,8 +21,6 @@ use App\Modules\ClinicRegistration\Domain\ValueObjects\PlatformIdentityReference
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationDecisionOutcome;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
 use App\Modules\ClinicRegistration\Infrastructure\Tracking\LaravelRegistrationTrackingCredential;
-use App\Modules\Commercial\Contracts\ReferenceData\PlanOfferingQueryInterface;
-use App\Modules\Commercial\Contracts\ReferenceData\PlanOfferingReferenceData;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\AuditEntry;

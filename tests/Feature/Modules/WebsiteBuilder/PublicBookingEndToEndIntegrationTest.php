@@ -95,15 +95,26 @@ final class PublicBookingEndToEndIntegrationTest extends TestCase
         [$tenantId, $websiteId, $serviceId] = $this->seedTenantWebsiteClinicServiceAndFormConfiguration();
         $localDate = (new DateTimeImmutable('next monday'))->format('Y-m-d');
 
-        $this->get('https://'.self::HOST.'/booking')->assertOk()->assertSee('Start Booking');
+        $this->get('https://'.self::HOST.'/booking')
+            ->assertRedirect('https://'.self::HOST.'/booking/service');
 
-        $this->get('https://'.self::HOST.'/booking/service')->assertOk()->assertSee('Consultation');
+        $this->get('https://'.self::HOST.'/booking/service')
+            ->assertOk()
+            ->assertSee('Consultation')
+            ->assertSee('Step 1 of 4');
         $this->post('https://'.self::HOST.'/booking/service', ['service_id' => $serviceId])
             ->assertRedirect('https://'.self::HOST.'/booking/date');
 
-        $this->post('https://'.self::HOST.'/booking/date', ['appointment_date' => $localDate])
+        $this->post('https://'.self::HOST.'/booking/date', [
+            'appointment_date' => $localDate,
+            'intent' => 'load_times',
+        ])
             ->assertRedirect('https://'.self::HOST.'/booking/date');
-        $this->post('https://'.self::HOST.'/booking/date', ['appointment_date' => $localDate, 'appointment_time' => '09:00'])
+        $this->post('https://'.self::HOST.'/booking/date', [
+            'appointment_date' => $localDate,
+            'appointment_time' => '09:00',
+            'intent' => 'continue',
+        ])
             ->assertRedirect('https://'.self::HOST.'/booking/details');
 
         $this->get('https://'.self::HOST.'/booking/details')->assertOk()->assertSee('Full name');

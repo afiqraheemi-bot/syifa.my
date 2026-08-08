@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support\Provisioning\Application;
 
+use App\Modules\AcquisitionOffer\Application\PrepareCommercialOfferService;
+use App\Modules\AcquisitionOffer\Contracts\Commands\PrepareInitialCommercialOfferCommand;
 use App\Modules\ClinicRegistration\Contracts\Checkout\CompleteLocalDemoAcquisitionInterface;
 use App\Modules\ClinicRegistration\Contracts\Queries\ClinicRegistrationQueryInterface;
-use App\Modules\Commercial\Application\PrepareCommercialOfferService;
-use App\Modules\Commercial\Contracts\Commands\PrepareInitialCommercialOfferCommand;
 use App\Modules\SubscriptionBilling\Application\Payment\CreateInitialAcquisitionPaymentService;
 use App\Modules\SubscriptionBilling\Application\Subscription\ActivateSubscriptionFromVerifiedPaymentService;
 use App\Modules\SubscriptionBilling\Contracts\Payment\CreateInitialAcquisitionPaymentCommand;

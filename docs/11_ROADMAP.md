@@ -63,7 +63,9 @@ Only the current phase should contain detailed delivery commitments. Numeric dat
 
 ### Current delivery checkpoint
 
-Milestone M1, **Public Product Complete**, delivers the Website Foundation, immutable public Website publication/rendering, the locked Syifa Essential experience, Public Booking, and real Booking Engine integration governed by ADR-026 through ADR-031. M1 does not include private dashboard capabilities. Authentication, identity, authorization and the shared dashboard foundation remain the next separately governed delivery increment and must not begin until the M1 baseline is committed, tagged and release-green.
+Milestone M1, **Public Product Complete**, delivers the Website Foundation, immutable public Website publication/rendering, the locked Syifa Essential experience, Public Booking, and real Booking Engine integration governed by ADR-026 through ADR-031.
+
+**2026-08-08 correction:** this section previously stated that private dashboard capabilities "must not begin until the M1 baseline is committed, tagged and release-green," and were not yet started. In practice they were built without that gate having a recorded M1 tag — the dashboard, authentication/authorization for both credential stores, and the Clinic Owner / Website Designer / Super Admin role workspaces are implemented, tested, and in active use today, alongside all five official templates (four formally locked), Public Booking with a real availability/reservation engine, and a governed AI content assistant (SYIFA AI). This is corrected here rather than silently left wrong; see [`37_MASTER_ARCHITECTURE_PROGRESS.md`](./37_MASTER_ARCHITECTURE_PROGRESS.md#post-m1-delivery) for the itemized record. The still-genuinely-open Phase 1 gaps are the Stripe Malaysia payment adapter (no payment code exists in `Booking` yet — see the ADR-008 outcome below) and the Syifa Aesthetic reference lock.
 
 ### Outcomes
 

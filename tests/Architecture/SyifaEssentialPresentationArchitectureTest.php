@@ -58,6 +58,26 @@ final class SyifaEssentialPresentationArchitectureTest extends TestCase
         }
     }
 
+    public function test_production_css_bundle_stays_within_the_governed_performance_budget(): void
+    {
+        // 07_PERFORMANCE_BUDGET.md governs "Critical CSS ≤ 30 KB compressed".
+        // This is the shared bundle for all five official templates combined
+        // (only one [data-template] block is active per request, but the
+        // browser downloads the whole file once regardless of which
+        // template is active), so it is measured here rather than left as
+        // an undocumented manual claim — see 17_FIVE_TEMPLATE_IMPLEMENTATION_V1.md's
+        // "Verification" section, which asserted this without a test until
+        // 2026-08-08.
+        $raw = (string) file_get_contents($this->root().'/resources/css/public-website.css');
+        $gzipped = gzencode($raw, 9);
+        self::assertIsString($gzipped);
+        self::assertLessThanOrEqual(
+            30 * 1024,
+            strlen($gzipped),
+            sprintf('public-website.css is %d bytes gzipped, over the governed 30 KB budget.', strlen($gzipped)),
+        );
+    }
+
     public function test_progressive_enhancement_is_small_safe_and_nonessential(): void
     {
         $javascript = (string) file_get_contents($this->root().'/resources/js/public-website.js');

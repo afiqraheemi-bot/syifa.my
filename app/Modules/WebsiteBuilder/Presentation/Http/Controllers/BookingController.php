@@ -41,11 +41,11 @@ final readonly class BookingController
         private BookingSubmissionTokenStore $submissionTokens,
     ) {}
 
-    public function landing(Request $request): View
+    public function landing(Request $request): RedirectResponse
     {
-        return view('public-website.booking.landing', [
-            'viewModel' => $this->delivery->landingViewModel($this->resolveContext($request)),
-        ]);
+        $this->resolveContext($request);
+
+        return redirect()->route('public-website.booking.service');
     }
 
     public function service(Request $request): View|RedirectResponse
@@ -56,7 +56,10 @@ final readonly class BookingController
             return redirect()->route('public-website.booking.date');
         }
 
-        return view('public-website.booking.service', ['viewModel' => $viewModel]);
+        return view('public-website.booking.service', [
+            'viewModel' => $viewModel,
+            'theme' => $this->delivery->themeViewModel($context),
+        ]);
     }
 
     public function updateService(Request $request): RedirectResponse
@@ -79,6 +82,7 @@ final readonly class BookingController
         return view('public-website.booking.date', [
             'viewModel' => $this->delivery->dateSelectionViewModel($context, $draft),
             'timeViewModel' => $this->delivery->timeSelectionViewModel($context, $draft),
+            'theme' => $this->delivery->themeViewModel($context),
         ]);
     }
 
@@ -86,7 +90,11 @@ final readonly class BookingController
     {
         $validated = Validator::make($request->all(), [
             'appointment_date' => ['required', 'date_format:Y-m-d'],
-            'appointment_time' => ['nullable', 'date_format:H:i'],
+            'appointment_time' => ['nullable', 'required_if:intent,continue', 'date_format:H:i'],
+            'intent' => ['nullable', 'in:load_times,continue'],
+        ], [
+            'appointment_date.required' => 'Choose an available date.',
+            'appointment_time.required_if' => 'Choose an available time.',
         ])->validate();
 
         $draft = $this->drafts->current()->withDate($validated['appointment_date']);
@@ -115,6 +123,7 @@ final readonly class BookingController
                 $this->oldOrDraftString('notes', $draft->notes),
                 old('consent') !== null ? (bool) old('consent') : $draft->consent,
             ),
+            'theme' => $this->delivery->themeViewModel($context),
         ]);
     }
 
@@ -156,6 +165,7 @@ final readonly class BookingController
         return view('public-website.booking.review', [
             'viewModel' => $viewModel,
             'submissionToken' => $this->submissionTokens->issue(),
+            'theme' => $this->delivery->themeViewModel($context),
         ]);
     }
 

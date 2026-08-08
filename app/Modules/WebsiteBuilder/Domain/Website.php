@@ -304,7 +304,7 @@ final class Website
         $seo = $this->seo;
         $contentFingerprint = hash('sha256', json_encode([
             'templateId' => $this->templateId->value,
-            'branding' => [$branding->clinicName, $branding->tagline, $branding->primaryColor, $branding->secondaryColor, $branding->logoReference?->value, $branding->faviconReference?->value, $branding->logoDisplaySize->value],
+            'branding' => [$branding->clinicName, $branding->tagline, $branding->primaryColor, $branding->secondaryColor, $branding->logoReference?->value, $branding->faviconReference?->value, $branding->logoDisplaySize->value, $branding->whatsAppButtonStyle->value],
             'seo' => [$seo->metaTitle(), $seo->metaDescription(), $seo->metaKeywords(), $seo->canonicalUrl(), $seo->robotsDirective()->value, $seo->openGraphTitle(), $seo->openGraphDescription(), $seo->openGraphImageReference()?->value, $seo->indexingEnabled()],
             'sections' => array_map(
                 static fn (PublishedSectionContentSnapshot $section, int $index): array => [$section->sectionId->value, $section->sectionType->value, $index + 1, $sections[$index]->enabled, $section->contentFingerprint],
@@ -319,7 +319,7 @@ final class Website
             $branding->faviconReference, $branding->contactEmail, $branding->contactPhone, $branding->address, $branding->socialLinks,
             $seo->metaTitle(), $seo->metaDescription(), $seo->metaKeywords(), $seo->canonicalUrl(), $seo->robotsDirective(),
             $seo->openGraphTitle(), $seo->openGraphDescription(), $seo->openGraphImageReference(), $seo->indexingEnabled(),
-            $contentFingerprint, $sections, $assets, $sectionContents, $branding->logoDisplaySize,
+            $contentFingerprint, $sections, $assets, $sectionContents, $branding->logoDisplaySize, $branding->whatsAppButtonStyle,
         );
         $history = new WebsitePublicationHistoryEntry($publicationId, $this->id, $publishedVersion, $at, $publishedBy, PublicationResult::Published);
         $this->publishedSnapshot = $snapshot;

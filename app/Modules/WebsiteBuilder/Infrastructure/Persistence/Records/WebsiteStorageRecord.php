@@ -28,5 +28,6 @@ final readonly class WebsiteStorageRecord
         public DateTimeImmutable $domainUpdatedAt,
         public int $version,
         public string $logoDisplaySize = 'standard',
+        public string $whatsAppButtonStyle = 'pill',
     ) {}
 }

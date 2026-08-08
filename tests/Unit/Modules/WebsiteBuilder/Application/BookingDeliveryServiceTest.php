@@ -216,8 +216,8 @@ final class BookingDeliveryServiceTest extends TestCase
         $tenants->method('forTrustedWebsite')->willReturn('tenant-1');
         $availability = new AvailabilityDeliveryService($tenants, $this->createStub(PublicAvailabilityReaderInterface::class), $this->cache());
 
-        self::assertSame(5, $this->service($tenants, $availability, serviceSelectionEnabled: true)->totalSteps(new PublicBookingFormConfiguration(true, false, true, true, [])));
-        self::assertSame(4, $this->service($tenants, $availability, serviceSelectionEnabled: false)->totalSteps(new PublicBookingFormConfiguration(false, false, true, true, [])));
+        self::assertSame(4, $this->service($tenants, $availability, serviceSelectionEnabled: true)->totalSteps(new PublicBookingFormConfiguration(true, false, true, true, [])));
+        self::assertSame(3, $this->service($tenants, $availability, serviceSelectionEnabled: false)->totalSteps(new PublicBookingFormConfiguration(false, false, true, true, [])));
     }
 
     private function service(

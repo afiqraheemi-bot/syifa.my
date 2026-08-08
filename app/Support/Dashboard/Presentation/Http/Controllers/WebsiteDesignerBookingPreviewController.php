@@ -51,6 +51,10 @@ final readonly class WebsiteDesignerBookingPreviewController
         $selectedDate = is_string($selectedDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate) === 1
             ? $selectedDate
             : null;
+        $selectedServiceId = $request->query('service_id', $request->old('service_id'));
+        $selectedServiceId = is_string($selectedServiceId) && $selectedServiceId !== ''
+            ? $selectedServiceId
+            : null;
         $slots = $selectedDate === null ? [] : array_values(array_filter(
             $booking->availability($tenantId, $selectedDate),
             static fn ($slot): bool => $slot->state === PublicAvailabilityState::Available,
@@ -58,8 +62,10 @@ final readonly class WebsiteDesignerBookingPreviewController
 
         return view('public-website.booking.preview', [
             'configuration' => $booking->configuration($tenantId),
+            'theme' => $booking->theme($tenantId),
             'schedule' => $schedule->read($tenantId, $authorization),
             'selectedDate' => $selectedDate,
+            'selectedServiceId' => $selectedServiceId,
             'slots' => $slots,
             'submissionToken' => $submissionTokens->issue(),
             'submitUrl' => route('dashboard.onboarding.booking-preview', $jobId),
@@ -77,6 +83,7 @@ final readonly class WebsiteDesignerBookingPreviewController
         $redirect = route('dashboard.onboarding.booking-preview', [
             'jobId' => $jobId,
             'appointment_date' => (string) $request->input('appointment_date', ''),
+            'service_id' => (string) $request->input('service_id', ''),
         ]);
         $configuration = $booking->configuration($tenantId);
         $validator = Validator::make($request->all(), [

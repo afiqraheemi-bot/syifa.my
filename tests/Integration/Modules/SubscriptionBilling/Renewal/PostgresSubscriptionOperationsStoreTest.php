@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Modules\SubscriptionBilling\Renewal;
 
-use App\Modules\Commercial\Contracts\Renewal\PreparedRenewalOffer;
+use App\Modules\AcquisitionOffer\Contracts\Renewal\PreparedRenewalOffer;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\AutoRenewCommand;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\ManualRenewSubscriptionCommand;
 use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresSubscriptionOperationsStore;

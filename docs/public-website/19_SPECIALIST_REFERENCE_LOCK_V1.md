@@ -11,6 +11,8 @@
 | **Baseline inherited from** | [Syifa Essential Reference Lock V1](13_REFERENCE_LOCK_V1.md) and, as the third derived expression, [Syifa Care & Syifa Dental Reference Lock V1](18_CARE_DENTAL_REFERENCE_LOCK_V1.md) — Specialist shares, unmodified, every frozen rendering contract, component contract, accessibility baseline, CTA hierarchy, and adaptive-rendering rule recorded there. Nothing in this record re-opens that baseline. |
 | **Certification basis** | Designed as a standalone marketing preview (`resources/js/Modules/Shared/Marketing/TemplatePreview/SyifaSpecialist.vue`), reviewed at `/templates/preview/syifa-specialist` and approved directly by the Product owner, then ported into the governed production token layer (`resources/css/public-website.css`, `[data-template='syifa-specialist']`) with zero Blade/component forks. Verified via the shared public-rendering regression suite (`RootEntryTest`, `PublicWebsiteDeliveryTest`, `SyifaEssentialPresentationArchitectureTest` — 35 tests passing) plus direct render inspection confirming the correct `data-template` selector and token application. |
 
+> **Patch (2026-08-08):** the shared dark-context focus-outline amendment recorded in [Essential's lock](13_REFERENCE_LOCK_V1.md#scope-of-the-lock) applies here too. Specialist's own `--border-strong` (`#71879a`, 3.63:1) was checked directly and already passes WCAG 1.4.11 — no token value change was needed for Specialist.
+
 ### Scope of the lock
 
 **Locked:**

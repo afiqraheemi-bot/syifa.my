@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Modules\AcquisitionOffer\Presentation\Http\Controllers\PublicCommercialOfferController;
 use App\Modules\ClinicRegistration\Presentation\Http\Controllers\ClinicRegistrationAccessController;
 use App\Modules\ClinicRegistration\Presentation\Http\Controllers\ClinicRegistrationController;
 use App\Modules\ClinicRegistration\Presentation\Http\Controllers\PublicClinicRegistrationController;
 use App\Modules\ClinicRegistration\Presentation\Http\Controllers\PublicWebsitePreferenceController;
-use App\Modules\Commercial\Presentation\Http\Controllers\PublicCommercialOfferController;
 use App\Modules\SubscriptionBilling\Presentation\Http\Controllers\PublicInitialAcquisitionReturnController;
 use Illuminate\Support\Facades\Route;
 

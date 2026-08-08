@@ -33,6 +33,7 @@ final readonly class EditableWebsiteContent
                 'secondary_color' => $branding->secondaryColor,
                 'logo_reference' => $branding->logoReference?->value,
                 'logo_display_size' => $branding->logoDisplaySize->value,
+                'whatsapp_button_style' => $branding->whatsAppButtonStyle->value,
                 'contact_email' => $branding->contactEmail,
                 'contact_phone' => $branding->contactPhone,
                 'address' => $branding->address,

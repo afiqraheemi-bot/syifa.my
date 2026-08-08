@@ -44,10 +44,10 @@ enum WhatsAppDeliveryIntent
     public function localizedMessage(): string
     {
         return match ($this) {
-            self::GeneralEnquiry => 'Hi, I would like to make an enquiry.',
-            self::Service => 'Hi, I would like to enquire about a service.',
-            self::Doctor => 'Hi, I would like to enquire about a doctor.',
-            self::Booking => 'Hi, I would like to enquire about booking an appointment.',
+            self::GeneralEnquiry => 'Hi, I have a question and would love your help.',
+            self::Service => "Hi, I'd like to find out more about one of your services.",
+            self::Doctor => "Hi, I'd like to find out more about one of your doctors.",
+            self::Booking => "Hi, I'd like some help with booking an appointment.",
         };
     }
 }

@@ -48,7 +48,7 @@ final readonly class ClinicOwnerDraftPreviewController
             'document' => $documents->make(
                 $website,
                 $previewContext,
-                new PublicUrl(route('dashboard.website.preview').'#booking'),
+                new PublicUrl(route('dashboard.website.booking-preview')),
             ),
         ])->withHeaders([
             'X-Robots-Tag' => 'noindex, nofollow, noarchive',

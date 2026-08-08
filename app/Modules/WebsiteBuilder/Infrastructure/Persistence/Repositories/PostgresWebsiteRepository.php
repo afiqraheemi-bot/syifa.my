@@ -40,6 +40,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionType;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TenantId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\WhatsAppButtonStyle;
 use App\Modules\WebsiteBuilder\Domain\Website;
 use App\Modules\WebsiteBuilder\Domain\WebsiteAsset;
 use App\Modules\WebsiteBuilder\Domain\WebsiteAssetCollection;
@@ -136,7 +137,7 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
         return [
             'id' => $record->id, 'tenant_id' => $record->tenantId, 'template_id' => $record->templateId, 'lifecycle' => $record->lifecycle,
             'clinic_name' => $record->clinicName, 'tagline' => $record->tagline, 'primary_color' => $record->primaryColor, 'secondary_color' => $record->secondaryColor,
-            'logo_reference' => $record->logoReference, 'logo_display_size' => $record->logoDisplaySize, 'favicon_reference' => $record->faviconReference, 'contact_email' => $record->contactEmail,
+            'logo_reference' => $record->logoReference, 'logo_display_size' => $record->logoDisplaySize, 'whatsapp_button_style' => $record->whatsAppButtonStyle, 'favicon_reference' => $record->faviconReference, 'contact_email' => $record->contactEmail,
             'contact_phone' => $record->contactPhone, 'address' => $record->address,
             'facebook_url' => $record->socialLinks['facebook'] ?? null, 'instagram_url' => $record->socialLinks['instagram'] ?? null,
             'youtube_url' => $record->socialLinks['youtube'] ?? null, 'tiktok_url' => $record->socialLinks['tiktok'] ?? null, 'linkedin_url' => $record->socialLinks['linkedin'] ?? null,
@@ -184,7 +185,7 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
                 $this->string($row, 'clinic_name'), $this->nullableString($row, 'tagline'), $this->string($row, 'primary_color'), $this->string($row, 'secondary_color'),
                 $this->nullableString($row, 'logo_reference'), $this->nullableString($row, 'favicon_reference'), $this->string($row, 'contact_email'),
                 $this->string($row, 'contact_phone'), $this->string($row, 'address'), $links, $this->dateTime($row->domain_created_at ?? null),
-                $this->dateTime($row->domain_updated_at ?? null), $this->integer($row, 'version'), $this->string($row, 'logo_display_size'),
+                $this->dateTime($row->domain_updated_at ?? null), $this->integer($row, 'version'), $this->string($row, 'logo_display_size'), $this->string($row, 'whatsapp_button_style'),
             ), new WebsiteSectionCollection($sections), $this->seoDomain($seoRow), new WebsiteAssetCollection($assets), $snapshot, $history, $servicesPresentation);
         } catch (InvalidWebsiteValueException $exception) {
             throw new InvalidWebsiteStorageStateException('Stored Website failed Domain validation.', 0, $exception);
@@ -454,7 +455,7 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
             'published_at' => $this->timestamp($snapshot->publishedAt), 'published_by' => $snapshot->publishedBy,
             'template_id' => $snapshot->templateId->value, 'clinic_name' => $snapshot->clinicName, 'tagline' => $snapshot->tagline,
             'primary_color' => $snapshot->primaryColor, 'secondary_color' => $snapshot->secondaryColor,
-            'logo_asset_id' => $snapshot->logoAssetId?->value, 'logo_display_size' => $snapshot->logoDisplaySize->value, 'favicon_asset_id' => $snapshot->faviconAssetId?->value,
+            'logo_asset_id' => $snapshot->logoAssetId?->value, 'logo_display_size' => $snapshot->logoDisplaySize->value, 'whatsapp_button_style' => $snapshot->whatsAppButtonStyle->value, 'favicon_asset_id' => $snapshot->faviconAssetId?->value,
             'contact_email' => $snapshot->contactEmail, 'contact_phone' => $snapshot->contactPhone, 'address' => $snapshot->address,
             'facebook_url' => $snapshot->socialLinks['facebook'] ?? null, 'instagram_url' => $snapshot->socialLinks['instagram'] ?? null,
             'youtube_url' => $snapshot->socialLinks['youtube'] ?? null, 'tiktok_url' => $snapshot->socialLinks['tiktok'] ?? null,
@@ -508,7 +509,7 @@ final readonly class PostgresWebsiteRepository implements WebsiteRepositoryInter
             $this->string($row, 'meta_description'), $this->nullableString($row, 'meta_keywords'), $this->nullableString($row, 'canonical_url'),
             RobotsDirective::fromStored($this->string($row, 'robots_directive')), $this->string($row, 'open_graph_title'),
             $this->string($row, 'open_graph_description'), $this->assetId($row, 'open_graph_image_asset_id'), $this->boolean($row, 'indexing_enabled'),
-            $this->string($row, 'content_fingerprint'), $sections, $assets, $sectionContents, LogoDisplaySize::fromStored($this->string($row, 'logo_display_size')),
+            $this->string($row, 'content_fingerprint'), $sections, $assets, $sectionContents, LogoDisplaySize::fromStored($this->string($row, 'logo_display_size')), WhatsAppButtonStyle::fromStored($this->string($row, 'whatsapp_button_style')),
         );
     }
 

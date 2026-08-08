@@ -29,6 +29,7 @@ use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\Pagination\Pag
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanOfferingData;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Exceptions\StaleCommercialCatalogueWriteException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase as LaravelTestCase;
 
 final class CommercialCatalogueHttpDeliveryTest extends LaravelTestCase
@@ -50,9 +51,7 @@ final class CommercialCatalogueHttpDeliveryTest extends LaravelTestCase
         $this->getJson(self::BASE.'/plans/not-a-uuid')->assertNotFound();
     }
 
-    /**
-     * @dataProvider collectionRoutes
-     */
+    #[DataProvider('collectionRoutes')]
     public function test_collection_routes_serialize_pagination_envelopes_when_authorized(string $uri, string $serviceClass, object $service, array $expectedData): void
     {
         $this->allowAuthorization();
@@ -69,9 +68,7 @@ final class CommercialCatalogueHttpDeliveryTest extends LaravelTestCase
         self::assertMatchesRegularExpression('/^[0-9a-f-]{36}$/i', (string) $response->json('correlation_id'));
     }
 
-    /**
-     * @dataProvider storeRoutes
-     */
+    #[DataProvider('storeRoutes')]
     public function test_store_routes_expose_versioned_resource_envelopes_when_authorized(string $uri, string $serviceClass, object $service, array $payload, string $resourceKey): void
     {
         $this->allowAuthorization();

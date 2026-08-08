@@ -115,6 +115,7 @@ final readonly class PreviewWebsiteDraftService
                 $branding->logoReference?->value,
                 $branding->faviconReference?->value,
                 $branding->logoDisplaySize->value,
+                $branding->whatsAppButtonStyle->value,
             ),
             new SeoRenderModel(
                 $website->seo()->metaTitle(),

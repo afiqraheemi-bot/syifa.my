@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\SubscriptionBilling\Application\Payment;
 
-use App\Modules\Commercial\Contracts\Checkout\CommercialOfferCheckoutInterface;
+use App\Modules\AcquisitionOffer\Contracts\Checkout\CommercialOfferCheckoutInterface;
 use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\CommercialOfferUnavailableForPaymentException;
 use App\Modules\SubscriptionBilling\Application\Payment\Exceptions\UnauthorizedPaymentInitiationException;
 use App\Modules\SubscriptionBilling\Contracts\Payment\CreateInitialAcquisitionPaymentCommand;

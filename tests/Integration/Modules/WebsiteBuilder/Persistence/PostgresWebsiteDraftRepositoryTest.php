@@ -124,6 +124,7 @@ final class PostgresWebsiteDraftRepositoryTest extends TestCase
             '2026_08_26_000001_create_website_draft_contents.php',
             '2026_08_27_000001_create_website_public_hosts.php',
             '2026_09_06_000001_add_logo_display_size_to_websites.php',
+            '2026_09_08_000001_add_whatsapp_button_style_to_websites.php',
         ] as $file) {
             $migration = require base_path('database/migrations/website_builder/'.$file);
             self::assertIsObject($migration);

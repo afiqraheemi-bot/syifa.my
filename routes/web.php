@@ -32,8 +32,10 @@ use App\Support\Dashboard\Presentation\Http\Controllers\AuthenticatedDashboardCo
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDateOverrideController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingScheduleController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBusinessHoursController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerContactSettingsController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerDraftPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerServiceSetupController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerSubscriptionController;
@@ -327,6 +329,9 @@ Route::post('/dashboard/website/approval', ClinicOwnerWebsiteApprovalController:
 Route::get('/dashboard/website/preview', ClinicOwnerDraftPreviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.preview');
+Route::match(['get', 'post'], '/dashboard/website/preview/booking', ClinicOwnerBookingPreviewController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website.booking-preview');
 Route::patch('/dashboard/website/onboarding-tasks/{jobId}/{taskId}', OnboardingTaskController::class)
     ->whereUuid(['jobId', 'taskId'])
     ->middleware('authorize.context:clinic_owner,clinic_owner')
@@ -337,6 +342,9 @@ Route::get('/dashboard/website/content', ClinicOwnerWebsiteContentOverviewContro
 Route::patch('/dashboard/website/content', [ClinicOwnerWebsiteContentOverviewController::class, 'update'])
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.content.update');
+Route::patch('/dashboard/website/contact', ClinicOwnerContactSettingsController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website.contact.update');
 Route::get('/api/v1/clinic-owner/website-draft', [ClinicOwnerWebsiteContentOverviewController::class, 'showDraft'])
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('clinic-owner.website-draft.show');

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Modules\AcquisitionOffer\Infrastructure\AcquisitionOfferServiceProvider;
 use App\Modules\Booking\Infrastructure\BookingServiceProvider;
 use App\Modules\ClinicRegistration\Infrastructure\ClinicRegistrationServiceProvider;
-use App\Modules\Commercial\Infrastructure\CommercialServiceProvider;
 use App\Modules\Notification\Infrastructure\NotificationServiceProvider;
 use App\Modules\Onboarding\Infrastructure\OnboardingServiceProvider;
 use App\Modules\PlatformAdministration\Infrastructure\PlatformAdministrationServiceProvider;
@@ -23,7 +23,7 @@ return [
     OnboardingServiceProvider::class,
     NotificationServiceProvider::class,
     ClinicRegistrationServiceProvider::class,
-    CommercialServiceProvider::class,
+    AcquisitionOfferServiceProvider::class,
     PlatformAdministrationServiceProvider::class,
     ReportingAnalyticsServiceProvider::class,
     SubscriptionBillingServiceProvider::class,

@@ -21,6 +21,7 @@ final readonly class WebsiteBranding
         public string $address,
         public array $socialLinks = [],
         public LogoDisplaySize $logoDisplaySize = LogoDisplaySize::Standard,
+        public WhatsAppButtonStyle $whatsAppButtonStyle = WhatsAppButtonStyle::Pill,
     ) {
         if (trim($clinicName) === '' || mb_strlen($clinicName) > 200) {
             throw new InvalidWebsiteValueException('Clinic name is invalid.');

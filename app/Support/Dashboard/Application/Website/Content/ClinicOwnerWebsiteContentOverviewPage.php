@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support\Dashboard\Application\Website\Content;
 
+use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileService;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
+use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ActiveServiceReferenceReadInterface;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Support\Authorization\Application\AuthorizationContext;
@@ -19,6 +21,8 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
         private WebsiteContentOverviewProvider $content,
         private ManageWebsiteContentService $editableContent,
         private ActiveServiceReferenceReadInterface $activeServices,
+        private WebsitePublicAddressReadInterface $publicAddresses,
+        private UpdateClinicContactProfileService $contactProfile,
     ) {}
 
     public function fromTrustedContext(mixed $context): DashboardPageView
@@ -35,6 +39,11 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
             $context->tenantId,
             new WebsiteAuthorizationContext($context->identityId, $context->role, actorTenantId: $context->tenantId),
         )->toArray();
+        $publicAddress = $this->publicAddresses->forTenant($context->tenantId);
+        $contactProfile = $this->contactProfile->read(
+            $context->tenantId,
+            new WebsiteAuthorizationContext($context->identityId, $context->role, actorTenantId: $context->tenantId),
+        );
 
         return new DashboardPageView('TenantManagement/Website/ClinicOwnerWebsiteContentOverview', [
             'navigation' => ClinicOwnerDashboardNavigation::items('content'),
@@ -57,6 +66,12 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
             'canChangeTemplate' => (int) $editable['published_version'] === 0,
             'updateUrl' => route('dashboard.website.content.update'),
             'previewUrl' => route('dashboard.website.preview'),
+            'publishedWebsite' => $publicAddress !== null && $publicAddress->active
+                ? [
+                    'url' => $publicAddress->url,
+                    'host' => $publicAddress->host,
+                ]
+                : null,
             'websiteDraft' => [
                 'loadUrl' => route('clinic-owner.website-draft.show'),
                 'updateUrl' => route('clinic-owner.website-draft.update'),
@@ -69,6 +84,8 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
                 'assistUrl' => route('clinic-owner.syifa-ai.assist'),
                 'imageAssistanceEnabled' => false,
             ],
+            'contactProfile' => $contactProfile->toArray(),
+            'contactUpdateUrl' => route('dashboard.website.contact.update'),
         ]);
     }
 }

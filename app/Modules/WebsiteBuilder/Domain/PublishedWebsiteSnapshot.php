@@ -11,6 +11,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\PublicationId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\WhatsAppButtonStyle;
 use DateTimeImmutable;
 
 final readonly class PublishedWebsiteSnapshot
@@ -53,6 +54,7 @@ final readonly class PublishedWebsiteSnapshot
         public array $assets,
         public array $sectionContents,
         public LogoDisplaySize $logoDisplaySize = LogoDisplaySize::Standard,
+        public WhatsAppButtonStyle $whatsAppButtonStyle = WhatsAppButtonStyle::Pill,
     ) {
         if ($publishedVersion < 1 || $sourceWebsiteVersion < 0 || preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $publishedBy) !== 1 || preg_match('/^[0-9a-f]{64}$/', $contentFingerprint) !== 1) {
             throw new InvalidWebsiteValueException('Published Website Snapshot state is invalid.');

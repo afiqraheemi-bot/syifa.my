@@ -39,6 +39,8 @@ const form = useForm({
     template_id: props.websiteSetup.configuration.template_id,
     branding: {
         ...props.websiteSetup.configuration.branding,
+        whatsapp_button_style:
+            props.websiteSetup.configuration.branding.whatsapp_button_style ?? 'pill',
         social_links: Object.fromEntries(
             socialChannels.map((channel) => [
                 channel,
@@ -982,10 +984,20 @@ async function saveFaq() {
 async function saveBookingCta() {
     if (bookingCtaSaving.value) return;
 
-    bookingCtaSaving.value = true;
     bookingCtaSuccess.value = '';
     bookingCtaError.value = '';
     bookingCtaConflict.value = false;
+    if (
+        bookingCtaForm.value.heading.trim() === '' ||
+        bookingCtaForm.value.description.trim() === '' ||
+        bookingCtaForm.value.button_label.trim() === ''
+    ) {
+        bookingCtaError.value =
+            'Complete the heading, description and button label before saving this section.';
+        return;
+    }
+
+    bookingCtaSaving.value = true;
     const sections = draft.value.sections.map((section) =>
         section.type === 'BOOKING_CTA'
             ? {
@@ -1697,7 +1709,7 @@ function completionEvidence(task) {
                             : 'Website was not submitted for review'
                     }}
                 </p>
-                <p class="mt-1">{{ reviewError }}</p>
+                <p class="mt-1 whitespace-pre-line">{{ reviewError }}</p>
             </div>
             <div
                 v-if="reviewSuccess"
@@ -1723,33 +1735,64 @@ function completionEvidence(task) {
             >
                 {{ publishSuccess }}
             </div>
-            <div class="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
-                    <p class="font-bold">Current Draft</p>
-                    <p class="mt-1 leading-6">
-                        Preview shows the designer’s latest saved progress immediately. It is not
-                        visible to the public.
+            <div class="mt-5 grid gap-3 text-sm lg:grid-cols-2">
+                <div
+                    class="flex flex-col rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950"
+                >
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="font-bold">Private draft</p>
+                        <span
+                            class="rounded-full bg-white/80 px-2.5 py-1 text-xs font-bold uppercase tracking-wide"
+                        >
+                            Latest saved
+                        </span>
+                    </div>
+                    <p class="mt-2 flex-1 leading-6">
+                        Your current working version. Only the assigned Website Designer can open
+                        this protected preview.
                     </p>
+                    <button
+                        type="button"
+                        class="mt-4 inline-flex min-h-11 w-fit items-center rounded-lg border border-amber-700 px-4 py-2 font-semibold text-amber-950 transition hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                        :disabled="previewOpening"
+                        @click="openDraftPreview"
+                    >
+                        {{ previewOpening ? 'Opening draft…' : 'Preview private draft' }}
+                    </button>
                 </div>
                 <div
-                    class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"
+                    class="flex flex-col rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"
                 >
-                    <p class="font-bold">Published Website</p>
-                    <p class="mt-1 leading-6">
-                        The live Website remains on the last approved publication until the current
-                        draft is reviewed and published.
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="font-bold">Live website</p>
+                        <span
+                            class="rounded-full bg-white/80 px-2.5 py-1 text-xs font-bold uppercase tracking-wide"
+                        >
+                            {{ websiteAddress?.active ? 'Published' : 'Not live' }}
+                        </span>
+                    </div>
+                    <p class="mt-2 flex-1 leading-6">
+                        The public version at
+                        <span class="font-semibold">{{
+                            websiteAddress?.host ?? 'the clinic address'
+                        }}</span>
+                        changes only after an approved publication.
+                    </p>
+                    <a
+                        v-if="websiteAddress?.active"
+                        :href="websiteAddress.url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="mt-4 inline-flex min-h-11 w-fit items-center rounded-lg border border-emerald-700 px-4 py-2 font-semibold text-emerald-900 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+                    >
+                        Open live website
+                    </a>
+                    <p v-else class="mt-4 font-semibold text-emerald-900">
+                        Publish the approved draft to activate the public website.
                     </p>
                 </div>
             </div>
             <div class="mt-5 flex flex-wrap gap-3">
-                <button
-                    type="button"
-                    class="min-h-11 rounded-lg border border-emerald-700 px-5 py-3 font-semibold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-                    :disabled="previewOpening"
-                    @click="openDraftPreview"
-                >
-                    {{ previewOpening ? 'Opening draft…' : 'Preview Current Draft' }}
-                </button>
                 <button
                     v-if="websiteSetup.canSubmitForReview && !reviewCompleted"
                     type="button"
@@ -1808,15 +1851,6 @@ function completionEvidence(task) {
                             {{ websiteAddress.active ? 'Live' : 'Preparing' }}
                         </span>
                     </div>
-                    <a
-                        v-if="websiteAddress?.active"
-                        :href="websiteAddress.url"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="inline-flex min-h-11 items-center rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
-                    >
-                        Open Published Website
-                    </a>
                 </div>
                 <form
                     v-if="websiteSetup.canReserveAddress"
@@ -2682,8 +2716,12 @@ function completionEvidence(task) {
                                     class="size-4 accent-emerald-700"
                                     :disabled="testimonialsSaving"
                                 />
-                                Featured and eligible to render after a future publish
+                                Display this testimonial on the Website
                             </label>
+                            <p class="text-sm text-slate-600 md:col-span-2">
+                                At least one testimonial must be selected while this section is
+                                enabled.
+                            </p>
                         </div>
                         <div class="mt-4 flex flex-wrap gap-2">
                             <button
@@ -2999,7 +3037,7 @@ function completionEvidence(task) {
         <DesignerWorkspacePanel
             id="booking-cta-editor"
             title="Booking call to action"
-            description="Maintain the Website message that guides patients to the existing Booking flow."
+            description="Complete all three fields to guide patients into the existing Booking flow."
         >
             <form class="space-y-6" novalidate @submit.prevent="saveBookingCta">
                 <div class="grid gap-5 md:grid-cols-2">
@@ -3009,6 +3047,7 @@ function completionEvidence(task) {
                             v-model="bookingCtaForm.heading"
                             :class="inputClass"
                             maxlength="160"
+                            required
                             :disabled="bookingCtaSaving"
                         />
                     </label>
@@ -3019,6 +3058,7 @@ function completionEvidence(task) {
                             :class="inputClass"
                             rows="4"
                             maxlength="1000"
+                            required
                             :disabled="bookingCtaSaving"
                         />
                     </label>
@@ -3028,6 +3068,7 @@ function completionEvidence(task) {
                             v-model="bookingCtaForm.button_label"
                             :class="inputClass"
                             maxlength="80"
+                            required
                             :disabled="bookingCtaSaving"
                         />
                     </label>

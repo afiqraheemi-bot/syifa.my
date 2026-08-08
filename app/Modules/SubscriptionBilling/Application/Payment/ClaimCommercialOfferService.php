@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\SubscriptionBilling\Application\Payment;
 
-use App\Modules\Commercial\Contracts\Checkout\CommercialOfferCheckoutInterface;
-use App\Modules\Commercial\Contracts\Commands\ClaimCommercialOfferCommand;
-use App\Modules\Commercial\Contracts\Data\CommercialOfferData;
+use App\Modules\AcquisitionOffer\Contracts\Checkout\CommercialOfferCheckoutInterface;
+use App\Modules\AcquisitionOffer\Contracts\Commands\ClaimCommercialOfferCommand;
+use App\Modules\AcquisitionOffer\Contracts\Data\CommercialOfferData;
 use DateTimeImmutable;
 
 final readonly class ClaimCommercialOfferService

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\WebsiteBuilder\Application\Delivery;
 
+use App\Modules\WebsiteBuilder\Application\Delivery\ViewModels\BookingThemeViewModel;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\BookingSubmissionGatewayInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicAvailabilityReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicAvailabilitySlot;
@@ -14,6 +15,7 @@ use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfiguration
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingInfrastructureException;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingSubmission;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingValidationException;
+use App\Modules\WebsiteBuilder\Contracts\Queries\WebsiteReadInterface;
 
 /**
  * Narrow application boundary for the assignment-protected booking preview.
@@ -26,11 +28,23 @@ final readonly class ProtectedBookingPreviewService
         private PublicAvailabilityReaderInterface $availability,
         private BookingSubmissionGatewayInterface $submissions,
         private PublicBookingFormConfigurationReaderInterface $formConfigurations,
+        private WebsiteReadInterface $websites,
     ) {}
 
     public function configuration(string $trustedTenantId): PublicBookingFormConfiguration
     {
         return $this->formConfigurations->forTrustedTenant($trustedTenantId);
+    }
+
+    public function theme(string $trustedTenantId): BookingThemeViewModel
+    {
+        $website = $this->websites->detail($trustedTenantId);
+
+        return (new BookingThemeViewModelFactory)->make(
+            $website?->templateId,
+            $website?->primaryColor,
+            $website?->secondaryColor,
+        );
     }
 
     /** @return list<PublicAvailabilitySlot> */

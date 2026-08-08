@@ -10,6 +10,7 @@
                 @if ($actions->whatsApp !== null)<a class="contact-action" href="{{ $actions->whatsApp->value }}"><x-public.icon name="message" /><span class="contact-action__copy"><span>WhatsApp</span><strong>{{ $section->whatsAppNumber }}</strong></span></a>@endif
                 @if ($actions->directions !== null)<a class="button button--secondary" href="{{ $actions->directions->value }}" rel="noopener noreferrer">Get directions <x-public.icon name="external" /></a>@endif
             </div>
+            @if ($actions->whatsApp !== null)<p class="contact-actions__hint">Have a quick question before booking? Message us on WhatsApp — we're happy to help.</p>@endif
             <a class="button button--secondary" href="{{ $bookingUrl->value }}">Book an appointment</a>
         </div>
         <div class="contact-layout__details">

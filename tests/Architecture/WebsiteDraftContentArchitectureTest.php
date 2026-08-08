@@ -53,6 +53,41 @@ final class WebsiteDraftContentArchitectureTest extends TestCase
         self::assertStringNotContainsString('publishHero', $component);
     }
 
+    public function test_clinic_owner_draft_save_is_change_aware_and_rejects_a_mismatched_response(): void
+    {
+        $draftEditor = $this->source(
+            'resources/js/Modules/TenantManagement/Website/ClinicOwnerDraftSections.vue',
+        );
+        $contentPage = $this->source(
+            'resources/js/Modules/TenantManagement/Website/ClinicOwnerWebsiteContentOverview.vue',
+        );
+
+        self::assertStringContainsString('hasUnsavedChanges', $draftEditor);
+        self::assertStringContainsString('savedDraftMatchesSubmission', $draftEditor);
+        self::assertStringContainsString('JSON.stringify(submission)', $draftEditor);
+        self::assertStringContainsString('Your form is still intact', $draftEditor);
+        self::assertStringContainsString(
+            "defineEmits(['state', 'website-version'])",
+            $draftEditor,
+        );
+        self::assertStringContainsString('@uploaded="synchronizeWebsiteVersion"', $draftEditor);
+        self::assertStringNotContainsString('<form', $contentPage);
+        self::assertStringContainsString('@click="saveAll"', $contentPage);
+        self::assertStringContainsString('@website-version="synchronizeWebsiteVersion"', $contentPage);
+        self::assertStringContainsString('hasConfigurationChanges', $contentPage);
+        self::assertStringContainsString(
+            'const cloneData = (value) => JSON.parse(JSON.stringify(value));',
+            $draftEditor,
+        );
+        self::assertStringNotContainsString(
+            'structuredClone(toRaw(value))',
+            $draftEditor,
+        );
+        self::assertStringContainsString('branding: form.branding', $contentPage);
+        self::assertStringContainsString('seo: form.seo', $contentPage);
+        self::assertStringContainsString('sections: form.sections', $contentPage);
+    }
+
     public function test_about_editor_uses_only_the_existing_about_domain_fields(): void
     {
         $component = $this->source(
@@ -237,7 +272,8 @@ final class WebsiteDraftContentArchitectureTest extends TestCase
         self::assertStringContainsString('dashboard.onboarding.preview', $routes);
         self::assertStringContainsString('noindex,nofollow,noarchive', $view);
         self::assertStringNotContainsString('rel="canonical"', $view);
-        self::assertStringContainsString('Preview Current Draft', $component);
+        self::assertStringContainsString('Preview private draft', $component);
+        self::assertStringContainsString('Open live website', $component);
         self::assertStringContainsString("window.open('', '_blank')", $component);
     }
 

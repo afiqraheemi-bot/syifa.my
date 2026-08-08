@@ -80,7 +80,11 @@ final class ReadyForReviewServiceTest extends TestCase
         try {
             $this->service($repository, $this->draft(false))->handle($this->command());
             self::fail('Expected incomplete readiness evidence to be rejected.');
-        } catch (InvalidWebsiteValueException) {
+        } catch (InvalidWebsiteValueException $exception) {
+            self::assertStringContainsString(
+                'Homepage needs a headline before it can be reviewed.',
+                $exception->getMessage(),
+            );
             self::assertSame(WebsiteLifecycle::Draft, $website->lifecycle());
             self::assertSame(0, $repository->saves);
         }

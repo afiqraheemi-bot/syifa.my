@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Modules\SubscriptionBilling\Payment;
 
-use App\Modules\Commercial\Application\Audit\CommercialOfferAuditTrail;
-use App\Modules\Commercial\Application\ClaimCommercialOfferService as CommercialClaimCommercialOfferService;
-use App\Modules\Commercial\Application\CommercialOfferDataAssembler;
-use App\Modules\Commercial\Application\TrustedCommercialOfferConsumers;
-use App\Modules\Commercial\Contracts\Events\CommercialOfferEventPublisherInterface;
-use App\Modules\Commercial\Domain\CommercialOffer;
-use App\Modules\Commercial\Domain\ValueObjects\CheckoutSnapshot;
-use App\Modules\Commercial\Domain\ValueObjects\ClinicRegistrationReference;
-use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferId;
-use App\Modules\Commercial\Domain\ValueObjects\CommercialOfferLineItem;
-use App\Modules\Commercial\Domain\ValueObjects\OfferExpiry;
-use App\Modules\Commercial\Domain\ValueObjects\PlatformIdentityReference;
-use App\Modules\Commercial\Domain\ValueObjects\PriceSnapshot;
-use App\Modules\Commercial\Domain\ValueObjects\TenantId as CommercialTenantId;
-use App\Modules\Commercial\Infrastructure\Persistence\Mappers\CommercialOfferPersistenceMapper;
-use App\Modules\Commercial\Infrastructure\Persistence\Repositories\PostgresCommercialOfferRepository;
-use App\Modules\Commercial\Infrastructure\Transactions\PostgresCommercialTransaction;
+use App\Modules\AcquisitionOffer\Application\Audit\CommercialOfferAuditTrail;
+use App\Modules\AcquisitionOffer\Application\ClaimCommercialOfferService as CommercialClaimCommercialOfferService;
+use App\Modules\AcquisitionOffer\Application\CommercialOfferDataAssembler;
+use App\Modules\AcquisitionOffer\Application\TrustedCommercialOfferConsumers;
+use App\Modules\AcquisitionOffer\Contracts\Events\CommercialOfferEventPublisherInterface;
+use App\Modules\AcquisitionOffer\Domain\CommercialOffer;
+use App\Modules\AcquisitionOffer\Domain\ValueObjects\CheckoutSnapshot;
+use App\Modules\AcquisitionOffer\Domain\ValueObjects\ClinicRegistrationReference;
+use App\Modules\AcquisitionOffer\Domain\ValueObjects\CommercialOfferId;
+use App\Modules\AcquisitionOffer\Domain\ValueObjects\CommercialOfferLineItem;
+use App\Modules\AcquisitionOffer\Domain\ValueObjects\OfferExpiry;
+use App\Modules\AcquisitionOffer\Domain\ValueObjects\PlatformIdentityReference;
+use App\Modules\AcquisitionOffer\Domain\ValueObjects\PriceSnapshot;
+use App\Modules\AcquisitionOffer\Domain\ValueObjects\TenantId as CommercialTenantId;
+use App\Modules\AcquisitionOffer\Infrastructure\Persistence\Mappers\CommercialOfferPersistenceMapper;
+use App\Modules\AcquisitionOffer\Infrastructure\Persistence\Repositories\PostgresCommercialOfferRepository;
+use App\Modules\AcquisitionOffer\Infrastructure\Transactions\PostgresCommercialTransaction;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryData;
 use App\Modules\PlatformAdministration\Contracts\AuditEntry\AuditEntryRecorderInterface;
 use App\Modules\PlatformAdministration\Contracts\Authentication\PlatformPrincipal;
@@ -450,12 +450,12 @@ final class PostgresPaymentRuntimeVerificationTest extends TestCase
     private function migrate(): void
     {
         foreach ([
-            'database/migrations/commercial/2026_07_21_000001_create_commercial_offer_tables.php',
+            'database/migrations/acquisition_offer/2026_07_21_000001_create_commercial_offer_tables.php',
             'database/migrations/subscription_billing/2026_07_21_000002_create_payment_core_tables.php',
-            'database/migrations/commercial/2026_07_26_000001_add_tenant_id_to_commercial_offers.php',
+            'database/migrations/acquisition_offer/2026_07_26_000001_add_tenant_id_to_commercial_offers.php',
             'database/migrations/subscription_billing/2026_07_26_000001_add_tenant_id_to_payments.php',
-            'database/migrations/commercial/2026_07_30_000001_add_renewal_offer_provenance.php',
-            'database/migrations/commercial/2026_08_28_000001_correct_initial_commercial_offer_ownership.php',
+            'database/migrations/acquisition_offer/2026_07_30_000001_add_renewal_offer_provenance.php',
+            'database/migrations/acquisition_offer/2026_08_28_000001_correct_initial_commercial_offer_ownership.php',
             'database/migrations/subscription_billing/2026_08_29_000001_support_initial_acquisition_payment_ownership.php',
             'database/migrations/subscription_billing/2026_08_30_000001_create_initial_acquisition_checkout_sessions.php',
         ] as $path) {

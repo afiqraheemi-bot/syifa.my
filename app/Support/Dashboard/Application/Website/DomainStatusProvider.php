@@ -34,7 +34,7 @@ final readonly class DomainStatusProvider implements DashboardSectionProviderInt
                 'detail' => $address->host,
                 'tone' => $address->active ? 'positive' : 'neutral',
                 'url' => $address->active ? $address->url : null,
-                'actionLabel' => $address->active ? 'Open Published Website' : null,
+                'actionLabel' => $address->active ? 'Open live Website' : null,
             ]);
     }
 }

@@ -11,6 +11,8 @@
 | **Baseline inherited from** | [Syifa Essential Reference Lock V1](13_REFERENCE_LOCK_V1.md) — both templates share, unmodified, every frozen rendering contract, component contract, accessibility baseline, CTA hierarchy, and adaptive-rendering rule recorded there. Nothing in this record re-opens that baseline. |
 | **Certification basis** | Each template was designed as a standalone marketing preview (`resources/js/Modules/Shared/Marketing/TemplatePreview/SyifaDental.vue`, `SyifaCare.vue`), iterated against direct Product-owner review (`/templates/preview/{slug}`) until approved, then ported into the governed production token layer (`resources/css/public-website.css`, `[data-template='syifa-dental']` / `[data-template='syifa-care']`) with zero Blade/component forks. Verified via the shared public-rendering regression suite (`RootEntryTest`, `PublicWebsiteDeliveryTest`, `SyifaEssentialPresentationArchitectureTest`) — 35 tests passing for Dental's introduction, 23 for Care's — plus direct render inspection confirming the correct `data-template` selector and token application. |
 
+> **Patch (2026-08-08):** the shared dark-context focus-outline amendment recorded in [Essential's lock](13_REFERENCE_LOCK_V1.md#scope-of-the-lock) (`.skip-link`, `.site-footer`, `.public-section--contact`, `.booking-panel` now use each template's own `accent-inverse` for the focus outline color, since the platform `--focus-ring` measured under 3:1 against dark surfaces) applies to both templates here. Dental's `--border-strong` (`#7599a6`, 3.06:1) was checked and already passes; no value change was needed for Dental. Care's `--text-muted` and `--border-strong` values below were both corrected — see their inline Patch notes.
+
 ### Scope of the lock
 
 **Locked:**
@@ -42,10 +44,10 @@ Frozen at the semantic-role level, same as Syifa Essential — a future implemen
 |---|---|
 | `surface-primary` / `surface-subtle` / `surface-emphasis` | `#ffffff` / `#eef6f0` / `#ddf0c3` |
 | `surface-inverse` / `surface-footer` | `#0b2a1f` / `#0b2a1f` |
-| `text-primary` / `text-secondary` / `text-muted` | `#122019` / `#47564c` / `#6b7c70` |
+| `text-primary` / `text-secondary` / `text-muted` | `#122019` / `#47564c` / `#66766b` (Patch, 2026-08-08 — was `#6b7c70`, which measured 4.43:1 against `surface-primary` and failed WCAG 2.1 AA's 4.5:1 for normal-size text at its actual consumers, e.g. `.brand__copy span` at 0.78rem; `#66766b` measures 4.81:1, same hue family, meaning unchanged) |
 | `action-primary` / `-hover` / `-active` | `#0b2a1f` / `#0f3d2e` / `#061a12` |
 | `action-secondary` / `-hover` | `#eef6f0` / `#ddf0c3` |
-| `border-default` / `border-strong` / `border-subtle` | `#d7e4da` / `#9ab5a3` / `#e6f0e9` |
+| `border-default` / `border-strong` / `border-subtle` | `#d7e4da` / `#719684` (Patch, 2026-08-08 — was `#9ab5a3`, which measured 2.21:1 against `surface-primary` and failed WCAG 1.4.11's 3:1 non-text minimum at its actual consumers, e.g. `.button--secondary`'s border and the booking-flow consent checkbox's border; `#719684` measures 3.28:1, same hue family, meaning unchanged) / `#e6f0e9` |
 | `brand-primary` / `-hover` / `-active` | Byte-identical fallback of `action-primary`/`-hover`/`-active` above, per the same rule as Essential's Brand row — `BrandTokenResolver` remains the only tenant-facing override |
 | `brand-secondary` / `brand-on-secondary` | `#ddf0c3` / `#122019` |
 | `radius-small` / `-medium` / `-large` | `0.875rem` / `1.5rem` / `2.5rem` |

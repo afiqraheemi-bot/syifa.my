@@ -40,6 +40,7 @@ final readonly class SuccessController
 
         return view('public-website.booking.success', [
             'viewModel' => $this->delivery->successViewModel($context, $data),
+            'theme' => $this->delivery->themeViewModel($context),
         ]);
     }
 }

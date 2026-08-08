@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\SubscriptionBilling\Application\Payment;
 
+use App\Modules\AcquisitionOffer\Application\Exceptions\ClinicRegistrationOwnershipMismatchException;
+use App\Modules\AcquisitionOffer\Application\PrepareCommercialOfferService;
+use App\Modules\AcquisitionOffer\Contracts\Commands\PrepareInitialCommercialOfferCommand;
 use App\Modules\ClinicRegistration\Contracts\Checkout\PublicInitialAcquisitionCheckoutInterface;
 use App\Modules\ClinicRegistration\Contracts\Checkout\PublicInitialAcquisitionCheckoutResult;
 use App\Modules\ClinicRegistration\Contracts\Checkout\StartPublicInitialAcquisitionCheckoutCommand;
 use App\Modules\ClinicRegistration\Contracts\Queries\ClinicRegistrationQueryInterface;
-use App\Modules\Commercial\Application\Exceptions\ClinicRegistrationOwnershipMismatchException;
-use App\Modules\Commercial\Application\PrepareCommercialOfferService;
-use App\Modules\Commercial\Contracts\Commands\PrepareInitialCommercialOfferCommand;
 use App\Modules\SubscriptionBilling\Contracts\Payment\CreateInitialAcquisitionPaymentCommand;
 use App\Modules\SubscriptionBilling\Contracts\Payment\StartInitialAcquisitionPaymentSessionCommand;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\PaymentSessionUnavailable;

@@ -578,8 +578,20 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
             'ContentHealthSummary',
             ':sections="contentSections"',
             'createDashboardNavigation(props.navigation)',
+            'websiteTemplateThemeStyle(form.template_id)',
         ] as $contract) {
             self::assertStringContainsString($contract, $page);
+        }
+
+        $templateTheme = $this->source('../Website/templateTheme.js');
+        foreach ([
+            'SYIFA_ESSENTIAL',
+            'SYIFA_CARE',
+            'SYIFA_DENTAL',
+            'SYIFA_AESTHETIC',
+            'SYIFA_SPECIALIST',
+        ] as $templateId) {
+            self::assertStringContainsString($templateId, $templateTheme);
         }
         foreach ([
             'AuthorizationService',

@@ -36,5 +36,6 @@ final readonly class UpdateWebsiteContentCommand
         public ?string $templateId = null,
         public ?string $logoReference = null,
         public string $logoDisplaySize = 'standard',
+        public string $whatsAppButtonStyle = 'pill',
     ) {}
 }

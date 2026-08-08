@@ -1,0 +1,113 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+# First real run of this workflow will likely need small adjustments (exact
+# PHP/Node versions, migration path, DSN format) — it has not been executed
+# against live GitHub Actions infrastructure yet. Treat the first push as a
+# validation pass, not a guarantee.
+jobs:
+    backend:
+        name: Backend (PHPUnit incl. integration, PHPStan, Pint)
+        runs-on: ubuntu-latest
+
+        services:
+            postgres:
+                image: postgres:16
+                env:
+                    POSTGRES_USER: syifa
+                    POSTGRES_PASSWORD: syifa_ci_password
+                    POSTGRES_DB: syifa
+                ports: ['5432:5432']
+                options: >-
+                    --health-cmd "pg_isready -U syifa"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+            redis:
+                image: redis:7
+                ports: ['6379:6379']
+                options: >-
+                    --health-cmd "redis-cli ping"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+        env:
+            DB_CONNECTION: pgsql
+            DB_HOST: 127.0.0.1
+            DB_PORT: 5432
+            DB_DATABASE: syifa
+            DB_USERNAME: syifa
+            DB_PASSWORD: syifa_ci_password
+            REDIS_HOST: 127.0.0.1
+            REDIS_PORT: 6379
+            # Every module's Integration suite is skipped unless its own DSN env
+            # var is set (see tests/Integration/**), so all eleven point at the
+            # same CI Postgres instance/database.
+            BOOKING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+            CLINIC_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+            CLINIC_REGISTRATION_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+            COMMERCIAL_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+            ONBOARDING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+            PLATFORM_ADMINISTRATION_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+            PUBLIC_BOOKING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+            RELEASE_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+            SUBSCRIPTION_BILLING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+            TENANT_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+            WEBSITE_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.5'
+                  extensions: pgsql, redis, mbstring, bcmath
+                  coverage: none
+
+            - name: Install Composer dependencies
+              run: composer install --prefer-dist --no-progress --no-interaction
+
+            - name: Prepare environment
+              run: |
+                  cp .env.example .env
+                  php artisan key:generate --ansi
+
+            - name: Run migrations against the CI database
+              run: php artisan migrate --force
+
+            - name: Pint (formatting)
+              run: vendor/bin/pint --test
+
+            - name: PHPStan / Larastan (level 8)
+              run: composer analyse
+
+            - name: PHPUnit (Unit, Feature, Integration, Contract, Architecture)
+              run: vendor/bin/phpunit
+
+    frontend:
+        name: Frontend (ESLint, Prettier, build)
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: npm
+
+            - name: Install npm dependencies
+              run: npm ci
+
+            - name: ESLint
+              run: npx eslint resources/js --ext .vue,.js
+
+            - name: Prettier (check only)
+              run: npx prettier --check .
+
+            - name: Vite build
+              run: npx vite build --mode production

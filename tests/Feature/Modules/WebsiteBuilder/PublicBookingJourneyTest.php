@@ -90,29 +90,38 @@ final class PublicBookingJourneyTest extends TestCase
         $this->app->instance(BookingSubmissionGatewayInterface::class, new FakeBookingSubmissionGateway);
     }
 
-    public function test_the_full_journey_from_landing_to_success_completes(): void
+    public function test_the_full_journey_from_website_cta_to_success_completes(): void
     {
         $this->get('https://'.self::HOST.'/booking')
-            ->assertOk()
-            ->assertSee('Start Booking');
+            ->assertRedirect('https://'.self::HOST.'/booking/service');
 
         $this->get('https://'.self::HOST.'/booking/service')
             ->assertOk()
-            ->assertSee('General Consultation');
+            ->assertSee('General Consultation')
+            ->assertSee('Step 1 of 4');
 
         $this->post('https://'.self::HOST.'/booking/service', ['service_id' => 'general-consultation'])
             ->assertRedirect('https://'.self::HOST.'/booking/date');
 
         // First round trip: choose a date only (the fake Availability reader always reports it Available).
         $date = $this->firstAvailableDate();
-        $this->post('https://'.self::HOST.'/booking/date', ['appointment_date' => $date])
+        $this->post('https://'.self::HOST.'/booking/date', [
+            'appointment_date' => $date,
+            'intent' => 'load_times',
+        ])
             ->assertRedirect('https://'.self::HOST.'/booking/date');
 
         $dateScreen = $this->get('https://'.self::HOST.'/booking/date');
-        $dateScreen->assertOk();
+        $dateScreen->assertOk()
+            ->assertSee('Choose a time')
+            ->assertSee('09:00');
 
         // Second round trip: date + a time now that times are visible.
-        $this->post('https://'.self::HOST.'/booking/date', ['appointment_date' => $date, 'appointment_time' => '09:00'])
+        $this->post('https://'.self::HOST.'/booking/date', [
+            'appointment_date' => $date,
+            'appointment_time' => '09:00',
+            'intent' => 'continue',
+        ])
             ->assertRedirect('https://'.self::HOST.'/booking/details');
 
         $this->get('https://'.self::HOST.'/booking/details')->assertOk()->assertSee('Full name');
@@ -191,6 +200,21 @@ final class PublicBookingJourneyTest extends TestCase
         $response->assertSessionHasInput('patient_name', 'Aisyah');
     }
 
+    public function test_continuing_without_a_time_returns_a_clear_validation_error(): void
+    {
+        $date = $this->firstAvailableDate();
+
+        $response = $this->from('https://'.self::HOST.'/booking/date')->post('https://'.self::HOST.'/booking/date', [
+            'appointment_date' => $date,
+            'intent' => 'continue',
+        ]);
+
+        $response->assertRedirect('https://'.self::HOST.'/booking/date');
+        $response->assertSessionHasErrors([
+            'appointment_time' => 'Choose an available time.',
+        ]);
+    }
+
     public function test_business_rule_error_returns_to_review_with_the_draft_intact(): void
     {
         $this->completeUpToReview(patientName: FakeBookingSubmissionGateway::TRIGGER_BUSINESS_RULE);
@@ -248,7 +272,11 @@ final class PublicBookingJourneyTest extends TestCase
     {
         $date = $this->firstAvailableDate();
         $this->post('https://'.self::HOST.'/booking/service', ['service_id' => 'general-consultation']);
-        $this->post('https://'.self::HOST.'/booking/date', ['appointment_date' => $date, 'appointment_time' => '09:00']);
+        $this->post('https://'.self::HOST.'/booking/date', [
+            'appointment_date' => $date,
+            'appointment_time' => '09:00',
+            'intent' => 'continue',
+        ]);
         $this->post('https://'.self::HOST.'/booking/details', [
             'patient_name' => $patientName,
             'phone' => '+60123456789',

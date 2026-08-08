@@ -44,7 +44,7 @@ final class TenantIdentityPropagationArchitectureTest extends TestCase
     {
         $modules = [
             'ClinicRegistration' => $this->root().'/app/Modules/ClinicRegistration',
-            'Commercial' => $this->root().'/app/Modules/Commercial',
+            'AcquisitionOffer' => $this->root().'/app/Modules/AcquisitionOffer',
             'SubscriptionBilling' => $this->root().'/app/Modules/SubscriptionBilling',
         ];
 
@@ -81,7 +81,7 @@ final class TenantIdentityPropagationArchitectureTest extends TestCase
 
     public function test_tenant_id_crosses_module_boundaries_only_as_an_opaque_string(): void
     {
-        $checkout = $this->source($this->root().'/app/Modules/Commercial/Contracts/Data/CommercialOfferData.php');
+        $checkout = $this->source($this->root().'/app/Modules/AcquisitionOffer/Contracts/Data/CommercialOfferData.php');
         self::assertStringContainsString('public ?string $tenantId', $checkout);
 
         $paymentData = $this->source($this->root().'/app/Modules/SubscriptionBilling/Contracts/Payment/PaymentData.php');
@@ -105,7 +105,7 @@ final class TenantIdentityPropagationArchitectureTest extends TestCase
     {
         $migrations = [
             $this->root().'/database/migrations/clinic_registration/2026_07_26_000001_add_reserved_tenant_id_to_clinic_registrations.php',
-            $this->root().'/database/migrations/commercial/2026_07_26_000001_add_tenant_id_to_commercial_offers.php',
+            $this->root().'/database/migrations/acquisition_offer/2026_07_26_000001_add_tenant_id_to_commercial_offers.php',
             $this->root().'/database/migrations/subscription_billing/2026_07_26_000001_add_tenant_id_to_payments.php',
         ];
 

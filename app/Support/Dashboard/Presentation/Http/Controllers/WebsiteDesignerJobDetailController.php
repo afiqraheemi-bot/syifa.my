@@ -138,6 +138,7 @@ final readonly class WebsiteDesignerJobDetailController
                 (string) $data['template_id'],
                 $this->optional($branding['logo_reference'] ?? null),
                 (string) $branding['logo_display_size'],
+                (string) $branding['whatsapp_button_style'],
             ));
         } catch (StaleWebsiteWriteException) {
             return back()->withErrors([

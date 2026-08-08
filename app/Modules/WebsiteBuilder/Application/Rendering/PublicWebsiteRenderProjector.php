@@ -64,7 +64,7 @@ final readonly class PublicWebsiteRenderProjector
 
         return new PublicWebsiteRenderModel(
             new WebsiteIdentityRenderModel($snapshot->websiteId->value, $snapshot->templateId->value),
-            new BrandingRenderModel($snapshot->clinicName, $snapshot->tagline, $snapshot->primaryColor, $snapshot->secondaryColor, $snapshot->logoAssetId?->value, $snapshot->faviconAssetId?->value, $snapshot->logoDisplaySize->value),
+            new BrandingRenderModel($snapshot->clinicName, $snapshot->tagline, $snapshot->primaryColor, $snapshot->secondaryColor, $snapshot->logoAssetId?->value, $snapshot->faviconAssetId?->value, $snapshot->logoDisplaySize->value, $snapshot->whatsAppButtonStyle->value),
             new SeoRenderModel($snapshot->metaTitle, $snapshot->metaDescription, $snapshot->metaKeywords, $snapshot->canonicalUrl, $snapshot->robotsDirective->value, $snapshot->openGraphTitle, $snapshot->openGraphDescription, $snapshot->openGraphImageAssetId?->value, $snapshot->indexingEnabled),
             new HeaderRenderModel($snapshot->clinicName, $snapshot->tagline, $snapshot->logoAssetId?->value, $snapshot->logoDisplaySize->value),
             new FooterRenderModel($snapshot->clinicName, $contact->email, $contact->phone, $contact->address, $contact->socialLinks, $this->businessHours($contact), $contact->whatsAppNumber, $contact->latitude, $contact->longitude),

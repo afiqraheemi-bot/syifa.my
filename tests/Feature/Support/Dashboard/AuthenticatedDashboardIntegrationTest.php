@@ -1717,7 +1717,11 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
             ->assertHeader('Cache-Control', 'no-store, private')
             ->assertSee('Draft Preview')
-            ->assertSee('Trusted healthcare');
+            ->assertSee('Trusted healthcare')
+            ->assertSee('WhatsApp clinic')
+            ->assertSee('whatsapp-float--pill', false)
+            ->assertSee('https://wa.me/60123456789', false)
+            ->assertSee(route('dashboard.website.booking-preview'), false);
 
         self::assertSame('draft', $this->websiteRepository->lifecycle());
         self::assertFalse($this->websiteRepository->hasPublishedSnapshot());
@@ -1734,8 +1738,103 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->get(route('dashboard.website.preview'))->assertNotFound();
     }
 
+    public function test_clinic_owner_opens_their_tenant_scoped_booking_form_preview(): void
+    {
+        $this->app->instance(
+            PublicBookingFormConfigurationReaderInterface::class,
+            new DashboardEnabledPublicBookingConfiguration,
+        );
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                DashboardLaunchReadinessRead::TENANT_ID,
+                identityId: '00000000-0000-4000-8000-000000000040',
+            ),
+        );
+
+        $this->get(route('dashboard.website.booking-preview'))
+            ->assertOk()
+            ->assertSee('data-template="syifa-essential"', false)
+            ->assertSee('Booking Preview')
+            ->assertSee('Book an appointment')
+            ->assertSeeInOrder(['Choose a service', 'Appointment date'])
+            ->assertSee('Check available times')
+            ->assertSee('Submit booking')
+            ->assertSee(route('dashboard.website.preview'), false);
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+        );
+        $this->get(route('dashboard.website.booking-preview'))->assertForbidden();
+    }
+
+    public function test_clinic_owner_draft_save_preserves_submitted_hero_and_other_sections(): void
+    {
+        $this->app->instance(WebsiteReadInterface::class, new class implements WebsiteReadInterface
+        {
+            public function summary(string $trustedTenantId): ?WebsiteSummaryData
+            {
+                return new WebsiteSummaryData(
+                    '00000000-0000-4000-8000-000000000001',
+                    $trustedTenantId,
+                    'Klinik Aisyah',
+                    'syifa-essential',
+                    'draft',
+                );
+            }
+
+            public function detail(string $trustedTenantId): ?WebsiteDetailData
+            {
+                return null;
+            }
+        });
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                identityId: '00000000-0000-4000-8000-000000000040',
+            ),
+        );
+
+        $draft = $this->getJson(route('clinic-owner.website-draft.show'))
+            ->assertOk()
+            ->json('data');
+        self::assertIsArray($draft);
+        $draft['sections'][0]['headline'] = 'Care that stays with your family';
+        $draft['sections'][0]['subheadline'] = 'A trusted clinic close to home';
+        $draft['sections'][0]['primary_cta_label'] = 'Book an appointment';
+        $draft['sections'][0]['primary_cta_target'] = '/booking';
+
+        $this->patchJson(route('clinic-owner.website-draft.update'), [
+            'version' => $draft['version'],
+            'sections' => $draft['sections'],
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.version', 2)
+            ->assertJsonPath('data.sections.0.headline', 'Care that stays with your family')
+            ->assertJsonPath('data.sections.0.subheadline', 'A trusted clinic close to home')
+            ->assertJsonPath('data.sections.0.primary_cta_label', 'Book an appointment')
+            ->assertJsonPath('data.sections.0.primary_cta_target', '/booking')
+            ->assertJsonPath('data.sections.1.type', 'ABOUT');
+
+        $this->getJson(route('clinic-owner.website-draft.show'))
+            ->assertOk()
+            ->assertJsonPath('data.version', 2)
+            ->assertJsonPath('data.sections.0.headline', 'Care that stays with your family')
+            ->assertJsonPath('data.sections.1.type', 'ABOUT');
+    }
+
     public function test_assigned_designer_opens_the_protected_booking_form_preview(): void
     {
+        $this->app->instance(
+            PublicBookingFormConfigurationReaderInterface::class,
+            new DashboardEnabledPublicBookingConfiguration,
+        );
         $this->app->instance(
             AuthorizationService::class,
             $this->authorization(
@@ -1748,9 +1847,10 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
 
         $this->get(route('dashboard.onboarding.booking-preview', $jobId))
             ->assertOk()
+            ->assertSee('data-template="syifa-essential"', false)
             ->assertSee('Booking Preview')
             ->assertSee('Book an appointment')
-            ->assertSee('Appointment date')
+            ->assertSeeInOrder(['Choose a service', 'Appointment date'])
             ->assertSee('Check available times')
             ->assertSee('Submit booking')
             ->assertSee('<meta name="robots" content="noindex">', false);
@@ -1810,6 +1910,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 'secondary_color' => '#ddeeff',
                 'logo_reference' => null,
                 'logo_display_size' => 'large',
+                'whatsapp_button_style' => 'pill',
                 'contact_email' => 'designer@example.test',
                 'contact_phone' => '+60123456789',
                 'address' => 'Kuala Lumpur',
@@ -1994,7 +2095,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.mime_type', 'image/png')
             ->assertJsonPath('data.width', 1)
-            ->assertJsonPath('data.height', 1);
+            ->assertJsonPath('data.height', 1)
+            ->assertJsonPath('data.website_version', 2);
 
         self::assertCount(1, $storage->files);
         self::assertSame(1, $this->websiteRepository->assetCount());
@@ -2188,6 +2290,103 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertSessionHasErrors(['latitude', 'longitude']);
     }
 
+    public function test_clinic_owner_can_toggle_their_whatsapp_button_from_the_content_page_without_affecting_other_contact_fields(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+
+        $this->get('/dashboard/website/content')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('TenantManagement/Website/ClinicOwnerWebsiteContentOverview', false)
+                    ->where('contactProfile.whatsapp_number', '+60123456789')
+                    ->where('contactProfile.version', 1)
+                    ->where('contactUpdateUrl', route('dashboard.website.contact.update')),
+            );
+
+        $this->patch('/dashboard/website/contact', [
+            'whatsapp_number' => '',
+            'version' => 1,
+        ])->assertRedirect();
+
+        $this->get('/dashboard/website/content')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('contactProfile.whatsapp_number', null)
+                    ->where('contactProfile.version', 2)
+                    ->where('contactProfile.operational_phone', '+60312345678')
+                    ->where('contactProfile.operational_email', 'clinic@aisyah.test')
+                    ->where('contactProfile.postal_address', 'Kuala Lumpur'),
+            );
+
+        $this->patch('/dashboard/website/contact', [
+            'whatsapp_number' => '+60129998888',
+            'version' => 2,
+        ])->assertRedirect();
+
+        $this->get('/dashboard/website/content')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('contactProfile.whatsapp_number', '+60129998888')
+                    ->where('contactProfile.version', 3)
+                    ->where('contactProfile.operational_phone', '+60312345678')
+                    ->where('contactProfile.operational_email', 'clinic@aisyah.test')
+                    ->where('contactProfile.postal_address', 'Kuala Lumpur'),
+            );
+    }
+
+    public function test_clinic_owner_whatsapp_update_rejects_a_stale_version(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+
+        $this->from('/dashboard/website/content')
+            ->patch('/dashboard/website/contact', [
+                'whatsapp_number' => '+60129998888',
+                'version' => 99,
+            ])
+            ->assertRedirect('/dashboard/website/content')
+            ->assertSessionHasErrors('whatsapp_number');
+    }
+
+    public function test_clinic_owner_whatsapp_update_is_role_scoped(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+        );
+        $this->patchJson('/dashboard/website/contact', [
+            'whatsapp_number' => '+60129998888',
+            'version' => 1,
+        ])->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+        $this->patchJson('/dashboard/website/contact', [
+            'whatsapp_number' => '+60129998888',
+            'version' => 1,
+        ])->assertForbidden();
+    }
+
     public function test_unassigned_job_is_not_disclosed_and_other_roles_are_forbidden(): void
     {
         $this->app->instance(
@@ -2268,7 +2467,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('domainStatus.value', 'Live')
                     ->where('domainStatus.detail', 'klinik-aisyah.syifa.my')
                     ->where('domainStatus.url', 'https://klinik-aisyah.syifa.my')
-                    ->where('domainStatus.actionLabel', 'Open Published Website')
+                    ->where('domainStatus.actionLabel', 'Open live Website')
                     ->where('themeInformation.value', 'syifa-essential')
                     ->where('seoStatus.value', 'Indexing enabled')
                     ->has('quickActions', 1)
@@ -2281,6 +2480,15 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
 
     public function test_clinic_owner_receives_the_website_content_overview_from_published_query_evidence(): void
     {
+        $this->websiteAddresses->seed(
+            new WebsitePublicAddressData(
+                '00000000-0000-4000-8000-000000000001',
+                '00000000-0000-4000-8000-000000000002',
+                'klinik-aisyah.syifa.my',
+                'https://klinik-aisyah.syifa.my',
+                true,
+            ),
+        );
         $this->app->instance(
             AuthorizationService::class,
             $this->authorization(ActorType::ClinicOwner, 'clinic_owner', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000010'),
@@ -2304,6 +2512,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->has('templateOptions', 5)
                     ->where('canChangeTemplate', true)
                     ->where('previewUrl', route('dashboard.website.preview'))
+                    ->where('publishedWebsite.host', 'klinik-aisyah.syifa.my')
+                    ->where('publishedWebsite.url', 'https://klinik-aisyah.syifa.my')
                     ->where('updateUrl', route('dashboard.website.content.update'))
                     ->where(
                         'websiteDraft.mediaUploadUrl',
@@ -2313,6 +2523,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                         'websiteDraft.assetUrlTemplate',
                         route('public-website.assets.show', '__ASSET_ID__'),
                     )
+                    ->where('contactProfile.whatsapp_number', '+60123456789')
+                    ->where('contactProfile.version', 1)
+                    ->where('contactUpdateUrl', route('dashboard.website.contact.update'))
                     ->has('navigation', 8),
             );
     }
@@ -2334,6 +2547,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 'secondary_color' => '#ddeeff',
                 'logo_reference' => null,
                 'logo_display_size' => 'large',
+                'whatsapp_button_style' => 'circle',
                 'contact_email' => 'hello@example.test',
                 'contact_phone' => '+60123456789',
                 'address' => 'Kuala Lumpur',
@@ -2371,8 +2585,80 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('editableContent.branding.primary_color', '#AABBCC')
                     ->where('editableContent.branding.secondary_color', '#DDEEFF')
                     ->where('editableContent.branding.logo_display_size', 'large')
+                    ->where('editableContent.branding.whatsapp_button_style', 'circle')
                     ->where('editableContent.sections.8.enabled', false)
                     ->where('editableContent.version', 2),
+            );
+
+        $this->get(route('dashboard.website.preview'))
+            ->assertOk()
+            ->assertSee('whatsapp-float--circle', false)
+            ->assertDontSee('WhatsApp clinic');
+    }
+
+    public function test_clinic_owner_json_save_returns_authoritative_content_after_a_stale_write(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000010'),
+        );
+
+        $payload = [
+            'version' => 1,
+            'template_id' => 'SYIFA_CARE',
+            'branding' => [
+                'clinic_name' => 'Klinik Authoritative',
+                'tagline' => 'Trusted care',
+                'primary_color' => '#aabbcc',
+                'secondary_color' => '#ddeeff',
+                'logo_reference' => null,
+                'logo_display_size' => 'large',
+                'whatsapp_button_style' => 'pill',
+                'contact_email' => 'hello@example.test',
+                'contact_phone' => '+60123456789',
+                'address' => 'Kuala Lumpur',
+                'social_links' => ['facebook' => 'https://facebook.com/klinik'],
+            ],
+            'seo' => [
+                'meta_title' => 'Klinik Authoritative',
+                'meta_description' => 'Trusted family healthcare.',
+                'meta_keywords' => null,
+                'canonical_url' => 'https://clinic.example.test',
+                'robots_directive' => 'index,follow',
+                'open_graph_title' => 'Klinik Authoritative',
+                'open_graph_description' => 'Trusted family healthcare.',
+                'indexing_enabled' => true,
+            ],
+            'sections' => [
+                'hero' => true,
+                'about' => true,
+                'services' => true,
+                'doctors' => true,
+                'testimonials' => true,
+                'gallery' => true,
+                'faq' => true,
+                'contact' => true,
+                'booking_cta' => false,
+            ],
+        ];
+
+        $this->patchJson('/dashboard/website/content', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.version', 2)
+            ->assertJsonPath('data.branding.clinic_name', 'Klinik Authoritative');
+
+        $this->patchJson('/dashboard/website/content', [
+            ...$payload,
+            'branding' => [
+                ...$payload['branding'],
+                'clinic_name' => 'Klinik Stale',
+            ],
+        ])
+            ->assertConflict()
+            ->assertJsonPath('data.editable_content.version', 2)
+            ->assertJsonPath(
+                'data.editable_content.branding.clinic_name',
+                'Klinik Authoritative',
             );
     }
 
@@ -3706,6 +3992,24 @@ final readonly class DashboardFixedPublicBookingConfiguration implements PublicB
         return new PublicBookingFormConfiguration(
             false,
             false,
+            false,
+            false,
+            [new PublicBookingServiceOption(
+                '00000000-0000-4000-8000-000000000201',
+                'Consultation',
+                false,
+            )],
+        );
+    }
+}
+
+final readonly class DashboardEnabledPublicBookingConfiguration implements PublicBookingFormConfigurationReaderInterface
+{
+    public function forTrustedTenant(string $trustedTenantId): PublicBookingFormConfiguration
+    {
+        return new PublicBookingFormConfiguration(
+            true,
+            true,
             false,
             false,
             [new PublicBookingServiceOption(

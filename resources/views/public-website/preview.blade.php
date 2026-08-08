@@ -66,5 +66,6 @@
     </main>
 
     <x-public.footer :document="$document" :contact-section="$contactSection" />
+    <x-public.whatsapp-button :action="$document->contactActions->whatsApp" :button-style="$document->website->branding->whatsAppButtonStyle" />
 </body>
 </html>
