@@ -5,10 +5,6 @@ on:
         branches: [main]
     pull_request:
 
-# First real run of this workflow will likely need small adjustments (exact
-# PHP/Node versions, migration path, DSN format) — it has not been executed
-# against live GitHub Actions infrastructure yet. Treat the first push as a
-# validation pass, not a guarantee.
 jobs:
     backend:
         name: Backend (PHPUnit incl. integration, PHPStan, Pint)
@@ -37,28 +33,22 @@ jobs:
                     --health-retries 5
 
         env:
-            DB_CONNECTION: pgsql
-            DB_HOST: 127.0.0.1
-            DB_PORT: 5432
-            DB_DATABASE: syifa
-            DB_USERNAME: syifa
-            DB_PASSWORD: syifa_ci_password
             REDIS_HOST: 127.0.0.1
             REDIS_PORT: 6379
-            # Every module's Integration suite is skipped unless its own DSN env
-            # var is set (see tests/Integration/**), so all eleven point at the
-            # same CI Postgres instance/database.
-            BOOKING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
-            CLINIC_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
-            CLINIC_REGISTRATION_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
-            COMMERCIAL_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
-            ONBOARDING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
-            PLATFORM_ADMINISTRATION_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
-            PUBLIC_BOOKING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
-            RELEASE_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
-            SUBSCRIPTION_BILLING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
-            TENANT_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
-            WEBSITE_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa
+            # Integration suites create and remove their own module tables. Keep
+            # each suite in a dedicated disposable database so those operations
+            # cannot collide with another module's schema or foreign keys.
+            BOOKING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa_booking_test
+            CLINIC_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa_clinic_test
+            CLINIC_REGISTRATION_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa_clinic_registration_test
+            COMMERCIAL_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa_commercial_test
+            ONBOARDING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa_onboarding_test
+            PLATFORM_ADMINISTRATION_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa_platform_administration_test
+            PUBLIC_BOOKING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa_public_booking_test
+            RELEASE_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa_release_test
+            SUBSCRIPTION_BILLING_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa_subscription_billing_test
+            TENANT_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa_tenant_test
+            WEBSITE_POSTGRES_TEST_DSN: pgsql://syifa:syifa_ci_password@127.0.0.1:5432/syifa_website_test
 
         steps:
             - uses: actions/checkout@v4
@@ -77,7 +67,34 @@ jobs:
                   cp .env.example .env
                   php artisan key:generate --ansi
 
+            - name: Create isolated integration databases
+              env:
+                  PGPASSWORD: syifa_ci_password
+              run: |
+                  for database in \
+                      syifa_booking_test \
+                      syifa_clinic_test \
+                      syifa_clinic_registration_test \
+                      syifa_commercial_test \
+                      syifa_onboarding_test \
+                      syifa_platform_administration_test \
+                      syifa_public_booking_test \
+                      syifa_release_test \
+                      syifa_subscription_billing_test \
+                      syifa_tenant_test \
+                      syifa_website_test
+                  do
+                      createdb --host=127.0.0.1 --port=5432 --username=syifa "$database"
+                  done
+
             - name: Run migrations against the CI database
+              env:
+                  DB_CONNECTION: pgsql
+                  DB_HOST: 127.0.0.1
+                  DB_PORT: 5432
+                  DB_DATABASE: syifa
+                  DB_USERNAME: syifa
+                  DB_PASSWORD: syifa_ci_password
               run: php artisan migrate --force
 
             - name: Pint (formatting)
