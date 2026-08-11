@@ -104,20 +104,12 @@ final readonly class WebsiteDesignerJobDetailProvider
         }
 
         $completedStatuses = ['completed', 'waived'];
-        $trackedTasks = ['clinic_inputs', 'service_setup', 'website_setup', 'booking_setup'];
-        $completed = 1; // An assigned Job has completed the assignment checkpoint.
+        $completed = count(array_filter(
+            $job->tasks,
+            static fn (array $task): bool => in_array($task['status'] ?? null, $completedStatuses, true),
+        ));
 
-        foreach ($job->tasks as $task) {
-            if (in_array($task['key'] ?? null, $trackedTasks, true)
-                && in_array($task['status'] ?? null, $completedStatuses, true)) {
-                $completed++;
-            }
-        }
-        if (in_array($job->status, ['ready_for_launch', 'completed'], true)) {
-            $completed++;
-        }
-
-        return (int) round(($completed / 6) * 100);
+        return (int) round(($completed / count($job->tasks)) * 100);
     }
 
     /**

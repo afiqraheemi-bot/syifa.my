@@ -15,6 +15,7 @@ use App\Modules\ClinicRegistration\Domain\ValueObjects\RegistrationId;
 use App\Modules\ClinicRegistration\Domain\ValueObjects\TenantId;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Mappers\ClinicRegistrationPersistenceMapper;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Queries\PostgresClinicRegistrationQueryAdapter;
+use App\Modules\ClinicRegistration\Infrastructure\Persistence\Repositories\PostgresClinicRegistrationAdministrationRepository;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Repositories\PostgresClinicRegistrationRepository;
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
@@ -41,6 +42,8 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
     private ?Migration $reviewMigration = null;
 
     private ?Migration $websitePreferencesMigration = null;
+
+    private ?Migration $archivingMigration = null;
 
     protected function setUp(): void
     {
@@ -96,6 +99,13 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
         $this->websitePreferencesMigration = $websitePreferencesMigration;
         $this->websitePreferencesMigration->up();
 
+        $archivingMigration = require base_path(
+            'database/migrations/clinic_registration/2026_09_12_000001_add_archiving_to_clinic_registrations.php',
+        );
+        self::assertInstanceOf(Migration::class, $archivingMigration);
+        $this->archivingMigration = $archivingMigration;
+        $this->archivingMigration->up();
+
         $mapper = new ClinicRegistrationPersistenceMapper;
         $this->repository = new PostgresClinicRegistrationRepository($this->connection, $mapper);
         $this->query = new PostgresClinicRegistrationQueryAdapter($this->connection);
@@ -103,6 +113,10 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->archivingMigration !== null) {
+            $this->archivingMigration->down();
+        }
+
         if ($this->websitePreferencesMigration !== null) {
             $this->websitePreferencesMigration->down();
         }
@@ -303,6 +317,33 @@ final class PostgresClinicRegistrationRepositoryTest extends TestCase
         $this->expectException(StaleClinicRegistrationWriteException::class);
 
         $this->repository()->save($staleCopy);
+    }
+
+    public function test_archived_registration_is_hidden_and_releases_active_identity_reservation(): void
+    {
+        $registration = $this->submittableRegistration();
+        $this->repository()->save($registration);
+        $administration = new PostgresClinicRegistrationAdministrationRepository($this->connection());
+
+        $version = $administration->archive(
+            $registration->id->value,
+            1,
+            $this->uuid(8),
+            $this->time()->modify('+1 minute'),
+        );
+
+        self::assertSame(2, $version);
+        self::assertNull($this->repository()->find($registration->id));
+        self::assertNull($this->query()->currentForPlatformIdentity($registration->platformIdentity->value));
+
+        $replacement = ClinicRegistration::start(
+            new RegistrationId($this->uuid(90)),
+            $registration->platformIdentity,
+            $this->time()->modify('+2 minutes'),
+        );
+        $this->repository()->save($replacement);
+
+        self::assertNotNull($this->repository()->find($replacement->id));
     }
 
     private function submittableRegistration(): ClinicRegistration

@@ -20,5 +20,7 @@ final readonly class SubscriptionDetailData
         public string $autoRenewStatus,
         public int $version,
         public ?string $renewalCheckoutId = null,
+        public ?string $clinicName = null,
+        public ?string $planName = null,
     ) {}
 }

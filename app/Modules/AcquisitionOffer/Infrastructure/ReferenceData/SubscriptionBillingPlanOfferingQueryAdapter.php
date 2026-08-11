@@ -20,7 +20,12 @@ final readonly class SubscriptionBillingPlanOfferingQueryAdapter implements Plan
 
     public function listAvailable(string $effectiveDate): array
     {
+        $packageOrder = $this->publicPackageOrder();
         $offerings = [];
+
+        if ($packageOrder === []) {
+            return [];
+        }
 
         foreach ($this->planOfferingCatalogue->listPlanOfferings(new OffsetPaginationInput(1, 100))->items as $offering) {
             $plan = $this->catalogue->findPlan($offering->planId);
@@ -34,12 +39,13 @@ final readonly class SubscriptionBillingPlanOfferingQueryAdapter implements Plan
                 || $billingOption->recurrenceClassification !== 'recurring'
                 || $offering->status !== 'active'
                 || $offering->currencyCode !== 'MYR'
+                || ! array_key_exists($offering->capabilityConfigurationReference, $packageOrder)
                 || ! $this->isEffective($offering->effectiveStart, $offering->effectiveEnd, $effectiveDate)
             ) {
                 continue;
             }
 
-            $offerings[] = new PlanOfferingReferenceData(
+            $offerings[$offering->capabilityConfigurationReference] ??= new PlanOfferingReferenceData(
                 $offering->planOfferingId,
                 $offering->planId,
                 $offering->billingOptionId,
@@ -55,14 +61,25 @@ final readonly class SubscriptionBillingPlanOfferingQueryAdapter implements Plan
             );
         }
 
-        return $offerings;
+        uksort(
+            $offerings,
+            static fn (string $left, string $right): int => $packageOrder[$left] <=> $packageOrder[$right],
+        );
+
+        return array_values($offerings);
     }
 
     public function resolveForCheckout(string $planOfferingId, string $effectiveDate): ?PlanOfferingReferenceData
     {
         $offering = $this->catalogue->findPlanOffering($planOfferingId);
 
-        if ($offering === null || $offering->currencyCode !== 'MYR' || $offering->status !== 'active') {
+        if (
+            $offering === null
+            || $offering->currencyCode !== 'MYR'
+            || $offering->status !== 'active'
+            || $offering->amountMinor <= 0
+            || ! array_key_exists($offering->capabilityConfigurationReference, $this->publicPackageOrder())
+        ) {
             return null;
         }
 
@@ -101,6 +118,26 @@ final readonly class SubscriptionBillingPlanOfferingQueryAdapter implements Plan
         return $start <= $date && ($end === null || $end >= $date);
     }
 
+    /** @return array<string, int> */
+    private function publicPackageOrder(): array
+    {
+        $references = config('subscription_packages.public_package_order', []);
+
+        if (! is_array($references)) {
+            return [];
+        }
+
+        $order = [];
+
+        foreach ($references as $reference) {
+            if (is_string($reference) && $reference !== '') {
+                $order[$reference] = count($order);
+            }
+        }
+
+        return $order;
+    }
+
     private function billingPeriodEnd(string $start, ?string $intervalUnit, ?int $intervalCount): string
     {
         if ($intervalUnit === null || $intervalCount === null || $intervalCount < 1) {
@@ -109,6 +146,7 @@ final readonly class SubscriptionBillingPlanOfferingQueryAdapter implements Plan
 
         $startDate = new DateTimeImmutable($start);
         $modifier = match ($intervalUnit) {
+            'day' => sprintf('+%d days', $intervalCount),
             'month' => sprintf('+%d months', $intervalCount),
             'quarter' => sprintf('+%d months', $intervalCount * 3),
             'year' => sprintf('+%d years', $intervalCount),

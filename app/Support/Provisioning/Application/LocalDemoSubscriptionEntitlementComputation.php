@@ -23,10 +23,17 @@ final readonly class LocalDemoSubscriptionEntitlementComputation implements Subs
     public function compute(ResolvedSubscriptionOfferingData $resolvedOffering): ComputedSubscriptionEntitlementData
     {
         $page = $this->capabilities->listCapabilityDefinitions(new OffsetPaginationInput(1, 100));
+        $configuredKeys = config(sprintf(
+            'subscription_packages.capability_profiles.%s',
+            $resolvedOffering->capabilityConfigurationReference,
+        ));
         $keys = [];
 
         foreach ($page->items as $capability) {
-            if ($capability->status === 'active') {
+            if (
+                $capability->status === 'active'
+                && (! is_array($configuredKeys) || in_array($capability->capabilityKey, $configuredKeys, true))
+            ) {
                 $keys[] = $capability->capabilityKey;
             }
         }

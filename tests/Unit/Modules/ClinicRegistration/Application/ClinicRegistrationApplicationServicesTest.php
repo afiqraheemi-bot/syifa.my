@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\ClinicRegistration\Application;
 
+use App\Modules\ClinicRegistration\Application\ArchiveClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\Audit\ClinicRegistrationAuditTrail;
 use App\Modules\ClinicRegistration\Application\CancelClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\ClinicRegistrationDataAssembler;
@@ -19,8 +20,11 @@ use App\Modules\ClinicRegistration\Application\StartClinicRegistrationReviewServ
 use App\Modules\ClinicRegistration\Application\StartClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\SubmitClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\TrustedCompletionSources;
+use App\Modules\ClinicRegistration\Application\UpdateClinicRegistrationByAdministratorService;
 use App\Modules\ClinicRegistration\Application\UpdateClinicRegistrationDraftService;
 use App\Modules\ClinicRegistration\Application\ViewCurrentClinicRegistrationService;
+use App\Modules\ClinicRegistration\Contracts\Administration\ClinicRegistrationAdministrationRepositoryInterface;
+use App\Modules\ClinicRegistration\Contracts\Commands\ArchiveClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\CancelClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\CompleteClinicRegistrationFromTrustedHandoffCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\DecideClinicRegistrationCommand;
@@ -28,6 +32,7 @@ use App\Modules\ClinicRegistration\Contracts\Commands\ExpireStaleClinicRegistrat
 use App\Modules\ClinicRegistration\Contracts\Commands\StartClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\StartClinicRegistrationReviewCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\SubmitClinicRegistrationCommand;
+use App\Modules\ClinicRegistration\Contracts\Commands\UpdateClinicRegistrationByAdministratorCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\UpdateClinicRegistrationDraftCommand;
 use App\Modules\ClinicRegistration\Contracts\Data\DeclarationAcceptanceData;
 use App\Modules\ClinicRegistration\Contracts\Events\ClinicRegistrationEventPublisherInterface;
@@ -311,6 +316,66 @@ final class ClinicRegistrationApplicationServicesTest extends TestCase
         self::assertContains('clinic_registration.expire', array_map(static fn (AuditEntryData $entry): string => $entry->action, $audit->entries));
     }
 
+    public function test_super_admin_can_update_registration_profile_and_access_email_atomically(): void
+    {
+        $repository = new InMemoryClinicRegistrationRepository;
+        $this->startService($repository)->execute(
+            new StartClinicRegistrationCommand($this->uuid(21), $this->occurredAt(), $this->uuid(110)),
+        );
+        $administration = new RecordingClinicRegistrationAdministrationRepository;
+        $audit = new RecordingRegistrationReviewAudit;
+
+        $version = (new UpdateClinicRegistrationByAdministratorService(
+            $repository,
+            $administration,
+            new ImmediateRegistrationDecisionTransaction,
+            $audit,
+        ))->execute(new UpdateClinicRegistrationByAdministratorCommand(
+            $this->uuid(12),
+            'Klinik Syifa Utama',
+            ' OWNER@CLINIC.TEST ',
+            '+60129999999',
+            '2 Jalan Klinik',
+            1,
+            $this->uuid(8),
+            $this->uuid(111),
+            $this->occurredAt(),
+        ));
+
+        self::assertSame(2, $version);
+        self::assertSame('Klinik Syifa Utama', $repository->find(new RegistrationId($this->uuid(12)))?->profile->clinicName);
+        self::assertSame([$this->uuid(12) => 'owner@clinic.test'], $administration->emails);
+        self::assertSame(['clinic_registration.administration.update'], $audit->actions);
+    }
+
+    public function test_super_admin_archive_uses_soft_archive_repository_and_durable_audit(): void
+    {
+        $repository = new InMemoryClinicRegistrationRepository;
+        $this->startService($repository)->execute(
+            new StartClinicRegistrationCommand($this->uuid(21), $this->occurredAt(), $this->uuid(112)),
+        );
+        $administration = new RecordingClinicRegistrationAdministrationRepository;
+        $audit = new RecordingRegistrationReviewAudit;
+
+        $version = (new ArchiveClinicRegistrationService(
+            $repository,
+            $administration,
+            new ImmediateRegistrationDecisionTransaction,
+            $audit,
+        ))->execute(new ArchiveClinicRegistrationCommand(
+            $this->uuid(12),
+            1,
+            $this->uuid(8),
+            $this->uuid(113),
+            $this->occurredAt(),
+        ));
+
+        self::assertSame(2, $version);
+        self::assertSame([$this->uuid(12)], $administration->archived);
+        self::assertSame([$this->uuid(12)], $administration->revokedAccess);
+        self::assertSame(['clinic_registration.administration.archive'], $audit->actions);
+    }
+
     private function startService(
         InMemoryClinicRegistrationRepository $repository,
         ?RecordingAuditEntryRecorder $audit = null,
@@ -415,6 +480,39 @@ final class RecordingRegistrationReviewAudit implements ClinicRegistrationReview
         DateTimeImmutable $occurredAt,
     ): void {
         $this->actions[] = $action;
+    }
+}
+
+final class RecordingClinicRegistrationAdministrationRepository implements ClinicRegistrationAdministrationRepositoryInterface
+{
+    /** @var array<string, string> */
+    public array $emails = [];
+
+    /** @var list<string> */
+    public array $archived = [];
+
+    /** @var list<string> */
+    public array $revokedAccess = [];
+
+    public function synchronizeAccessEmail(string $registrationId, string $normalizedEmail): void
+    {
+        $this->emails[$registrationId] = $normalizedEmail;
+    }
+
+    public function revokeAccess(string $registrationId): void
+    {
+        $this->revokedAccess[] = $registrationId;
+    }
+
+    public function archive(
+        string $registrationId,
+        int $expectedVersion,
+        string $actorPlatformIdentityId,
+        DateTimeImmutable $occurredAt,
+    ): int {
+        $this->archived[] = $registrationId;
+
+        return $expectedVersion + 1;
     }
 }
 

@@ -8,6 +8,7 @@ use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewRead
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\DashboardNavigationItem;
 use App\Support\Dashboard\Application\DashboardPageView;
+use Carbon\CarbonImmutable;
 use LogicException;
 
 final readonly class SuperAdminRegistrationReviewPage
@@ -20,9 +21,30 @@ final readonly class SuperAdminRegistrationReviewPage
         if (! $context instanceof AuthorizationContext) {
             throw new LogicException('Super Admin dashboard context was not established.');
         }
-        $status = is_string($query['status'] ?? null) && $query['status'] !== ''
-            ? $query['status']
-            : null;
+        $status = is_string($query['status'] ?? null)
+            && in_array($query['status'], [
+                'draft',
+                'submitted',
+                'under_review',
+                'correction_requested',
+                'approved',
+                'rejected',
+                'provisioned',
+                'cancelled',
+                'expired',
+            ], true)
+                ? $query['status']
+                : null;
+        $search = is_string($query['search'] ?? null)
+            ? mb_substr(trim($query['search']), 0, 100)
+            : '';
+        $period = is_string($query['period'] ?? null) && in_array($query['period'], ['week', 'month'], true)
+            ? $query['period']
+            : '';
+        $scope = is_string($query['scope'] ?? null) && in_array($query['scope'], ['active', 'archived', 'all'], true)
+            ? $query['scope']
+            : 'active';
+        [$registeredFrom, $registeredBefore] = $this->registrationPeriod($period);
 
         return new DashboardPageView('PlatformAdministration/Registrations/SuperAdminRegistrationReview', [
             'navigation' => [
@@ -40,16 +62,43 @@ final readonly class SuperAdminRegistrationReviewPage
                 ['key' => 'registrations', 'label' => 'Clinic Registrations'],
             ],
             'pageTitle' => 'Clinic registration review',
-            'pageDescription' => 'Review prospective clinics before any commercial checkout or tenant provisioning.',
+            'pageDescription' => 'Find, correct, review and safely archive clinic applications before commercial provisioning.',
             'identityName' => $context->name,
             'contextLabel' => 'Super Admin workspace',
             'registrations' => array_map(
                 static fn ($registration): array => (array) $registration,
-                $this->registrations->list($status),
+                $this->registrations->list(
+                    $status,
+                    100,
+                    $search === '' ? null : $search,
+                    $registeredFrom,
+                    $registeredBefore,
+                    $scope,
+                ),
             ),
-            'filters' => ['status' => $status],
+            'filters' => [
+                'status' => $status,
+                'search' => $search,
+                'period' => $period,
+                'scope' => $scope,
+            ],
+            'indexUrl' => route('dashboard.registrations'),
             'reviewUrlTemplate' => route('dashboard.registrations.review', ['registrationId' => '__REGISTRATION_ID__']),
             'decisionUrlTemplate' => route('dashboard.registrations.decision', ['registrationId' => '__REGISTRATION_ID__']),
+            'updateUrlTemplate' => route('dashboard.registrations.update', ['registrationId' => '__REGISTRATION_ID__']),
+            'archiveUrlTemplate' => route('dashboard.registrations.archive', ['registrationId' => '__REGISTRATION_ID__']),
         ]);
+    }
+
+    /** @return array{0: ?\DateTimeImmutable, 1: ?\DateTimeImmutable} */
+    private function registrationPeriod(string $period): array
+    {
+        $now = CarbonImmutable::now(config('app.timezone'));
+
+        return match ($period) {
+            'week' => [$now->startOfWeek()->utc()->toDateTimeImmutable(), $now->endOfWeek()->addMicrosecond()->utc()->toDateTimeImmutable()],
+            'month' => [$now->startOfMonth()->utc()->toDateTimeImmutable(), $now->endOfMonth()->addMicrosecond()->utc()->toDateTimeImmutable()],
+            default => [null, null],
+        };
     }
 }

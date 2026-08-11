@@ -89,6 +89,37 @@ final class ClinicRegistration
         $this->commercialSelection = $commercialSelection;
     }
 
+    public function reviseProfileByAdministrator(ClinicRegistrationProfile $profile): void
+    {
+        if (! $this->isEditableByAdministrator()) {
+            throw new InvalidClinicRegistrationTransitionException(
+                'Approved, provisioned, rejected, cancelled, or expired registrations cannot be edited.',
+            );
+        }
+
+        $this->profile = $profile;
+    }
+
+    public function isEditableByAdministrator(): bool
+    {
+        return in_array($this->status, [
+            RegistrationStatus::Draft,
+            RegistrationStatus::Submitted,
+            RegistrationStatus::UnderReview,
+            RegistrationStatus::CorrectionRequested,
+        ], true);
+    }
+
+    public function isArchivableByAdministrator(): bool
+    {
+        return in_array($this->status, [
+            RegistrationStatus::Draft,
+            RegistrationStatus::Rejected,
+            RegistrationStatus::Cancelled,
+            RegistrationStatus::Expired,
+        ], true);
+    }
+
     public function submit(TenantId $tenantId, DateTimeImmutable $occurredAt): void
     {
         if ($this->status !== RegistrationStatus::Draft) {

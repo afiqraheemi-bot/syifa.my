@@ -112,12 +112,16 @@ final readonly class SuperAdminCommercialBillingOptionOperationController
      */
     private function input(Request $request, bool $updating = false): array
     {
+        $request->merge([
+            'code' => strtolower(trim((string) $request->input('code', ''))),
+        ]);
+
         /** @var array<string, list<string>> $rules */
         $rules = [
-            'code' => ['required', 'string', 'max:50'],
+            'code' => ['required', 'string', 'max:50', 'regex:/^[a-z][a-z0-9_-]{0,49}$/'],
             'name' => ['required', 'string', 'max:100'],
             'recurrence_classification' => ['required', 'in:recurring,non_recurring'],
-            'interval_unit' => ['required_if:recurrence_classification,recurring', 'nullable', 'in:month,year', 'prohibited_if:recurrence_classification,non_recurring'],
+            'interval_unit' => ['required_if:recurrence_classification,recurring', 'nullable', 'in:day,month,year', 'prohibited_if:recurrence_classification,non_recurring'],
             'interval_count' => ['required_if:recurrence_classification,recurring', 'nullable', 'integer', 'min:1', 'prohibited_if:recurrence_classification,non_recurring'],
             'effective_start' => ['required', 'date_format:Y-m-d'],
             'effective_end' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:effective_start'],
@@ -141,7 +145,9 @@ final readonly class SuperAdminCommercialBillingOptionOperationController
          *   expected_version?: int
          * } $validated
          */
-        $validated = $request->validateWithBag('commercial', $rules);
+        $validated = $request->validateWithBag('commercial', $rules, [
+            'code.regex' => 'Use letters, numbers, hyphens or underscores, starting with a letter.',
+        ]);
 
         return [
             ...$validated,

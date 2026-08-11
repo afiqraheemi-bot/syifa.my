@@ -22,6 +22,7 @@ final readonly class PostgresClinicRegistrationQueryAdapter implements ClinicReg
     {
         $row = $this->connection->table('clinic_registrations')
             ->where('platform_identity_id', $platformIdentityId)
+            ->whereNull('archived_at')
             ->orderByDesc('created_at')
             ->first();
 
@@ -32,6 +33,7 @@ final readonly class PostgresClinicRegistrationQueryAdapter implements ClinicReg
     {
         $row = $this->connection->table('clinic_registrations')
             ->where('platform_identity_id', $trackingCredential)
+            ->whereNull('archived_at')
             ->orderByDesc('created_at')
             ->first();
 

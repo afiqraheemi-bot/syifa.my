@@ -36,7 +36,7 @@ final readonly class SuperAdminTenantOverviewPage
                 ['key' => 'tenants', 'label' => 'Tenants'],
             ],
             'pageTitle' => 'Tenant management',
-            'pageDescription' => 'Review tenant, subscription, publication, and assignment status.',
+            'pageDescription' => 'Monitor every clinic from provisioning through subscription, Website launch, and onboarding.',
             'identityName' => $context->name,
             'contextLabel' => 'Super Admin workspace',
             'tenantOverview' => $this->tenants

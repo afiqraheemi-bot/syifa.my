@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace App\Support\Dashboard\Application\Subscription;
 
+use App\Modules\SubscriptionBilling\Contracts\BillingDocument\BillingDocumentData;
+use App\Modules\SubscriptionBilling\Contracts\BillingDocument\BillingDocumentReadInterface;
 use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\ClinicOwnerSubscriptionDetailReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\ClinicOwnerDashboardNavigation;
 use App\Support\Dashboard\Application\DashboardPageView;
+use Carbon\CarbonImmutable;
 use LogicException;
 
 final readonly class ClinicOwnerSubscriptionPage
 {
-    public function __construct(private ClinicOwnerSubscriptionDetailReadInterface $subscriptions) {}
+    public function __construct(
+        private ClinicOwnerSubscriptionDetailReadInterface $subscriptions,
+        private BillingDocumentReadInterface $documents,
+    ) {}
 
     public function fromTrustedContext(mixed $context): DashboardPageView
     {
@@ -48,6 +54,19 @@ final readonly class ClinicOwnerSubscriptionPage
                 'action' => route('dashboard.subscription.renewal-checkout'),
                 'csrfToken' => csrf_token(),
             ] : null,
+            'documents' => array_map(fn (BillingDocumentData $document): array => [
+                'paymentId' => $document->paymentId,
+                'invoiceNumber' => $document->invoiceNumber,
+                'receiptNumber' => $document->receiptNumber,
+                'purpose' => ucwords(str_replace('_', ' ', $document->purpose)),
+                'amount' => $document->currency.' '.number_format($document->amountMinor / 100, 2, '.', ','),
+                'status' => ucwords(str_replace('_', ' ', $document->paymentStatus)),
+                'issuedAt' => $this->dateTime($document->issuedAt),
+                'invoiceHref' => route('dashboard.subscription.invoices.show', $document->paymentId),
+                'receiptHref' => $document->receiptNumber === null
+                    ? null
+                    : route('dashboard.subscription.receipts.show', $document->paymentId),
+            ], $this->documents->listForTenant($context->tenantId)),
             'feedback' => [
                 'error' => session('subscription_error'),
             ],
@@ -57,5 +76,12 @@ final readonly class ClinicOwnerSubscriptionPage
     private function label(string $value): string
     {
         return ucwords(str_replace('_', ' ', $value));
+    }
+
+    private function dateTime(string $value): string
+    {
+        return CarbonImmutable::parse($value)
+            ->timezone((string) config('app.timezone', 'Asia/Kuala_Lumpur'))
+            ->format('d M Y, g:i A');
     }
 }

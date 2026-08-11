@@ -61,6 +61,8 @@ use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditActor
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditEntryId;
 use App\Modules\PlatformAdministration\Domain\AuditEntry\ValueObjects\AuditOutcomeType;
 use App\Modules\ReportingAnalytics\Contracts\ReportReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\BillingDocument\BillingDocumentData;
+use App\Modules\SubscriptionBilling\Contracts\BillingDocument\BillingDocumentReadInterface;
 use App\Modules\SubscriptionBilling\Contracts\BillingOverview\BillingOverviewData;
 use App\Modules\SubscriptionBilling\Contracts\BillingOverview\BillingOverviewReadInterface;
 use App\Modules\SubscriptionBilling\Contracts\BillingOverview\RecentPaymentData;
@@ -99,6 +101,7 @@ use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTim
 use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTimelineReadInterface;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewData;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewReadInterface;
+use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewSummaryData;
 use App\Modules\WebsiteBuilder\Application\ClinicBooking\ClinicBookingDateOverrideData;
 use App\Modules\WebsiteBuilder\Contracts\Assets\WebsiteAssetBinaryStorageInterface;
 use App\Modules\WebsiteBuilder\Contracts\CustomDomain\CustomDomainRepositoryInterface;
@@ -292,6 +295,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->app->instance(SubscriptionDetailReadInterface::class, $detail);
         $this->app->instance(SubscriptionTimelineReadInterface::class, $detail);
         $this->app->instance(PaymentHistoryReadInterface::class, $detail);
+        $this->app->instance(BillingDocumentReadInterface::class, new DashboardEmptyBillingDocumentRead);
         $operations = new DashboardRecordedSubscriptionOperations;
         $this->app->instance(ManualRenewSubscriptionInterface::class, $operations);
         $this->app->instance(EnableAutoRenewInterface::class, $operations);
@@ -624,8 +628,14 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ClinicRegistrationReviewReadInterface::class,
             new class implements ClinicRegistrationReviewReadInterface
             {
-                public function list(?string $status, int $limit = 100): array
-                {
+                public function list(
+                    ?string $status,
+                    int $limit = 100,
+                    ?string $search = null,
+                    ?DateTimeImmutable $registeredFrom = null,
+                    ?DateTimeImmutable $registeredBefore = null,
+                    string $scope = 'active',
+                ): array {
                     return [new RegistrationReviewItemData(
                         '00000000-0000-4000-8000-000000000701',
                         'submitted',
@@ -633,11 +643,15 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                         'owner@baharu.test',
                         '+60123456789',
                         '1 Jalan Klinik',
+                        '2026-09-01T00:00:00+00:00',
                         '2026-09-02T00:00:00+00:00',
                         3,
                         null,
                         null,
                         null,
+                        null,
+                        true,
+                        false,
                     )];
                 }
             },
@@ -658,6 +672,16 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('navigation.1.current', true),
             );
 
+        $this->get('/dashboard/registrations?search=baharu&period=week&status=submitted&scope=active')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('filters.search', 'baharu')
+                    ->where('filters.period', 'week')
+                    ->where('filters.status', 'submitted')
+                    ->where('filters.scope', 'active'),
+            );
+
         $this->app->instance(
             AuthorizationService::class,
             $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
@@ -669,6 +693,16 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->postJson('/dashboard/registrations/00000000-0000-4000-8000-000000000701/decision', [
             'outcome' => 'approved',
             'reason_category' => 'eligible_clinic',
+            'expected_version' => 3,
+        ])->assertForbidden();
+        $this->patchJson('/dashboard/registrations/00000000-0000-4000-8000-000000000701', [
+            'clinic_name' => 'Klinik Baharu',
+            'clinic_email' => 'owner@baharu.test',
+            'clinic_phone' => '+60123456789',
+            'clinic_address' => '1 Jalan Klinik',
+            'expected_version' => 3,
+        ])->assertForbidden();
+        $this->deleteJson('/dashboard/registrations/00000000-0000-4000-8000-000000000701', [
             'expected_version' => 3,
         ])->assertForbidden();
 
@@ -683,6 +717,16 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->postJson('/dashboard/registrations/00000000-0000-4000-8000-000000000701/decision', [
             'outcome' => 'approved',
             'reason_category' => 'eligible_clinic',
+            'expected_version' => 3,
+        ])->assertForbidden();
+        $this->patchJson('/dashboard/registrations/00000000-0000-4000-8000-000000000701', [
+            'clinic_name' => 'Klinik Baharu',
+            'clinic_email' => 'owner@baharu.test',
+            'clinic_phone' => '+60123456789',
+            'clinic_address' => '1 Jalan Klinik',
+            'expected_version' => 3,
+        ])->assertForbidden();
+        $this->deleteJson('/dashboard/registrations/00000000-0000-4000-8000-000000000701', [
             'expected_version' => 3,
         ])->assertForbidden();
     }
@@ -726,7 +770,10 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('tenantOverview.items.0.ownerEmail', 'aisyah@example.test')
                     ->where('tenantOverview.items.0.subscriptionStatusLabel', 'Active')
                     ->where('tenantOverview.items.0.websitePublicationStatus', 'Published')
-                    ->where('tenantOverview.items.0.websiteDesigner', 'Designer One'),
+                    ->where('tenantOverview.items.0.websiteDesigner', 'Designer One')
+                    ->where('tenantOverview.items.0.publicHost', 'aisyah.syifa.my')
+                    ->where('tenantOverview.items.0.onboardingStatusLabel', 'In Progress')
+                    ->where('tenantOverview.summary.0.value', 1),
             );
     }
 
@@ -888,6 +935,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 return $page
                     ->component('SubscriptionBilling/Commercial/SuperAdminCommercialManagement', false)
                     ->where('plans.0.name', 'Syifa Essential')
+                    ->where('actions.createPackage', route('dashboard.commercial.packages.create'))
+                    ->where('actions.previewPackages', route('dashboard.commercial.website-preview').'#pricing')
                     ->where('actions.createPlan', route('dashboard.commercial.plans.create'))
                     ->where(
                         'actions.createBillingOption',
@@ -895,6 +944,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     )
                     ->where('billingOptions.0.code', 'annual')
                     ->where('capabilities.0.version', 1)
+                    ->missing('capabilities.1')
                     ->where(
                         'capabilities.0.editUrl',
                         route(
@@ -917,6 +967,15 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->missing('oldInput')
                     ->where('selectedPlan', null);
             });
+
+        $this->get('/dashboard/commercial/packages/create')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Commercial/SuperAdminCommercialMutationForm', false)
+                ->where('formKind', 'package-create')
+                ->where('action', route('dashboard.commercial.packages.store'))
+                ->where('billingOptions.0.label', 'Annual')
+                ->where('validationErrors', []));
 
         $this->get('/dashboard/commercial/plans/create')
             ->assertOk()
@@ -1020,7 +1079,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     'actions.grandfather',
                     route('dashboard.commercial.offerings.grandfather', $offeringId),
                 )
-                ->where('feedback.success', 'Plan offering updated successfully.'));
+                ->where('feedback.success', 'Plan price updated successfully.'));
 
         $this->get("/dashboard/commercial/plans/{$planId}/offerings/create")
             ->assertOk()
@@ -1038,6 +1097,18 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 ->where('offering.version', 2));
     }
 
+    public function test_super_admin_can_preview_public_packages_without_being_redirected_to_dashboard(): void
+    {
+        $this->app->instance(AuthorizationService::class, $this->authorization(ActorType::PlatformIdentity, 'super_admin'));
+
+        $this->get('/dashboard/commercial/website-preview')
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('Shared/Marketing/HomePage', false)
+                ->where('packagePreview', true)
+                ->has('packages'));
+    }
+
     public function test_non_super_admin_roles_cannot_access_commercial_management(): void
     {
         $this->app->instance(
@@ -1045,11 +1116,13 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
         );
         $this->getJson('/dashboard/commercial')->assertForbidden();
+        $this->getJson('/dashboard/commercial/packages/create')->assertForbidden();
         $this->getJson('/dashboard/commercial/plans/create')->assertForbidden();
         $this->getJson('/dashboard/commercial/billing-options/create')->assertForbidden();
         $this->getJson('/dashboard/commercial/capabilities/create')->assertForbidden();
         $this->getJson('/dashboard/commercial/billing-options/10000000-0000-4000-8000-000000000002/edit')->assertForbidden();
         $this->postJson('/dashboard/commercial/plans')->assertForbidden();
+        $this->postJson('/dashboard/commercial/packages')->assertForbidden();
         $this->postJson('/dashboard/commercial/billing-options')->assertForbidden();
         $this->postJson('/dashboard/commercial/capabilities')->assertForbidden();
         $this->patchJson('/dashboard/commercial/billing-options/10000000-0000-4000-8000-000000000002')->assertForbidden();
@@ -1095,6 +1168,51 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertStatus(303)
             ->assertRedirect('/dashboard/commercial/plans/10000000-0000-4000-8000-000000000001/offerings/create')
             ->assertSessionHasErrors('amount_minor', errorBag: 'commercial');
+
+        $this->from('/dashboard/commercial/packages/create')
+            ->post('/dashboard/commercial/packages', [
+                'code' => '',
+                'name' => '',
+                'description' => '',
+                'billing_option_id' => 'not-a-uuid',
+                'amount_minor' => 0,
+                'effective_start' => '',
+            ])
+            ->assertStatus(303)
+            ->assertRedirect('/dashboard/commercial/packages/create')
+            ->assertSessionHasErrors(
+                ['code', 'name', 'description', 'billing_option_id', 'amount_minor', 'effective_start'],
+                errorBag: 'commercial',
+            );
+
+        $this->from('/dashboard/commercial/packages/create')
+            ->post('/dashboard/commercial/packages', [
+                'code' => 'ESSENTIAL',
+                'name' => '',
+                'description' => '',
+                'billing_option_id' => 'not-a-uuid',
+                'amount_minor' => 0,
+                'effective_start' => '',
+            ])
+            ->assertStatus(303)
+            ->assertRedirect('/dashboard/commercial/packages/create')
+            ->assertSessionDoesntHaveErrors('code', errorBag: 'commercial')
+            ->assertSessionHasInput('code', 'essential');
+
+        $this->from('/dashboard/commercial/packages/create')
+            ->post('/dashboard/commercial/packages', [
+                'code' => 'ESSENTIAL',
+                'name' => '',
+                'description' => '',
+                'billing_option_id' => 'not-a-uuid',
+                'price_myr' => '299.00',
+                'effective_start' => '',
+            ])
+            ->assertStatus(303)
+            ->assertRedirect('/dashboard/commercial/packages/create')
+            ->assertSessionDoesntHaveErrors(['code', 'amount_minor', 'price_myr'], errorBag: 'commercial')
+            ->assertSessionHasInput('amount_minor', 29900)
+            ->assertSessionHasInput('price_myr', '299.00');
 
         $response = $this->from('/dashboard/commercial/plans/create')
             ->post('/dashboard/commercial/plans', [
@@ -3449,6 +3567,11 @@ final readonly class DashboardFixedPlatformRead implements PlatformDashboardRead
 
 final readonly class DashboardFixedTenantOverviewRead implements TenantOverviewReadInterface
 {
+    public function summary(): TenantOverviewSummaryData
+    {
+        return new TenantOverviewSummaryData(1, 1, 0, 0);
+    }
+
     public function list(?string $status, ?string $cursor, int $limit, ?string $search): array
     {
         return [
@@ -3461,6 +3584,14 @@ final readonly class DashboardFixedTenantOverviewRead implements TenantOverviewR
                 'active',
                 true,
                 'Designer One',
+                'subscription-1',
+                'website-1',
+                'published',
+                'aisyah.syifa.my',
+                true,
+                'job-1',
+                'in_progress',
+                '2026-08-25T10:00:00+08:00',
             ),
         ];
     }
@@ -3517,6 +3648,29 @@ final readonly class DashboardFixedSubscriptionDetailRead implements PaymentHist
     public function listForSubscription(string $subscriptionId, ?string $cursor, int $limit): array
     {
         return [new SubscriptionPaymentData('payment-1', 'initial_activation', 120000, 'MYR', 'succeeded', '2026-01-01')];
+    }
+}
+
+final readonly class DashboardEmptyBillingDocumentRead implements BillingDocumentReadInterface
+{
+    public function listForTenant(string $trustedTenantId): array
+    {
+        return [];
+    }
+
+    public function listForSubscription(string $subscriptionId): array
+    {
+        return [];
+    }
+
+    public function detail(string $paymentId): ?BillingDocumentData
+    {
+        return null;
+    }
+
+    public function detailForTenant(string $paymentId, string $trustedTenantId): ?BillingDocumentData
+    {
+        return null;
     }
 }
 
@@ -4355,6 +4509,8 @@ final readonly class DashboardFixedCommercialCatalogue implements BillingOptionC
 
     private const string CAPABILITY_ID = '10000000-0000-4000-8000-000000000004';
 
+    private const string RETIRED_CAPABILITY_ID = '10000000-0000-4000-8000-000000000005';
+
     public function findPlan(string $planId): ?PlanData
     {
         return $planId === self::PLAN_ID ? $this->plan() : null;
@@ -4387,7 +4543,10 @@ final readonly class DashboardFixedCommercialCatalogue implements BillingOptionC
 
     public function listCapabilityDefinitions(OffsetPaginationInput $pagination): PaginatedCapabilityDefinitionData
     {
-        return new PaginatedCapabilityDefinitionData([$this->capability()], $this->meta($pagination));
+        return new PaginatedCapabilityDefinitionData(
+            [$this->capability(), $this->retiredCapability()],
+            $this->meta($pagination),
+        );
     }
 
     public function listPlanOfferings(OffsetPaginationInput $pagination): PaginatedPlanOfferingData
@@ -4441,6 +4600,18 @@ final readonly class DashboardFixedCommercialCatalogue implements BillingOptionC
             'Manage clinic bookings.',
             'Included operational capability.',
             'active',
+        );
+    }
+
+    private function retiredCapability(): CapabilityDefinitionData
+    {
+        return new CapabilityDefinitionData(
+            self::RETIRED_CAPABILITY_ID,
+            'legacy.placeholder',
+            'Legacy placeholder',
+            'Historical placeholder capability.',
+            'Retained only for commercial history.',
+            'retired',
         );
     }
 

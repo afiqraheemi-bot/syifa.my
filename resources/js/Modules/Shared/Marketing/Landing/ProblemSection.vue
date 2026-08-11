@@ -44,22 +44,18 @@ defineProps({
 
             <div data-reveal class="reveal relative">
                 <div
-                    class="relative flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 shadow-xl shadow-slate-900/10"
+                    class="relative aspect-[4/5] overflow-hidden rounded-[2rem] bg-emerald-50 shadow-xl shadow-slate-900/10"
                 >
-                    <div
-                        class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_55%)]"
+                    <img
+                        :src="'/images/marketing/clinic-booking-challenges.webp'"
+                        :alt="copy.imageAlt"
+                        width="960"
+                        height="1199"
+                        loading="lazy"
+                        decoding="async"
+                        class="h-full w-full object-cover object-center"
                     />
-                    <svg
-                        viewBox="0 0 24 24"
-                        class="relative size-20 fill-none stroke-white/60 stroke-[1.1]"
-                    >
-                        <circle cx="12" cy="8.5" r="3.5" />
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M4.5 20c1.2-4.2 4.8-6.5 7.5-6.5s6.3 2.3 7.5 6.5"
-                        />
-                    </svg>
+                    <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/15 via-transparent to-white/5" />
                 </div>
 
                 <div

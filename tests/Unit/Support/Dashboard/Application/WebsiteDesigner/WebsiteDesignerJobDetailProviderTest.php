@@ -78,9 +78,11 @@ final readonly class FixedTaskJobDetailRead implements WebsiteDesignerDashboardR
             [],
             [
                 ['key' => 'clinic_inputs', 'status' => 'completed', 'responsibility' => 'clinic_owner'],
-                ['key' => 'service_setup', 'status' => 'in_progress', 'responsibility' => 'website_designer'],
+                ['key' => 'service_setup', 'status' => 'completed', 'responsibility' => 'website_designer'],
                 ['key' => 'website_setup', 'status' => 'not_ready', 'responsibility' => 'website_designer'],
                 ['key' => 'booking_setup', 'status' => 'not_ready', 'responsibility' => 'website_designer'],
+                ['key' => 'website_approval', 'status' => 'not_ready', 'responsibility' => 'clinic_owner'],
+                ['key' => 'launch_readiness', 'status' => 'not_ready', 'responsibility' => 'website_designer'],
             ],
         );
     }

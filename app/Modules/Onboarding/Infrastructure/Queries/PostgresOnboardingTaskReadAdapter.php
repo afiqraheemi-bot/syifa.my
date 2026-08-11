@@ -28,10 +28,12 @@ final readonly class PostgresOnboardingTaskReadAdapter implements OnboardingTask
             ->get()
             ->map(static fn (object $task): array => [
                 'id' => (string) $task->id,
+                'key' => (string) $task->task_key,
                 'title' => (string) $task->title,
                 'responsibility' => (string) $task->responsibility,
                 'status' => (string) $task->status,
                 'mandatory' => (bool) $task->mandatory,
+                'blocking' => (bool) $task->blocking,
                 'dueAt' => $task->due_at === null ? null : (string) $task->due_at,
                 'evidenceReference' => $task->evidence_reference === null ? null : (string) $task->evidence_reference,
                 'note' => $task->note === null ? null : (string) $task->note,

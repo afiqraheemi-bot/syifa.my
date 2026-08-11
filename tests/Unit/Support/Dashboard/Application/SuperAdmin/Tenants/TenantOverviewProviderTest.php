@@ -6,6 +6,7 @@ namespace Tests\Unit\Support\Dashboard\Application\SuperAdmin\Tenants;
 
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewData;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewReadInterface;
+use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewSummaryData;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\SuperAdmin\Tenants\TenantOverviewCriteria;
 use App\Support\Dashboard\Application\SuperAdmin\Tenants\TenantOverviewProvider;
@@ -40,7 +41,9 @@ final class TenantOverviewProviderTest extends TestCase
         self::assertSame('Owner 1', $projection->data['items'][0]['ownerName']);
         self::assertSame('owner1@example.test', $projection->data['items'][0]['ownerEmail']);
         self::assertSame('Designer 1', $projection->data['items'][0]['websiteDesigner']);
-        self::assertSame('Search clinic, owner or email', $projection->data['search']['placeholder']);
+        self::assertSame('Clinic, owner, email, host or ID', $projection->data['search']['placeholder']);
+        self::assertSame(11, $projection->data['summary'][0]['value']);
+        self::assertSame('TENANT-1', $projection->data['items'][0]['reference']);
     }
 }
 
@@ -48,6 +51,11 @@ final class RecordedTenantOverviewRead implements TenantOverviewReadInterface
 {
     /** @var array{?string, ?string, int, ?string}|null */
     public ?array $criteria = null;
+
+    public function summary(): TenantOverviewSummaryData
+    {
+        return new TenantOverviewSummaryData(11, 9, 1, 1);
+    }
 
     public function list(?string $status, ?string $cursor, int $limit, ?string $search): array
     {

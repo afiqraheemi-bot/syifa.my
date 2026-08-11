@@ -49,23 +49,18 @@ defineProps({
 
             <div data-reveal class="reveal relative">
                 <div
-                    class="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 shadow-xl shadow-emerald-900/20"
+                    class="relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-emerald-50 shadow-xl shadow-emerald-900/15"
                 >
-                    <div
-                        class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_25%,rgba(255,255,255,0.18),transparent_55%)]"
+                    <img
+                        :src="'/images/marketing/clinic-digital-collaboration.webp'"
+                        :alt="copy.imageAlt"
+                        width="1200"
+                        height="900"
+                        loading="lazy"
+                        decoding="async"
+                        class="h-full w-full object-cover object-center"
                     />
-                    <svg
-                        viewBox="0 0 24 24"
-                        class="relative size-16 fill-none stroke-white/50 stroke-[1.1]"
-                    >
-                        <circle cx="8.5" cy="8.5" r="2.75" />
-                        <circle cx="16" cy="9.5" r="2.25" />
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M3.5 19c.9-3.3 3.4-5 5-5s3.6 1.4 4.4 3.2M13 19c.7-2.6 2.6-4 4-4s3.1 1.2 3.6 3.1"
-                        />
-                    </svg>
+                    <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-emerald-950/15 via-transparent to-white/5" />
                 </div>
 
                 <div

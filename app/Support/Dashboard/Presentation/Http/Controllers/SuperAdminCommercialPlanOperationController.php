@@ -180,8 +180,14 @@ final readonly class SuperAdminCommercialPlanOperationController
      */
     private function planInput(Request $request, bool $updating = false): array
     {
+        if ($request->has('code')) {
+            $request->merge([
+                'code' => strtolower(trim((string) $request->input('code'))),
+            ]);
+        }
+
         $rules = [
-            'code' => [$updating ? 'sometimes' : 'required', 'string', 'max:50'],
+            'code' => [$updating ? 'sometimes' : 'required', 'string', 'max:50', 'regex:/^[a-z][a-z0-9_-]{0,49}$/'],
             'name' => ['required', 'string', 'max:100'],
             'description' => ['required', 'string', 'max:1000'],
             'display_order' => ['required', 'integer', 'min:0'],
@@ -191,7 +197,9 @@ final readonly class SuperAdminCommercialPlanOperationController
         }
 
         /** @var array{code?: string, name: string, description: string, display_order: int, expected_version?: int} $validated */
-        $validated = $request->validateWithBag('commercial', $rules);
+        $validated = $request->validateWithBag('commercial', $rules, [
+            'code.regex' => 'Use letters, numbers, hyphens or underscores, starting with a letter.',
+        ]);
 
         return [
             'code' => $validated['code'] ?? '',

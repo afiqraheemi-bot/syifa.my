@@ -22,7 +22,29 @@ final readonly class PostgresSubscriptionDetailReadAdapter implements ClinicOwne
 
     public function detail(string $subscriptionId): ?SubscriptionDetailData
     {
-        $row = $this->connection->table('subscriptions')->where('id', $subscriptionId)->first();
+        $row = $this->connection->table('subscriptions as subscription')
+            ->leftJoin('websites as website', 'website.tenant_id', '=', 'subscription.tenant_id')
+            ->leftJoin('clinic_registrations as registration', 'registration.id', '=', 'subscription.clinic_registration_id')
+            ->leftJoin('commercial_catalogue_plans as plan', static function ($join): void {
+                $join->whereRaw('CAST(plan.id AS TEXT) = subscription.plan_id');
+            })
+            ->where('subscription.id', $subscriptionId)
+            ->select([
+                'subscription.id',
+                'subscription.tenant_id',
+                'subscription.plan_id',
+                'subscription.billing_cycle_id',
+                'subscription.amount_minor',
+                'subscription.currency',
+                'subscription.starts_on',
+                'subscription.ends_on',
+                'subscription.status',
+                'subscription.auto_renew_status',
+                'subscription.version',
+                'plan.name as plan_name',
+            ])
+            ->selectRaw('COALESCE(website.clinic_name, registration.clinic_name) AS clinic_name')
+            ->first();
         if ($row === null) {
             return null;
         }
@@ -54,6 +76,8 @@ final readonly class PostgresSubscriptionDetailReadAdapter implements ClinicOwne
             (string) $row->auto_renew_status,
             (int) $row->version,
             $renewalCheckoutId,
+            is_string($row->clinic_name) && $row->clinic_name !== '' ? $row->clinic_name : null,
+            is_string($row->plan_name) && $row->plan_name !== '' ? $row->plan_name : null,
         );
     }
 
@@ -109,26 +133,49 @@ final readonly class PostgresSubscriptionDetailReadAdapter implements ClinicOwne
 
     public function listForSubscription(string $subscriptionId, ?string $cursor, int $limit): array
     {
-        $query = $this->connection->table('subscriptions')
+        $payments = [];
+        $initial = $this->connection->table('subscriptions')
             ->join('payments', 'payments.id', '=', 'subscriptions.payment_id')
             ->where('subscriptions.id', $subscriptionId)
             ->select([
                 'payments.id', 'payments.amount_minor', 'payments.currency',
                 'payments.status', 'payments.domain_last_changed_at',
-            ]);
-        if ($cursor !== null) {
-            $query->where('payments.id', '<', $cursor);
+            ])->first();
+        if ($initial !== null) {
+            $payments[] = new SubscriptionPaymentData(
+                (string) $initial->id,
+                'initial_activation',
+                (int) $initial->amount_minor,
+                (string) $initial->currency,
+                (string) $initial->status,
+                (string) $initial->domain_last_changed_at,
+            );
         }
 
-        return array_values($query->orderByDesc('payments.id')->limit($limit)->get()
-            ->map(static fn (object $row): SubscriptionPaymentData => new SubscriptionPaymentData(
-                (string) $row->id,
-                'initial_activation',
-                (int) $row->amount_minor,
-                (string) $row->currency,
-                (string) $row->status,
-                (string) $row->domain_last_changed_at,
-            ))->all());
+        foreach ($this->connection->table('subscription_renewals as renewal')
+            ->join('payments as payment', 'payment.id', '=', 'renewal.payment_id')
+            ->where('renewal.subscription_id', $subscriptionId)
+            ->select([
+                'payment.id', 'payment.amount_minor', 'payment.currency',
+                'payment.status', 'payment.domain_last_changed_at',
+            ])->get() as $renewal) {
+            $payments[] = new SubscriptionPaymentData(
+                (string) $renewal->id,
+                'subscription_renewal',
+                (int) $renewal->amount_minor,
+                (string) $renewal->currency,
+                (string) $renewal->status,
+                (string) $renewal->domain_last_changed_at,
+            );
+        }
+
+        $payments = array_values(array_filter(
+            $payments,
+            static fn (SubscriptionPaymentData $payment): bool => $cursor === null || strcmp($payment->paymentId, $cursor) < 0,
+        ));
+        usort($payments, static fn (SubscriptionPaymentData $left, SubscriptionPaymentData $right): int => strcmp($right->occurredAt, $left->occurredAt) ?: strcmp($right->paymentId, $left->paymentId));
+
+        return array_slice($payments, 0, $limit);
     }
 
     public function currentForRenewal(string $subscriptionId): ?RenewalCommercialContextData

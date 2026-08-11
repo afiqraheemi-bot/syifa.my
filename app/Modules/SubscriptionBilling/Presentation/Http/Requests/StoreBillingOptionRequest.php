@@ -17,7 +17,7 @@ final class StoreBillingOptionRequest extends CommercialCatalogueMutationRequest
             'code' => ['required', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:100'],
             'recurrence_classification' => ['required', 'in:recurring,non_recurring'],
-            'interval_unit' => ['required_if:recurrence_classification,recurring', 'nullable', 'in:month,year', 'prohibited_if:recurrence_classification,non_recurring'],
+            'interval_unit' => ['required_if:recurrence_classification,recurring', 'nullable', 'in:day,month,year', 'prohibited_if:recurrence_classification,non_recurring'],
             'interval_count' => ['required_if:recurrence_classification,recurring', 'nullable', 'integer', 'min:1', 'prohibited_if:recurrence_classification,non_recurring'],
             'effective_start' => ['required', 'string', 'regex:/^\d{4}-\d{2}-\d{2}$/'],
             'effective_end' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}-\d{2}$/'],

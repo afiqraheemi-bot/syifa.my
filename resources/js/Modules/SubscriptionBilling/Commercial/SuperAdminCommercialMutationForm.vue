@@ -21,19 +21,72 @@ const props = defineProps({
     billingOption: { type: Object, default: null },
     capability: { type: Object, default: null },
     billingOptions: { type: Array, required: true },
+    billingOptionCreateUrl: { type: String, required: true },
 });
 
 const navigation = createDashboardNavigation(props.navigation);
 const submitting = ref(false);
 let submissionStarted = false;
+const isPackage = computed(() => props.formKind.startsWith('package-'));
 const isPlan = computed(() => props.formKind.startsWith('plan-'));
 const isBillingOption = computed(() => props.formKind.startsWith('billing-option-'));
 const isCapability = computed(() => props.formKind.startsWith('capability-'));
 const isEdit = computed(() => props.formKind.endsWith('-edit'));
+const availableBillingOptions = computed(() =>
+    props.billingOptions.filter((option) => option.availability === 'available'),
+);
+const formContext = computed(() => {
+    if (isPackage.value) {
+        return {
+            eyebrow: 'Subscription package',
+            title: 'Create the plan and its first price together',
+            description:
+                'Enter the customer-facing package once. SYIFA.my keeps the plan, billing cycle and pricing records separately behind the scenes for safe future changes.',
+        };
+    }
+
+    if (isPlan.value) {
+        return {
+            eyebrow: 'Subscription plan',
+            title: 'Define the package clinics will recognise',
+            description:
+                'Use a short name and clear customer-facing description. Pricing is managed separately so plan content can evolve safely.',
+        };
+    }
+
+    if (isBillingOption.value) {
+        return {
+            eyebrow: 'Billing cycle',
+            title: 'Define when clinics are charged',
+            description:
+                'Set the recurrence and effective period once, then reuse this cycle when adding plan prices.',
+        };
+    }
+
+    if (isCapability.value) {
+        return {
+            eyebrow: 'Plan feature',
+            title: 'Describe an approved customer benefit',
+            description:
+                'Keep the internal key stable and explain the feature in language that Commercial and support teams can understand.',
+        };
+    }
+
+    return {
+        eyebrow: 'Plan price',
+        title: 'Connect this plan to a billing cycle and price',
+        description:
+            'The browser sends the selected cycle and MYR price; the server remains authoritative for lifecycle, validation and audit.',
+    };
+});
 const recurrence = ref(
     fieldValue('recurrence_classification', props.billingOption?.recurrence ?? 'recurring'),
 );
-const amountMyr = ref(formatMyr(fieldValue('amount_minor', props.offering?.amountMinor)));
+const amountMyr = ref(
+    isPackage.value
+        ? String(fieldValue('price_myr', formatMyr(props.offering?.amountMinor)))
+        : formatMyr(fieldValue('amount_minor', props.offering?.amountMinor)),
+);
 const amountMinor = computed(() => {
     if (amountMyr.value.trim() === '') return '';
 
@@ -88,8 +141,142 @@ function beginSubmit(event) {
         </div>
 
         <section class="max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="mb-6 rounded-xl border border-emerald-100 bg-emerald-50 p-4 sm:p-5">
+                <p class="text-xs font-bold tracking-[0.16em] text-emerald-700 uppercase">
+                    {{ formContext.eyebrow }}
+                </p>
+                <h2 class="mt-1 text-lg font-bold text-slate-950">{{ formContext.title }}</h2>
+                <p class="mt-1 text-sm leading-6 text-slate-600">
+                    {{ formContext.description }}
+                </p>
+            </div>
             <form
-                v-if="isPlan"
+                v-if="isPackage"
+                class="grid gap-4 sm:grid-cols-2"
+                :action="action"
+                method="post"
+                @submit="beginSubmit"
+            >
+                <input type="hidden" name="_token" :value="csrfToken" />
+                <label class="grid gap-1 text-sm font-semibold">
+                    Package code
+                    <span class="font-normal text-slate-500">
+                        Stable internal reference, for example ESSENTIAL. Uppercase is accepted;
+                        SYIFA.my stores a safe normalized reference.
+                    </span>
+                    <input
+                        name="code"
+                        required
+                        maxlength="50"
+                        spellcheck="false"
+                        :value="fieldValue('code')"
+                        class="min-h-11 rounded-xl border border-slate-300 px-3"
+                    />
+                </label>
+                <label class="grid gap-1 text-sm font-semibold">
+                    Package name
+                    <span class="font-normal text-slate-500">The name clinics will see.</span>
+                    <input
+                        name="name"
+                        required
+                        maxlength="100"
+                        :value="fieldValue('name')"
+                        class="min-h-11 rounded-xl border border-slate-300 px-3"
+                    />
+                </label>
+                <label class="grid gap-1 text-sm font-semibold sm:col-span-2">
+                    Package description
+                    <textarea
+                        name="description"
+                        required
+                        maxlength="1000"
+                        rows="4"
+                        :value="fieldValue('description')"
+                        class="rounded-xl border border-slate-300 px-3 py-2"
+                    />
+                </label>
+                <label class="grid gap-1 text-sm font-semibold">
+                    Billing cycle
+                    <span class="font-normal text-slate-500">
+                        Choose an approved cycle such as annual or monthly.
+                    </span>
+                    <select
+                        name="billing_option_id"
+                        required
+                        class="min-h-11 rounded-xl border border-slate-300 bg-white px-3"
+                    >
+                        <option value="">Select billing cycle</option>
+                        <option
+                            v-for="option in availableBillingOptions"
+                            :key="option.id"
+                            :value="option.id"
+                            :selected="fieldValue('billing_option_id') === option.id"
+                        >
+                            {{ option.label }}
+                        </option>
+                    </select>
+                    <a
+                        v-if="availableBillingOptions.length === 0"
+                        :href="billingOptionCreateUrl"
+                        class="mt-1 font-bold text-emerald-700 underline underline-offset-4"
+                    >
+                        Create the first billing cycle
+                    </a>
+                </label>
+                <label class="grid gap-1 text-sm font-semibold">
+                    Price (MYR)
+                    <span class="font-normal text-slate-500">
+                        Enter ringgit, for example 1200.00.
+                    </span>
+                    <input
+                        v-model="amountMyr"
+                        name="price_myr"
+                        type="number"
+                        required
+                        inputmode="decimal"
+                        min="0.01"
+                        step="0.01"
+                        class="min-h-11 rounded-xl border border-slate-300 px-3"
+                    />
+                </label>
+                <label class="grid gap-1 text-sm font-semibold">
+                    Available for sale from
+                    <input
+                        name="effective_start"
+                        type="date"
+                        required
+                        :value="fieldValue('effective_start')"
+                        class="min-h-11 rounded-xl border border-slate-300 px-3"
+                    />
+                </label>
+                <label class="grid gap-1 text-sm font-semibold">
+                    Sales end date (optional)
+                    <input
+                        name="effective_end"
+                        type="date"
+                        :value="fieldValue('effective_end')"
+                        class="min-h-11 rounded-xl border border-slate-300 px-3"
+                    />
+                </label>
+                <div class="flex flex-col-reverse gap-3 sm:col-span-2 sm:flex-row sm:justify-end">
+                    <a
+                        :href="cancelUrl"
+                        class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 px-5 py-2 font-bold text-slate-900"
+                    >
+                        Cancel
+                    </a>
+                    <button
+                        type="submit"
+                        class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:opacity-60"
+                        :disabled="submitting || availableBillingOptions.length === 0"
+                    >
+                        {{ submitting ? 'Creating package…' : 'Create subscription package' }}
+                    </button>
+                </div>
+            </form>
+
+            <form
+                v-else-if="isPlan"
                 class="grid gap-4 sm:grid-cols-2"
                 :action="action"
                 method="post"
@@ -102,12 +289,18 @@ function beginSubmit(event) {
                 <input v-if="isEdit" type="hidden" name="expected_version" :value="plan.version" />
                 <label class="grid gap-1 text-sm font-semibold">
                     Plan code
+                    <span class="font-normal text-slate-500">
+                        Stable internal reference, for example essential. Capital letters are
+                        converted automatically.
+                    </span>
                     <input
                         v-if="!isEdit"
                         name="code"
                         maxlength="50"
+                        autocapitalize="none"
+                        spellcheck="false"
                         :value="fieldValue('code')"
-                        class="min-h-11 rounded-xl border border-slate-300 px-3"
+                        class="min-h-11 rounded-xl border border-slate-300 px-3 lowercase"
                     />
                     <input
                         v-else
@@ -137,6 +330,7 @@ function beginSubmit(event) {
                 </label>
                 <label class="grid gap-1 text-sm font-semibold">
                     Display order
+                    <span class="font-normal text-slate-500">Lower numbers appear first.</span>
                     <input
                         name="display_order"
                         type="number"
@@ -145,7 +339,7 @@ function beginSubmit(event) {
                         class="min-h-11 rounded-xl border border-slate-300 px-3"
                     />
                 </label>
-                <div class="flex items-end gap-3">
+                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-end">
                     <a
                         :href="cancelUrl"
                         class="inline-flex min-h-11 items-center rounded-xl border border-slate-300 px-5 py-2 font-bold text-slate-900"
@@ -179,17 +373,23 @@ function beginSubmit(event) {
                     :value="billingOption.version"
                 />
                 <label class="grid gap-1 text-sm font-semibold">
-                    Billing option code
+                    Billing cycle code
+                    <span class="font-normal text-slate-500">
+                        Stable internal reference, for example annual. Capital letters are converted
+                        automatically.
+                    </span>
                     <input
                         name="code"
                         maxlength="50"
+                        autocapitalize="none"
+                        spellcheck="false"
                         :value="fieldValue('code', billingOption?.code)"
                         :readonly="isEdit"
-                        class="min-h-11 rounded-xl border border-slate-300 px-3"
+                        class="min-h-11 rounded-xl border border-slate-300 px-3 lowercase"
                     />
                 </label>
                 <label class="grid gap-1 text-sm font-semibold">
-                    Billing option name
+                    Billing cycle name
                     <input
                         name="name"
                         maxlength="100"
@@ -224,7 +424,7 @@ function beginSubmit(event) {
                     </select>
                 </label>
                 <label class="grid gap-1 text-sm font-semibold">
-                    Billing type
+                    Payment pattern
                     <select
                         v-model="recurrence"
                         name="recurrence_classification"
@@ -240,6 +440,17 @@ function beginSubmit(event) {
                         name="interval_unit"
                         class="min-h-11 rounded-xl border border-slate-300 bg-white px-3"
                     >
+                        <option
+                            value="day"
+                            :selected="
+                                fieldValue(
+                                    'interval_unit',
+                                    billingOption?.intervalUnit ?? 'year',
+                                ) === 'day'
+                            "
+                        >
+                            Day
+                        </option>
                         <option
                             value="month"
                             :selected="
@@ -275,7 +486,7 @@ function beginSubmit(event) {
                     />
                 </label>
                 <label class="grid gap-1 text-sm font-semibold">
-                    Effective start
+                    Available from
                     <input
                         name="effective_start"
                         type="date"
@@ -284,7 +495,7 @@ function beginSubmit(event) {
                     />
                 </label>
                 <label class="grid gap-1 text-sm font-semibold">
-                    Effective end
+                    Available until
                     <input
                         name="effective_end"
                         type="date"
@@ -294,6 +505,7 @@ function beginSubmit(event) {
                 </label>
                 <label class="grid gap-1 text-sm font-semibold">
                     Display order
+                    <span class="font-normal text-slate-500">Lower numbers appear first.</span>
                     <input
                         name="display_order"
                         type="number"
@@ -302,7 +514,7 @@ function beginSubmit(event) {
                         class="min-h-11 rounded-xl border border-slate-300 px-3"
                     />
                 </label>
-                <div class="flex items-end gap-3 sm:col-span-2">
+                <div class="flex flex-col-reverse gap-3 sm:col-span-2 sm:flex-row sm:items-end">
                     <a
                         :href="cancelUrl"
                         class="inline-flex min-h-11 items-center rounded-xl border border-slate-300 px-5 py-2 font-bold text-slate-900"
@@ -318,8 +530,8 @@ function beginSubmit(event) {
                             submitting
                                 ? 'Saving…'
                                 : isEdit
-                                  ? 'Save Billing Option'
-                                  : 'Create Billing Option'
+                                  ? 'Save Billing Cycle'
+                                  : 'Create Billing Cycle'
                         }}
                     </button>
                 </div>
@@ -343,6 +555,9 @@ function beginSubmit(event) {
                 />
                 <label class="grid gap-1 text-sm font-semibold">
                     Feature key
+                    <span class="font-normal text-slate-500">
+                        Stable internal reference; it cannot change after creation.
+                    </span>
                     <input
                         name="capability_key"
                         maxlength="80"
@@ -371,7 +586,7 @@ function beginSubmit(event) {
                     />
                 </label>
                 <label class="grid gap-1 text-sm font-semibold sm:col-span-2">
-                    Commercial meaning
+                    Customer-facing value
                     <textarea
                         name="commercial_meaning"
                         maxlength="1000"
@@ -380,7 +595,7 @@ function beginSubmit(event) {
                         class="rounded-xl border border-slate-300 px-3 py-2"
                     />
                 </label>
-                <div class="flex items-end gap-3 sm:col-span-2">
+                <div class="flex flex-col-reverse gap-3 sm:col-span-2 sm:flex-row sm:items-end">
                     <a
                         :href="cancelUrl"
                         class="inline-flex min-h-11 items-center rounded-xl border border-slate-300 px-5 py-2 font-bold text-slate-900"
@@ -421,7 +636,7 @@ function beginSubmit(event) {
                     :value="offering.version"
                 />
                 <label class="grid gap-1 text-sm font-semibold">
-                    Billing option
+                    Billing cycle
                     <select
                         name="billing_option_id"
                         :disabled="isEdit"
@@ -436,7 +651,7 @@ function beginSubmit(event) {
                                 option.id
                             "
                         >
-                            {{ option.label }}
+                            {{ option.label }} · {{ option.availabilityLabel }}
                         </option>
                     </select>
                     <input
@@ -468,7 +683,7 @@ function beginSubmit(event) {
                     <input type="hidden" name="amount_minor" :value="amountMinor" />
                 </label>
                 <label class="grid gap-1 text-sm font-semibold">
-                    Effective start
+                    Available from
                     <input
                         name="effective_start"
                         type="date"
@@ -477,7 +692,7 @@ function beginSubmit(event) {
                     />
                 </label>
                 <label class="grid gap-1 text-sm font-semibold">
-                    Effective end
+                    Available until
                     <input
                         name="effective_end"
                         type="date"
@@ -486,7 +701,10 @@ function beginSubmit(event) {
                     />
                 </label>
                 <label class="grid gap-1 text-sm font-semibold sm:col-span-2">
-                    Feature configuration reference
+                    Approved feature set reference
+                    <span class="font-normal text-slate-500">
+                        Reference the existing approved configuration; do not enter customer data.
+                    </span>
                     <input
                         name="capability_configuration_reference"
                         maxlength="100"
@@ -501,6 +719,7 @@ function beginSubmit(event) {
                 </label>
                 <label class="grid gap-1 text-sm font-semibold">
                     Display order
+                    <span class="font-normal text-slate-500">Lower numbers appear first.</span>
                     <input
                         name="display_order"
                         type="number"
@@ -509,7 +728,7 @@ function beginSubmit(event) {
                         class="min-h-11 rounded-xl border border-slate-300 px-3"
                     />
                 </label>
-                <div class="flex items-end gap-3">
+                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-end">
                     <a
                         :href="cancelUrl"
                         class="inline-flex min-h-11 items-center rounded-xl border border-slate-300 px-5 py-2 font-bold text-slate-900"
@@ -521,7 +740,7 @@ function beginSubmit(event) {
                         class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:opacity-60"
                         :disabled="submitting"
                     >
-                        {{ submitting ? 'Saving…' : isEdit ? 'Save Offering' : 'Create Offering' }}
+                        {{ submitting ? 'Saving…' : isEdit ? 'Save Price' : 'Create Price' }}
                     </button>
                 </div>
             </form>

@@ -12,6 +12,7 @@ use App\Modules\ClinicRegistration\Application\ClinicRegistrationTenantIdGenerat
 use App\Modules\ClinicRegistration\Application\CompleteClinicRegistrationFromTrustedHandoffService;
 use App\Modules\ClinicRegistration\Application\Provisioning\ClinicRegistrationProvisioningReadService;
 use App\Modules\ClinicRegistration\Application\TrustedCompletionSources;
+use App\Modules\ClinicRegistration\Contracts\Administration\ClinicRegistrationAdministrationRepositoryInterface;
 use App\Modules\ClinicRegistration\Contracts\Authentication\ClinicRegistrationAccessInterface;
 use App\Modules\ClinicRegistration\Contracts\Completion\TrustedClinicRegistrationCompletionInterface;
 use App\Modules\ClinicRegistration\Contracts\Events\ClinicRegistrationEventPublisherInterface;
@@ -30,6 +31,7 @@ use App\Modules\ClinicRegistration\Infrastructure\Persistence\ClinicRegistration
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Mappers\ClinicRegistrationPersistenceMapper;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Queries\PostgresClinicRegistrationQueryAdapter;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Queries\PostgresClinicRegistrationReviewReadAdapter;
+use App\Modules\ClinicRegistration\Infrastructure\Persistence\Repositories\PostgresClinicRegistrationAdministrationRepository;
 use App\Modules\ClinicRegistration\Infrastructure\Persistence\Repositories\PostgresClinicRegistrationRepository;
 use App\Modules\ClinicRegistration\Infrastructure\Tracking\LaravelRegistrationTrackingCredential;
 use Illuminate\Contracts\Foundation\Application;
@@ -90,6 +92,12 @@ final class ClinicRegistrationServiceProvider extends ServiceProvider
             static fn (Application $application): PostgresClinicRegistrationRepository => new PostgresClinicRegistrationRepository(
                 $application->make('db')->connection(),
                 $application->make(ClinicRegistrationPersistenceMapper::class),
+            ),
+        );
+        $this->app->singleton(
+            ClinicRegistrationAdministrationRepositoryInterface::class,
+            static fn (Application $application): PostgresClinicRegistrationAdministrationRepository => new PostgresClinicRegistrationAdministrationRepository(
+                $application->make('db')->connection(),
             ),
         );
         $this->app->singleton(

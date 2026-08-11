@@ -37,7 +37,10 @@ final readonly class AssignWebsiteDesignerService
             );
         }
 
-        $assignmentId = $this->identifier($command->onboardingJobId, $command->platformIdentityId);
+        $assignmentId = $this->identifier(
+            $command->onboardingJobId,
+            $command->platformIdentityId.':'.$command->correlationId,
+        );
         $job->assignWebsiteDesigner(
             new WebsiteDesignerAssignmentId($assignmentId),
             new PlatformIdentityId($command->platformIdentityId),

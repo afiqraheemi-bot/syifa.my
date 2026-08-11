@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Support\Dashboard;
 
 use App\Modules\SubscriptionBilling\Application\Subscription\RenewalCheckoutApplication;
+use App\Modules\SubscriptionBilling\Contracts\BillingDocument\BillingDocumentData;
+use App\Modules\SubscriptionBilling\Contracts\BillingDocument\BillingDocumentReadInterface;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\BeginRenewalCheckoutCommand;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\ClinicOwnerRenewalCheckoutCommandFactoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\CreatePaymentSessionInput;
@@ -34,6 +36,7 @@ final class ClinicOwnerSubscriptionDeliveryTest extends TestCase
     {
         $this->authorize(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1');
         $this->app->instance(ClinicOwnerSubscriptionDetailReadInterface::class, new FixedClinicOwnerSubscriptionRead);
+        $this->app->instance(BillingDocumentReadInterface::class, new FixedBillingDocumentRead);
 
         $this->get(route('dashboard.subscription'))
             ->assertOk()
@@ -41,7 +44,59 @@ final class ClinicOwnerSubscriptionDeliveryTest extends TestCase
                 ->component('SubscriptionBilling/Dashboard/ClinicOwnerSubscriptionDetail', false)
                 ->where('subscription.plan', 'Syifa Essential')
                 ->where('subscription.latestPaymentStatus', 'Succeeded')
+                ->where('documents.0.invoiceNumber', 'SYF-INV-20260101-PAYMENT1')
+                ->where('documents.0.receiptNumber', 'SYF-RCP-20260101-PAYMENT1')
                 ->where('renewal.action', route('dashboard.subscription.renewal-checkout')));
+    }
+
+    public function test_clinic_owner_can_open_own_invoice_and_receipt_but_foreign_documents_fail_closed(): void
+    {
+        $this->authorize(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1');
+        $this->app->instance(BillingDocumentReadInterface::class, new FixedBillingDocumentRead);
+
+        $this->get(route('dashboard.subscription.invoices.show', '00000000-0000-4000-8000-000000000001'))
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Dashboard/BillingDocument', false)
+                ->where('documentType', 'invoice')
+                ->where('documentNumber', 'SYF-INV-20260101-PAYMENT1')
+                ->where('document.tenantReference', 'TEN-1')
+                ->where('document.subscriptionReference', 'SUB-1')
+                ->where('document.paymentReference', 'PAY-00000001')
+                ->where('document.amount', 'MYR 1,200.00'));
+
+        $this->get(route('dashboard.subscription.receipts.show', '00000000-0000-4000-8000-000000000001'))
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->where('documentType', 'receipt')
+                ->where('documentNumber', 'SYF-RCP-20260101-PAYMENT1'));
+
+        $this->get(route('dashboard.subscription.invoices.show', '00000000-0000-4000-8000-000000000002'))
+            ->assertNotFound();
+
+        $this->authorize(ActorType::PlatformIdentity, 'website_designer');
+        $this->getJson(route('dashboard.subscription.invoices.show', '00000000-0000-4000-8000-000000000001'))
+            ->assertForbidden();
+    }
+
+    public function test_super_admin_can_open_any_invoice_but_pending_payment_has_no_receipt(): void
+    {
+        $this->authorize(ActorType::PlatformIdentity, 'super_admin');
+        $this->app->instance(BillingDocumentReadInterface::class, new FixedBillingDocumentRead);
+
+        $this->get(route('dashboard.billing.invoices.show', '00000000-0000-4000-8000-000000000002'))
+            ->assertOk()
+            ->assertInertia(static fn (AssertableInertia $page): AssertableInertia => $page
+                ->component('SubscriptionBilling/Dashboard/BillingDocument', false)
+                ->where('documentType', 'invoice')
+                ->where('document.status', 'Pending Provider Confirmation'));
+
+        $this->get(route('dashboard.billing.receipts.show', '00000000-0000-4000-8000-000000000002'))
+            ->assertNotFound();
+
+        $this->authorize(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1');
+        $this->getJson(route('dashboard.billing.invoices.show', '00000000-0000-4000-8000-000000000002'))
+            ->assertForbidden();
     }
 
     public function test_checkout_uses_only_trusted_tenant_and_redirects_to_existing_hosted_session(): void
@@ -130,6 +185,93 @@ final readonly class FixedClinicOwnerSubscriptionRead implements ClinicOwnerSubs
             'eligible',
             'succeeded',
             true,
+        );
+    }
+}
+
+final readonly class FixedBillingDocumentRead implements BillingDocumentReadInterface
+{
+    /** @return list<BillingDocumentData> */
+    public function listForTenant(string $trustedTenantId): array
+    {
+        return match ($trustedTenantId) {
+            'tenant-1' => [$this->document()],
+            'tenant-2' => [$this->pendingDocument()],
+            default => [],
+        };
+    }
+
+    /** @return list<BillingDocumentData> */
+    public function listForSubscription(string $subscriptionId): array
+    {
+        return match ($subscriptionId) {
+            'subscription-1' => [$this->document()],
+            'subscription-2' => [$this->pendingDocument()],
+            default => [],
+        };
+    }
+
+    public function detail(string $paymentId): ?BillingDocumentData
+    {
+        return match ($paymentId) {
+            '00000000-0000-4000-8000-000000000001' => $this->document(),
+            '00000000-0000-4000-8000-000000000002' => $this->pendingDocument(),
+            default => null,
+        };
+    }
+
+    public function detailForTenant(string $paymentId, string $trustedTenantId): ?BillingDocumentData
+    {
+        $document = $this->detail($paymentId);
+
+        return $document?->tenantId === $trustedTenantId ? $document : null;
+    }
+
+    private function document(): BillingDocumentData
+    {
+        return new BillingDocumentData(
+            '00000000-0000-4000-8000-000000000001',
+            'subscription-1',
+            'tenant-1',
+            'Klinik Test',
+            'SYF-INV-20260101-PAYMENT1',
+            'SYF-RCP-20260101-PAYMENT1',
+            'initial_activation',
+            'Syifa Essential',
+            'Annual',
+            '2026-01-01',
+            '2026-12-31',
+            120000,
+            'MYR',
+            'succeeded',
+            '2026-01-01T10:00:00+08:00',
+            '2026-01-01T10:01:00+08:00',
+            'toyyibpay',
+            'provider-reference',
+        );
+    }
+
+    private function pendingDocument(): BillingDocumentData
+    {
+        return new BillingDocumentData(
+            '00000000-0000-4000-8000-000000000002',
+            'subscription-2',
+            'tenant-2',
+            'Klinik Foreign',
+            'SYF-INV-20261201-PAYMENT2',
+            null,
+            'subscription_renewal',
+            'Syifa Essential',
+            'Annual',
+            '2027-01-01',
+            '2027-12-31',
+            120000,
+            'MYR',
+            'pending_provider_confirmation',
+            '2026-12-01T10:00:00+08:00',
+            null,
+            'toyyibpay',
+            'provider-reference-2',
         );
     }
 }

@@ -28,6 +28,13 @@ final readonly class SuperAdminCommercialManagementController
         return inertia($view->component, $view->props);
     }
 
+    public function createPackage(Request $request, SuperAdminCommercialMutationPage $page): Response
+    {
+        $view = $page->createPackage($request->attributes->get(AuthorizationContext::class));
+
+        return inertia($view->component, $view->props);
+    }
+
     public function createBillingOption(
         Request $request,
         SuperAdminCommercialMutationPage $page,

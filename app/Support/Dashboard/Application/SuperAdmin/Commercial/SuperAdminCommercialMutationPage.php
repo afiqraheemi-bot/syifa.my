@@ -33,6 +33,11 @@ final readonly class SuperAdminCommercialMutationPage
         private PricingHistoryReadInterface $pricingHistory,
     ) {}
 
+    public function createPackage(mixed $context): DashboardPageView
+    {
+        return $this->view($this->authorization($context), 'package-create');
+    }
+
     public function createPlan(mixed $context): DashboardPageView
     {
         return $this->view($this->authorization($context), 'plan-create');
@@ -112,13 +117,16 @@ final readonly class SuperAdminCommercialMutationPage
         ?BillingOptionData $billingOption = null,
         ?CapabilityDefinitionData $capability = null,
     ): DashboardPageView {
+        $isPackage = str_starts_with($formKind, 'package-');
         $isPlan = str_starts_with($formKind, 'plan-');
         $isBillingOption = str_starts_with($formKind, 'billing-option-');
         $isCapability = str_starts_with($formKind, 'capability-');
         $isCreate = str_ends_with($formKind, '-create');
-        $resourceLabel = $isPlan
-            ? 'plan'
-            : ($isBillingOption ? 'billing option' : ($isCapability ? 'feature definition' : 'offering'));
+        $resourceLabel = $isPackage
+            ? 'subscription package'
+            : ($isPlan
+            ? 'subscription plan'
+            : ($isBillingOption ? 'billing cycle' : ($isCapability ? 'plan feature' : 'plan price')));
         $title = $isCreate ? 'Create '.$resourceLabel : 'Edit '.$resourceLabel;
         $cancelUrl = $offering === null
             ? ($plan === null ? route('dashboard.commercial') : route('dashboard.commercial.plans.show', $plan->planId))
@@ -131,7 +139,7 @@ final readonly class SuperAdminCommercialMutationPage
             'navigation' => $this->navigation(),
             'breadcrumbs' => $this->breadcrumbs($title, $plan),
             'pageTitle' => $title,
-            'pageDescription' => 'Manage governed Commercial catalogue values.',
+            'pageDescription' => $this->pageDescription($formKind, $plan),
             'identityName' => $context->name,
             'contextLabel' => 'Super Admin workspace',
             'csrfToken' => csrf_token(),
@@ -200,8 +208,24 @@ final readonly class SuperAdminCommercialMutationPage
                 'id' => $option->billingOptionId,
                 'label' => $option->name,
                 'availability' => $option->availability,
+                'availabilityLabel' => ucwords(str_replace('_', ' ', $option->availability)),
             ], $this->billingOptions->execute(new OffsetPaginationInput(1, 100))->items),
+            'billingOptionCreateUrl' => route('dashboard.commercial.billing-options.create'),
         ]);
+    }
+
+    private function pageDescription(string $formKind, ?PlanData $plan): string
+    {
+        return match (true) {
+            str_starts_with($formKind, 'package-') => 'Create the plan, billing selection and first MYR price in one guided step.',
+            str_starts_with($formKind, 'plan-') => 'Define the plan customers will recognise and select.',
+            str_starts_with($formKind, 'billing-option-') => 'Define how often customers are billed. Prices are configured separately.',
+            str_starts_with($formKind, 'capability-') => 'Describe one approved customer-facing feature that a plan may include.',
+            default => sprintf(
+                'Set the price and billing cycle for %s.',
+                $plan instanceof PlanData ? $plan->name : 'this plan',
+            ),
+        };
     }
 
     private function findPlan(string $planId): PlanData
@@ -218,6 +242,7 @@ final readonly class SuperAdminCommercialMutationPage
         ?CapabilityDefinitionData $capability = null,
     ): string {
         return match ($formKind) {
+            'package-create' => route('dashboard.commercial.packages.store'),
             'plan-create' => route('dashboard.commercial.plans.store'),
             'billing-option-create' => route('dashboard.commercial.billing-options.store'),
             'billing-option-edit' => route('dashboard.commercial.billing-options.update', $billingOption?->billingOptionId),

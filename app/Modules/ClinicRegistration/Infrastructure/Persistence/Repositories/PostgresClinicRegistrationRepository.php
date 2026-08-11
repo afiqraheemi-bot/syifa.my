@@ -30,6 +30,7 @@ final class PostgresClinicRegistrationRepository implements ClinicRegistrationRe
     {
         $row = $this->connection->table('clinic_registrations')
             ->where('id', $registrationId->value)
+            ->whereNull('archived_at')
             ->first();
 
         return $row === null ? null : $this->registrationFromRow($row);
@@ -39,6 +40,7 @@ final class PostgresClinicRegistrationRepository implements ClinicRegistrationRe
     {
         $row = $this->connection->table('clinic_registrations')
             ->where('platform_identity_id', $platformIdentity->value)
+            ->whereNull('archived_at')
             ->orderByDesc('created_at')
             ->first();
 
@@ -49,6 +51,7 @@ final class PostgresClinicRegistrationRepository implements ClinicRegistrationRe
     {
         $row = $this->connection->table('clinic_registrations')
             ->where('registration_correlation_reference', $correlationReference)
+            ->whereNull('archived_at')
             ->first();
 
         return $row === null ? null : $this->registrationFromRow($row);
@@ -88,6 +91,7 @@ final class PostgresClinicRegistrationRepository implements ClinicRegistrationRe
         $affected = $this->connection->table('clinic_registrations')
             ->where('id', $record->id)
             ->where('version', $record->version)
+            ->whereNull('archived_at')
             ->update([
                 ...$this->storagePayload($record, $newVersion),
                 'updated_at' => $this->databaseTimestamp(new DateTimeImmutable),

@@ -59,6 +59,21 @@ final class HttpSecurityHeadersTest extends TestCase
         $response->assertHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     }
 
+    public function test_template_previews_can_only_be_framed_by_the_same_origin(): void
+    {
+        Config::set('http_security.environment', 'production');
+
+        $response = $this->get('/templates/preview/syifa-care');
+
+        $response->assertOk();
+        $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $response->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        self::assertStringContainsString(
+            "frame-ancestors 'self'",
+            (string) $response->headers->get('Content-Security-Policy'),
+        );
+    }
+
     public function test_invalid_asset_origin_is_not_added_to_the_content_security_policy(): void
     {
         Config::set('http_security.environment', 'production');

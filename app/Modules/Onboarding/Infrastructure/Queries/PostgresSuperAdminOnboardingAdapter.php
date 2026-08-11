@@ -35,7 +35,12 @@ final readonly class PostgresSuperAdminOnboardingAdapter implements PendingOnboa
             ->when($search !== null, static function ($query) use ($search): void {
                 $query->where(static function ($query) use ($search): void {
                     $query->where('website.clinic_name', 'ilike', '%'.$search.'%')
-                        ->orWhere('job.id', 'ilike', '%'.$search.'%');
+                        ->orWhere('job.id', 'ilike', '%'.$search.'%')
+                        ->orWhere('job.tenant_id', 'ilike', '%'.$search.'%')
+                        ->orWhere('job.website_id', 'ilike', '%'.$search.'%')
+                        ->orWhere('designer.name', 'ilike', '%'.$search.'%')
+                        ->orWhere('owner.name', 'ilike', '%'.$search.'%')
+                        ->orWhere('owner.email', 'ilike', '%'.$search.'%');
                 });
             })
             ->orderByDesc('job.updated_at')
@@ -98,6 +103,7 @@ final readonly class PostgresSuperAdminOnboardingAdapter implements PendingOnboa
         $jobs = array_map(static function (array $job) use ($taskRows): array {
             $tasks = $taskRows->get($job['id'], collect())->map(static fn (object $task): array => [
                 'id' => (string) $task->id,
+                'key' => (string) $task->task_key,
                 'title' => (string) $task->title,
                 'responsibility' => (string) $task->responsibility,
                 'status' => (string) $task->status,
@@ -143,5 +149,29 @@ final readonly class PostgresSuperAdminOnboardingAdapter implements PendingOnboa
         return $this->connection->table('onboarding_jobs')
             ->whereNotIn('status', ['completed', 'cancelled'])
             ->count();
+    }
+
+    public function recentPending(int $limit): array
+    {
+        if (! Schema::hasTable('onboarding_jobs') || ! Schema::hasTable('websites')) {
+            return [];
+        }
+
+        return array_values($this->connection->table('onboarding_jobs as job')
+            ->join('websites as website', function ($join): void {
+                $join->on('website.id', '=', 'job.website_id')
+                    ->on('website.tenant_id', '=', 'job.tenant_id');
+            })
+            ->whereNotIn('job.status', ['completed', 'cancelled'])
+            ->orderByDesc('job.updated_at')
+            ->limit(max(1, min($limit, 10)))
+            ->get(['job.id', 'job.status', 'job.updated_at', 'website.clinic_name'])
+            ->map(static fn (object $row): array => [
+                'id' => (string) $row->id,
+                'clinic_name' => (string) $row->clinic_name,
+                'status' => (string) $row->status,
+                'updated_at' => (string) $row->updated_at,
+            ])
+            ->all());
     }
 }

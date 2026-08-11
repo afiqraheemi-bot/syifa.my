@@ -54,6 +54,7 @@ final readonly class PostgresClinicRegistrationAccess implements ClinicRegistrat
         $row = $this->connection->table('clinic_registration_access_credentials as access')
             ->join('clinic_registrations as registration', 'registration.id', '=', 'access.clinic_registration_id')
             ->where('access.normalized_email', mb_strtolower(trim($email)))
+            ->whereNull('registration.archived_at')
             ->first(['access.password_hash', 'registration.platform_identity_id']);
 
         if ($row === null || ! is_string($row->password_hash ?? null)

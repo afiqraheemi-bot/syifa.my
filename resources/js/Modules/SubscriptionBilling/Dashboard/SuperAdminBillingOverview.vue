@@ -18,6 +18,24 @@ const props = defineProps({
 
 const navigation = createDashboardNavigation(props.navigation);
 const filtersSubmitting = ref(false);
+
+function statusClass(status) {
+    const normalized = String(status).toLowerCase();
+
+    if (['active', 'succeeded', 'paid'].some((value) => normalized.includes(value))) {
+        return 'bg-emerald-100 text-emerald-800';
+    }
+
+    if (['pending', 'renewal due', 'draft'].some((value) => normalized.includes(value))) {
+        return 'bg-amber-100 text-amber-900';
+    }
+
+    if (['failed', 'expired', 'cancelled', 'closed'].some((value) => normalized.includes(value))) {
+        return 'bg-rose-100 text-rose-800';
+    }
+
+    return 'bg-slate-100 text-slate-700';
+}
 </script>
 
 <template>
@@ -40,41 +58,90 @@ const filtersSubmitting = ref(false);
             </article>
         </section>
 
-        <div class="grid gap-6 xl:grid-cols-2">
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="text-lg font-bold text-slate-950">Payment status</h2>
+                <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                    Payment operations
+                </p>
+                <h2 class="mt-2 text-lg font-bold text-slate-950">Payment status</h2>
                 <dl class="mt-4 grid grid-cols-3 gap-3">
-                    <div v-for="item in billingOverview.paymentStatus" :key="item.key">
+                    <div
+                        v-for="item in billingOverview.paymentStatus"
+                        :key="item.key"
+                        class="rounded-xl bg-slate-50 p-3"
+                    >
                         <dt class="text-sm text-slate-500">{{ item.label }}</dt>
                         <dd class="mt-1 text-xl font-bold text-slate-950">{{ item.value }}</dd>
                     </div>
                 </dl>
             </section>
-            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="text-lg font-bold text-slate-950">Billing health</h2>
+            <section
+                class="rounded-2xl border p-5 shadow-sm"
+                :class="
+                    billingOverview.health.status === 'healthy'
+                        ? 'border-emerald-200 bg-emerald-50'
+                        : 'border-amber-200 bg-amber-50'
+                "
+            >
+                <p class="text-xs font-black uppercase tracking-[0.16em] text-slate-600">
+                    Operational check
+                </p>
+                <h2 class="mt-2 text-lg font-bold text-slate-950">Billing health</h2>
                 <p class="mt-3 font-bold text-slate-900">{{ billingOverview.health.label }}</p>
                 <p class="mt-1 text-sm text-slate-600">{{ billingOverview.health.description }}</p>
             </section>
         </div>
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-lg font-bold text-slate-950">Recent payments</h2>
+            <div class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                        Money received and attempted
+                    </p>
+                    <h2 class="mt-2 text-lg font-bold text-slate-950">Recent payments</h2>
+                </div>
+                <p class="max-w-xl text-sm text-slate-600">
+                    Open the clinic subscription below to view its invoice, payment proof and
+                    renewal history.
+                </p>
+            </div>
             <div v-if="billingOverview.recentPayments.length" class="mt-4 overflow-x-auto">
                 <table class="min-w-full text-left text-sm">
                     <thead class="text-slate-500">
                         <tr>
-                            <th class="pb-3">Payment</th>
-                            <th class="pb-3">Tenant</th>
+                            <th class="pb-3">Payment reference</th>
+                            <th class="pb-3">Clinic</th>
                             <th class="pb-3">Amount</th>
                             <th class="pb-3">Status</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         <tr v-for="payment in billingOverview.recentPayments" :key="payment.id">
-                            <td class="py-3 pr-4 font-medium text-slate-900">{{ payment.id }}</td>
-                            <td class="py-3 pr-4">{{ payment.tenantId }}</td>
+                            <td class="py-3 pr-4">
+                                <span
+                                    class="inline-flex rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold tracking-wide text-slate-800"
+                                >
+                                    {{ payment.reference }}
+                                </span>
+                            </td>
+                            <td class="py-3 pr-4">
+                                <p class="font-semibold text-slate-900">{{ payment.clinicName }}</p>
+                                <p
+                                    v-if="payment.tenantReference"
+                                    class="mt-0.5 text-xs text-slate-500"
+                                >
+                                    {{ payment.tenantReference }}
+                                </p>
+                            </td>
                             <td class="py-3 pr-4">{{ payment.amount }}</td>
-                            <td class="py-3">{{ payment.statusLabel }}</td>
+                            <td class="py-3">
+                                <span
+                                    class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold"
+                                    :class="statusClass(payment.statusLabel)"
+                                >
+                                    {{ payment.statusLabel }}
+                                </span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -136,8 +203,8 @@ const filtersSubmitting = ref(false);
             <table class="min-w-full text-left text-sm">
                 <thead class="text-slate-500">
                     <tr>
-                        <th class="pb-3">Subscription</th>
-                        <th class="pb-3">Tenant</th>
+                        <th class="pb-3">Subscription reference</th>
+                        <th class="pb-3">Clinic</th>
                         <th class="pb-3">Plan</th>
                         <th class="pb-3">Period</th>
                         <th class="pb-3">Amount</th>
@@ -152,19 +219,32 @@ const filtersSubmitting = ref(false);
                         <td class="py-3 pr-4 font-medium text-slate-900">
                             <a
                                 :href="subscription.detailHref"
-                                class="underline underline-offset-4"
-                                >{{ subscription.id }}</a
+                                class="inline-flex rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold tracking-wide text-slate-800 hover:bg-slate-200"
+                                >{{ subscription.reference }}</a
                             >
                         </td>
-                        <td class="py-3 pr-4">{{ subscription.tenantId }}</td>
-                        <td class="py-3 pr-4">{{ subscription.planId }}</td>
+                        <td class="py-3 pr-4">
+                            <p class="font-semibold text-slate-900">
+                                {{ subscription.clinicName }}
+                            </p>
+                            <p class="mt-0.5 text-xs text-slate-500">
+                                {{ subscription.tenantReference }}
+                            </p>
+                        </td>
+                        <td class="py-3 pr-4">
+                            <p class="font-semibold text-slate-900">{{ subscription.planName }}</p>
+                            <p class="mt-0.5 text-xs text-slate-500">
+                                {{ subscription.planReference }}
+                            </p>
+                        </td>
                         <td class="py-3 pr-4">
                             {{ subscription.startsOn }} – {{ subscription.endsOn }}
                         </td>
                         <td class="py-3 pr-4">{{ subscription.amount }}</td>
                         <td class="py-3">
                             <span
-                                class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700"
+                                class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold"
+                                :class="statusClass(subscription.statusLabel)"
                             >
                                 {{ subscription.statusLabel }}
                             </span>

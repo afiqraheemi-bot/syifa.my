@@ -612,10 +612,12 @@ async function cancel() {
                                 :key="offer.planOfferingId"
                                 :value="offer.planOfferingId"
                             >
-                                {{ offer.planName }} — {{ offer.billingCycleName }} ({{
-                                    offer.currency
-                                }}
-                                {{ (offer.amountMinor / 100).toFixed(2) }})
+                                {{ offer.planName }} — {{ offer.billingCycleName }}
+                                <template v-if="offer.amountMinor === 0">(Percuma)</template>
+                                <template v-else>
+                                    ({{ offer.currency }}
+                                    {{ (offer.amountMinor / 100).toFixed(2) }})
+                                </template>
                             </option>
                         </select>
                     </label>

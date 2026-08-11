@@ -2,6 +2,7 @@
 import { router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { browserHttpRequest } from '../../../Shared/Authentication/session.js';
+import { createOnboardingCheckpoints } from '../../../Shared/Onboarding/checkpoints.js';
 import {
     createDashboardNavigation,
     createDashboardQuickActions,
@@ -42,6 +43,9 @@ const approvalError = ref('');
 const approvalSuccess = ref('');
 const taskBusy = ref(null);
 const taskError = ref('');
+const onboardingCheckpoints = computed(() =>
+    createOnboardingCheckpoints(props.onboardingTasks?.tasks ?? []),
+);
 const unmetLaunchConditions = computed(
     () => props.launchReadiness?.conditions?.filter((condition) => !condition.satisfied) ?? [],
 );
@@ -79,7 +83,9 @@ async function completeOwnerTask(task) {
         taskError.value = response.body?.message ?? 'The onboarding task could not be updated.';
         return;
     }
-    router.reload({ only: ['onboardingTasks'] });
+    router.reload({
+        only: ['onboardingTasks', 'launchReadiness', 'websiteApproval', 'publishStatus'],
+    });
 }
 
 async function decideWebsiteApproval(selectedDecision) {
@@ -118,7 +124,9 @@ async function decideWebsiteApproval(selectedDecision) {
     }
 
     approvalSuccess.value = response.body?.message ?? 'Website approval updated.';
-    router.reload({ only: ['websiteApproval', 'publishStatus'] });
+    router.reload({
+        only: ['onboardingTasks', 'launchReadiness', 'websiteApproval', 'publishStatus'],
+    });
 }
 </script>
 
@@ -225,30 +233,52 @@ async function decideWebsiteApproval(selectedDecision) {
             aria-labelledby="clinic-onboarding-tasks"
         >
             <h2 id="clinic-onboarding-tasks" class="text-xl font-bold text-slate-950">
-                Onboarding tasks
+                Onboarding checkpoints
             </h2>
             <p class="mt-1 text-sm text-slate-600">
-                Track the managed Website delivery and complete clinic-owned inputs.
+                Follow the same delivery sequence used by Super Admin and your Website Designer.
             </p>
             <p v-if="taskError" role="alert" class="mt-4 rounded-lg bg-red-50 p-3 text-red-800">
                 {{ taskError }}
             </p>
             <div class="mt-4 grid gap-3">
                 <article
-                    v-for="task in onboardingTasks.tasks"
-                    :key="task.id"
-                    class="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    v-for="(task, index) in onboardingCheckpoints"
+                    :key="task.key"
+                    class="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between"
+                    :class="
+                        task.state === 'complete'
+                            ? 'border-emerald-200 bg-emerald-50'
+                            : task.state === 'current'
+                              ? 'border-amber-300 bg-amber-50'
+                              : 'border-slate-200 bg-slate-50'
+                    "
                 >
-                    <div>
-                        <h3 class="font-bold text-slate-950">{{ task.title }}</h3>
-                        <p class="mt-1 text-sm capitalize text-slate-600">
-                            {{ task.responsibility.replaceAll('_', ' ') }} ·
-                            {{ task.status.replaceAll('_', ' ') }}
-                        </p>
+                    <div class="flex min-w-0 items-start gap-3">
+                        <span
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                            :class="
+                                task.state === 'complete'
+                                    ? 'bg-emerald-700 text-white'
+                                    : task.state === 'current'
+                                      ? 'bg-amber-200 text-amber-900'
+                                      : 'bg-slate-200 text-slate-600'
+                            "
+                            aria-hidden="true"
+                        >
+                            {{ task.state === 'complete' ? '✓' : index + 1 }}
+                        </span>
+                        <div class="min-w-0">
+                            <h3 class="font-bold text-slate-950">{{ task.title }}</h3>
+                            <p class="mt-1 text-sm text-slate-600">
+                                {{ task.responsibilityLabel }} · {{ task.statusLabel }}
+                            </p>
+                        </div>
                     </div>
                     <button
                         v-if="
                             task.responsibility === 'clinic_owner' &&
+                            task.state === 'current' &&
                             !['completed', 'waived', 'cancelled'].includes(task.status)
                         "
                         type="button"

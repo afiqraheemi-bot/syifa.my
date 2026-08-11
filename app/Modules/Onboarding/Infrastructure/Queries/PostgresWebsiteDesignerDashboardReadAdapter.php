@@ -73,12 +73,29 @@ final readonly class PostgresWebsiteDesignerDashboardReadAdapter implements Webs
         int $limit,
         ?string $search,
     ): array {
+        $hasWebsites = $this->hasTable('websites');
+        $hasPublicHosts = $hasWebsites && $this->hasTable('website_public_hosts');
         $query = $this->connection
             ->table('website_designer_assignments as assignment')
             ->join('onboarding_jobs as job', function ($join): void {
                 $join->on('job.id', '=', 'assignment.onboarding_job_id')
                     ->on('job.tenant_id', '=', 'assignment.tenant_id');
-            })
+            });
+        if ($hasWebsites) {
+            $query->join('websites as website', function ($join): void {
+                $join->on('website.id', '=', 'job.website_id')
+                    ->on('website.tenant_id', '=', 'job.tenant_id');
+            });
+        }
+        if ($hasPublicHosts) {
+            $query->leftJoin('website_public_hosts as public_host', function ($join): void {
+                $join->on('public_host.website_id', '=', 'job.website_id')
+                    ->on('public_host.tenant_id', '=', 'job.tenant_id')
+                    ->where('public_host.is_primary', true)
+                    ->whereNull('public_host.inactivated_at');
+            });
+        }
+        $query
             ->where('assignment.platform_identity_id', $platformIdentityId)
             ->where('assignment.assignment_status', 'active');
 
@@ -86,10 +103,16 @@ final readonly class PostgresWebsiteDesignerDashboardReadAdapter implements Webs
             $query->where('job.status', $status);
         }
         if ($search !== null) {
-            $query->where(static function ($query) use ($search): void {
+            $query->where(static function ($query) use ($search, $hasWebsites, $hasPublicHosts): void {
                 $query->where('job.id', 'ilike', '%'.$search.'%')
                     ->orWhere('job.tenant_id', 'ilike', '%'.$search.'%')
                     ->orWhere('job.website_id', 'ilike', '%'.$search.'%');
+                if ($hasWebsites) {
+                    $query->orWhere('website.clinic_name', 'ilike', '%'.$search.'%');
+                }
+                if ($hasPublicHosts) {
+                    $query->orWhere('public_host.normalized_host', 'ilike', '%'.$search.'%');
+                }
             });
         }
         if ($cursor !== null) {
@@ -126,6 +149,15 @@ final readonly class PostgresWebsiteDesignerDashboardReadAdapter implements Webs
                 new DateTimeImmutable((string) $row->updated_at),
             ))
             ->all());
+    }
+
+    private function hasTable(string $table): bool
+    {
+        return $this->connection
+            ->table('information_schema.tables')
+            ->whereRaw('table_schema = current_schema()')
+            ->where('table_name', $table)
+            ->exists();
     }
 
     public function detail(

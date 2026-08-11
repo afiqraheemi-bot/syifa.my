@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="index,follow">
     <title>{{ $document->title }}</title>
-    @unless (app()->environment('testing')) @vite('resources/js/public-website.js') @endunless
+    @unless (app()->environment('testing')) @vite(['resources/css/public-website.css', 'resources/js/public-website.js']) @endunless
 </head>
 <body class="public-site">
     <x-public.skip-link />

@@ -42,7 +42,7 @@ final readonly class WebsiteDesignerQueueProvider
             'search' => [
                 'action' => route('dashboard.onboarding'),
                 'value' => $criteria->search,
-                'placeholder' => 'Search job, tenant or Website reference',
+                'placeholder' => 'Search clinic, Website address or reference',
             ],
             'statusFilter' => [
                 'value' => $criteria->status,

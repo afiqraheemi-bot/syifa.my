@@ -1,5 +1,3 @@
-import '../css/public-website.css';
-
 document.documentElement.classList.add('js');
 
 const toggle = document.querySelector('[data-public-menu-toggle]');

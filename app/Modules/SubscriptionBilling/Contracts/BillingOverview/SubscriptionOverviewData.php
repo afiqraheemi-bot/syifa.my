@@ -16,5 +16,7 @@ final readonly class SubscriptionOverviewData
         public string $startsOn,
         public string $endsOn,
         public string $status,
+        public ?string $clinicName = null,
+        public ?string $planName = null,
     ) {}
 }

@@ -69,9 +69,28 @@ final readonly class SuperAdminCommercialManagementPage
     ): DashboardPageView {
         $pagination = new OffsetPaginationInput(1, self::PAGE_SIZE);
         $plans = $this->plans->execute($pagination)->items;
+        $currentPlans = array_values(array_filter(
+            $plans,
+            static fn (PlanData $plan): bool => $plan->status !== 'retired',
+        ));
+        $archivedPlans = array_values(array_filter(
+            $plans,
+            static fn (PlanData $plan): bool => $plan->status === 'retired',
+        ));
         $offerings = $this->offerings->execute($pagination)->items;
         $billingOptions = $this->billingOptions->execute($pagination)->items;
-        $capabilities = $this->capabilities->execute($pagination)->items;
+        $capabilities = array_values(array_filter(
+            $this->capabilities->execute($pagination)->items,
+            static fn (CapabilityDefinitionData $capability): bool => $capability->status !== 'retired',
+        ));
+        $planNames = [];
+        foreach ($plans as $plan) {
+            $planNames[$plan->planId] = $plan->name;
+        }
+        $billingOptionLabels = [];
+        foreach ($billingOptions as $billingOption) {
+            $billingOptionLabels[$billingOption->billingOptionId] = $billingOption->name;
+        }
         $visibleOfferings = $selectedPlan === null
             ? $offerings
             : array_values(array_filter(
@@ -96,7 +115,7 @@ final readonly class SuperAdminCommercialManagementPage
             ],
             'breadcrumbs' => $this->breadcrumbs($selectedPlan),
             'pageTitle' => $selectedPlan === null ? 'Commercial management' : $selectedPlan->name,
-            'pageDescription' => 'Manage governed plans, annual offerings, pricing history, and feature configuration.',
+            'pageDescription' => 'Build and maintain customer-ready subscription packages without exposing catalogue internals.',
             'identityName' => $context->name,
             'contextLabel' => 'Super Admin workspace',
             'csrfToken' => csrf_token(),
@@ -104,29 +123,45 @@ final readonly class SuperAdminCommercialManagementPage
                 'success' => $this->successMessage(session('operation')),
                 'error' => session('commercial_error'),
             ],
-            'plans' => array_map($this->planProjection(...), $plans),
+            'plans' => array_map($this->planProjection(...), $currentPlans),
+            'archivedPlans' => array_map($this->planProjection(...), $archivedPlans),
             'selectedPlan' => $selectedPlan === null ? null : $this->planProjection($selectedPlan),
-            'offerings' => array_map($this->offeringProjection(...), $visibleOfferings),
+            'offerings' => array_map(
+                fn (PlanOfferingData $item): array => $this->offeringProjection(
+                    $item,
+                    planNames: $planNames,
+                    billingOptionLabels: $billingOptionLabels,
+                ),
+                $visibleOfferings,
+            ),
             'selectedOffering' => $selectedOffering === null
                 ? null
-                : $this->offeringProjection($selectedOffering, $selectedVersion),
-            'billingOptions' => array_map(static fn (BillingOptionData $item): array => [
+                : $this->offeringProjection(
+                    $selectedOffering,
+                    $selectedVersion,
+                    $planNames,
+                    $billingOptionLabels,
+                ),
+            'billingOptions' => array_map(fn (BillingOptionData $item): array => [
                 'id' => $item->billingOptionId,
                 'code' => $item->code,
                 'label' => $item->name,
                 'availability' => $item->availability,
+                'availabilityLabel' => self::label($item->availability),
                 'recurrence' => $item->recurrenceClassification,
+                'recurrenceLabel' => self::label($item->recurrenceClassification),
                 'intervalUnit' => $item->intervalUnit,
                 'intervalCount' => $item->intervalCount,
                 'effectiveStart' => $item->effectiveStart,
                 'effectiveEnd' => $item->effectiveEnd,
                 'editUrl' => route('dashboard.commercial.billing-options.edit', $item->billingOptionId),
             ], $billingOptions),
-            'capabilities' => array_map(static fn (CapabilityDefinitionData $item): array => [
+            'capabilities' => array_map(fn (CapabilityDefinitionData $item): array => [
                 'id' => $item->capabilityId,
                 'key' => $item->capabilityKey,
                 'name' => $item->name,
                 'status' => $item->status,
+                'statusLabel' => self::label($item->status),
                 'description' => $item->description,
                 'commercialMeaning' => $item->commercialMeaning,
                 'version' => $item->version,
@@ -147,6 +182,8 @@ final readonly class SuperAdminCommercialManagementPage
                 $history,
             ),
             'actions' => [
+                'createPackage' => route('dashboard.commercial.packages.create'),
+                'previewPackages' => route('dashboard.commercial.website-preview').'#pricing',
                 'createPlan' => route('dashboard.commercial.plans.create'),
                 'createBillingOption' => route('dashboard.commercial.billing-options.create'),
                 'createCapability' => route('dashboard.commercial.capabilities.create'),
@@ -199,26 +236,49 @@ final readonly class SuperAdminCommercialManagementPage
             'name' => $plan->name,
             'description' => $plan->description,
             'status' => $plan->status,
+            'statusLabel' => self::label($plan->status),
             'displayOrder' => $plan->displayOrder,
             'version' => $plan->version,
             'detailUrl' => route('dashboard.commercial.plans.show', $plan->planId),
+            'retireUrl' => route('dashboard.commercial.plans.retire', $plan->planId),
         ];
     }
 
-    /** @return array<string, mixed> */
-    private function offeringProjection(PlanOfferingData $offering, int $version = 0): array
-    {
+    /**
+     * @param  array<string, string>  $planNames
+     * @param  array<string, string>  $billingOptionLabels
+     * @return array<string, mixed>
+     */
+    private function offeringProjection(
+        PlanOfferingData $offering,
+        int $version = 0,
+        array $planNames = [],
+        array $billingOptionLabels = [],
+    ): array {
+        $profiles = config('subscription_packages.capability_profiles', []);
+        $publicOrder = config('subscription_packages.public_package_order', []);
+        $profileConfigured = is_array($profiles)
+            && array_key_exists($offering->capabilityConfigurationReference, $profiles);
+        $publiclyListed = is_array($publicOrder)
+            && in_array($offering->capabilityConfigurationReference, $publicOrder, true);
+
         return [
             'id' => $offering->planOfferingId,
             'planId' => $offering->planId,
             'billingOptionId' => $offering->billingOptionId,
+            'planName' => $planNames[$offering->planId] ?? 'Subscription plan',
+            'billingOptionLabel' => $billingOptionLabels[$offering->billingOptionId] ?? 'Billing cycle',
             'amountMinor' => $offering->amountMinor,
             'amount' => self::money($offering->amountMinor, $offering->currencyCode),
             'currency' => $offering->currencyCode,
             'status' => $offering->status,
+            'statusLabel' => self::label($offering->status),
             'effectiveStart' => $offering->effectiveStart,
             'effectiveEnd' => $offering->effectiveEnd,
             'featureConfiguration' => $offering->capabilityConfigurationReference,
+            'profileConfigured' => $profileConfigured,
+            'publiclyListed' => $publiclyListed,
+            'websiteReady' => $profileConfigured && $publiclyListed && $offering->status === 'active',
             'displayOrder' => $offering->displayOrder,
             'version' => $version,
             'detailUrl' => route('dashboard.commercial.plans.offerings.show', [
@@ -256,27 +316,34 @@ final readonly class SuperAdminCommercialManagementPage
         return $currency.' '.number_format($minor / 100, 2, '.', ',');
     }
 
+    private static function label(string $value): string
+    {
+        return ucwords(str_replace('_', ' ', $value));
+    }
+
     private function successMessage(mixed $operation): ?string
     {
         return match ($operation) {
+            'package_created' => 'Subscription package and its first price were created successfully.',
             'plan_created' => 'Plan created successfully.',
             'plan_updated' => 'Plan updated successfully.',
             'plan_published' => 'Plan published successfully.',
             'plan_unavailable' => 'Plan made unavailable successfully.',
             'plan_grandfathered' => 'Plan grandfathered successfully.',
-            'plan_retired' => 'Plan retired successfully.',
-            'offering_created' => 'Plan offering created successfully.',
-            'offering_updated' => 'Plan offering updated successfully.',
-            'offering_activated' => 'Plan offering activated successfully.',
-            'offering_unavailable' => 'Plan offering made unavailable successfully.',
-            'offering_grandfathered' => 'Plan offering grandfathered successfully.',
-            'offering_retired' => 'Plan offering retired successfully.',
-            'billing_option_created' => 'Billing option created successfully.',
-            'capability_created' => 'Feature definition created successfully.',
-            'capability_updated' => 'Feature definition updated successfully.',
-            'capability_activated' => 'Feature definition activated successfully.',
-            'capability_deprecated' => 'Feature definition deprecated successfully.',
-            'capability_retired' => 'Feature definition retired successfully.',
+            'plan_retired' => 'Package removed from the current list and moved to the archive.',
+            'offering_created' => 'Plan price created successfully.',
+            'offering_updated' => 'Plan price updated successfully.',
+            'offering_activated' => 'Plan price activated successfully.',
+            'offering_unavailable' => 'Plan price made unavailable successfully.',
+            'offering_grandfathered' => 'Plan price grandfathered successfully.',
+            'offering_retired' => 'Plan price retired successfully.',
+            'billing_option_created' => 'Billing cycle created successfully.',
+            'billing_option_updated' => 'Billing cycle updated successfully.',
+            'capability_created' => 'Plan feature created successfully.',
+            'capability_updated' => 'Plan feature updated successfully.',
+            'capability_activated' => 'Plan feature activated successfully.',
+            'capability_deprecated' => 'Plan feature deprecated successfully.',
+            'capability_retired' => 'Plan feature retired successfully.',
             default => null,
         };
     }

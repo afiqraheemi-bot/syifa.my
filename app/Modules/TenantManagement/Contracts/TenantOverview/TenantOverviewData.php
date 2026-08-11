@@ -15,5 +15,13 @@ final readonly class TenantOverviewData
         public ?string $subscriptionStatus,
         public bool $websitePublished,
         public ?string $websiteDesignerName,
+        public ?string $subscriptionId = null,
+        public ?string $websiteId = null,
+        public ?string $websiteLifecycle = null,
+        public ?string $publicHost = null,
+        public bool $publicHostActive = false,
+        public ?string $onboardingJobId = null,
+        public ?string $onboardingStatus = null,
+        public ?string $provisionedAt = null,
     ) {}
 }

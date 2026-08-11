@@ -19,12 +19,13 @@ final readonly class BillingOverviewProvider
         BillingOverviewCriteria $criteria,
         string $asOfDate,
     ): DashboardSectionProjection {
+        $searchTerm = self::searchTerm($criteria->search);
         $summary = $this->billing->summary($asOfDate);
         $rows = $this->billing->subscriptions(
             $criteria->status,
             $criteria->cursor,
             $criteria->perPage + 1,
-            $criteria->search,
+            $searchTerm,
         );
         $hasMore = count($rows) > $criteria->perPage;
         $visible = array_slice($rows, 0, $criteria->perPage);
@@ -59,7 +60,10 @@ final readonly class BillingOverviewProvider
             ],
             'recentPayments' => array_map(static fn (RecentPaymentData $payment): array => [
                 'id' => $payment->paymentId,
+                'reference' => self::reference('PAY', $payment->paymentId),
                 'tenantId' => $payment->tenantId ?? 'Not assigned',
+                'tenantReference' => self::reference('TEN', $payment->tenantId),
+                'clinicName' => $payment->clinicName ?? 'Clinic not yet assigned',
                 'amount' => self::money($payment->amountMinor, $payment->currency),
                 'status' => $payment->status,
                 'statusLabel' => ucwords(str_replace('_', ' ', $payment->status)),
@@ -67,9 +71,14 @@ final readonly class BillingOverviewProvider
             ], $summary->recentPayments),
             'subscriptions' => array_map(static fn (SubscriptionOverviewData $subscription): array => [
                 'id' => $subscription->subscriptionId,
+                'reference' => self::reference('SUB', $subscription->subscriptionId),
                 'detailHref' => route('dashboard.billing.subscriptions.show', $subscription->subscriptionId),
                 'tenantId' => $subscription->tenantId,
+                'tenantReference' => self::reference('TEN', $subscription->tenantId),
+                'clinicName' => $subscription->clinicName ?? 'Clinic account',
                 'planId' => $subscription->planId,
+                'planReference' => self::reference('PLN', $subscription->planId),
+                'planName' => $subscription->planName ?? 'Plan',
                 'billingCycleId' => $subscription->billingCycleId,
                 'amount' => self::money($subscription->amountMinor, $subscription->currency),
                 'startsOn' => $subscription->startsOn,
@@ -80,7 +89,7 @@ final readonly class BillingOverviewProvider
             'search' => [
                 'action' => route('dashboard.billing'),
                 'value' => $criteria->search,
-                'placeholder' => 'Search subscription or tenant ID',
+                'placeholder' => 'Search clinic, plan or reference',
             ],
             'statusFilter' => ['value' => $criteria->status, 'options' => BillingOverviewCriteria::statusOptions()],
             'pagination' => [
@@ -99,5 +108,34 @@ final readonly class BillingOverviewProvider
     private static function money(int $minor, string $currency): string
     {
         return $currency.' '.number_format($minor / 100, 2, '.', ',');
+    }
+
+    private static function reference(string $prefix, ?string $id): ?string
+    {
+        if ($id === null || trim($id) === '') {
+            return null;
+        }
+
+        $value = trim($id);
+        $withoutKnownPrefix = preg_replace(
+            '/^(payment|pay|subscription|sub|tenant|ten|plan|pln)[-_]?/i',
+            '',
+            $value,
+        ) ?? $value;
+        $compact = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $withoutKnownPrefix));
+        $suffix = strlen($compact) > 12 ? substr($compact, -8) : $compact;
+
+        return $prefix.'-'.$suffix;
+    }
+
+    private static function searchTerm(?string $search): ?string
+    {
+        if ($search === null || trim($search) === '') {
+            return null;
+        }
+
+        $value = trim($search);
+
+        return preg_replace('/^(PAY|SUB|TEN|PLN)-/i', '', $value) ?: $value;
     }
 }

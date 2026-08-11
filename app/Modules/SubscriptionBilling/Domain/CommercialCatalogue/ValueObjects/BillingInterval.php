@@ -6,6 +6,7 @@ namespace App\Modules\SubscriptionBilling\Domain\CommercialCatalogue\ValueObject
 
 enum BillingInterval: string
 {
+    case Day = 'day';
     case Month = 'month';
     case Year = 'year';
 }

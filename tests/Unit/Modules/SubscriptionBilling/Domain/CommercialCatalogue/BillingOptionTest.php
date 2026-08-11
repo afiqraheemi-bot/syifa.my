@@ -47,6 +47,7 @@ final class BillingOptionTest extends TestCase
     /** @return iterable<string, array{BillingInterval, int}> */
     public static function finiteDurationProvider(): iterable
     {
+        yield 'three-day trial' => [BillingInterval::Day, 3];
         yield 'monthly' => [BillingInterval::Month, 1];
         yield 'quarterly' => [BillingInterval::Month, 3];
         yield 'annual' => [BillingInterval::Year, 1];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Modules\SubscriptionBilling\SubscriptionDetail;
 
+use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresBillingDocumentReadAdapter;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Queries\PostgresSubscriptionDetailReadAdapter;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
@@ -27,12 +28,14 @@ final class PostgresSubscriptionDetailReadAdapterTest extends TestCase
         DB::purge('subscription_detail_test');
         $this->connection = DB::connection('subscription_detail_test');
         $this->connection()->statement('CREATE TEMP TABLE subscriptions (id text, tenant_id text, clinic_registration_id text, payment_id text, plan_id text, billing_cycle_id text, amount_minor bigint, currency text, starts_on date, ends_on date, status text, auto_renew_status text, version integer)');
-        $this->connection()->statement('CREATE TEMP TABLE payments (id text, amount_minor bigint, currency text, status text, domain_last_changed_at timestamptz)');
+        $this->connection()->statement('CREATE TEMP TABLE payments (id text, amount_minor bigint, currency text, status text, provider_key text, provider_payment_reference text, domain_created_at timestamptz, domain_last_changed_at timestamptz)');
         $this->connection()->statement('CREATE TEMP TABLE subscription_timeline_entries (id text, subscription_id text, event_type text, occurred_at timestamptz)');
-        $this->connection()->statement('CREATE TEMP TABLE subscription_renewals (id text, subscription_id text, commercial_offer_id text, payment_id text, status text, requested_at timestamptz)');
+        $this->connection()->statement('CREATE TEMP TABLE subscription_renewals (id text, subscription_id text, commercial_offer_id text, payment_id text, plan_id text, billing_cycle_id text, starts_on date, ends_on date, status text, requested_at timestamptz)');
         $this->connection()->statement('CREATE TEMP TABLE commercial_offers (id text, expires_at timestamptz)');
         $this->connection()->statement('CREATE TEMP TABLE commercial_catalogue_plans (id uuid, name text)');
         $this->connection()->statement('CREATE TEMP TABLE commercial_catalogue_billing_options (id uuid, name text)');
+        $this->connection()->statement('CREATE TEMP TABLE clinic_registrations (id text, clinic_name text)');
+        $this->connection()->statement('CREATE TEMP TABLE websites (tenant_id text, clinic_name text)');
     }
 
     protected function tearDown(): void
@@ -121,6 +124,62 @@ final class PostgresSubscriptionDetailReadAdapterTest extends TestCase
         self::assertSame('succeeded', $detail->latestPaymentStatus);
         self::assertFalse($detail->renewalEligible);
         self::assertNull($adapter->detailForTenant('tenant-2'));
+    }
+
+    public function test_it_reads_initial_and_renewal_documents_without_cross_tenant_disclosure(): void
+    {
+        $planId = '00000000-0000-4000-8000-000000000101';
+        $billingCycleId = '00000000-0000-4000-8000-000000000102';
+        $initialPaymentId = '00000000-0000-4000-8000-000000000201';
+        $renewalPaymentId = '00000000-0000-4000-8000-000000000202';
+        $this->connection()->table('commercial_catalogue_plans')->insert(['id' => $planId, 'name' => 'Syifa Essential']);
+        $this->connection()->table('commercial_catalogue_billing_options')->insert(['id' => $billingCycleId, 'name' => 'Annual']);
+        $this->connection()->table('clinic_registrations')->insert(['id' => 'registration-1', 'clinic_name' => 'Klinik Test']);
+        $this->connection()->table('payments')->insert([
+            [
+                'id' => $initialPaymentId, 'amount_minor' => 120000, 'currency' => 'MYR',
+                'status' => 'succeeded', 'provider_key' => 'toyyibpay',
+                'provider_payment_reference' => 'provider-initial',
+                'domain_created_at' => '2026-01-01 00:00:00+00',
+                'domain_last_changed_at' => '2026-01-01 00:05:00+00',
+            ],
+            [
+                'id' => $renewalPaymentId, 'amount_minor' => 120000, 'currency' => 'MYR',
+                'status' => 'pending_provider_confirmation', 'provider_key' => 'toyyibpay',
+                'provider_payment_reference' => 'provider-renewal',
+                'domain_created_at' => '2026-12-01 00:00:00+00',
+                'domain_last_changed_at' => '2026-12-01 00:00:00+00',
+            ],
+        ]);
+        $this->connection()->table('subscriptions')->insert([
+            'id' => 'sub-1', 'tenant_id' => 'tenant-1', 'clinic_registration_id' => 'registration-1',
+            'payment_id' => $initialPaymentId, 'plan_id' => $planId, 'billing_cycle_id' => $billingCycleId,
+            'amount_minor' => 120000, 'currency' => 'MYR', 'starts_on' => '2026-01-01',
+            'ends_on' => '2026-12-31', 'status' => 'active', 'auto_renew_status' => 'disabled',
+            'version' => 2,
+        ]);
+        $this->connection()->table('subscription_renewals')->insert([
+            'id' => 'renewal-1', 'subscription_id' => 'sub-1', 'commercial_offer_id' => 'offer-1',
+            'payment_id' => $renewalPaymentId, 'plan_id' => $planId,
+            'billing_cycle_id' => $billingCycleId, 'starts_on' => '2027-01-01',
+            'ends_on' => '2027-12-31', 'status' => 'checkout_pending',
+            'requested_at' => '2026-12-01 00:00:00+00',
+        ]);
+
+        $documents = (new PostgresBillingDocumentReadAdapter($this->connection()))->listForTenant('tenant-1');
+
+        self::assertCount(2, $documents);
+        self::assertSame($renewalPaymentId, $documents[0]->paymentId);
+        self::assertSame('subscription_renewal', $documents[0]->purpose);
+        self::assertNull($documents[0]->receiptNumber);
+        self::assertSame('Klinik Test', $documents[1]->clinicName);
+        self::assertNotNull($documents[1]->receiptNumber);
+        self::assertSame([], (new PostgresBillingDocumentReadAdapter($this->connection()))->listForTenant('tenant-2'));
+
+        $history = (new PostgresSubscriptionDetailReadAdapter($this->connection()))
+            ->listForSubscription('sub-1', null, 20);
+        self::assertCount(2, $history);
+        self::assertSame('subscription_renewal', $history[0]->purpose);
     }
 
     private function connection(): ConnectionInterface

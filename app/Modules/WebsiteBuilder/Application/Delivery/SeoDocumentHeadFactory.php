@@ -13,11 +13,17 @@ final readonly class SeoDocumentHeadFactory
         $structured = [
             '@context' => 'https://schema.org',
             '@type' => 'MedicalClinic',
+            '@id' => $context->url()->value.'#clinic',
             'name' => $model->branding->clinicName,
             'url' => $context->url()->value,
         ];
         if ($model->footer->contactPhone !== null) {
             $structured['telephone'] = $model->footer->contactPhone;
+            $structured['contactPoint'] = [
+                '@type' => 'ContactPoint',
+                'telephone' => $model->footer->contactPhone,
+                'contactType' => 'appointments',
+            ];
         }
         if ($model->footer->address !== null) {
             $structured['address'] = $model->footer->address;

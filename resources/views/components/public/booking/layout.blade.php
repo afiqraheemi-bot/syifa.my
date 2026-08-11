@@ -7,7 +7,7 @@
     <title>{{ $title ?? 'Book an Appointment' }}</title>
     <meta name="robots" content="noindex">
     <style>:root{--brand-primary:{{ $theme->brandTokens->primary }};--brand-primary-hover:{{ $theme->brandTokens->primaryHover }};--brand-primary-active:{{ $theme->brandTokens->primaryActive }};--brand-on-primary:{{ $theme->brandTokens->onPrimary }};--brand-secondary:{{ $theme->brandTokens->secondary }};--brand-on-secondary:{{ $theme->brandTokens->onSecondary }};}</style>
-    @unless (app()->environment('testing')) @vite('resources/js/public-website.js') @endunless
+    @unless (app()->environment('testing')) @vite(['resources/css/public-website.css', 'resources/js/public-website.js']) @endunless
 </head>
 <body class="public-site booking-flow" data-template="{{ $theme->templateId }}">
     <x-public.skip-link />

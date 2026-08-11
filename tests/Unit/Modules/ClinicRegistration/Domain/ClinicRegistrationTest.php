@@ -181,6 +181,66 @@ final class ClinicRegistrationTest extends TestCase
         self::assertSame(3, $registration->version());
     }
 
+    public function test_administrator_can_revise_active_registration_without_losing_website_preferences(): void
+    {
+        $registration = $this->registration();
+        $registration->updateDraft(
+            new ClinicRegistrationProfile(
+                'Klinik Syifa',
+                'owner@clinic.test',
+                '+60123456789',
+                '1 Jalan Klinik',
+                'klinik-syifa',
+                'SYIFA_CARE',
+            ),
+            [new DeclarationAcceptance('terms.acceptance', '2026-07-20', $this->occurredAt())],
+            new CommercialSelectionReference('offering-basic-monthly', 'monthly', 'catalogue-v1'),
+        );
+        $registration->submit($this->tenantId(), $this->occurredAt());
+
+        $registration->reviseProfileByAdministrator(new ClinicRegistrationProfile(
+            'Klinik Syifa Utama',
+            'updated@clinic.test',
+            '+60129999999',
+            '2 Jalan Klinik',
+            $registration->profile->preferredSubdomain,
+            $registration->profile->selectedWebsiteTemplate,
+        ));
+
+        self::assertSame('Klinik Syifa Utama', $registration->profile->clinicName);
+        self::assertSame('klinik-syifa', $registration->profile->preferredSubdomain);
+        self::assertSame('SYIFA_CARE', $registration->profile->selectedWebsiteTemplate);
+        self::assertSame(RegistrationStatus::Submitted, $registration->status);
+    }
+
+    public function test_administrator_cannot_revise_an_approved_registration(): void
+    {
+        $registration = $this->submittableRegistration();
+        $registration->submit($this->tenantId(), $this->occurredAt());
+        $this->approve($registration);
+
+        $this->expectException(InvalidClinicRegistrationTransitionException::class);
+
+        $registration->reviseProfileByAdministrator(new ClinicRegistrationProfile(
+            'Changed clinic',
+            'changed@clinic.test',
+            '+60129999999',
+            '2 Jalan Klinik',
+        ));
+    }
+
+    public function test_only_pre_financial_terminal_registrations_can_be_archived(): void
+    {
+        $draft = $this->registration();
+        self::assertTrue($draft->isArchivableByAdministrator());
+
+        $submitted = $this->submittableRegistration();
+        $submitted->submit($this->tenantId(), $this->occurredAt());
+
+        self::assertFalse($submitted->isArchivableByAdministrator());
+        self::assertTrue($submitted->isEditableByAdministrator());
+    }
+
     private function submittableRegistration(): ClinicRegistration
     {
         $registration = $this->registration();

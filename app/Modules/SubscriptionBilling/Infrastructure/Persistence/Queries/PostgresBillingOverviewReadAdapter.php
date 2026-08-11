@@ -36,10 +36,20 @@ final readonly class PostgresBillingOverviewReadAdapter implements BillingOvervi
             )
             ->first();
 
-        $recentPayments = $this->connection->table('payments')
-            ->select(['id', 'tenant_id', 'amount_minor', 'currency', 'status', 'domain_last_changed_at'])
-            ->orderByDesc('domain_last_changed_at')
-            ->orderByDesc('id')
+        $recentPayments = $this->connection->table('payments as payment')
+            ->leftJoin('websites as website', 'website.tenant_id', '=', 'payment.tenant_id')
+            ->leftJoin('clinic_registrations as registration', 'registration.id', '=', 'payment.clinic_registration_id')
+            ->select([
+                'payment.id',
+                'payment.tenant_id',
+                'payment.amount_minor',
+                'payment.currency',
+                'payment.status',
+                'payment.domain_last_changed_at',
+            ])
+            ->selectRaw('COALESCE(website.clinic_name, registration.clinic_name) AS clinic_name')
+            ->orderByDesc('payment.domain_last_changed_at')
+            ->orderByDesc('payment.id')
             ->limit(5)
             ->get()
             ->map(static fn (object $row): RecentPaymentData => new RecentPaymentData(
@@ -49,6 +59,7 @@ final readonly class PostgresBillingOverviewReadAdapter implements BillingOvervi
                 (string) $row->currency,
                 (string) $row->status,
                 (string) $row->domain_last_changed_at,
+                is_string($row->clinic_name) && $row->clinic_name !== '' ? $row->clinic_name : null,
             ))
             ->all();
 
@@ -68,26 +79,44 @@ final readonly class PostgresBillingOverviewReadAdapter implements BillingOvervi
 
     public function subscriptions(?string $status, ?string $cursor, int $limit, ?string $search): array
     {
-        $query = $this->connection->table('subscriptions')
+        $query = $this->connection->table('subscriptions as subscription')
+            ->leftJoin('websites as website', 'website.tenant_id', '=', 'subscription.tenant_id')
+            ->leftJoin('clinic_registrations as registration', 'registration.id', '=', 'subscription.clinic_registration_id')
+            ->leftJoin('commercial_catalogue_plans as plan', static function ($join): void {
+                $join->whereRaw('CAST(plan.id AS TEXT) = subscription.plan_id');
+            })
             ->select([
-                'id', 'tenant_id', 'plan_id', 'billing_cycle_id', 'amount_minor',
-                'currency', 'starts_on', 'ends_on', 'status',
-            ]);
+                'subscription.id',
+                'subscription.tenant_id',
+                'subscription.plan_id',
+                'subscription.billing_cycle_id',
+                'subscription.amount_minor',
+                'subscription.currency',
+                'subscription.starts_on',
+                'subscription.ends_on',
+                'subscription.status',
+                'plan.name as plan_name',
+            ])
+            ->selectRaw('COALESCE(website.clinic_name, registration.clinic_name) AS clinic_name');
 
         if ($status !== null) {
-            $query->where('status', $status);
+            $query->where('subscription.status', $status);
         }
         if ($cursor !== null) {
-            $query->where('id', '>', $cursor);
+            $query->where('subscription.id', '>', $cursor);
         }
         if ($search !== null) {
             $query->where(static function ($query) use ($search): void {
-                $query->where('id', 'ilike', '%'.$search.'%')
-                    ->orWhere('tenant_id', 'ilike', '%'.$search.'%');
+                $query->whereRaw('CAST(subscription.id AS TEXT) ILIKE ?', ['%'.$search.'%'])
+                    ->orWhereRaw('CAST(subscription.tenant_id AS TEXT) ILIKE ?', ['%'.$search.'%'])
+                    ->orWhereRaw('CAST(subscription.plan_id AS TEXT) ILIKE ?', ['%'.$search.'%'])
+                    ->orWhere('website.clinic_name', 'ilike', '%'.$search.'%')
+                    ->orWhere('registration.clinic_name', 'ilike', '%'.$search.'%')
+                    ->orWhere('plan.name', 'ilike', '%'.$search.'%');
             });
         }
 
-        return array_values($query->orderBy('id')->limit($limit)->get()
+        return array_values($query->orderBy('subscription.id')->limit($limit)->get()
             ->map(static fn (object $row): SubscriptionOverviewData => new SubscriptionOverviewData(
                 (string) $row->id,
                 (string) $row->tenant_id,
@@ -98,6 +127,8 @@ final readonly class PostgresBillingOverviewReadAdapter implements BillingOvervi
                 (string) $row->starts_on,
                 (string) $row->ends_on,
                 (string) $row->status,
+                is_string($row->clinic_name) && $row->clinic_name !== '' ? $row->clinic_name : null,
+                is_string($row->plan_name) && $row->plan_name !== '' ? $row->plan_name : null,
             ))->all());
     }
 }

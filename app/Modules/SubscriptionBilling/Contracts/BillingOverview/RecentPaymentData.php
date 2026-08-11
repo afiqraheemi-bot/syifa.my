@@ -13,5 +13,6 @@ final readonly class RecentPaymentData
         public string $currency,
         public string $status,
         public string $lastChangedAt,
+        public ?string $clinicName = null,
     ) {}
 }

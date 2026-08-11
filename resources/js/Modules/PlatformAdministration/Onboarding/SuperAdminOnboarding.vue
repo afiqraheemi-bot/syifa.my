@@ -2,6 +2,7 @@
 import { router } from '@inertiajs/vue3';
 import { reactive, ref } from 'vue';
 import { browserHttpRequest } from '../../../Shared/Authentication/session.js';
+import { createOnboardingCheckpoints } from '../../../Shared/Onboarding/checkpoints.js';
 import {
     createDashboardNavigation,
     DashboardEmptyState,
@@ -79,78 +80,15 @@ function ownerForm(job) {
     return ownerForms[job.id];
 }
 
-function task(job, key) {
-    return job.tasks.find((item) => item.key === key || item.taskKey === key);
-}
-
-function taskComplete(job, key) {
-    return ['completed', 'waived'].includes(task(job, key)?.status);
-}
-
-function deliveryComplete(job) {
-    return ['service_setup', 'website_setup', 'booking_setup'].every((key) =>
-        taskComplete(job, key),
-    );
-}
-
 function checkpoints(job) {
-    return [
-        {
-            label: 'Payment and workspace created',
-            description: 'Subscription, tenant, website and onboarding workspace are ready.',
-            state: 'complete',
-        },
-        {
-            label: 'Clinic Owner access',
-            description: job.ownerVerified
-                ? `${job.ownerName} can access the clinic workspace.`
-                : job.ownerAuthorityId
-                  ? `Setup email is pending for ${job.ownerEmail}.`
-                  : 'Confirm the owner name and email, then send secure setup access.',
-            state: job.ownerVerified ? 'complete' : job.designerName ? 'current' : 'upcoming',
-        },
-        {
-            label: 'Website Designer assigned',
-            description: job.designerName
-                ? `${job.designerName} owns this onboarding job.`
-                : 'Choose the Website Designer responsible for delivery.',
-            state: job.designerName ? 'complete' : 'current',
-        },
-        {
-            label: 'Clinic information received',
-            description: taskComplete(job, 'clinic_inputs')
-                ? 'The clinic has supplied the required information.'
-                : 'Waiting for the Clinic Owner to complete the required inputs.',
-            state: taskComplete(job, 'clinic_inputs')
-                ? 'complete'
-                : job.designerName
-                  ? 'current'
-                  : 'upcoming',
-        },
-        {
-            label: 'Website delivery completed',
-            description: `${job.taskSummary.completed}/${job.taskSummary.total} onboarding tasks complete.`,
-            state: deliveryComplete(job)
-                ? 'complete'
-                : taskComplete(job, 'clinic_inputs')
-                  ? 'current'
-                  : 'upcoming',
-        },
-        {
-            label: 'Review and launch',
-            description: job.launchReadiness?.ready
-                ? 'All authoritative launch evidence is ready.'
-                : 'Website approval and launch evidence are not complete yet.',
-            state: job.launchReadiness?.ready ? 'complete' : 'upcoming',
-        },
-    ];
+    return createOnboardingCheckpoints(job.tasks);
 }
 
 function nextAction(job) {
     if (!job.designerName) return 'Assign a Website Designer';
     if (!job.ownerVerified) return 'Complete Clinic Owner access';
-    if (!taskComplete(job, 'clinic_inputs')) return 'Clinic Owner supplies clinic information';
-    if (!deliveryComplete(job)) return 'Website Designer completes delivery tasks';
+    const current = checkpoints(job).find((checkpoint) => checkpoint.state === 'current');
+    if (current) return `${current.responsibilityLabel}: ${current.label}`;
     if (!job.launchReadiness?.ready) return 'Complete review and launch evidence';
 
     return 'Complete onboarding';
@@ -288,7 +226,7 @@ async function waiveTask(job, task) {
             <input
                 name="search"
                 :value="filters.search ?? ''"
-                placeholder="Search clinic or onboarding job"
+                placeholder="Search clinic, owner, designer or reference"
                 class="min-h-11 rounded-xl border border-slate-300 px-4"
             />
             <select
@@ -301,9 +239,13 @@ async function waiveTask(job, task) {
                 <option value="awaiting_inputs">Awaiting inputs</option>
                 <option value="assigned">Assigned</option>
                 <option value="in_progress">In progress</option>
+                <option value="blocked">Blocked</option>
                 <option value="in_review">In review</option>
+                <option value="correction_required">Correction required</option>
                 <option value="ready_for_launch">Ready for launch</option>
                 <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="reopened">Reopened</option>
             </select>
             <button class="min-h-11 rounded-xl bg-slate-900 px-5 font-semibold text-white">
                 Filter
@@ -325,8 +267,9 @@ async function waiveTask(job, task) {
         <div v-else class="grid gap-6">
             <article
                 v-for="job in onboarding.jobs"
+                :id="`job-${job.id}`"
                 :key="job.id"
-                class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+                class="scroll-mt-24 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
             >
                 <div class="border-b border-slate-200 bg-slate-50 px-5 py-5 sm:px-7">
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -362,7 +305,7 @@ async function waiveTask(job, task) {
                         <ol class="mt-5 space-y-0">
                             <li
                                 v-for="(checkpoint, index) in checkpoints(job)"
-                                :key="checkpoint.label"
+                                :key="checkpoint.key"
                                 class="relative grid grid-cols-[2rem_1fr] gap-3 pb-6 last:pb-0"
                             >
                                 <span

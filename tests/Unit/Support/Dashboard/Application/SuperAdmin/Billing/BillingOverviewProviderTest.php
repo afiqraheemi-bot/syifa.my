@@ -26,7 +26,7 @@ final class BillingOverviewProviderTest extends TestCase
         $projection = (new BillingOverviewProvider($read))->provide(
             $context,
             BillingOverviewCriteria::fromInput([
-                'search' => ' tenant ',
+                'search' => ' TEN-tenant ',
                 'status' => 'active',
                 'per_page' => 10,
             ]),
@@ -41,6 +41,11 @@ final class BillingOverviewProviderTest extends TestCase
         self::assertSame('MYR 1,234.56', $projection->data['summary'][3]['value']);
         self::assertSame('attention_required', $projection->data['health']['status']);
         self::assertSame('Succeeded', $projection->data['recentPayments'][0]['statusLabel']);
+        self::assertSame('PAY-1', $projection->data['recentPayments'][0]['reference']);
+        self::assertSame('Klinik Sentosa', $projection->data['recentPayments'][0]['clinicName']);
+        self::assertSame('SUB-1', $projection->data['subscriptions'][0]['reference']);
+        self::assertSame('TEN-1', $projection->data['subscriptions'][0]['tenantReference']);
+        self::assertSame('Syifa Essential', $projection->data['subscriptions'][0]['planName']);
     }
 }
 
@@ -57,7 +62,7 @@ final class RecordedBillingOverviewRead implements BillingOverviewReadInterface
 
         return new BillingOverviewData(
             8, 2, 3, 123456, 'MYR',
-            [new RecentPaymentData('payment-1', 'tenant-1', 10000, 'MYR', 'succeeded', '2026-07-01')],
+            [new RecentPaymentData('payment-1', 'tenant-1', 10000, 'MYR', 'succeeded', '2026-07-01', 'Klinik Sentosa')],
             1, 10, 2, 1,
         );
     }
@@ -77,6 +82,8 @@ final class RecordedBillingOverviewRead implements BillingOverviewReadInterface
                 '2026-01-01',
                 '2026-12-31',
                 'active',
+                'Klinik Sentosa',
+                'Syifa Essential',
             ),
             range(1, 11),
         );

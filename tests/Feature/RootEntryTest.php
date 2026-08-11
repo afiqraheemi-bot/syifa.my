@@ -45,8 +45,25 @@ final class RootEntryTest extends TestCase
                     ->where('loginUrl', route('login', [], false))
                     ->where('clinicRegistrationUrl', route('clinic-registration.browser', [], false))
                     ->where('privacyUrl', route('public-website.privacy', [], false))
-                    ->where('termsUrl', route('public-website.terms', [], false)),
+                    ->where('termsUrl', route('public-website.terms', [], false))
+                    ->where('packages', [])
+                    ->where('packagePreview', false),
             );
+    }
+
+    public function test_marketing_host_exposes_crawler_discovery_files(): void
+    {
+        $this->get('/robots.txt')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertSee('Disallow: /dashboard', false)
+            ->assertSee('Sitemap: http://localhost/sitemap.xml', false);
+
+        $this->get('/sitemap.xml')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/xml; charset=UTF-8')
+            ->assertSee('<loc>http://localhost/</loc>', false)
+            ->assertDontSee('/dashboard', false);
     }
 
     public function test_unauthenticated_visitor_on_the_127_0_0_1_alias_sees_the_same_marketing_home_page(): void

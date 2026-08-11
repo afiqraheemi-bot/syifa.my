@@ -88,6 +88,7 @@ final class WebsiteCoreArchitectureTest extends TestCase
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/BookingController.php',
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicLegalDocumentController.php',
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicWebsiteController.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicWebsiteSeoController.php',
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/SuccessController.php',
         ];
         sort($expectedPresentationFiles);
@@ -206,6 +207,7 @@ final class WebsiteCoreArchitectureTest extends TestCase
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/BookingController.php',
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicLegalDocumentController.php',
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicWebsiteController.php',
+            $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/PublicWebsiteSeoController.php',
             $this->root().'/app/Modules/WebsiteBuilder/Presentation/Http/Controllers/SuccessController.php',
         ];
         sort($expectedPresentationFiles);

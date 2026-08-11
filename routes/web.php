@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\MarketingHomeController;
+use App\Http\Controllers\MarketingSeoController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\RootEntryController;
 use App\Http\Controllers\TemplatePreviewController;
@@ -27,8 +27,10 @@ use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\AvailabilityControl
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\BookingController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicLegalDocumentController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicWebsiteController;
+use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicWebsiteSeoController;
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\SuccessController;
 use App\Support\Dashboard\Presentation\Http\Controllers\AuthenticatedDashboardController;
+use App\Support\Dashboard\Presentation\Http\Controllers\BillingDocumentController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDateOverrideController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingOverviewController;
@@ -54,6 +56,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialBill
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialCapabilityOperationController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialManagementController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialOfferingOperationController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialPackageOperationController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminCommercialPlanOperationController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminOnboardingController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminPaymentProviderController;
@@ -72,6 +75,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerSyifaAiCo
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerWebsiteAddressController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerWebsiteAssetController;
 use App\Support\Dashboard\Presentation\Http\Middleware\RedirectMisdirectedWebsitePreviewRequest;
+use App\Support\Marketing\Presentation\Http\Controllers\MarketingHomeController;
 use App\Support\PublicWebsite\Presentation\Http\Controllers\PublicWebsiteAssetController;
 use Illuminate\Support\Facades\Route;
 
@@ -88,8 +92,12 @@ foreach (RootEntryController::tenantAdminBaseDomains() as $tenantAdminBaseDomain
 foreach (RootEntryController::appEntryHosts() as $appEntryHost) {
     Route::domain($appEntryHost)->get('/', MarketingHomeController::class)->name('root');
     Route::domain($appEntryHost)->get('/login', RootEntryController::class)->name('login');
+    Route::domain($appEntryHost)->get('/robots.txt', [MarketingSeoController::class, 'robots']);
+    Route::domain($appEntryHost)->get('/sitemap.xml', [MarketingSeoController::class, 'sitemap']);
 }
 Route::get('/', PublicWebsiteController::class)->name('public-website.home');
+Route::get('/robots.txt', [PublicWebsiteSeoController::class, 'robots']);
+Route::get('/sitemap.xml', [PublicWebsiteSeoController::class, 'sitemap']);
 Route::get('/clinic-owner/setup/{token}', [ClinicOwnerSetupController::class, 'show'])
     ->middleware('throttle:public.default')
     ->name('clinic-owner.setup');
@@ -198,6 +206,14 @@ Route::post('/dashboard/registrations/{registrationId}/decision', [SuperAdminReg
     ->whereUuid('registrationId')
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.registrations.decision');
+Route::patch('/dashboard/registrations/{registrationId}', [SuperAdminRegistrationReviewController::class, 'update'])
+    ->whereUuid('registrationId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.registrations.update');
+Route::delete('/dashboard/registrations/{registrationId}', [SuperAdminRegistrationReviewController::class, 'archive'])
+    ->whereUuid('registrationId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.registrations.archive');
 Route::get('/dashboard/onboarding-management', [SuperAdminOnboardingController::class, 'index'])
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.onboarding-management');
@@ -231,8 +247,12 @@ Route::prefix('/dashboard/commercial')
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.commercial')
     ->group(function (): void {
+        Route::get('/website-preview', [MarketingHomeController::class, 'preview'])
+            ->name('.website-preview');
         Route::get('/', [SuperAdminCommercialManagementController::class, 'index'])
             ->name('');
+        Route::get('/packages/create', [SuperAdminCommercialManagementController::class, 'createPackage'])
+            ->name('.packages.create');
         Route::get('/plans/create', [SuperAdminCommercialManagementController::class, 'createPlan'])
             ->name('.plans.create');
         Route::get('/billing-options/create', [SuperAdminCommercialManagementController::class, 'createBillingOption'])
@@ -262,6 +282,8 @@ Route::prefix('/dashboard/commercial')
             ->name('.plans.offerings.show');
         Route::post('/plans', [SuperAdminCommercialPlanOperationController::class, 'store'])
             ->name('.plans.store');
+        Route::post('/packages', [SuperAdminCommercialPackageOperationController::class, 'store'])
+            ->name('.packages.store');
         Route::post('/billing-options', [SuperAdminCommercialBillingOptionOperationController::class, 'store'])
             ->name('.billing-options.store');
         Route::patch('/billing-options/{billingOptionId}', [SuperAdminCommercialBillingOptionOperationController::class, 'update'])
@@ -318,12 +340,21 @@ Route::get('/dashboard/billing/subscriptions/{subscriptionId}', SuperAdminSubscr
     ->whereUuid('subscriptionId')
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.billing.subscriptions.show');
+Route::get('/dashboard/billing/invoices/{paymentId}', [BillingDocumentController::class, 'superAdminInvoice'])
+    ->whereUuid('paymentId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.billing.invoices.show');
+Route::get('/dashboard/billing/receipts/{paymentId}', [BillingDocumentController::class, 'superAdminReceipt'])
+    ->whereUuid('paymentId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.billing.receipts.show');
 Route::prefix('/dashboard/billing/subscriptions/{subscriptionId}')
     ->whereUuid('subscriptionId')
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.billing.subscriptions.')
     ->group(function (): void {
         Route::post('/renew', [SuperAdminSubscriptionOperationController::class, 'renew'])->name('renew');
+        Route::post('/change-plan', [SuperAdminSubscriptionOperationController::class, 'changePlan'])->name('change-plan');
         Route::post('/auto-renew/enable', [SuperAdminSubscriptionOperationController::class, 'enableAutoRenew'])->name('auto-renew.enable');
         Route::post('/auto-renew/disable', [SuperAdminSubscriptionOperationController::class, 'disableAutoRenew'])->name('auto-renew.disable');
     });
@@ -392,6 +423,14 @@ Route::prefix('/dashboard/services')
 Route::get('/dashboard/subscription', ClinicOwnerSubscriptionController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.subscription');
+Route::get('/dashboard/subscription/invoices/{paymentId}', [BillingDocumentController::class, 'clinicOwnerInvoice'])
+    ->whereUuid('paymentId')
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.subscription.invoices.show');
+Route::get('/dashboard/subscription/receipts/{paymentId}', [BillingDocumentController::class, 'clinicOwnerReceipt'])
+    ->whereUuid('paymentId')
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.subscription.receipts.show');
 Route::post('/dashboard/subscription/renewal-checkout', ClinicOwnerRenewalHostedCheckoutController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.subscription.renewal-checkout');

@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Support\Dashboard\Presentation\Http\Controllers;
 
+use App\Modules\ClinicRegistration\Application\ArchiveClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\DecideClinicRegistrationService;
 use App\Modules\ClinicRegistration\Application\StartClinicRegistrationReviewService;
+use App\Modules\ClinicRegistration\Application\UpdateClinicRegistrationByAdministratorService;
+use App\Modules\ClinicRegistration\Contracts\Commands\ArchiveClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\DecideClinicRegistrationCommand;
 use App\Modules\ClinicRegistration\Contracts\Commands\StartClinicRegistrationReviewCommand;
+use App\Modules\ClinicRegistration\Contracts\Commands\UpdateClinicRegistrationByAdministratorCommand;
 use App\Modules\ClinicRegistration\Domain\Exceptions\InvalidClinicRegistrationTransitionException;
 use App\Modules\ClinicRegistration\Domain\Exceptions\InvalidClinicRegistrationValueException;
 use App\Modules\ClinicRegistration\Domain\Exceptions\StaleClinicRegistrationWriteException;
@@ -90,6 +94,64 @@ final readonly class SuperAdminRegistrationReviewController
                 new DateTimeImmutable,
             ));
         } catch (InvalidClinicRegistrationTransitionException|InvalidClinicRegistrationValueException|StaleClinicRegistrationWriteException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        }
+
+        return response()->json(['version' => $version]);
+    }
+
+    public function update(
+        string $registrationId,
+        Request $request,
+        UpdateClinicRegistrationByAdministratorService $updates,
+    ): JsonResponse {
+        $validated = $request->validate([
+            'clinic_name' => ['required', 'string', 'max:200'],
+            'clinic_email' => ['required', 'email', 'max:254'],
+            'clinic_phone' => ['required', 'string', 'max:40'],
+            'clinic_address' => ['required', 'string', 'max:1000'],
+            'expected_version' => ['required', 'integer', 'min:1'],
+        ]);
+        $context = $this->context($request);
+
+        try {
+            $version = $updates->execute(new UpdateClinicRegistrationByAdministratorCommand(
+                $registrationId,
+                (string) $validated['clinic_name'],
+                (string) $validated['clinic_email'],
+                (string) $validated['clinic_phone'],
+                (string) $validated['clinic_address'],
+                (int) $validated['expected_version'],
+                $context->identityId,
+                $this->correlationId($request),
+                new DateTimeImmutable,
+            ));
+        } catch (InvalidClinicRegistrationTransitionException|InvalidClinicRegistrationValueException|StaleClinicRegistrationWriteException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        }
+
+        return response()->json(['version' => $version]);
+    }
+
+    public function archive(
+        string $registrationId,
+        Request $request,
+        ArchiveClinicRegistrationService $archives,
+    ): JsonResponse {
+        $validated = $request->validate([
+            'expected_version' => ['required', 'integer', 'min:1'],
+        ]);
+        $context = $this->context($request);
+
+        try {
+            $version = $archives->execute(new ArchiveClinicRegistrationCommand(
+                $registrationId,
+                (int) $validated['expected_version'],
+                $context->identityId,
+                $this->correlationId($request),
+                new DateTimeImmutable,
+            ));
+        } catch (InvalidClinicRegistrationTransitionException|StaleClinicRegistrationWriteException $exception) {
             return response()->json(['message' => $exception->getMessage()], 409);
         }
 

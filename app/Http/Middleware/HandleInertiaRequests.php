@@ -29,7 +29,7 @@ final class HandleInertiaRequests extends Middleware
         ];
     }
 
-    /** @return array{pending_jobs: int, onboarding_url: string}|null */
+    /** @return array{pending_jobs: int, recent_jobs: list<array<string, string>>, onboarding_url: string}|null */
     private function superAdminOperations(Request $request): ?array
     {
         $context = $request->attributes->get(AuthorizationContext::class);
@@ -39,6 +39,10 @@ final class HandleInertiaRequests extends Middleware
 
         return [
             'pending_jobs' => $this->onboarding->countPending(),
+            'recent_jobs' => array_map(static fn (array $job): array => [
+                ...$job,
+                'url' => route('dashboard.onboarding-management').'#job-'.$job['id'],
+            ], $this->onboarding->recentPending(5)),
             'onboarding_url' => route('dashboard.onboarding-management'),
         ];
     }

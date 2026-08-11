@@ -13,16 +13,20 @@ use App\Modules\Onboarding\Contracts\Administration\OnboardingAuditInterface;
 use App\Modules\Onboarding\Contracts\Administration\ReassignWebsiteDesignerCommand;
 use App\Modules\Onboarding\Contracts\Administration\WebsiteDesignerEligibilityInterface;
 use App\Modules\Onboarding\Contracts\WebsiteApproval\OnboardingWorkflowTransactionInterface;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Entities\WebsiteDesignerAssignment;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Exceptions\InvalidWebsiteDesignerAssignmentTransitionException;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\OnboardingJob;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\Repositories\OnboardingJobRepositoryInterface;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\ClinicOwnerAuthorityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobLifecycleTimestamps;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\OnboardingJobStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\PlatformIdentityId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\TenantId;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteApprovalId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentEndReason;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentId;
+use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteDesignerAssignmentStatus;
 use App\Modules\Onboarding\Domain\Aggregates\OnboardingJob\ValueObjects\WebsiteId;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
@@ -128,6 +132,58 @@ final class AssignWebsiteDesignerServiceTest extends TestCase
         self::assertSame($this->uuid(7), $job->activeWebsiteDesignerAssignment()?->platformIdentityId->value);
         self::assertCount(2, $job->websiteDesignerAssignmentHistory());
         self::assertSame(1, $audit->reassignmentCalls);
+    }
+
+    public function test_it_can_reassign_the_same_designer_after_a_prior_assignment_to_them_has_ended(): void
+    {
+        // Reproduces the Klinik Afiq incident: a designer is assigned, the
+        // job later completes (ending that assignment) and is reopened, and
+        // the same designer is assigned again. The assignment identifier
+        // used to be derived from only (jobId, designerId), which collided
+        // with the ended history row for that exact pair and was rejected
+        // as "cannot be reused" even though no assignment was active.
+        $designerId = $this->uuid(4);
+        $previousAssignment = new WebsiteDesignerAssignment(
+            new WebsiteDesignerAssignmentId($this->uuid(9)),
+            new OnboardingJobId($this->uuid(1)),
+            new PlatformIdentityId($designerId),
+            new TenantId($this->uuid(2)),
+            WebsiteDesignerAssignmentStatus::Ended,
+            new DateTimeImmutable('2026-09-01T00:01:00Z'),
+            new DateTimeImmutable('2026-09-02T00:00:00Z'),
+            WebsiteDesignerAssignmentEndReason::OnboardingJobCompleted,
+        );
+        $job = OnboardingJob::reconstitute(
+            new OnboardingJobId($this->uuid(1)),
+            new TenantId($this->uuid(2)),
+            new WebsiteId($this->uuid(3)),
+            OnboardingJobStatus::Reopened,
+            new OnboardingJobLifecycleTimestamps(
+                new DateTimeImmutable('2026-09-01T00:00:00Z'),
+                reopenedAt: new DateTimeImmutable('2026-09-03T00:00:00Z'),
+            ),
+            [$previousAssignment],
+            2,
+        );
+        $repository = new InMemoryAdminOnboardingJobRepository($job);
+        $service = new AssignWebsiteDesignerService(
+            $repository,
+            new FixedWebsiteDesignerEligibility(true),
+            new InMemoryOnboardingAuditRecorder,
+        );
+
+        $assignmentId = $service->execute(new AssignWebsiteDesignerCommand(
+            $job->id->value,
+            $designerId,
+            2,
+            $this->uuid(5),
+            $this->uuid(6),
+            new DateTimeImmutable('2026-09-03T00:01:00Z'),
+        ));
+
+        self::assertSame($assignmentId, $job->activeWebsiteDesignerAssignment()?->id->value);
+        self::assertSame($designerId, $job->activeWebsiteDesignerAssignment()?->platformIdentityId->value);
+        self::assertNotSame($previousAssignment->id->value, $assignmentId);
     }
 
     public function test_super_admin_completes_only_a_launch_ready_job_with_audited_version_change(): void

@@ -3,6 +3,10 @@ import { useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { browserHttpRequest } from '../../../Shared/Authentication/session.js';
 import {
+    createOnboardingCheckpoints,
+    isOnboardingTaskComplete,
+} from '../../../Shared/Onboarding/checkpoints.js';
+import {
     createDashboardNavigation,
     createDashboardQuickActions,
     DashboardQuickActions,
@@ -219,87 +223,35 @@ function synchronizeWebsiteVersion(asset) {
     }
 }
 
-const completedTaskStatuses = ['completed', 'waived'];
 const taskByKey = (key) => props.job.tasks.find((task) => task.key === key);
-const taskComplete = (key) => completedTaskStatuses.includes(taskByKey(key)?.status);
+const taskComplete = (key) => isOnboardingTaskComplete(taskByKey(key));
 const designerTasks = computed(() =>
     props.job.tasks.filter((task) => task.responsibility === 'website_designer'),
 );
 const nextDesignerTask = computed(() =>
-    designerTasks.value.find((task) => !completedTaskStatuses.includes(task.status)),
+    designerTasks.value.find((task) => !isOnboardingTaskComplete(task)),
 );
 const clinicInputsComplete = computed(() => taskComplete('clinic_inputs'));
 const workflowCheckpoints = computed(() => {
-    const checkpoints = [
-        {
-            key: 'assignment',
-            label: 'Assignment accepted',
-            detail: 'This clinic is assigned to your Website Designer workspace.',
-            complete: true,
-        },
-        {
-            key: 'clinic_inputs',
-            label: 'Clinic information ready',
-            detail: clinicInputsComplete.value
-                ? 'Clinic Owner inputs are complete.'
-                : 'Wait for the Clinic Owner to complete the required information.',
-            complete: clinicInputsComplete.value,
-        },
-        ...[
-            ['service_setup', 'Configure clinic services'],
-            ['website_setup', 'Build website and content'],
-            ['booking_setup', 'Configure patient booking'],
-        ].map(([key, label]) => ({
-            key,
-            label,
-            detail: taskComplete(key)
-                ? 'Completed with workflow evidence.'
-                : (taskByKey(key)?.statusLabel ?? 'Waiting for the previous checkpoint.'),
-            complete: taskComplete(key),
-        })),
-        {
-            key: 'review_publish',
-            label: 'Review and publish',
-            detail: props.launchReadiness?.ready
-                ? 'Launch evidence is ready. Complete the approved publish flow.'
-                : 'Preview, submit for review and resolve remaining launch evidence.',
-            complete: props.websiteSetup.configuration.lifecycle === 'published',
-        },
-    ];
-    const activeIndex = checkpoints.findIndex((checkpoint) => !checkpoint.complete);
     const destinations = {
-        assignment: '#onboarding-tasks',
         clinic_inputs: '#onboarding-tasks',
         service_setup: '#services-editor',
         website_setup: '#website-setup',
         booking_setup: '#booking-setup',
-        review_publish: '#website-review',
+        website_approval: '#website-review',
+        launch_readiness: '#website-review',
     };
 
-    return checkpoints.map((checkpoint, index) => {
-        const state =
-            checkpoint.complete || activeIndex === -1
-                ? 'complete'
-                : index === activeIndex
-                  ? 'current'
-                  : 'locked';
-
+    return createOnboardingCheckpoints(props.job.tasks, destinations).map((checkpoint) => {
+        const ownerCheckpoint = checkpoint.responsibility === 'clinic_owner';
         return {
             ...checkpoint,
-            href: destinations[checkpoint.key],
-            state,
             detail:
-                state === 'current'
-                    ? 'Finish and save this step, then confirm completion to continue.'
-                    : state === 'locked'
-                      ? 'Complete the previous checkpoint to unlock this step.'
+                checkpoint.state === 'current' && ownerCheckpoint
+                    ? 'Waiting for the Clinic Owner to complete this checkpoint.'
+                    : checkpoint.state === 'current'
+                      ? 'Finish and save this step, then confirm completion to continue.'
                       : checkpoint.detail,
-            statusLabel:
-                state === 'complete'
-                    ? 'Completed'
-                    : state === 'current'
-                      ? 'In progress'
-                      : 'Waiting',
         };
     });
 });

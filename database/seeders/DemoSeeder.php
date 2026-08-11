@@ -195,7 +195,57 @@ final class DemoSeeder extends Seeder
 
     private const string BILLING_OPTION_CODE = 'demo-annual';
 
-    private const string CAPABILITY_KEY = 'demo.core';
+    /** @var list<array{key: string, name: string, description: string, commercialMeaning: string}> */
+    private const array CAPABILITIES = [
+        [
+            'key' => 'website.managed',
+            'name' => 'Managed clinic website',
+            'description' => 'Create, review and publish the clinic website.',
+            'commercialMeaning' => 'Includes the governed SYIFA.my website lifecycle.',
+        ],
+        [
+            'key' => 'website.content.manage',
+            'name' => 'Website content management',
+            'description' => 'Manage approved website pages and section content.',
+            'commercialMeaning' => 'Includes governed clinic content editing.',
+        ],
+        [
+            'key' => 'website.branding.manage',
+            'name' => 'Website branding management',
+            'description' => 'Manage approved clinic logo and branding settings.',
+            'commercialMeaning' => 'Includes governed website branding controls.',
+        ],
+        [
+            'key' => 'website.search_sharing.manage',
+            'name' => 'Search and sharing management',
+            'description' => 'Manage approved SEO and social sharing metadata.',
+            'commercialMeaning' => 'Includes governed search and sharing configuration.',
+        ],
+        [
+            'key' => 'booking.online',
+            'name' => 'Online patient booking',
+            'description' => 'Accept booking requests from the public clinic website.',
+            'commercialMeaning' => 'Includes the public online booking journey.',
+        ],
+        [
+            'key' => 'booking.manage',
+            'name' => 'Booking management',
+            'description' => 'Review and manage the clinic booking queue.',
+            'commercialMeaning' => 'Includes Clinic Owner booking operations.',
+        ],
+        [
+            'key' => 'booking.schedule.manage',
+            'name' => 'Booking schedule management',
+            'description' => 'Manage booking hours, capacity and calendar exceptions.',
+            'commercialMeaning' => 'Includes governed appointment availability controls.',
+        ],
+        [
+            'key' => 'syifa_ai.assist',
+            'name' => 'SYIFA AI assistance',
+            'description' => 'Use governed content, quality and designer assistance.',
+            'commercialMeaning' => 'Includes approved SYIFA AI assistance capabilities.',
+        ],
+    ];
 
     private const string PAYMENT_ID = '00000000-0000-4000-8000-100000000060';
 
@@ -602,10 +652,10 @@ final class DemoSeeder extends Seeder
 
         $planId = $this->seedPlan($occurredAt, $actorId);
         $billingOptionId = $this->seedBillingOption($occurredAt, $actorId);
-        $capabilityId = $this->seedCapability($occurredAt, $actorId);
+        $capabilityKeys = $this->seedCapabilities($occurredAt, $actorId);
         $planOfferingId = $this->seedPlanOffering($planId, $billingOptionId, $occurredAt, $actorId);
 
-        $this->seedSubscriptionAndPayment($at, $planId, $planOfferingId, $capabilityId);
+        $this->seedSubscriptionAndPayment($at, $planId, $planOfferingId, $capabilityKeys);
     }
 
     private function seedPlan(string $occurredAt, string $actorId): string
@@ -664,35 +714,44 @@ final class DemoSeeder extends Seeder
         return $billingOption->id->value;
     }
 
-    private function seedCapability(string $occurredAt, string $actorId): string
+    /** @return list<string> */
+    private function seedCapabilities(string $occurredAt, string $actorId): array
     {
         $capabilities = app(CapabilityDefinitionRepositoryInterface::class);
-        $key = new CapabilityKey(self::CAPABILITY_KEY);
+        $keys = [];
 
-        if ($capabilities->existsByKey($key)) {
-            return $capabilities->findByKey($key)->id->value;
+        foreach (self::CAPABILITIES as $definition) {
+            $key = new CapabilityKey($definition['key']);
+            $keys[] = $definition['key'];
+
+            if ($capabilities->existsByKey($key)) {
+                continue;
+            }
+
+            $capability = app(CreateCapabilityDefinitionService::class)->execute(
+                new CreateCapabilityDefinitionCommand(
+                    $definition['key'],
+                    $definition['name'],
+                    $definition['description'],
+                    $definition['commercialMeaning'],
+                    $occurredAt,
+                    $actorId,
+                    (string) Str::uuid(),
+                ),
+            );
+
+            $reloaded = $capabilities->findById($capability->id)
+                ?? throw new RuntimeException('The seeded capability could not be reloaded.');
+            app(ActivateCapabilityDefinitionService::class)->execute(new ActivateCapabilityDefinitionCommand(
+                $capability->id->value,
+                $reloaded->version(),
+                $occurredAt,
+                $actorId,
+                (string) Str::uuid(),
+            ));
         }
 
-        $capability = app(CreateCapabilityDefinitionService::class)->execute(new CreateCapabilityDefinitionCommand(
-            self::CAPABILITY_KEY,
-            'Demo Core Capability',
-            'Baseline capability granted to demo subscriptions.',
-            'Represents core platform access for the demo tenant.',
-            $occurredAt,
-            $actorId,
-            (string) Str::uuid(),
-        ));
-
-        $reloaded = $capabilities->findById($capability->id);
-        app(ActivateCapabilityDefinitionService::class)->execute(new ActivateCapabilityDefinitionCommand(
-            $capability->id->value,
-            $reloaded->version(),
-            $occurredAt,
-            $actorId,
-            (string) Str::uuid(),
-        ));
-
-        return $capability->id->value;
+        return $keys;
     }
 
     private function seedPlanOffering(string $planId, string $billingOptionId, string $occurredAt, string $actorId): string
@@ -729,11 +788,12 @@ final class DemoSeeder extends Seeder
         return $offering->id->value;
     }
 
+    /** @param list<string> $capabilityKeys */
     private function seedSubscriptionAndPayment(
         DateTimeImmutable $at,
         string $planId,
         string $planOfferingId,
-        string $capabilityId,
+        array $capabilityKeys,
     ): void {
         $payments = app(PaymentRepositoryInterface::class);
         $paymentId = new PaymentId(self::PAYMENT_ID);
@@ -780,7 +840,10 @@ final class DemoSeeder extends Seeder
                 $billingCycleId,
                 'demo-configuration-v1',
                 EntitlementStatus::Pending,
-                [new CapabilityKey(self::CAPABILITY_KEY)],
+                array_map(
+                    static fn (string $capabilityKey): CapabilityKey => new CapabilityKey($capabilityKey),
+                    $capabilityKeys,
+                ),
             ),
             $at,
         );

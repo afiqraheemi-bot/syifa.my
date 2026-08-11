@@ -63,6 +63,23 @@ final class PublicWebsiteDeliveryTest extends TestCase
             ->assertDontSee('storage_key');
     }
 
+    public function test_published_website_exposes_host_specific_crawler_discovery_files(): void
+    {
+        $this->bindWebsite($this->renderModel('Klinik Syifa'));
+
+        $this->get('https://clinic.example/robots.txt')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertSee('Disallow: /booking', false)
+            ->assertSee('Sitemap: https://clinic.example/sitemap.xml', false);
+
+        $this->get('https://clinic.example/sitemap.xml')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/xml; charset=UTF-8')
+            ->assertSee('<loc>https://clinic.example/</loc>', false)
+            ->assertDontSee('/booking', false);
+    }
+
     public function test_complete_reference_document_preserves_sections_semantics_and_truthful_booking(): void
     {
         $this->bindWebsite($this->renderModel('A Very Long Published Clinic Identity That Must Wrap Safely'));

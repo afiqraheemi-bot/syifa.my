@@ -120,6 +120,23 @@ final class PaymentProviderInfrastructureTest extends TestCase
         $this->toyyibPay()->verifyWebhook('status=1', []);
     }
 
+    public function test_toyyibpay_rejects_a_forged_callback_hash(): void
+    {
+        // ADR-008 rejected ToyyibPay's MD5 callback authentication as a
+        // standalone gate; ADR-009 added ToyyibPay anyway because a valid
+        // signature is never sole proof — VerifyProviderWebhookReceiptService
+        // always re-verifies with ToyyibPay's authenticated getBillTransactions
+        // API before any Payment state changes. This test proves the first
+        // half of that defence still holds: a callback with every required
+        // field present but a wrong hash must be rejected, not merely one
+        // with fields missing (already covered above).
+        $this->expectException(InvalidProviderWebhookSignatureException::class);
+        $this->toyyibPay()->verifyWebhook(http_build_query([
+            'refno' => 'reference-1', 'status' => '1', 'order_id' => 'payment-1', 'billcode' => 'bill-code',
+            'hash' => md5('wrong-secret'.'1'.'payment-1'.'reference-1'.'ok'),
+        ]), []);
+    }
+
     public function test_provider_429_preserves_retry_after_as_retryable_classification(): void
     {
         Http::fake(['https://dev.toyyibpay.test/index.php/api/getBillTransactions' => Http::response('rate limited', 429, ['Retry-After' => '120'])]);

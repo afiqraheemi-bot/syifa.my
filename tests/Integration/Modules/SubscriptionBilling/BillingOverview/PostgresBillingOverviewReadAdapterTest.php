@@ -27,11 +27,14 @@ final class PostgresBillingOverviewReadAdapterTest extends TestCase
         DB::purge('billing_overview_test');
         $this->connection = DB::connection('billing_overview_test');
         $this->connection()->statement(
-            'CREATE TEMP TABLE subscriptions (id text, tenant_id text, plan_id text, billing_cycle_id text, amount_minor bigint, currency text, starts_on date, ends_on date, status text)',
+            'CREATE TEMP TABLE subscriptions (id text, tenant_id text, clinic_registration_id text, plan_id text, billing_cycle_id text, amount_minor bigint, currency text, starts_on date, ends_on date, status text)',
         );
         $this->connection()->statement(
-            'CREATE TEMP TABLE payments (id text, tenant_id text, amount_minor bigint, currency text, status text, domain_last_changed_at timestamptz)',
+            'CREATE TEMP TABLE payments (id text, tenant_id text, clinic_registration_id text, amount_minor bigint, currency text, status text, domain_last_changed_at timestamptz)',
         );
+        $this->connection()->statement('CREATE TEMP TABLE websites (tenant_id text, clinic_name text)');
+        $this->connection()->statement('CREATE TEMP TABLE clinic_registrations (id text, clinic_name text)');
+        $this->connection()->statement('CREATE TEMP TABLE commercial_catalogue_plans (id text, name text)');
         $this->connection()->statement(
             'CREATE TEMP TABLE payment_reconciliation_cases (id text, status text)',
         );
@@ -46,13 +49,26 @@ final class PostgresBillingOverviewReadAdapterTest extends TestCase
     public function test_it_projects_authoritative_billing_summaries_search_and_cursor_pagination(): void
     {
         $this->connection()->table('subscriptions')->insert([
-            ['id' => 'sub-1', 'tenant_id' => 'tenant-1', 'plan_id' => 'essential', 'billing_cycle_id' => 'annual', 'amount_minor' => 120000, 'currency' => 'MYR', 'starts_on' => '2026-01-01', 'ends_on' => '2026-07-31', 'status' => 'active'],
-            ['id' => 'sub-2', 'tenant_id' => 'tenant-2', 'plan_id' => 'essential', 'billing_cycle_id' => 'annual', 'amount_minor' => 120000, 'currency' => 'MYR', 'starts_on' => '2025-01-01', 'ends_on' => '2025-12-31', 'status' => 'expired'],
-            ['id' => 'sub-3', 'tenant_id' => 'other', 'plan_id' => 'essential', 'billing_cycle_id' => 'annual', 'amount_minor' => 120000, 'currency' => 'MYR', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31', 'status' => 'active'],
+            ['id' => 'sub-1', 'tenant_id' => 'tenant-1', 'clinic_registration_id' => 'registration-1', 'plan_id' => 'essential', 'billing_cycle_id' => 'annual', 'amount_minor' => 120000, 'currency' => 'MYR', 'starts_on' => '2026-01-01', 'ends_on' => '2026-07-31', 'status' => 'active'],
+            ['id' => 'sub-2', 'tenant_id' => 'tenant-2', 'clinic_registration_id' => 'registration-2', 'plan_id' => 'essential', 'billing_cycle_id' => 'annual', 'amount_minor' => 120000, 'currency' => 'MYR', 'starts_on' => '2025-01-01', 'ends_on' => '2025-12-31', 'status' => 'expired'],
+            ['id' => 'sub-3', 'tenant_id' => 'other', 'clinic_registration_id' => 'registration-3', 'plan_id' => 'essential', 'billing_cycle_id' => 'annual', 'amount_minor' => 120000, 'currency' => 'MYR', 'starts_on' => '2026-01-01', 'ends_on' => '2026-12-31', 'status' => 'active'],
         ]);
         $this->connection()->table('payments')->insert([
-            ['id' => 'pay-1', 'tenant_id' => 'tenant-1', 'amount_minor' => 120000, 'currency' => 'MYR', 'status' => 'succeeded', 'domain_last_changed_at' => '2026-07-01 00:00:00+00'],
-            ['id' => 'pay-2', 'tenant_id' => 'tenant-2', 'amount_minor' => 5000, 'currency' => 'MYR', 'status' => 'failed', 'domain_last_changed_at' => '2026-07-02 00:00:00+00'],
+            ['id' => 'pay-1', 'tenant_id' => 'tenant-1', 'clinic_registration_id' => 'registration-1', 'amount_minor' => 120000, 'currency' => 'MYR', 'status' => 'succeeded', 'domain_last_changed_at' => '2026-07-01 00:00:00+00'],
+            ['id' => 'pay-2', 'tenant_id' => 'tenant-2', 'clinic_registration_id' => 'registration-2', 'amount_minor' => 5000, 'currency' => 'MYR', 'status' => 'failed', 'domain_last_changed_at' => '2026-07-02 00:00:00+00'],
+        ]);
+        $this->connection()->table('websites')->insert([
+            ['tenant_id' => 'tenant-1', 'clinic_name' => 'Klinik Sentosa'],
+            ['tenant_id' => 'tenant-2', 'clinic_name' => 'Klinik Damai'],
+            ['tenant_id' => 'other', 'clinic_name' => 'Klinik Lain'],
+        ]);
+        $this->connection()->table('clinic_registrations')->insert([
+            ['id' => 'registration-1', 'clinic_name' => 'Klinik Sentosa'],
+            ['id' => 'registration-2', 'clinic_name' => 'Klinik Damai'],
+            ['id' => 'registration-3', 'clinic_name' => 'Klinik Lain'],
+        ]);
+        $this->connection()->table('commercial_catalogue_plans')->insert([
+            'id' => 'essential', 'name' => 'Syifa Essential',
         ]);
         $this->connection()->table('payment_reconciliation_cases')->insert(['id' => 'case-1', 'status' => 'open']);
 
@@ -66,9 +82,12 @@ final class PostgresBillingOverviewReadAdapterTest extends TestCase
         self::assertSame(1, $summary->failedPayments);
         self::assertSame(1, $summary->openReconciliationCases);
         self::assertSame('pay-2', $summary->recentPayments[0]->paymentId);
+        self::assertSame('Klinik Damai', $summary->recentPayments[0]->clinicName);
 
-        $filtered = $adapter->subscriptions('active', null, 10, 'tenant');
+        $filtered = $adapter->subscriptions('active', null, 10, 'Sentosa');
         self::assertSame(['sub-1'], array_column($filtered, 'subscriptionId'));
+        self::assertSame('Klinik Sentosa', $filtered[0]->clinicName);
+        self::assertSame('Syifa Essential', $filtered[0]->planName);
         $paged = $adapter->subscriptions(null, 'sub-1', 10, null);
         self::assertSame(['sub-2', 'sub-3'], array_column($paged, 'subscriptionId'));
     }

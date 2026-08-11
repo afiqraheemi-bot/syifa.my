@@ -9,6 +9,8 @@ use App\Modules\SubscriptionBilling\Contracts\Renewal\CancelAutoRenewInterface;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\EnableAutoRenewInterface;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\ManualRenewSubscriptionCommand;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\ManualRenewSubscriptionInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\ChangeSubscriptionPlanCommand;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\ChangeSubscriptionPlanInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
 use DateTimeImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +20,25 @@ use LogicException;
 
 final readonly class SuperAdminSubscriptionOperationController
 {
+    public function changePlan(Request $request, string $subscriptionId, ChangeSubscriptionPlanInterface $plans): RedirectResponse
+    {
+        $validated = $request->validate([
+            'plan_offering_id' => ['required', 'uuid'],
+            'expected_version' => ['required', 'integer', 'min:1'],
+        ]);
+        $context = $this->context($request);
+        $result = $plans->change(new ChangeSubscriptionPlanCommand(
+            $subscriptionId,
+            (string) $validated['plan_offering_id'],
+            $context->identityId,
+            (int) $validated['expected_version'],
+            (string) Str::uuid(),
+            new DateTimeImmutable,
+        ));
+
+        return back()->with('operation', $result);
+    }
+
     public function renew(Request $request, string $subscriptionId, ManualRenewSubscriptionInterface $renewals): RedirectResponse
     {
         $validated = $request->validate([

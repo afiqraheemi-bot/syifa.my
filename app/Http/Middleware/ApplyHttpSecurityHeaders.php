@@ -22,8 +22,10 @@ final readonly class ApplyHttpSecurityHeaders
         }
 
         $headers = [
-            'Content-Security-Policy' => $this->contentSecurityPolicy(),
-            'X-Frame-Options' => $this->stringConfig('http_security.x_frame_options'),
+            'Content-Security-Policy' => $this->contentSecurityPolicy($request),
+            'X-Frame-Options' => $request->routeIs('templates.preview')
+                ? 'SAMEORIGIN'
+                : $this->stringConfig('http_security.x_frame_options'),
             'X-Content-Type-Options' => $this->stringConfig('http_security.x_content_type_options'),
             'X-Permitted-Cross-Domain-Policies' => $this->stringConfig('http_security.x_permitted_cross_domain_policies'),
             'Referrer-Policy' => $this->stringConfig('http_security.referrer_policy'),
@@ -48,7 +50,25 @@ final readonly class ApplyHttpSecurityHeaders
             $response->headers->set('Pragma', 'no-cache');
         }
 
+        if ($this->shouldPreventIndexing($request)) {
+            $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        }
+
         return $response;
+    }
+
+    private function shouldPreventIndexing(Request $request): bool
+    {
+        return $request->is(
+            'api/*',
+            'booking*',
+            'clinic-owner/*',
+            'clinic-registration*',
+            'dashboard*',
+            'login',
+            'platform/*',
+            'templates/preview/*',
+        );
     }
 
     private function containsSensitiveAuthenticatedContent(Request $request): bool
@@ -65,7 +85,7 @@ final readonly class ApplyHttpSecurityHeaders
         return (bool) config('http_security.enabled', true);
     }
 
-    private function contentSecurityPolicy(): string
+    private function contentSecurityPolicy(Request $request): string
     {
         $environment = $this->securityEnvironment();
         $value = config('http_security.content_security_policy.'.$environment, '');
@@ -75,6 +95,10 @@ final readonly class ApplyHttpSecurityHeaders
         }
 
         $assetOrigin = $this->publicAssetOrigin();
+
+        if ($request->routeIs('templates.preview')) {
+            $value = str_replace("frame-ancestors 'none'", "frame-ancestors 'self'", $value);
+        }
 
         if ($assetOrigin === null || str_contains($value, 'img-src') === false) {
             return $value;

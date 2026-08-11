@@ -7,6 +7,7 @@ namespace App\Modules\AcquisitionOffer\Presentation\Http\Controllers;
 use App\Modules\AcquisitionOffer\Application\Exceptions\ClinicRegistrationOwnershipMismatchException;
 use App\Modules\AcquisitionOffer\Application\Exceptions\CommercialSelectionUnavailableException;
 use App\Modules\AcquisitionOffer\Application\ListAvailableCommercialOffersService;
+use App\Modules\AcquisitionOffer\Contracts\Data\AvailableCommercialOfferData;
 use App\Modules\ClinicRegistration\Application\ViewCurrentClinicRegistrationService;
 use App\Modules\ClinicRegistration\Contracts\Checkout\CompleteLocalDemoAcquisitionInterface;
 use App\Modules\ClinicRegistration\Contracts\Checkout\PublicInitialAcquisitionCheckoutInterface;
@@ -36,6 +37,11 @@ final readonly class PublicCommercialOfferController
             throw new NotFoundHttpException;
         }
 
+        $paidOffers = array_values(array_filter(
+            $offers->execute(new DateTimeImmutable),
+            static fn (AvailableCommercialOfferData $offer): bool => $offer->amountMinor > 0,
+        ));
+
         return Inertia::render('ClinicRegistration/PublicCommercialOffers', [
             'registrationStatus' => $registration->status,
             'clinicName' => $registration->clinicName,
@@ -49,7 +55,7 @@ final readonly class PublicCommercialOfferController
                     number_format($offer->amountMinor / 100, 2, '.', ','),
                 ),
                 'includedSetup' => 'Managed website onboarding and initial website setup',
-            ], $offers->execute(new DateTimeImmutable)),
+            ], $paidOffers),
             'selectionUrl' => route('clinic-registration.offers.select'),
             'demoPaymentUrl' => app()->environment('local')
                 ? route('clinic-registration.offers.demo-payment')

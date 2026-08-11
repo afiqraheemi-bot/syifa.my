@@ -6,7 +6,15 @@ namespace App\Support\Dashboard\Application\SuperAdmin\Tenants;
 
 final readonly class TenantOverviewCriteria
 {
-    private const array STATUSES = ['provisioning', 'active', 'suspended', 'reactivated', 'offboarding'];
+    private const array STATUSES = [
+        'provisioning',
+        'active',
+        'suspended',
+        'reactivated',
+        'offboarding',
+        'deleted',
+        'anonymized',
+    ];
 
     public function __construct(
         public ?string $search,
@@ -35,7 +43,10 @@ final readonly class TenantOverviewCriteria
     public static function statusOptions(): array
     {
         return array_map(
-            static fn (string $status): array => ['value' => $status, 'label' => ucfirst($status)],
+            static fn (string $status): array => [
+                'value' => $status,
+                'label' => ucwords(str_replace('_', ' ', $status)),
+            ],
             self::STATUSES,
         );
     }
