@@ -137,7 +137,11 @@ function confirmPlanChange() {
                     @submit="confirmPlanChange"
                 >
                     <input type="hidden" name="_token" :value="actions.csrfToken" />
-                    <input type="hidden" name="expected_version" :value="actions.changePlan.expectedVersion" />
+                    <input
+                        type="hidden"
+                        name="expected_version"
+                        :value="actions.changePlan.expectedVersion"
+                    />
                     <select
                         v-model="selectedOfferingId"
                         name="plan_offering_id"
@@ -240,15 +244,30 @@ function confirmPlanChange() {
             aria-labelledby="plan-change-title"
             class="rounded-2xl border-2 border-emerald-300 bg-white p-5 shadow-lg"
         >
-            <h2 id="plan-change-title" class="text-lg font-bold text-slate-950">Change subscriber package?</h2>
+            <h2 id="plan-change-title" class="text-lg font-bold text-slate-950">
+                Change subscriber package?
+            </h2>
             <p class="mt-2 text-sm text-slate-600">
-                The new price and feature entitlement take effect immediately. The current term dates remain unchanged.
+                The new price and feature entitlement take effect immediately. The current term
+                dates remain unchanged.
             </p>
             <div class="mt-5 flex flex-wrap gap-2">
-                <button type="submit" form="change-plan-form" class="min-h-11 rounded-xl bg-emerald-700 px-5 py-2 font-bold text-white disabled:opacity-60" :disabled="planChangeSubmitting">
+                <button
+                    type="submit"
+                    form="change-plan-form"
+                    class="min-h-11 rounded-xl bg-emerald-700 px-5 py-2 font-bold text-white disabled:opacity-60"
+                    :disabled="planChangeSubmitting"
+                >
                     {{ planChangeSubmitting ? 'Changing…' : 'Confirm package change' }}
                 </button>
-                <button type="button" class="min-h-11 rounded-xl border border-slate-300 bg-white px-5 py-2 font-bold text-slate-900" :disabled="planChangeSubmitting" @click="planChangeConfirmation = false">Cancel</button>
+                <button
+                    type="button"
+                    class="min-h-11 rounded-xl border border-slate-300 bg-white px-5 py-2 font-bold text-slate-900"
+                    :disabled="planChangeSubmitting"
+                    @click="planChangeConfirmation = false"
+                >
+                    Cancel
+                </button>
             </div>
         </section>
         <section

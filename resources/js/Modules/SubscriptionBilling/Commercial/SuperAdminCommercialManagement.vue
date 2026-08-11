@@ -736,20 +736,42 @@ function formatDate(value) {
             <div v-if="selectedOffering" class="space-y-4">
                 <section
                     class="rounded-2xl border p-5"
-                    :class="selectedOffering.websiteReady ? 'border-emerald-200 bg-emerald-50' : 'border-amber-300 bg-amber-50'"
+                    :class="
+                        selectedOffering.websiteReady
+                            ? 'border-emerald-200 bg-emerald-50'
+                            : 'border-amber-300 bg-amber-50'
+                    "
                 >
-                    <p class="font-bold" :class="selectedOffering.websiteReady ? 'text-emerald-900' : 'text-amber-950'">
-                        {{ selectedOffering.websiteReady ? 'Ready for website display' : 'Not yet visible on the website' }}
+                    <p
+                        class="font-bold"
+                        :class="
+                            selectedOffering.websiteReady ? 'text-emerald-900' : 'text-amber-950'
+                        "
+                    >
+                        {{
+                            selectedOffering.websiteReady
+                                ? 'Ready for website display'
+                                : 'Not yet visible on the website'
+                        }}
                     </p>
-                    <p class="mt-1 text-sm leading-6" :class="selectedOffering.websiteReady ? 'text-emerald-800' : 'text-amber-900'">
+                    <p
+                        class="mt-1 text-sm leading-6"
+                        :class="
+                            selectedOffering.websiteReady ? 'text-emerald-800' : 'text-amber-900'
+                        "
+                    >
                         <template v-if="selectedOffering.websiteReady">
-                            This price uses an approved public feature profile. It appears when the plan, billing cycle and effective dates are also available.
+                            This price uses an approved public feature profile. It appears when the
+                            plan, billing cycle and effective dates are also available.
                         </template>
                         <template v-else-if="!selectedOffering.profileConfigured">
-                            Feature profile <strong>{{ selectedOffering.featureConfiguration }}</strong> is not configured. Configure its capabilities before publishing it for sale.
+                            Feature profile
+                            <strong>{{ selectedOffering.featureConfiguration }}</strong> is not
+                            configured. Configure its capabilities before publishing it for sale.
                         </template>
                         <template v-else-if="!selectedOffering.publiclyListed">
-                            This feature profile is governed but is not included in the public package order.
+                            This feature profile is governed but is not included in the public
+                            package order.
                         </template>
                         <template v-else>
                             Activate this price before it can appear on the website.

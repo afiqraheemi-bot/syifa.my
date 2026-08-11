@@ -60,7 +60,9 @@ defineProps({
                         decoding="async"
                         class="h-full w-full object-cover object-center"
                     />
-                    <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-emerald-950/15 via-transparent to-white/5" />
+                    <div
+                        class="pointer-events-none absolute inset-0 bg-gradient-to-t from-emerald-950/15 via-transparent to-white/5"
+                    />
                 </div>
 
                 <div

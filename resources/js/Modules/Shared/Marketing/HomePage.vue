@@ -140,7 +140,8 @@ const copy = {
         problem: {
             eyebrow: 'Masalah Yang Sering Dihadapi',
             title: 'Jangan Biarkan Peluang Mendapatkan Pesakit Baharu Terlepas.',
-            imageAlt: 'Pengurus klinik menyemak telefon, laptop dan buku tempahan yang perlu diselaraskan secara manual.',
+            imageAlt:
+                'Pengurus klinik menyemak telefon, laptop dan buku tempahan yang perlu diselaraskan secara manual.',
             problems: [
                 'Belum mempunyai website yang profesional.',
                 'Pesakit hanya bergantung kepada WhatsApp atau panggilan telefon.',
@@ -220,7 +221,8 @@ const copy = {
         },
         why: {
             eyebrow: 'Kenapa Pilih Syifa.my?',
-            imageAlt: 'Pemilik klinik dan pakar website bekerjasama menyemak pengurusan digital klinik melalui laptop.',
+            imageAlt:
+                'Pemilik klinik dan pakar website bekerjasama menyemak pengurusan digital klinik melalui laptop.',
             title: 'Kami Lebih Daripada Sekadar Membina Website.',
             checklist: [
                 {
@@ -255,7 +257,8 @@ const copy = {
             livePreviewLabel: 'Paparan live',
             managedNote: 'Responsif pada telefon, tablet dan desktop',
             managedTemplate: 'Templat terurus',
-            selectionNote: 'Tidak pasti templat mana paling sesuai? Pereka Laman Web kami akan membantu anda memilih dan menyesuaikannya semasa onboarding.',
+            selectionNote:
+                'Tidak pasti templat mana paling sesuai? Pereka Laman Web kami akan membantu anda memilih dan menyesuaikannya semasa onboarding.',
             items: [
                 {
                     name: 'Syifa Essential',
@@ -377,7 +380,8 @@ const copy = {
         problem: {
             eyebrow: 'Common Problems Clinics Face',
             title: "Don't Let New Patient Opportunities Slip Away.",
-            imageAlt: 'A clinic manager checking a phone, laptop and appointment book that require manual coordination.',
+            imageAlt:
+                'A clinic manager checking a phone, laptop and appointment book that require manual coordination.',
             problems: [
                 "You don't have a professional website yet.",
                 'Patients only reach you through WhatsApp or phone calls.',
@@ -457,7 +461,8 @@ const copy = {
         },
         why: {
             eyebrow: 'Why Choose Syifa.my?',
-            imageAlt: 'A clinic owner and website specialist collaborating on the clinic digital experience using a laptop.',
+            imageAlt:
+                'A clinic owner and website specialist collaborating on the clinic digital experience using a laptop.',
             title: "We're More Than Just A Website Builder.",
             checklist: [
                 {
@@ -492,7 +497,8 @@ const copy = {
             livePreviewLabel: 'Live view',
             managedNote: 'Responsive across mobile, tablet and desktop',
             managedTemplate: 'Managed template',
-            selectionNote: 'Not sure which template fits best? Your Website Designer will help you select and configure it during onboarding.',
+            selectionNote:
+                'Not sure which template fits best? Your Website Designer will help you select and configure it during onboarding.',
             items: [
                 {
                     name: 'Syifa Essential',
@@ -633,7 +639,10 @@ const structuredData = computed(() =>
         <meta name="description" :content="t.seo.description" />
         <link rel="canonical" href="https://syifa.my/" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+        <meta
+            name="robots"
+            content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"
+        />
         <meta name="theme-color" content="#047857" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="SYIFA.my" />
@@ -652,7 +661,8 @@ const structuredData = computed(() =>
             v-if="packagePreview"
             class="sticky top-0 z-[60] flex items-center justify-center bg-amber-300 px-4 py-2 text-center text-sm font-bold text-amber-950 shadow-sm"
         >
-            Admin preview — only active and purchasable packages are shown. Registration buttons open the real registration flow.
+            Admin preview — only active and purchasable packages are shown. Registration buttons
+            open the real registration flow.
         </div>
         <AppNavbar
             :links="t.nav.links"
@@ -677,7 +687,11 @@ const structuredData = computed(() =>
             <WhySyifaSection :copy="t.why" />
             <TemplatesSection :copy="t.templates" :preview-urls="previewUrls" />
             <TestimonialSection :copy="t.testimonial" />
-            <PricingSection :packages="packages" :register-url="clinicRegistrationUrl" :lang="lang" />
+            <PricingSection
+                :packages="packages"
+                :register-url="clinicRegistrationUrl"
+                :lang="lang"
+            />
             <FAQSection :copy="t.faq" />
             <CTASection
                 section-id="register"
@@ -703,15 +717,30 @@ const structuredData = computed(() =>
             class="group fixed right-4 bottom-5 z-40 inline-flex min-h-14 items-center gap-2.5 rounded-full bg-[#1f9d55] p-2 text-white shadow-xl shadow-emerald-950/20 ring-1 ring-black/5 transition hover:-translate-y-1 hover:bg-[#168346] hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 sm:right-6 sm:bottom-6 sm:pr-5"
             :aria-label="`${t.whatsapp}: +60 13-407 9388 (opens in a new tab)`"
         >
-            <span class="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-white/15" aria-hidden="true">
+            <span
+                class="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-white/15"
+                aria-hidden="true"
+            >
                 <svg viewBox="0 0 24 24" class="size-6 fill-none stroke-current stroke-[1.8]">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 11.5a8 8 0 01-11.8 7L4 20l1.5-4.1A8 8 0 1120 11.5z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.1 8.2c.2-.4.4-.4.7-.4h.4c.2 0 .3.1.4.4l.7 1.6c.1.3.1.4-.1.7l-.5.7c-.2.2-.1.4 0 .6.5.9 1.3 1.7 2.2 2.2.2.1.4.2.6 0l.8-1c.2-.2.4-.3.7-.2l1.7.8c.3.1.4.3.4.5 0 .5-.2 1.3-.6 1.7-.4.5-1.2.8-2 .8-1 0-2.8-.6-4.6-2.2-1.5-1.3-2.7-3.2-3-4.5-.2-.8 0-1.4.3-1.7z" />
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M20 11.5a8 8 0 01-11.8 7L4 20l1.5-4.1A8 8 0 1120 11.5z"
+                    />
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M9.1 8.2c.2-.4.4-.4.7-.4h.4c.2 0 .3.1.4.4l.7 1.6c.1.3.1.4-.1.7l-.5.7c-.2.2-.1.4 0 .6.5.9 1.3 1.7 2.2 2.2.2.1.4.2.6 0l.8-1c.2-.2.4-.3.7-.2l1.7.8c.3.1.4.3.4.5 0 .5-.2 1.3-.6 1.7-.4.5-1.2.8-2 .8-1 0-2.8-.6-4.6-2.2-1.5-1.3-2.7-3.2-3-4.5-.2-.8 0-1.4.3-1.7z"
+                    />
                 </svg>
-                <span class="absolute right-0 top-0 size-2.5 rounded-full bg-lime-300 ring-2 ring-[#1f9d55]" />
+                <span
+                    class="absolute right-0 top-0 size-2.5 rounded-full bg-lime-300 ring-2 ring-[#1f9d55]"
+                />
             </span>
             <span class="hidden text-left sm:block">
-                <span class="block text-[10px] font-bold tracking-[0.1em] text-emerald-50 uppercase">WhatsApp</span>
+                <span class="block text-[10px] font-bold tracking-[0.1em] text-emerald-50 uppercase"
+                    >WhatsApp</span
+                >
                 <span class="block text-sm font-black">{{ t.whatsapp }}</span>
             </span>
         </a>
