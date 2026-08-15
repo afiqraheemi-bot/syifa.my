@@ -48,7 +48,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll));
                 class="flex shrink-0 items-center rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
                 @click="mobileMenuOpen = false"
             >
-                <span class="text-xl font-black tracking-tight text-emerald-700">SYIFA</span>
+                <img :src="'/images/marketing/syifa-logo.webp'" alt="SYIFA" class="h-7 w-auto" width="1836" height="857" />
                 <span class="text-xl font-black tracking-tight text-slate-900">.my</span>
             </a>
 
