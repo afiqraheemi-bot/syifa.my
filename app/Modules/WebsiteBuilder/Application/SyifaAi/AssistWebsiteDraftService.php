@@ -6,6 +6,7 @@ namespace App\Modules\WebsiteBuilder\Application\SyifaAi;
 
 use App\Modules\Booking\Contracts\Queries\ActiveServiceCatalogueReaderInterface;
 use App\Modules\WebsiteBuilder\Application\SyifaAi\Exceptions\SyifaAiNotReadyException;
+use App\Modules\WebsiteBuilder\Application\SyifaAi\Exceptions\SyifaAiProviderException;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\LoadDraftWebsiteContent;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\ManageWebsiteDraftContentService;
@@ -68,13 +69,30 @@ final readonly class AssistWebsiteDraftService
                 )),
         ];
 
-        $result = $this->provider->generate(new SyifaAiGenerationRequest(
-            $command->capability,
-            $command->section,
-            $this->normalizeInstruction($command->instruction),
-            $context,
-            hash_hmac('sha256', $command->authorization->actorId, (string) config('app.key')),
-        ));
+        try {
+            $result = $this->provider->generate(new SyifaAiGenerationRequest(
+                $command->capability,
+                $command->section,
+                $this->normalizeInstruction($command->instruction),
+                $context,
+                hash_hmac('sha256', $command->authorization->actorId, (string) config('app.key')),
+            ));
+        } catch (SyifaAiProviderException $exception) {
+            $this->usage->record(new SyifaAiUsageRecord(
+                $command->tenantId,
+                $command->websiteId,
+                $command->authorization->actorId,
+                $command->capability,
+                $command->section,
+                (string) config('syifa_ai.model', 'unknown'),
+                'failed',
+                0,
+                0,
+            ));
+
+            throw $exception;
+        }
+
         $this->usage->record(new SyifaAiUsageRecord(
             $command->tenantId,
             $command->websiteId,

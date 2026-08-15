@@ -9,10 +9,13 @@ use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ActiveServiceReferenceReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiProviderInterface;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\ClinicOwnerDashboardNavigation;
 use App\Support\Dashboard\Application\DashboardPageView;
+use Illuminate\Database\ConnectionInterface;
+use Illuminate\Support\Facades\Schema;
 use LogicException;
 
 final readonly class ClinicOwnerWebsiteContentOverviewPage
@@ -23,6 +26,8 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
         private ActiveServiceReferenceReadInterface $activeServices,
         private WebsitePublicAddressReadInterface $publicAddresses,
         private UpdateClinicContactProfileService $contactProfile,
+        private SyifaAiProviderInterface $syifaAi,
+        private ConnectionInterface $connection,
     ) {}
 
     public function fromTrustedContext(mixed $context): DashboardPageView
@@ -66,6 +71,12 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
             'canChangeTemplate' => (int) $editable['published_version'] === 0,
             'updateUrl' => route('dashboard.website.content.update'),
             'previewUrl' => route('dashboard.website.preview'),
+            'blogUrl' => route('dashboard.blog'),
+            'blogVisibilityUrl' => route('dashboard.website.blog-visibility.update'),
+            'blogVisible' => ! Schema::hasTable('website_blog_settings') || (bool) ($this->connection
+                ->table('website_blog_settings')
+                ->where('website_id', $editable['website_id'])
+                ->value('enabled') ?? true),
             'publishedWebsite' => $publicAddress !== null && $publicAddress->active
                 ? [
                     'url' => $publicAddress->url,
@@ -80,7 +91,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
                 'assetUrlTemplate' => route('public-website.assets.show', '__ASSET_ID__'),
             ],
             'syifaAi' => [
-                'enabled' => (bool) config('syifa_ai.enabled'),
+                'enabled' => $this->syifaAi->isConfigured(),
                 'assistUrl' => route('clinic-owner.syifa-ai.assist'),
                 'imageAssistanceEnabled' => false,
             ],

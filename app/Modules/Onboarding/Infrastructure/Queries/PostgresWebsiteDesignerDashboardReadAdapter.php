@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Onboarding\Infrastructure\Queries;
 
+use App\Modules\Onboarding\Contracts\Dashboard\PendingWebsiteDesignerTasksReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerJobDetailData;
@@ -11,10 +12,89 @@ use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerQueueJobData;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerRecentAssignmentData;
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\SQLiteConnection;
 
-final readonly class PostgresWebsiteDesignerDashboardReadAdapter implements WebsiteDesignerDashboardReadInterface
+final readonly class PostgresWebsiteDesignerDashboardReadAdapter implements PendingWebsiteDesignerTasksReadInterface, WebsiteDesignerDashboardReadInterface
 {
     public function __construct(private ConnectionInterface $connection) {}
+
+    public function countPendingFor(string $platformIdentityId): int
+    {
+        if (! $this->hasPendingTaskTables()) {
+            return 0;
+        }
+
+        return $this->pendingTasksQuery($platformIdentityId)->count('task.id');
+    }
+
+    public function recentPendingFor(string $platformIdentityId, int $limit): array
+    {
+        if ($limit < 1 || ! $this->hasPendingTaskTables()) {
+            return [];
+        }
+
+        $hasWebsites = $this->hasTable('websites');
+        $query = $this->pendingTasksQuery($platformIdentityId);
+
+        if ($hasWebsites) {
+            $query->leftJoin('websites as website', function ($join): void {
+                $join->on('website.id', '=', 'job.website_id')
+                    ->on('website.tenant_id', '=', 'job.tenant_id');
+            });
+        }
+
+        $clinicName = $hasWebsites ? 'website.clinic_name' : 'job.id';
+
+        return array_values($query
+            ->select([
+                'job.id',
+                'job.status',
+                $this->connection->raw($clinicName.' as clinic_name'),
+                $this->connection->raw('COUNT(task.id) as pending_tasks'),
+                $this->connection->raw('MAX(task.task_updated_at) as latest_task_update'),
+            ])
+            ->groupBy('job.id', 'job.status', $clinicName)
+            ->orderByDesc('latest_task_update')
+            ->limit($limit)
+            ->get()
+            ->map(static function (object $row): array {
+                $data = (array) $row;
+
+                return [
+                    'id' => (string) $data['id'],
+                    'clinic_name' => (string) $data['clinic_name'],
+                    'status' => (string) $data['status'],
+                    'pending_tasks' => (int) $data['pending_tasks'],
+                ];
+            })
+            ->all());
+    }
+
+    private function pendingTasksQuery(string $platformIdentityId): mixed
+    {
+        return $this->connection
+            ->table('website_designer_assignments as assignment')
+            ->join('onboarding_jobs as job', function ($join): void {
+                $join->on('job.id', '=', 'assignment.onboarding_job_id')
+                    ->on('job.tenant_id', '=', 'assignment.tenant_id');
+            })
+            ->join('onboarding_tasks as task', function ($join): void {
+                $join->on('task.onboarding_job_id', '=', 'job.id')
+                    ->on('task.tenant_id', '=', 'job.tenant_id');
+            })
+            ->where('assignment.platform_identity_id', $platformIdentityId)
+            ->where('assignment.assignment_status', 'active')
+            ->where('task.responsibility', 'website_designer')
+            ->whereNotIn('task.status', ['completed', 'waived', 'cancelled'])
+            ->whereNotIn('job.status', ['completed', 'cancelled']);
+    }
+
+    private function hasPendingTaskTables(): bool
+    {
+        return $this->hasTable('website_designer_assignments')
+            && $this->hasTable('onboarding_jobs')
+            && $this->hasTable('onboarding_tasks');
+    }
 
     public function forPlatformIdentity(string $platformIdentityId): WebsiteDesignerDashboardData
     {
@@ -153,6 +233,14 @@ final readonly class PostgresWebsiteDesignerDashboardReadAdapter implements Webs
 
     private function hasTable(string $table): bool
     {
+        if ($this->connection instanceof SQLiteConnection) {
+            return $this->connection
+                ->table('sqlite_master')
+                ->where('type', 'table')
+                ->where('name', $table)
+                ->exists();
+        }
+
         return $this->connection
             ->table('information_schema.tables')
             ->whereRaw('table_schema = current_schema()')

@@ -147,6 +147,30 @@ final class PublicWebsiteDeliveryTest extends TestCase
             ->assertSee('fetchpriority="high"', false);
     }
 
+    public function test_hero_uses_configured_cta_targets_instead_of_silent_fixed_destinations(): void
+    {
+        $model = $this->renderModel('Klinik Syifa');
+        $sections = $model->sections;
+        $hero = $sections[0];
+        self::assertInstanceOf(HeroSectionRenderModel::class, $hero);
+        $sections[0] = new HeroSectionRenderModel(
+            $hero->headline,
+            $hero->subheadline,
+            'External booking',
+            'https://booking.example.test/start',
+            'About our clinic',
+            '/#about',
+            $hero->heroImageAssetId,
+        );
+        $this->bindWebsite(new PublicWebsiteRenderModel($model->website, $model->branding, $model->seo, $model->header, $model->footer, $sections, $model->assets, $model->publication));
+
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertSee('href="https://booking.example.test/start"', false)
+            ->assertSee('target="_blank" rel="noopener noreferrer"', false)
+            ->assertSee('href="https://clinic.example/#about"', false);
+    }
+
     public function test_featured_service_uses_subtle_textual_emphasis_without_reordering(): void
     {
         $model = $this->renderModel('Klinik Syifa');

@@ -8,8 +8,10 @@ const props = defineProps({
     websiteDraft: { type: Object, required: true },
     templateId: { type: String, default: '' },
     syifaAi: { type: Object, required: true },
+    externalDirty: { type: Boolean, default: false },
+    externalSaving: { type: Boolean, default: false },
 });
-const emit = defineEmits(['state', 'website-version']);
+const emit = defineEmits(['state', 'website-version', 'save-all']);
 // Serialising through the reactive proxy deliberately reads every nested field.
 // That keeps dirty-state computations subscribed to edits inside each section.
 const cloneData = (value) => JSON.parse(JSON.stringify(value));
@@ -30,6 +32,45 @@ const gallery = computed(() => byType('GALLERY'));
 const testimonials = computed(() => byType('TESTIMONIALS'));
 const faq = computed(() => byType('FAQ'));
 const heroAspectRatio = computed(() => (props.templateId === 'SYIFA_AESTHETIC' ? 4 / 5 : 4 / 3));
+const ctaDestinations = [
+    { value: '/booking', label: 'Appointment booking' },
+    { value: '/#services', label: 'Services section' },
+    { value: '/#about', label: 'About the clinic' },
+    { value: '/#doctors', label: 'Doctors section' },
+    { value: '/#contact', label: 'Contact information' },
+];
+const knownCtaTargets = new Set(ctaDestinations.map((destination) => destination.value));
+const legacyCtaTargets = {
+    '/services': '/#services',
+    '/about': '/#about',
+    '/doctors': '/#doctors',
+    '/contact': '/#contact',
+};
+const primaryLabel = computed({
+    get: () => hero.value?.primary_cta_label ?? 'Book Appointment',
+    set: (value) => {
+        hero.value.primary_cta_label = value;
+        hero.value.primary_cta_target ??= '/booking';
+    },
+});
+const secondaryEnabled = computed({
+    get: () => Boolean(hero.value?.secondary_cta_label || hero.value?.secondary_cta_target),
+    set: (enabled) => {
+        hero.value.secondary_cta_label = enabled ? 'View services' : null;
+        hero.value.secondary_cta_target = enabled ? '/#services' : null;
+    },
+});
+const destinationType = (target, fallback = '/booking') => {
+    if (!target) return fallback;
+    if (legacyCtaTargets[target]) return legacyCtaTargets[target];
+    return knownCtaTargets.has(target) ? target : 'custom';
+};
+function setCtaDestination(kind, destination) {
+    const key = `${kind}_cta_target`;
+    hero.value[key] = destination === 'custom' ? 'https://' : destination;
+    if (kind === 'primary' && !hero.value.primary_cta_label)
+        hero.value.primary_cta_label = 'Book Appointment';
+}
 const governedSectionTypes = [
     'HERO',
     'ABOUT',
@@ -142,6 +183,18 @@ function savedDraftMatchesSubmission(savedDraft, submission) {
 async function save() {
     if (saving.value || !draft.value) return false;
     if (!hasUnsavedChanges.value) return true;
+
+    const ctaIsInvalid =
+        !primaryLabel.value.trim() ||
+        hero.value.primary_cta_target === 'https://' ||
+        (secondaryEnabled.value &&
+            (!hero.value.secondary_cta_label?.trim() ||
+                hero.value.secondary_cta_target === 'https://'));
+    if (ctaIsInvalid) {
+        error.value =
+            'Complete the button text and external link before saving the Homepage section.';
+        return false;
+    }
 
     const submission = {
         version: draft.value.version,
@@ -257,14 +310,20 @@ defineExpose({ save });
             <button
                 type="button"
                 class="website-theme-primary rounded-xl px-5 py-3 font-bold disabled:opacity-60"
-                :disabled="saving || loading || !draft || !hasUnsavedChanges"
-                @click="save"
+                :disabled="
+                    saving ||
+                    externalSaving ||
+                    loading ||
+                    !draft ||
+                    (!hasUnsavedChanges && !externalDirty)
+                "
+                @click="externalDirty ? emit('save-all') : save()"
             >
                 {{
-                    saving
+                    saving || externalSaving
                         ? 'Saving…'
-                        : hasUnsavedChanges
-                          ? 'Save all section changes'
+                        : hasUnsavedChanges || externalDirty
+                          ? 'Save all Website changes'
                           : 'All changes saved'
                 }}
             </button>
@@ -298,26 +357,118 @@ defineExpose({ save });
                     <label class="text-sm font-semibold"
                         >Subheadline<input v-model="hero.subheadline" :class="inputClass"
                     /></label>
-                    <label class="text-sm font-semibold"
-                        >Primary button label<input
-                            v-model="hero.primary_cta_label"
-                            :class="inputClass"
-                    /></label>
-                    <label class="text-sm font-semibold"
-                        >Primary button target<input
-                            v-model="hero.primary_cta_target"
-                            :class="inputClass"
-                    /></label>
-                    <label class="text-sm font-semibold"
-                        >Secondary button label<input
-                            v-model="hero.secondary_cta_label"
-                            :class="inputClass"
-                    /></label>
-                    <label class="text-sm font-semibold"
-                        >Secondary button target<input
-                            v-model="hero.secondary_cta_target"
-                            :class="inputClass"
-                    /></label>
+                    <fieldset
+                        class="rounded-xl border border-slate-200 bg-slate-50/70 p-4 md:col-span-2"
+                    >
+                        <legend class="px-1 text-base font-bold text-slate-950">Main action</legend>
+                        <p class="mt-1 text-sm text-slate-600">
+                            The main button should guide patients towards the most important next
+                            step.
+                        </p>
+                        <div class="mt-4 grid gap-4 md:grid-cols-2">
+                            <label class="text-sm font-semibold text-slate-800">
+                                Button text
+                                <input
+                                    v-model="primaryLabel"
+                                    :class="inputClass"
+                                    maxlength="80"
+                                    placeholder="Book Appointment"
+                                />
+                                <span class="mt-1 block text-xs font-normal text-slate-500"
+                                    >Use a short action of 2–4 words.</span
+                                >
+                            </label>
+                            <label class="text-sm font-semibold text-slate-800">
+                                Opens
+                                <select
+                                    :value="destinationType(hero.primary_cta_target)"
+                                    :class="inputClass"
+                                    @change="setCtaDestination('primary', $event.target.value)"
+                                >
+                                    <option
+                                        v-for="destination in ctaDestinations"
+                                        :key="destination.value"
+                                        :value="destination.value"
+                                    >
+                                        {{ destination.label }}
+                                    </option>
+                                    <option value="custom">Custom external link</option>
+                                </select>
+                            </label>
+                            <label
+                                v-if="destinationType(hero.primary_cta_target) === 'custom'"
+                                class="text-sm font-semibold text-slate-800 md:col-span-2"
+                            >
+                                External link
+                                <input
+                                    v-model="hero.primary_cta_target"
+                                    :class="inputClass"
+                                    type="url"
+                                    inputmode="url"
+                                    maxlength="2048"
+                                    placeholder="https://example.com"
+                                />
+                            </label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="rounded-xl border border-slate-200 p-4 md:col-span-2">
+                        <legend class="px-1 text-base font-bold text-slate-950">
+                            Second action <span class="font-normal text-slate-500">(optional)</span>
+                        </legend>
+                        <label
+                            class="mt-1 flex items-center gap-3 text-sm font-semibold text-slate-800"
+                        >
+                            <input v-model="secondaryEnabled" type="checkbox" class="size-4" />
+                            Show a second button
+                        </label>
+                        <div v-if="secondaryEnabled" class="mt-4 grid gap-4 md:grid-cols-2">
+                            <label class="text-sm font-semibold text-slate-800">
+                                Button text
+                                <input
+                                    v-model="hero.secondary_cta_label"
+                                    :class="inputClass"
+                                    maxlength="80"
+                                    placeholder="View services"
+                                />
+                            </label>
+                            <label class="text-sm font-semibold text-slate-800">
+                                Opens
+                                <select
+                                    :value="
+                                        destinationType(hero.secondary_cta_target, '/#services')
+                                    "
+                                    :class="inputClass"
+                                    @change="setCtaDestination('secondary', $event.target.value)"
+                                >
+                                    <option
+                                        v-for="destination in ctaDestinations"
+                                        :key="destination.value"
+                                        :value="destination.value"
+                                    >
+                                        {{ destination.label }}
+                                    </option>
+                                    <option value="custom">Custom external link</option>
+                                </select>
+                            </label>
+                            <label
+                                v-if="
+                                    destinationType(hero.secondary_cta_target, '/#services') ===
+                                    'custom'
+                                "
+                                class="text-sm font-semibold text-slate-800 md:col-span-2"
+                            >
+                                External link
+                                <input
+                                    v-model="hero.secondary_cta_target"
+                                    :class="inputClass"
+                                    type="url"
+                                    inputmode="url"
+                                    maxlength="2048"
+                                    placeholder="https://example.com"
+                                />
+                            </label>
+                        </div>
+                    </fieldset>
                     <WebsiteImageUpload
                         v-model="hero.hero_image_asset_id"
                         class="md:col-span-2"

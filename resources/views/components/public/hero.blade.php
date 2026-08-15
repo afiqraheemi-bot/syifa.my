@@ -1,8 +1,29 @@
 @php
     $imageUrl = $section->heroImageAssetId === null ? null : ($document->assetUrls[$section->heroImageAssetId] ?? null);
     $imageDimensions = $section->heroImageAssetId === null ? [null, null] : ($document->assetDimensions[$section->heroImageAssetId] ?? [null, null]);
-    $services = collect($document->navigation)->first(fn ($item) => $item->route === \App\Modules\WebsiteBuilder\Application\Delivery\PublicRoute::Services);
-    $secondaryUrl = $services?->url;
+    $navigation = collect($document->navigation);
+    $legacyRoutes = [
+        '/about' => \App\Modules\WebsiteBuilder\Application\Delivery\PublicRoute::About,
+        '/services' => \App\Modules\WebsiteBuilder\Application\Delivery\PublicRoute::Services,
+        '/doctors' => \App\Modules\WebsiteBuilder\Application\Delivery\PublicRoute::Doctors,
+        '/contact' => \App\Modules\WebsiteBuilder\Application\Delivery\PublicRoute::Contact,
+    ];
+    $resolveTarget = static function (?string $target) use ($document, $navigation, $legacyRoutes): string {
+        if ($target === null || $target === '/booking') {
+            return $document->bookingDestination->value;
+        }
+        if (isset($legacyRoutes[$target])) {
+            return $navigation->first(fn ($item) => $item->route === $legacyRoutes[$target])?->url->value
+                ?? $document->context->url('/#'.ltrim($target, '/'))->value;
+        }
+        if (str_starts_with($target, 'https://')) {
+            return $target;
+        }
+
+        return $document->context->url($target)->value;
+    };
+    $primaryTarget = $resolveTarget($section->primaryCtaTarget);
+    $secondaryTarget = $section->secondaryCtaTarget === null ? null : $resolveTarget($section->secondaryCtaTarget);
     $phone = $document->website->footer->contactPhone;
     $address = $document->website->footer->address;
     $todayHours = $document->todayHoursLabel;
@@ -16,9 +37,9 @@
             <h1 id="hero-title">{{ $section->headline }}</h1>
             @if ($section->subheadline !== null)<p class="hero__lead">{{ $section->subheadline }}</p>@endif
             <div class="hero__actions">
-                <a class="button button--primary" href="{{ $document->bookingDestination->value }}">{{ $section->primaryCtaLabel ?? 'Book Appointment' }}</a>
-                @if ($section->secondaryCtaLabel !== null && $secondaryUrl !== null)
-                    <a class="button button--secondary" href="{{ $secondaryUrl->value }}">{{ $section->secondaryCtaLabel }}</a>
+                <a class="button button--primary" href="{{ $primaryTarget }}" @if(str_starts_with($primaryTarget, 'https://') && !str_starts_with($primaryTarget, $document->context->origin())) target="_blank" rel="noopener noreferrer" @endif>{{ $section->primaryCtaLabel ?? 'Book Appointment' }}</a>
+                @if ($section->secondaryCtaLabel !== null && $secondaryTarget !== null)
+                    <a class="button button--secondary" href="{{ $secondaryTarget }}" @if(str_starts_with($secondaryTarget, 'https://') && !str_starts_with($secondaryTarget, $document->context->origin())) target="_blank" rel="noopener noreferrer" @endif>{{ $section->secondaryCtaLabel }}</a>
                 @endif
             </div>
             @if ($phone !== null || $todayHours !== null || $address !== null)

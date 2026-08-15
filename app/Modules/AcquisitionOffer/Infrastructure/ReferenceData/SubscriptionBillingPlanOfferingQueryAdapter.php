@@ -77,7 +77,7 @@ final readonly class SubscriptionBillingPlanOfferingQueryAdapter implements Plan
             $offering === null
             || $offering->currencyCode !== 'MYR'
             || $offering->status !== 'active'
-            || $offering->amountMinor <= 0
+            || $offering->amountMinor < 0
             || ! array_key_exists($offering->capabilityConfigurationReference, $this->publicPackageOrder())
         ) {
             return null;

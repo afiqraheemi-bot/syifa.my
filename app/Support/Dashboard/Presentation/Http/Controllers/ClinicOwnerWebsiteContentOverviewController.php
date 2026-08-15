@@ -17,6 +17,7 @@ use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\Website\Content\ClinicOwnerWebsiteContentOverviewPage;
 use App\Support\Dashboard\Presentation\Http\Requests\UpdateClinicOwnerWebsiteContentRequest;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,7 +44,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
         $context = $this->context($request);
         $data = $request->validated();
         $branding = $data['branding'];
-        $seo = $data['seo'];
+        $seo = UpdateClinicOwnerWebsiteContentRequest::seoWithDefaults($data['seo'], $branding);
         $socialLinks = array_filter(
             $branding['social_links'],
             static fn (mixed $value): bool => is_string($value) && trim($value) !== '',
@@ -140,6 +141,24 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
         }
 
         return response()->json(['data' => $draft->toArray()]);
+    }
+
+    public function updateBlogVisibility(
+        Request $request,
+        WebsiteReadInterface $websites,
+        ConnectionInterface $connection,
+    ): JsonResponse {
+        $context = $this->context($request);
+        $website = $websites->summary((string) $context->tenantId);
+        abort_if($website === null, 404);
+        $data = $request->validate(['enabled' => ['required', 'boolean']]);
+
+        $connection->table('website_blog_settings')->updateOrInsert(
+            ['website_id' => $website->id],
+            ['enabled' => (bool) $data['enabled'], 'updated_at' => now(), 'created_at' => now()],
+        );
+
+        return response()->json(['data' => ['enabled' => (bool) $data['enabled']]]);
     }
 
     public function showDraft(

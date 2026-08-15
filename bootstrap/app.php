@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Console\Commands\PublishScheduledBlogPosts;
 use App\Http\Middleware\ApplyHttpSecurityHeaders;
 use App\Http\Middleware\ApplyPlatformEdgeSecurity;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -104,6 +105,10 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withRouting(web: __DIR__.'/../routes/web.php')
     ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command(PublishScheduledBlogPosts::class)
+            ->onOneServer()
+            ->withoutOverlapping(10)
+            ->everyMinute();
         // Sweep/recovery entry point: the transactional outbox must not
         // depend solely on the after-commit queue dispatch. A committed
         // outbox row that never reached the queue (or whose lease expired

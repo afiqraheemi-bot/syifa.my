@@ -226,7 +226,8 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
 
         foreach ([
             'DashboardShell',
-            'DashboardWelcome',
+            'welcomeTitle',
+            'clinicName',
             'DashboardSummaryCard',
             'DashboardQuickActions',
             'DashboardRecentActivity',

@@ -300,14 +300,14 @@ const gallery = [
                                     d="M10 1.5l2.6 5.4 5.9.8-4.3 4.2 1 5.9L10 15l-5.2 2.8 1-5.9-4.3-4.2 5.9-.8L10 1.5z"
                                 />
                             </svg>
-                            5.0 (4,824 Ulasan)
+                            5.0 (4,824 Reviews)
                         </span>
                         <h1 class="mt-5 max-w-xl text-3xl font-bold tracking-tight sm:text-5xl">
-                            Penjagaan Pakar Yang Anda Boleh Percaya, Di Setiap Langkah
+                            Specialist Care You Can Trust, Every Step of the Way
                         </h1>
                         <p class="mt-5 max-w-md text-sm leading-6 text-[#405365]">
-                            Kesihatan anda layak mendapat yang terbaik. Alami penyelesaian perubatan
-                            pakar dengan sentuhan mesra, disesuaikan dengan keperluan anda.
+                            Your health deserves the best. Experience specialist medical care with a
+                            human touch, tailored to your needs.
                         </p>
                         <div class="mt-7 flex flex-wrap gap-3">
                             <a
@@ -424,10 +424,10 @@ const gallery = [
                 <div class="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-start">
                     <div data-reveal class="reveal">
                         <p class="text-xs font-bold tracking-[0.2em] text-[#1d2c3b]/50 uppercase">
-                            Ciri &amp; Perkhidmatan
+                            Features &amp; Services
                         </p>
                         <h2 class="mt-3 max-w-md text-2xl font-bold tracking-tight sm:text-3xl">
-                            Segala yang anda perlukan, dalam satu pusat pakar
+                            Everything you need in one specialist centre
                         </h2>
                         <ul class="mt-6 divide-y divide-[#bdc9d3]/60 border-y border-[#bdc9d3]/60">
                             <li
@@ -497,7 +497,7 @@ const gallery = [
                         </div>
 
                         <h3 class="mt-5 text-lg font-bold">
-                            Laluan Pintar Anda Ke Telehealth Mesra Pesakit
+                            Your Smarter Path to Patient-Friendly Telehealth
                         </h3>
 
                         <ul class="mt-4 space-y-3 text-sm font-semibold text-slate-200">
@@ -538,10 +538,10 @@ const gallery = [
                 <div data-reveal class="reveal flex flex-wrap items-end justify-between gap-4">
                     <div>
                         <p class="text-xs font-bold tracking-[0.2em] text-[#1d2c3b]/50 uppercase">
-                            Doktor Pakar Kami
+                            Our Specialists
                         </p>
                         <h2 class="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
-                            Temui Pasukan Doktor Pakar Kami
+                            Meet Our Specialist Team
                         </h2>
                     </div>
                     <a
@@ -610,10 +610,10 @@ const gallery = [
             <section id="testimoni" class="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-10">
                 <div data-reveal class="reveal max-w-2xl">
                     <p class="text-xs font-bold tracking-[0.2em] text-[#1d2c3b]/50 uppercase">
-                        Testimoni Pesakit
+                        Patient Stories
                     </p>
                     <h2 class="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
-                        Pengalaman sebenar daripada pesakit kami
+                        Real experiences from our patients
                     </h2>
                 </div>
 
@@ -671,10 +671,10 @@ const gallery = [
             <section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-10">
                 <div data-reveal class="reveal">
                     <p class="text-xs font-bold tracking-[0.2em] text-[#1d2c3b]/50 uppercase">
-                        Komited Kepada Kesihatan Anda
+                        Committed to Your Health
                     </p>
                     <h2 class="mt-3 max-w-md text-2xl font-bold tracking-tight sm:text-3xl">
-                        Persekitaran klinik yang tenang dan profesional
+                        A calm and professional clinical environment
                     </h2>
                 </div>
                 <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -697,11 +697,11 @@ const gallery = [
                     class="reveal relative overflow-hidden rounded-[1.5rem] bg-[#1d2c3b] p-8 text-white sm:p-14"
                 >
                     <h2 class="max-w-md text-3xl font-bold tracking-tight sm:text-4xl">
-                        Mulakan penjagaan pakar anda hari ini
+                        Start your specialist care journey today
                     </h2>
                     <p class="mt-4 max-w-sm text-sm leading-6 text-slate-300">
-                        Tempah janji temu dengan doktor pakar dan alami rawatan yang tepat serta
-                        boleh dipercayai.
+                        Book an appointment with a specialist and experience precise, dependable
+                        care.
                     </p>
                     <a
                         href="tel:+60321345678"

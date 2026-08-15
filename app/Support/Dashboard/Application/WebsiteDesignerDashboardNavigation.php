@@ -19,6 +19,7 @@ final class WebsiteDesignerDashboardNavigation
             [
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'route' => 'dashboard'],
                 ['key' => 'onboarding', 'label' => 'Onboarding', 'route' => 'dashboard.onboarding'],
+                ['key' => 'blog', 'label' => 'Blog', 'route' => 'dashboard.blog'],
                 ['key' => 'reports', 'label' => 'Reports', 'route' => 'dashboard.reports'],
             ],
         );

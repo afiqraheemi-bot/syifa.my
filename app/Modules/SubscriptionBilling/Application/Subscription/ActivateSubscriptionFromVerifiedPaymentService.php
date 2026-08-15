@@ -134,7 +134,12 @@ final readonly class ActivateSubscriptionFromVerifiedPaymentService
             try {
                 $planId = new PlanId($evidence->planId);
                 $billingCycleId = new BillingCycleId($evidence->billingCycleId);
-                $term = $this->terms->calculate($now);
+                $term = $evidence->paymentAmountMinor === 0
+                    ? [
+                        'starts_on' => $evidence->offerBillingPeriodStart,
+                        'ends_on' => $evidence->offerBillingPeriodEnd,
+                    ]
+                    : $this->terms->calculate($now);
                 $subscription = Subscription::create(
                     new SubscriptionId($claim->subscriptionId), new TenantId($claim->tenantId),
                     new ClinicRegistrationId($evidence->clinicRegistrationId), new PaymentId($evidence->paymentId),

@@ -8,6 +8,7 @@ use App\Modules\Onboarding\Application\Provisioning\ProvisionOnboardingJobServic
 use App\Modules\Onboarding\Contracts\Administration\PendingOnboardingJobsReadInterface;
 use App\Modules\Onboarding\Contracts\Administration\SuperAdminOnboardingReadInterface;
 use App\Modules\Onboarding\Contracts\Administration\WebsiteDesignerEligibilityInterface;
+use App\Modules\Onboarding\Contracts\Dashboard\PendingWebsiteDesignerTasksReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\WebsiteDesignerDashboardReadInterface;
 use App\Modules\Onboarding\Contracts\LaunchReadiness\LaunchReadinessReadInterface;
 use App\Modules\Onboarding\Contracts\Provisioning\ProvisionOnboardingJobInterface;
@@ -55,11 +56,13 @@ final class OnboardingServiceProvider extends ServiceProvider
             ),
         );
         $this->app->singleton(
-            WebsiteDesignerDashboardReadInterface::class,
+            PostgresWebsiteDesignerDashboardReadAdapter::class,
             static fn (Application $application): PostgresWebsiteDesignerDashboardReadAdapter => new PostgresWebsiteDesignerDashboardReadAdapter(
                 $application->make('db')->connection(),
             ),
         );
+        $this->app->alias(PostgresWebsiteDesignerDashboardReadAdapter::class, WebsiteDesignerDashboardReadInterface::class);
+        $this->app->alias(PostgresWebsiteDesignerDashboardReadAdapter::class, PendingWebsiteDesignerTasksReadInterface::class);
         $this->app->singleton(
             OnboardingTaskReadInterface::class,
             static fn (Application $application): PostgresOnboardingTaskReadAdapter => new PostgresOnboardingTaskReadAdapter(

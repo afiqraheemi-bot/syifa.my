@@ -27,6 +27,10 @@ final readonly class ClinicOwnerSubscriptionPage
         }
 
         $detail = $this->subscriptions->detailForTenant($context->tenantId);
+        $isTrial = $detail !== null && str_contains(mb_strtolower($detail->planName), 'trial');
+        $trialDaysRemaining = $isTrial
+            ? max(0, CarbonImmutable::today()->diffInDays(CarbonImmutable::parse($detail->endsOn), false) + 1)
+            : null;
 
         return new DashboardPageView('SubscriptionBilling/Dashboard/ClinicOwnerSubscriptionDetail', [
             'navigation' => ClinicOwnerDashboardNavigation::items('subscription'),
@@ -48,7 +52,25 @@ final readonly class ClinicOwnerSubscriptionPage
                 'latestPaymentStatus' => $detail->latestPaymentStatus === null
                     ? 'Not available'
                     : $this->label($detail->latestPaymentStatus),
+                'isTrial' => $isTrial,
+                'trialDaysRemaining' => $trialDaysRemaining,
             ],
+            'upgradePlans' => $isTrial ? [
+                [
+                    'name' => 'Syifa Basic',
+                    'price' => 'RM299 / tahun',
+                    'description' => 'Website profesional, kandungan dan tempahan pesakit.',
+                    'recommended' => false,
+                    'href' => 'https://wa.me/60134079388?text='.rawurlencode('Saya ingin upgrade daripada Syifa Trial ke Syifa Basic dan teruskan pembayaran.'),
+                ],
+                [
+                    'name' => 'Syifa Standard',
+                    'price' => 'RM399 / tahun',
+                    'description' => 'Semua ciri Basic bersama SYIFA AI dan custom domain.',
+                    'recommended' => true,
+                    'href' => 'https://wa.me/60134079388?text='.rawurlencode('Saya ingin upgrade daripada Syifa Trial ke Syifa Standard dan teruskan pembayaran.'),
+                ],
+            ] : [],
             'renewal' => $detail?->renewalEligible === true ? [
                 'label' => 'Renew Subscription',
                 'action' => route('dashboard.subscription.renewal-checkout'),

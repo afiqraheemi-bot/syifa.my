@@ -253,16 +253,16 @@ const gallery = [
                 <div class="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
                     <div data-reveal class="reveal">
                         <p class="text-xs font-bold tracking-[0.24em] text-[#a8765d] uppercase">
-                            Klinik Estetika Aura
+                            Aura Aesthetic Clinic
                         </p>
                         <h1
                             class="mt-5 max-w-lg text-4xl leading-[1.1] font-medium tracking-tight sm:text-5xl"
                         >
-                            Kecantikan halus, dijaga dengan teliti
+                            Refined beauty, thoughtfully cared for
                         </h1>
                         <p class="mt-6 max-w-md text-sm leading-7 text-[#625954]">
-                            Kami mempercayai kecantikan yang tidak keterlaluan — rawatan estetik
-                            yang dipandu oleh pakar, disesuaikan dengan ciri semula jadi anda.
+                            We believe in understated beauty — expert-led aesthetic care tailored to
+                            your natural features.
                         </p>
                         <div class="mt-8 flex flex-wrap items-center gap-6">
                             <a
@@ -317,10 +317,10 @@ const gallery = [
             >
                 <div data-reveal class="reveal max-w-xl">
                     <p class="text-xs font-bold tracking-[0.24em] text-[#a8765d] uppercase">
-                        Perkhidmatan
+                        Services
                     </p>
                     <h2 class="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">
-                        Rawatan yang dipilih dengan teliti
+                        Thoughtfully selected treatments
                     </h2>
                 </div>
 
@@ -358,14 +358,14 @@ const gallery = [
                     </div>
                     <div data-reveal class="reveal order-1 lg:order-2">
                         <p class="text-xs font-bold tracking-[0.24em] text-[#a8765d] uppercase">
-                            Falsafah Kami
+                            Our Philosophy
                         </p>
                         <h2 class="mt-3 max-w-md text-2xl font-medium tracking-tight sm:text-3xl">
-                            Kecantikan yang menghormati keaslian anda
+                            Beauty that honours your individuality
                         </h2>
                         <p class="mt-4 max-w-md text-sm leading-7 text-[#625954]">
-                            Klinik Estetika Aura menggabungkan kepakaran perubatan dengan sentuhan
-                            peribadi — setiap pelan rawatan dirangka bersama anda, bukan untuk anda.
+                            Aura Aesthetic Clinic combines medical expertise with a personal touch —
+                            every treatment plan is created with you, not simply for you.
                         </p>
                     </div>
                 </div>
@@ -374,10 +374,10 @@ const gallery = [
             <section id="doktor" class="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-10">
                 <div data-reveal class="reveal max-w-xl">
                     <p class="text-xs font-bold tracking-[0.24em] text-[#a8765d] uppercase">
-                        Doktor Kami
+                        Our Doctors
                     </p>
                     <h2 class="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">
-                        Dipandu oleh pakar bertauliah
+                        Guided by certified experts
                     </h2>
                 </div>
 
@@ -435,10 +435,10 @@ const gallery = [
             <section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-10">
                 <div data-reveal class="reveal max-w-xl">
                     <p class="text-xs font-bold tracking-[0.24em] text-[#a8765d] uppercase">
-                        Galeri
+                        Gallery
                     </p>
                     <h2 class="mt-3 text-2xl font-medium tracking-tight sm:text-3xl">
-                        Persekitaran yang tenang dan peribadi
+                        A calm and private environment
                     </h2>
                 </div>
                 <div class="mt-8 grid grid-cols-2 items-start gap-3 sm:grid-cols-3">
@@ -458,16 +458,15 @@ const gallery = [
             <section id="lokasi" class="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-10">
                 <div data-reveal class="reveal rounded-sm bg-[#302824] p-8 text-[#ead9ce] sm:p-16">
                     <p class="text-xs font-bold tracking-[0.24em] text-[#c9a17e] uppercase">
-                        Mulakan Perjalanan Anda
+                        Begin Your Journey
                     </p>
                     <h2
                         class="mt-4 max-w-md text-3xl font-medium tracking-tight text-white sm:text-4xl"
                     >
-                        Tempah konsultasi peribadi anda hari ini
+                        Book your private consultation today
                     </h2>
                     <p class="mt-4 max-w-sm text-sm leading-7">
-                        Berbual dengan pakar kami untuk mengenali rawatan yang paling sesuai dengan
-                        anda.
+                        Speak with our experts to discover the treatment best suited to your needs.
                     </p>
                     <a
                         href="tel:+60321987654"

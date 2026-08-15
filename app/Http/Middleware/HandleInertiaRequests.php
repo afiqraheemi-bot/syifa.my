@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Modules\Onboarding\Contracts\Administration\PendingOnboardingJobsReadInterface;
+use App\Modules\Onboarding\Contracts\Dashboard\PendingWebsiteDesignerTasksReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Identity\ActorType;
 use App\Support\Identity\CurrentUserInterface;
@@ -15,7 +16,10 @@ final class HandleInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
 
-    public function __construct(private readonly PendingOnboardingJobsReadInterface $onboarding) {}
+    public function __construct(
+        private readonly PendingOnboardingJobsReadInterface $onboarding,
+        private readonly PendingWebsiteDesignerTasksReadInterface $designerTasks,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -25,25 +29,52 @@ final class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'authentication' => fn (): array => $this->authenticationPresentation(),
-            'superAdminOperations' => fn (): ?array => $this->superAdminOperations($request),
+            'dashboardOperations' => fn (): ?array => $this->dashboardOperations($request),
         ];
     }
 
-    /** @return array{pending_jobs: int, recent_jobs: list<array<string, string>>, onboarding_url: string}|null */
-    private function superAdminOperations(Request $request): ?array
+    /** @return array<string, mixed>|null */
+    private function dashboardOperations(Request $request): ?array
     {
         $context = $request->attributes->get(AuthorizationContext::class);
-        if (! $context instanceof AuthorizationContext || $context->role !== 'super_admin') {
+        if (! $context instanceof AuthorizationContext) {
+            return null;
+        }
+
+        if ($context->role === 'website_designer') {
+            return [
+                'pending_count' => $this->designerTasks->countPendingFor($context->identityId),
+                'items' => array_map(static fn (array $job): array => [
+                    ...$job,
+                    'url' => route('dashboard.onboarding.show', ['jobId' => $job['id']]),
+                ], $this->designerTasks->recentPendingFor($context->identityId, 5)),
+                'heading' => 'Pending website tasks',
+                'description' => 'Choose a clinic to continue your assigned tasks.',
+                'singular_label' => 'website task is waiting',
+                'plural_label' => 'website tasks are waiting',
+                'empty_label' => 'Pending tasks are being refreshed.',
+                'all_label' => 'View all assigned work',
+                'all_url' => route('dashboard.onboarding'),
+            ];
+        }
+
+        if ($context->role !== 'super_admin') {
             return null;
         }
 
         return [
-            'pending_jobs' => $this->onboarding->countPending(),
-            'recent_jobs' => array_map(static fn (array $job): array => [
+            'pending_count' => $this->onboarding->countPending(),
+            'items' => array_map(static fn (array $job): array => [
                 ...$job,
                 'url' => route('dashboard.onboarding-management').'#job-'.$job['id'],
             ], $this->onboarding->recentPending(5)),
-            'onboarding_url' => route('dashboard.onboarding-management'),
+            'heading' => 'Pending onboarding jobs',
+            'description' => 'Choose a clinic to review its pending work.',
+            'singular_label' => 'onboarding job is waiting',
+            'plural_label' => 'onboarding jobs are waiting',
+            'empty_label' => 'Pending jobs are being refreshed.',
+            'all_label' => 'View all pending jobs',
+            'all_url' => route('dashboard.onboarding-management'),
         ];
     }
 

@@ -11,6 +11,9 @@ const props = defineProps({
     required: { type: Boolean, default: false },
     aspectRatio: { type: Number, default: 4 / 3 },
     aspectRatioOptions: { type: Array, default: () => [] },
+    outputWidth: { type: Number, default: 1200 },
+    outputWidthOptions: { type: Array, default: () => [600, 1200, 1800, 2400] },
+    maxBytes: { type: Number, default: 8 * 1024 * 1024 },
 });
 const emit = defineEmits(['update:modelValue', 'uploaded']);
 const uploading = ref(false);
@@ -24,6 +27,7 @@ const cropZoom = ref(1);
 const cropX = ref(50);
 const cropY = ref(50);
 const cropAspectRatio = ref(props.aspectRatio);
+const cropOutputWidth = ref(props.outputWidth);
 const removePlainBackground = ref(false);
 const preparingImage = ref(false);
 const previewUrl = computed(() =>
@@ -165,6 +169,7 @@ function resetCrop() {
     cropX.value = 50;
     cropY.value = 50;
     cropAspectRatio.value = props.aspectRatio;
+    cropOutputWidth.value = props.outputWidth;
     removePlainBackground.value = false;
     preparingImage.value = false;
 }
@@ -182,9 +187,9 @@ async function chooseImage(event) {
     error.value = '';
     if (
         !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
-        file.size > 8 * 1024 * 1024
+        file.size > props.maxBytes
     ) {
-        error.value = 'Choose a JPEG, PNG or WebP image no larger than 8 MB.';
+        error.value = `Choose a JPEG, PNG or WebP image no larger than ${Math.round(props.maxBytes / 1024 / 1024)} MB.`;
         input.value = '';
         return;
     }
@@ -231,7 +236,7 @@ async function confirmCrop() {
     await new Promise((resolve) => window.setTimeout(resolve, 0));
 
     const output = document.createElement('canvas');
-    output.width = Math.max(1, Math.min(2400, Math.round(crop.width)));
+    output.width = Math.max(1, Math.min(2400, cropOutputWidth.value));
     output.height = Math.max(1, Math.round(output.width / cropAspectRatio.value));
     output
         .getContext('2d')
@@ -253,6 +258,11 @@ async function confirmCrop() {
     );
     if (!blob) {
         error.value = 'The cropped image could not be prepared.';
+        preparingImage.value = false;
+        return;
+    }
+    if (blob.size > props.maxBytes) {
+        error.value = `The resized image is larger than ${Math.round(props.maxBytes / 1024 / 1024)} MB. Choose a smaller output size or use JPEG/WebP.`;
         preparingImage.value = false;
         return;
     }
@@ -334,7 +344,9 @@ onBeforeUnmount(resetCrop);
                 @change="chooseImage"
             />
         </label>
-        <p class="mt-2 text-xs text-slate-600">JPEG, PNG or WebP. Maximum 8 MB.</p>
+        <p class="mt-2 text-xs text-slate-600">
+            JPEG, PNG or WebP. Maximum {{ Math.round(maxBytes / 1024 / 1024) }} MB.
+        </p>
         <p v-if="uploading" role="status" class="mt-2 text-sm font-medium text-emerald-800">
             Uploading image…
         </p>
@@ -432,6 +444,29 @@ onBeforeUnmount(resetCrop);
                         />
                     </label>
                 </div>
+
+                <fieldset class="mt-5">
+                    <legend class="text-sm font-semibold text-slate-800">Output size</legend>
+                    <p class="mt-1 text-xs text-slate-600">
+                        The cropped image will be resized to this width before upload.
+                    </p>
+                    <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <label
+                            v-for="width in outputWidthOptions"
+                            :key="width"
+                            class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-800 has-[:checked]:border-emerald-700 has-[:checked]:bg-emerald-50"
+                        >
+                            <input
+                                v-model.number="cropOutputWidth"
+                                type="radio"
+                                name="website_image_output_width"
+                                :value="width"
+                                class="accent-emerald-700"
+                            />
+                            {{ width }}px
+                        </label>
+                    </div>
+                </fieldset>
 
                 <label
                     class="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4"

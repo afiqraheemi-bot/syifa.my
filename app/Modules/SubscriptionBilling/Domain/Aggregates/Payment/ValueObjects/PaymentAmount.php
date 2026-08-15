@@ -10,8 +10,8 @@ final readonly class PaymentAmount
 {
     public function __construct(public int $minorUnits)
     {
-        if ($minorUnits <= 0) {
-            throw new InvalidPaymentValueException('Payment amount must be positive minor units.');
+        if ($minorUnits < 0) {
+            throw new InvalidPaymentValueException('Payment amount cannot be negative.');
         }
     }
 }

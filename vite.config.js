@@ -10,6 +10,8 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/css/public-website.css',
                 'resources/js/public-website.js',
+                'resources/js/public-content-enhancements.js',
+                'resources/js/blog-slider.js',
             ],
             refresh: true,
         }),

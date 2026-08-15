@@ -6,7 +6,7 @@
     <title>Draft Preview · {{ $document->head->title }}</title>
     <meta name="description" content="{{ $document->head->description }}">
     <meta name="robots" content="noindex,nofollow,noarchive">
-    @unless (app()->environment('testing')) @vite(['resources/css/public-website.css', 'resources/js/public-website.js']) @endunless
+    @unless (app()->environment('testing')) @vite(['resources/css/public-website.css', 'resources/js/public-website.js', 'resources/js/public-content-enhancements.js', 'resources/js/blog-slider.js']) @endunless
     <style>:root{--brand-primary:{{ $document->brandTokens->primary }};--brand-primary-hover:{{ $document->brandTokens->primaryHover }};--brand-primary-active:{{ $document->brandTokens->primaryActive }};--brand-on-primary:{{ $document->brandTokens->onPrimary }};--brand-secondary:{{ $document->brandTokens->secondary }};--brand-on-secondary:{{ $document->brandTokens->onSecondary }};}</style>
 </head>
 <body
@@ -21,7 +21,7 @@
         Draft Preview · Not published
     </div>
     <x-public.skip-link />
-    <x-public.navbar :document="$document" />
+    <x-public.navbar :document="$document" :blog-enabled="$blogEnabled ?? false" blog-url="#blog" />
 
     @php
         $contactSection = null;
@@ -42,19 +42,19 @@
                     <x-public.about :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" />
                     @break
                 @case('SERVICES')
-                    <x-public.services :section="$section" :booking-url="$document->bookingDestination" />
+                    <x-public.services :section="$section" :booking-url="$document->bookingDestination" :template-id="$document->website->website->templateId" />
                     @break
                 @case('DOCTORS')
-                    <x-public.doctors :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" />
+                    <x-public.doctors :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" :template-id="$document->website->website->templateId" />
                     @break
                 @case('TESTIMONIALS')
-                    <x-public.testimonials :section="$section" />
+                    <x-public.testimonials :section="$section" :template-id="$document->website->website->templateId" />
                     @break
                 @case('GALLERY')
-                    <x-public.gallery :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" />
+                    <x-public.gallery :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" :template-id="$document->website->website->templateId" />
                     @break
                 @case('FAQ')
-                    <x-public.faq :section="$section" />
+                    <x-public.faq :section="$section" :template-id="$document->website->website->templateId" />
                     @break
                 @case('CONTACT')
                     @break
@@ -63,6 +63,10 @@
                     @break
             @endswitch
         @endforeach
+        <x-public.blog-slider
+            :articles="$latestBlogPosts ?? collect()"
+            :article-url-prefix="$blogIndexUrl ?? '/blog'"
+        />
     </main>
 
     <x-public.footer :document="$document" :contact-section="$contactSection" />

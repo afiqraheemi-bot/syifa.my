@@ -22,6 +22,7 @@ final readonly class ClinicOwnerDashboardOverviewProvider
      * @return array{
      *     welcomeTitle: string,
      *     welcomeMessage: string,
+     *     clinicName: string,
      *     summaries: array{array<array-key, mixed>, array<array-key, mixed>, array<array-key, mixed>, array<array-key, mixed>},
      *     quickActions: array<array-key, mixed>,
      *     recentActivity: array<array-key, mixed>
@@ -40,8 +41,9 @@ final readonly class ClinicOwnerDashboardOverviewProvider
         $recentActivity = $this->recentActivity->provide($context);
 
         return [
-            'welcomeTitle' => "Welcome back, {$name}",
-            'welcomeMessage' => 'Here is the current overview of your SYIFA.my workspace.',
+            'welcomeTitle' => "Selamat kembali, {$name}",
+            'welcomeMessage' => 'Semak keadaan klinik, tempahan pesakit dan website anda dalam satu paparan.',
+            'clinicName' => (string) ($clinic->data['value'] ?? 'Klinik anda'),
             'summaries' => [
                 $clinic->data,
                 $subscription->data,

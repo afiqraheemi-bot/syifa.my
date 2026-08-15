@@ -13,6 +13,7 @@ import {
     DashboardShell,
 } from '../../../Shared/Dashboard/index.js';
 import WebsiteImageUpload from '../../../Shared/Website/WebsiteImageUpload.vue';
+import WebsiteSeoEditor from '../../../Shared/Website/WebsiteSeoEditor.vue';
 import DesignerWorkspacePanel from './DesignerWorkspacePanel.vue';
 import SyifaAiAssistant from './SyifaAiAssistant.vue';
 
@@ -2088,86 +2089,13 @@ function completionEvidence(task) {
                             ›
                         </span>
                     </summary>
-                    <div class="grid gap-5 border-t border-slate-200 p-5 md:grid-cols-2">
-                        <label class="text-sm font-semibold text-slate-800">
-                            Meta title
-                            <input
-                                v-model="form.seo.meta_title"
-                                :class="inputClass"
-                                required
-                                maxlength="60"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Keywords
-                            <input
-                                v-model="form.seo.meta_keywords"
-                                :class="inputClass"
-                                maxlength="255"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                            Meta description
-                            <textarea
-                                v-model="form.seo.meta_description"
-                                :class="inputClass"
-                                rows="3"
-                                required
-                                maxlength="160"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Canonical URL
-                            <input
-                                v-model="form.seo.canonical_url"
-                                :class="inputClass"
-                                type="url"
-                                inputmode="url"
-                                placeholder="https://"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Robots directive
-                            <select
-                                v-model="form.seo.robots_directive"
-                                :class="inputClass"
-                                required
-                            >
-                                <option value="index,follow">Index, follow</option>
-                                <option value="index,nofollow">Index, no follow</option>
-                                <option value="noindex,follow">No index, follow</option>
-                                <option value="noindex,nofollow">No index, no follow</option>
-                            </select>
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Open Graph title
-                            <input
-                                v-model="form.seo.open_graph_title"
-                                :class="inputClass"
-                                required
-                                maxlength="60"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                            Open Graph description
-                            <textarea
-                                v-model="form.seo.open_graph_description"
-                                :class="inputClass"
-                                rows="3"
-                                required
-                                maxlength="160"
-                            />
-                        </label>
-                        <label
-                            class="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm font-semibold text-slate-800 md:col-span-2"
-                        >
-                            <input
-                                v-model="form.seo.indexing_enabled"
-                                type="checkbox"
-                                class="size-4 accent-emerald-700"
-                            />
-                            Allow search-engine indexing
-                        </label>
+                    <div class="border-t border-slate-200 p-5">
+                        <WebsiteSeoEditor
+                            v-model="form.seo"
+                            :fallback-title="form.branding.clinic_name"
+                            :fallback-description="form.branding.tagline"
+                            :input-class="inputClass"
+                        />
                     </div>
                 </details>
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\SubscriptionBilling\Application\Payment;
 
 use App\Modules\AcquisitionOffer\Application\Exceptions\ClinicRegistrationOwnershipMismatchException;
+use App\Modules\AcquisitionOffer\Application\Exceptions\CommercialSelectionUnavailableException;
 use App\Modules\AcquisitionOffer\Application\PrepareCommercialOfferService;
 use App\Modules\AcquisitionOffer\Contracts\Commands\PrepareInitialCommercialOfferCommand;
 use App\Modules\ClinicRegistration\Contracts\Checkout\PublicInitialAcquisitionCheckoutInterface;
@@ -41,6 +42,11 @@ final readonly class StartPublicInitialAcquisitionCheckoutService implements Pub
             $command->occurredAt,
             $command->correlationId,
         ));
+        if ($offer->totalAmountMinor === 0) {
+            throw new CommercialSelectionUnavailableException(
+                'Free trials activate automatically after approval and do not require checkout.',
+            );
+        }
         $payment = $this->payments->execute(new CreateInitialAcquisitionPaymentCommand(
             $registration->id,
             $offer->id,

@@ -14,6 +14,7 @@ const props = defineProps({
     identityName: { type: String, default: null },
     contextLabel: { type: String, required: true },
     subscription: { type: Object, default: null },
+    upgradePlans: { type: Array, default: () => [] },
     renewal: { type: Object, default: null },
     documents: { type: Array, required: true },
     feedback: { type: Object, required: true },
@@ -72,6 +73,35 @@ function statusClass(status) {
 
             <template v-else>
                 <section
+                    v-if="subscription.isTrial"
+                    class="overflow-hidden rounded-3xl bg-gradient-to-br from-sky-950 via-emerald-900 to-emerald-700 p-6 text-white shadow-xl sm:p-8"
+                >
+                    <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <p
+                                class="text-xs font-black uppercase tracking-[0.18em] text-emerald-200"
+                            >
+                                Percubaan percuma sedang aktif
+                            </p>
+                            <h2 class="mt-3 text-2xl font-black sm:text-3xl">
+                                {{ subscription.trialDaysRemaining }} hari berbaki untuk meneroka
+                                SYIFA.my
+                            </h2>
+                            <p class="mt-3 max-w-2xl text-sm leading-6 text-emerald-50">
+                                Tiada bayaran diperlukan sepanjang trial. Pilih pakej di bawah bila
+                                anda bersedia; akses trial kekal aktif sehingga
+                                {{ subscription.endsOn }}.
+                            </p>
+                        </div>
+                        <span
+                            class="inline-flex w-fit rounded-full bg-white/15 px-4 py-2 text-sm font-black ring-1 ring-white/25"
+                        >
+                            RM0 · Tanpa kad
+                        </span>
+                    </div>
+                </section>
+
+                <section
                     class="overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-sm"
                 >
                     <div class="grid lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
@@ -99,15 +129,72 @@ function statusClass(status) {
                             >
                                 {{ subscription.status }}
                             </span>
-                            <p class="mt-5 text-sm font-semibold text-slate-600">Latest payment</p>
+                            <p class="mt-5 text-sm font-semibold text-slate-600">
+                                {{ subscription.isTrial ? 'Trial charge' : 'Latest payment' }}
+                            </p>
                             <span
                                 class="mt-2 inline-flex rounded-full px-3 py-1.5 text-sm font-black"
                                 :class="statusClass(subscription.latestPaymentStatus)"
                             >
-                                {{ subscription.latestPaymentStatus }}
+                                {{
+                                    subscription.isTrial
+                                        ? 'No payment required'
+                                        : subscription.latestPaymentStatus
+                                }}
                             </span>
                         </div>
                     </div>
+                </section>
+
+                <section
+                    v-if="subscription.isTrial && upgradePlans.length"
+                    class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
+                >
+                    <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                        Upgrade bila anda bersedia
+                    </p>
+                    <h2 class="mt-2 text-2xl font-black text-slate-950">
+                        Pilih pakej selepas trial
+                    </h2>
+                    <p class="mt-2 max-w-2xl text-sm text-slate-600">
+                        Pasukan kami akan sahkan pilihan, sediakan pembayaran selamat dan memastikan
+                        akses klinik tidak terputus.
+                    </p>
+                    <div class="mt-6 grid gap-4 lg:grid-cols-2">
+                        <article
+                            v-for="plan in upgradePlans"
+                            :key="plan.name"
+                            class="relative rounded-2xl border p-5"
+                            :class="
+                                plan.recommended
+                                    ? 'border-emerald-400 bg-emerald-50'
+                                    : 'border-slate-200 bg-slate-50'
+                            "
+                        >
+                            <span
+                                v-if="plan.recommended"
+                                class="absolute right-4 top-4 rounded-full bg-emerald-700 px-3 py-1 text-xs font-black text-white"
+                                >Disyorkan</span
+                            >
+                            <h3 class="text-xl font-black text-slate-950">{{ plan.name }}</h3>
+                            <p class="mt-1 text-lg font-bold text-emerald-800">{{ plan.price }}</p>
+                            <p class="mt-3 text-sm leading-6 text-slate-600">
+                                {{ plan.description }}
+                            </p>
+                            <a
+                                :href="plan.href"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-700 px-4 py-2 text-center text-sm font-black text-white transition hover:bg-emerald-800"
+                            >
+                                Pilih {{ plan.name }} & teruskan pembayaran
+                            </a>
+                        </article>
+                    </div>
+                    <p class="mt-4 text-xs text-slate-500">
+                        Anda tidak akan dicaj hanya dengan membuka WhatsApp. Bayaran dibuat selepas
+                        pakej disahkan.
+                    </p>
                 </section>
 
                 <section

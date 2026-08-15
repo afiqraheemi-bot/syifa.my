@@ -6,6 +6,7 @@ namespace App\Support\Dashboard\Presentation\Http\Requests;
 
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 final class UpdateClinicOwnerWebsiteContentRequest extends FormRequest
@@ -35,16 +36,37 @@ final class UpdateClinicOwnerWebsiteContentRequest extends FormRequest
             'branding.social_links' => ['required', 'array:facebook,instagram,youtube,tiktok,linkedin'],
             'branding.social_links.*' => ['nullable', 'url:https'],
             'seo' => ['required', 'array:meta_title,meta_description,meta_keywords,canonical_url,robots_directive,open_graph_title,open_graph_description,indexing_enabled'],
-            'seo.meta_title' => ['required', 'string', 'max:60'],
-            'seo.meta_description' => ['required', 'string', 'max:160'],
+            'seo.meta_title' => ['nullable', 'string', 'max:60'],
+            'seo.meta_description' => ['nullable', 'string', 'max:160'],
             'seo.meta_keywords' => ['nullable', 'string', 'max:255'],
             'seo.canonical_url' => ['nullable', 'url:https'],
-            'seo.robots_directive' => ['required', Rule::in(['index,follow', 'index,nofollow', 'noindex,follow', 'noindex,nofollow'])],
-            'seo.open_graph_title' => ['required', 'string', 'max:60'],
-            'seo.open_graph_description' => ['required', 'string', 'max:160'],
-            'seo.indexing_enabled' => ['required', 'boolean'],
+            'seo.robots_directive' => ['nullable', Rule::in(['index,follow', 'index,nofollow', 'noindex,follow', 'noindex,nofollow'])],
+            'seo.open_graph_title' => ['nullable', 'string', 'max:60'],
+            'seo.open_graph_description' => ['nullable', 'string', 'max:160'],
+            'seo.indexing_enabled' => ['nullable', 'boolean'],
             'sections' => ['required', 'array:hero,about,services,doctors,testimonials,gallery,faq,contact,booking_cta'],
             'sections.*' => ['required', 'boolean'],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $seo
+     * @param  array<string, mixed>  $branding
+     * @return array<string, mixed>
+     */
+    public static function seoWithDefaults(array $seo, array $branding): array
+    {
+        $clinicName = trim((string) ($branding['clinic_name'] ?? ''));
+        $tagline = trim((string) ($branding['tagline'] ?? ''));
+        $description = $tagline !== '' ? $tagline : 'Maklumat perkhidmatan dan tempahan daripada '.$clinicName.'.';
+
+        $seo['meta_title'] = trim((string) ($seo['meta_title'] ?? '')) ?: Str::limit($clinicName, 60, '');
+        $seo['meta_description'] = trim((string) ($seo['meta_description'] ?? '')) ?: Str::limit($description, 160, '');
+        $seo['open_graph_title'] = trim((string) ($seo['open_graph_title'] ?? '')) ?: $seo['meta_title'];
+        $seo['open_graph_description'] = trim((string) ($seo['open_graph_description'] ?? '')) ?: $seo['meta_description'];
+        $seo['robots_directive'] = $seo['robots_directive'] ?? 'index,follow';
+        $seo['indexing_enabled'] = $seo['indexing_enabled'] ?? true;
+
+        return $seo;
     }
 }

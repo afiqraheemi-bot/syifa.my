@@ -87,7 +87,8 @@ final class ClinicOwnerDashboardOverviewProviderTest extends TestCase
             new SubscriptionSummaryData('restricted', '2027-08-20'),
         )->for($this->context());
 
-        self::assertSame('Welcome back, Aisyah', $overview['welcomeTitle']);
+        self::assertSame('Selamat kembali, Aisyah', $overview['welcomeTitle']);
+        self::assertSame('Klinik Syifa', $overview['clinicName']);
         self::assertSame(['clinic', 'subscription', 'bookings', 'website'], array_column($overview['summaries'], 'key'));
         self::assertSame('Klinik Syifa', $overview['summaries'][0]['value']);
         self::assertSame('Restricted', $overview['summaries'][1]['value']);

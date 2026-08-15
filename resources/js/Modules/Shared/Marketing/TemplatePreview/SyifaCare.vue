@@ -299,14 +299,14 @@ const whyUs = [
                         class="reveal relative overflow-hidden rounded-[2rem] bg-white p-8 shadow-sm sm:p-10"
                     >
                         <p class="text-sm font-bold tracking-wide text-[#122019]/60">
-                            Klinik Ceria — Rangkaian Komuniti Anda
+                            Klinik Ceria — Your Community Care Network
                         </p>
                         <h1 class="mt-4 max-w-md text-3xl font-bold tracking-tight sm:text-4xl">
-                            Penjagaan kesihatan mesra untuk keluarga anda
+                            Friendly healthcare for your family
                         </h1>
                         <p class="mt-4 max-w-sm text-sm leading-6 text-[#122019]/70">
-                            Klinik Ceria menyampaikan penjagaan kesihatan berkualiti kepada komuniti
-                            yang memerlukannya.
+                            Klinik Ceria brings quality healthcare closer to the communities that
+                            need it most.
                         </p>
                         <div class="mt-7 flex flex-wrap gap-3">
                             <a
@@ -441,12 +441,11 @@ const whyUs = [
                 <div class="grid gap-8 lg:grid-cols-2 lg:items-center">
                     <div data-reveal class="reveal">
                         <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">
-                            Klinik Ceria, Rangkaian Dipercayai Anda
+                            Klinik Ceria, Your Trusted Care Network
                         </h2>
                         <p class="mt-4 text-sm leading-6 text-[#122019]/70">
-                            Klinik Ceria menghubungkan lebih ramai pesakit dengan penjagaan primer,
-                            khusus, dan kecemasan yang komprehensif — dekat dengan tempat tinggal
-                            mereka.
+                            Klinik Ceria connects more patients with comprehensive primary,
+                            specialist and urgent care — closer to where they live.
                         </p>
                         <div class="mt-6 flex flex-wrap items-center gap-4">
                             <a
@@ -497,14 +496,14 @@ const whyUs = [
                     class="reveal rounded-[2.5rem] bg-[#0b2a1f] p-8 text-white sm:p-12"
                 >
                     <p class="text-xs font-bold tracking-[0.2em] text-lime-300 uppercase">
-                        Perkhidmatan Kami
+                        Our Services
                     </p>
                     <h2 class="mt-3 max-w-md text-2xl font-bold tracking-tight sm:text-3xl">
-                        Penjagaan Lengkap, Dalam Satu Rangkaian
+                        Complete Care, All in One Network
                     </h2>
                     <p class="mt-3 max-w-lg text-sm leading-6 text-emerald-100/80">
-                        Lebih 15 tahun kami menyampaikan penjagaan bernilai tinggi kepada komuniti
-                        kami.
+                        For over 15 years, we have delivered trusted, high-value care to our
+                        communities.
                     </p>
 
                     <div class="mt-8 grid gap-4 sm:grid-cols-3">
@@ -557,10 +556,10 @@ const whyUs = [
                 <div data-reveal class="reveal flex flex-wrap items-end justify-between gap-4">
                     <div>
                         <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">
-                            Temui Doktor Dipercayai Kami
+                            Meet Our Trusted Doctors
                         </h2>
                         <p class="mt-2 text-sm text-[#122019]/60">
-                            Penjagaan peribadi daripada pakar berpengalaman.
+                            Personalised care from experienced professionals.
                         </p>
                     </div>
                     <a
@@ -630,10 +629,10 @@ const whyUs = [
             <section id="testimoni" class="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-10">
                 <div data-reveal class="reveal max-w-2xl">
                     <p class="text-xs font-bold tracking-[0.2em] text-[#0b2a1f]/50 uppercase">
-                        Testimoni Pesakit
+                        Patient Stories
                     </p>
                     <h2 class="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
-                        Dipercayai keluarga komuniti kami
+                        Trusted by families in our community
                     </h2>
                 </div>
 
@@ -701,14 +700,14 @@ const whyUs = [
                     class="reveal rounded-[2.5rem] border-2 border-[#0b2a1f]/10 bg-white p-8 sm:p-10"
                 >
                     <p class="text-xs font-bold tracking-[0.2em] text-[#0b2a1f]/50 uppercase">
-                        Kenapa Pilih Kami
+                        Why Choose Us
                     </p>
                     <h2 class="mt-3 max-w-lg text-2xl font-bold tracking-tight sm:text-3xl">
-                        Kesihatan komuniti yang boleh dipercayai
+                        Community healthcare you can trust
                     </h2>
                     <p class="mt-3 max-w-xl text-sm leading-6 text-[#122019]/65">
-                        Lebih 15 tahun kami menyampaikan penjagaan bernilai tinggi kepada komuniti
-                        kami.
+                        For over 15 years, we have delivered trusted, high-value care to our
+                        communities.
                     </p>
 
                     <div class="mt-8 grid gap-4 sm:grid-cols-3">
@@ -742,11 +741,10 @@ const whyUs = [
                     class="reveal relative overflow-hidden rounded-[2.5rem] bg-[#d9c7f0] p-8 text-[#2a1a45] sm:p-14"
                 >
                     <h2 class="max-w-md text-3xl font-bold tracking-tight sm:text-4xl">
-                        Mulakan penjagaan kesihatan anda hari ini
+                        Start your healthcare journey today
                     </h2>
                     <p class="mt-4 max-w-sm text-sm leading-6 opacity-80">
-                        Tempah janji temu dan alami perkhidmatan perubatan yang mesra dan boleh
-                        dipercayai.
+                        Book an appointment and experience friendly healthcare you can trust.
                     </p>
                     <a
                         href="tel:+60378901234"

@@ -6,6 +6,8 @@ use App\Http\Controllers\MarketingSeoController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\RootEntryController;
 use App\Http\Controllers\TemplatePreviewController;
+use App\Modules\Blog\Presentation\Http\Controllers\BlogDashboardController;
+use App\Modules\Blog\Presentation\Http\Controllers\PublicBlogController;
 use App\Modules\Booking\Presentation\Http\Controllers\ClinicOwnerBookingOperationController;
 use App\Modules\Booking\Presentation\Http\Controllers\ClinicOwnerManualBookingController;
 use App\Modules\PlatformAdministration\Presentation\Http\Controllers\PlatformEmailVerificationController;
@@ -31,6 +33,7 @@ use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicWebsiteSeoCon
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\SuccessController;
 use App\Support\Dashboard\Presentation\Http\Controllers\AuthenticatedDashboardController;
 use App\Support\Dashboard\Presentation\Http\Controllers\BillingDocumentController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBlogPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDateOverrideController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingOverviewController;
@@ -64,6 +67,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminRegistrationRe
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionOperationController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminTenantOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerBlogPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerBookingPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerCustomDomainController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerDraftContentController;
@@ -96,6 +100,8 @@ foreach (RootEntryController::appEntryHosts() as $appEntryHost) {
     Route::domain($appEntryHost)->get('/sitemap.xml', [MarketingSeoController::class, 'sitemap']);
 }
 Route::get('/', PublicWebsiteController::class)->name('public-website.home');
+Route::get('/blog', [PublicBlogController::class, 'index'])->middleware('throttle:public.default')->name('public-blog.index');
+Route::get('/blog/{slug}', [PublicBlogController::class, 'show'])->where('slug', '[a-z0-9-]+')->middleware('throttle:public.default')->name('public-blog.show');
 Route::get('/robots.txt', [PublicWebsiteSeoController::class, 'robots']);
 Route::get('/sitemap.xml', [PublicWebsiteSeoController::class, 'sitemap']);
 Route::get('/clinic-owner/setup/{token}', [ClinicOwnerSetupController::class, 'show'])
@@ -119,6 +125,18 @@ Route::get('/assets/{assetId}', PublicWebsiteAssetController::class)
 Route::get('/dashboard', AuthenticatedDashboardController::class)
     ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
     ->name('dashboard');
+Route::get('/dashboard/blog', [BlogDashboardController::class, 'index'])
+    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')->name('dashboard.blog');
+Route::get('/dashboard/blog/create', [BlogDashboardController::class, 'editor'])
+    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')->name('dashboard.blog.create');
+Route::post('/dashboard/blog', [BlogDashboardController::class, 'store'])
+    ->middleware('authorize.context:authenticated,clinic_owner,website_designer')->name('dashboard.blog.store');
+Route::get('/dashboard/blog/{postId}', [BlogDashboardController::class, 'editor'])->whereUuid('postId')
+    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')->name('dashboard.blog.edit');
+Route::patch('/dashboard/blog/{postId}', [BlogDashboardController::class, 'update'])->whereUuid('postId')
+    ->middleware('authorize.context:authenticated,clinic_owner,website_designer')->name('dashboard.blog.update');
+Route::post('/dashboard/blog/{postId}/transition', [BlogDashboardController::class, 'transition'])->whereUuid('postId')
+    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')->name('dashboard.blog.transition');
 Route::get('/api/v1/onboarding-jobs/{jobId}/launch-readiness', LaunchReadinessController::class)
     ->whereUuid('jobId')
     ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
@@ -141,6 +159,15 @@ Route::get('/dashboard/onboarding/{jobId}/preview', WebsiteDesignerDraftPreviewC
         'authorize.context:platform_identity,website_designer',
     ])
     ->name('dashboard.onboarding.preview');
+Route::get('/dashboard/onboarding/{jobId}/preview/blog', [WebsiteDesignerBlogPreviewController::class, 'index'])
+    ->whereUuid('jobId')
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.blog-preview.index');
+Route::get('/dashboard/onboarding/{jobId}/preview/blog/{slug}', [WebsiteDesignerBlogPreviewController::class, 'show'])
+    ->whereUuid('jobId')
+    ->where('slug', '[a-z0-9-]+')
+    ->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.blog-preview.show');
 Route::match(['get', 'post'], '/dashboard/onboarding/{jobId}/preview/booking', WebsiteDesignerBookingPreviewController::class)
     ->whereUuid('jobId')
     ->middleware([
@@ -367,6 +394,13 @@ Route::post('/dashboard/website/approval', ClinicOwnerWebsiteApprovalController:
 Route::get('/dashboard/website/preview', ClinicOwnerDraftPreviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.preview');
+Route::get('/dashboard/website/preview/blog', [ClinicOwnerBlogPreviewController::class, 'index'])
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website.blog-preview.index');
+Route::get('/dashboard/website/preview/blog/{slug}', [ClinicOwnerBlogPreviewController::class, 'show'])
+    ->where('slug', '[a-z0-9-]+')
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website.blog-preview.show');
 Route::match(['get', 'post'], '/dashboard/website/preview/booking', ClinicOwnerBookingPreviewController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.booking-preview');
@@ -380,6 +414,9 @@ Route::get('/dashboard/website/content', ClinicOwnerWebsiteContentOverviewContro
 Route::patch('/dashboard/website/content', [ClinicOwnerWebsiteContentOverviewController::class, 'update'])
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.content.update');
+Route::patch('/dashboard/website/blog-visibility', [ClinicOwnerWebsiteContentOverviewController::class, 'updateBlogVisibility'])
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.website.blog-visibility.update');
 Route::patch('/dashboard/website/contact', ClinicOwnerContactSettingsController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.website.contact.update');

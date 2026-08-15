@@ -45,7 +45,7 @@ final class SubscriptionBillingPlanOfferingQueryAdapterTest extends TestCase
         self::assertSame('2026-08-11', $available[0]->billingPeriodEnd);
     }
 
-    public function test_paid_checkout_rejects_free_trial_and_historical_demo_offer(): void
+    public function test_checkout_resolution_keeps_trial_available_for_automatic_activation_and_rejects_historical_demo_offer(): void
     {
         config()->set('subscription_packages.public_package_order', [
             'package:syifa-trial',
@@ -61,7 +61,7 @@ final class SubscriptionBillingPlanOfferingQueryAdapterTest extends TestCase
 
         $adapter = $this->adapter($offerings);
 
-        self::assertNull($adapter->resolveForCheckout('trial-offer', '2026-08-11'));
+        self::assertSame(0, $adapter->resolveForCheckout('trial-offer', '2026-08-11')?->amountMinor);
         self::assertNull($adapter->resolveForCheckout('demo-offer', '2026-08-11'));
         self::assertSame('basic-offer', $adapter->resolveForCheckout('basic-offer', '2026-08-11')?->planOfferingId);
     }

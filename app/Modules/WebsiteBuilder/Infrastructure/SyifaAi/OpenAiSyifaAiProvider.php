@@ -16,16 +16,23 @@ use JsonException;
 
 final readonly class OpenAiSyifaAiProvider implements SyifaAiProviderInterface
 {
-    public function generate(SyifaAiGenerationRequest $request): SyifaAiGenerationResult
+    public function isConfigured(): bool
     {
         $apiKey = config('syifa_ai.api_key');
-        if (config('syifa_ai.provider') !== 'openai'
-            || ! config('syifa_ai.enabled')
-            || ! is_string($apiKey)
-            || trim($apiKey) === '') {
+
+        return config('syifa_ai.provider') === 'openai'
+            && (bool) config('syifa_ai.enabled')
+            && is_string($apiKey)
+            && trim($apiKey) !== '';
+    }
+
+    public function generate(SyifaAiGenerationRequest $request): SyifaAiGenerationResult
+    {
+        if (! $this->isConfigured()) {
             throw new SyifaAiNotReadyException('SYIFA AI is not configured for this environment yet.');
         }
 
+        $apiKey = (string) config('syifa_ai.api_key');
         $model = (string) config('syifa_ai.model', 'gpt-5.6-luna');
         try {
             $response = Http::baseUrl(rtrim((string) config('syifa_ai.base_url'), '/'))

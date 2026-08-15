@@ -9,5 +9,7 @@ use App\Modules\WebsiteBuilder\Application\SyifaAi\SyifaAiGenerationResult;
 
 interface SyifaAiProviderInterface
 {
+    public function isConfigured(): bool;
+
     public function generate(SyifaAiGenerationRequest $request): SyifaAiGenerationResult;
 }

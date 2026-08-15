@@ -15,6 +15,7 @@ use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentSe
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\LoadDraftWebsiteContent;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\ManageWebsiteDraftContentService;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiProviderInterface;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\DashboardPageView;
@@ -34,6 +35,7 @@ final readonly class WebsiteDesignerJobDetailPage
         private WebsiteSubdomainPolicy $subdomains,
         private LaunchReadinessReadInterface $launchReadiness,
         private ClinicOwnerWebsiteApprovalReadInterface $websiteApprovals,
+        private SyifaAiProviderInterface $syifaAi,
     ) {}
 
     public function fromTrustedContext(mixed $context, string $jobId): ?DashboardPageView
@@ -210,7 +212,7 @@ final readonly class WebsiteDesignerJobDetailPage
                 ),
             ],
             'syifaAi' => [
-                'enabled' => (bool) config('syifa_ai.enabled', false),
+                'enabled' => $this->syifaAi->isConfigured(),
                 'assistUrl' => route(
                     'website-designer.syifa-ai.assist',
                     (string) $job->data['id'],

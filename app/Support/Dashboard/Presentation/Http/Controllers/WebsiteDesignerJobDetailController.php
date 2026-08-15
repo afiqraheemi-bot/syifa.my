@@ -103,7 +103,7 @@ final readonly class WebsiteDesignerJobDetailController
         /** @var array<string, mixed> $data */
         $data = $request->validate($rules);
         $branding = $data['branding'];
-        $seo = $data['seo'];
+        $seo = UpdateClinicOwnerWebsiteContentRequest::seoWithDefaults($data['seo'], $branding);
         $tenantId = (string) $props['job']['tenantId'];
 
         try {

@@ -8,6 +8,7 @@ import {
     DashboardShell,
 } from '../../../Shared/Dashboard/index.js';
 import WebsiteImageUpload from '../../../Shared/Website/WebsiteImageUpload.vue';
+import WebsiteSeoEditor from '../../../Shared/Website/WebsiteSeoEditor.vue';
 import { websiteTemplateThemeStyle } from '../../../Shared/Website/templateTheme.js';
 import ClinicOwnerDraftSections from './ClinicOwnerDraftSections.vue';
 
@@ -25,6 +26,9 @@ const props = defineProps({
     canChangeTemplate: { type: Boolean, required: true },
     updateUrl: { type: String, required: true },
     previewUrl: { type: String, required: true },
+    blogUrl: { type: String, required: true },
+    blogVisibilityUrl: { type: String, required: true },
+    blogVisible: { type: Boolean, default: true },
     publishedWebsite: { type: Object, default: null },
     websiteDraft: { type: Object, required: true },
     syifaAi: { type: Object, required: true },
@@ -40,6 +44,37 @@ const whatsAppEnabled = ref(Boolean(props.contactProfile.whatsapp_number));
 const whatsAppNumber = ref(props.contactProfile.whatsapp_number ?? '');
 const whatsAppVersion = ref(props.contactProfile.version);
 const whatsAppIsSetToShow = computed(() => Boolean(props.contactProfile.whatsapp_number));
+const blogSectionVisible = ref(props.blogVisible);
+const blogVisibilitySaving = ref(false);
+const blogVisibilityError = ref('');
+const lastSavedBlogVisibility = ref(props.blogVisible);
+const hasBlogVisibilityChanges = computed(
+    () => blogSectionVisible.value !== lastSavedBlogVisibility.value,
+);
+
+async function saveBlogVisibility() {
+    if (blogVisibilitySaving.value || !hasBlogVisibilityChanges.value) return true;
+    const intendedVisibility = blogSectionVisible.value;
+    blogVisibilitySaving.value = true;
+    blogVisibilityError.value = '';
+
+    try {
+        const response = await browserHttpRequest(props.blogVisibilityUrl, {
+            method: 'PATCH',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: intendedVisibility }),
+        });
+        if (!response.ok) throw new Error('Unable to save Blog visibility.');
+        lastSavedBlogVisibility.value = intendedVisibility;
+        return true;
+    } catch {
+        blogVisibilityError.value =
+            'Blog visibility could not be saved. Please check your connection and try again.';
+        return false;
+    } finally {
+        blogVisibilitySaving.value = false;
+    }
+}
 
 watch(
     () => props.contactProfile.version,
@@ -148,8 +183,12 @@ const hasConfigurationChanges = computed(
     () => configurationSnapshot() !== lastSavedConfiguration.value,
 );
 const configurationRefreshed = ref(false);
-const savingAnything = computed(() => configurationSaving.value || draftState.value.saving);
-const hasAnyChanges = computed(() => hasConfigurationChanges.value || draftState.value.dirty);
+const savingAnything = computed(
+    () => configurationSaving.value || draftState.value.saving || blogVisibilitySaving.value,
+);
+const hasAnyChanges = computed(
+    () => hasConfigurationChanges.value || draftState.value.dirty || hasBlogVisibilityChanges.value,
+);
 
 function configurationPayload() {
     return {
@@ -230,7 +269,11 @@ async function saveAll() {
     const draftSaved = draftState.value.dirty ? ((await draftEditor.value?.save()) ?? false) : true;
     if (!draftSaved) return;
 
-    await saveConfiguration();
+    const configurationSaved = await saveConfiguration();
+    if (!configurationSaved) return;
+
+    const blogVisibilitySaved = await saveBlogVisibility();
+    if (blogVisibilitySaved) saved.value = true;
 }
 
 function synchronizeWebsiteVersion(value) {
@@ -371,8 +414,11 @@ const editorThemeStyle = computed(() => websiteTemplateThemeStyle(form.template_
                 :website-draft="websiteDraft"
                 :template-id="form.template_id"
                 :syifa-ai="syifaAi"
+                :external-dirty="hasConfigurationChanges || hasBlogVisibilityChanges"
+                :external-saving="configurationSaving || blogVisibilitySaving"
                 @state="draftState = $event"
                 @website-version="synchronizeWebsiteVersion"
+                @save-all="saveAll"
             >
                 <template #whatsapp>
                     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -708,86 +754,12 @@ const editorThemeStyle = computed(() => websiteTemplateThemeStyle(form.template_
                     </fieldset>
                 </template>
                 <template #search-sharing>
-                    <p class="text-sm leading-6 text-slate-600">
-                        Control how the clinic appears in search results and when its Website is
-                        shared. These settings remain private until publication.
-                    </p>
-                    <div class="mt-5 grid gap-5 md:grid-cols-2">
-                        <label class="text-sm font-semibold text-slate-800">
-                            Meta title
-                            <input
-                                v-model="form.seo.meta_title"
-                                :class="inputClass"
-                                required
-                                maxlength="60"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Meta keywords
-                            <input
-                                v-model="form.seo.meta_keywords"
-                                :class="inputClass"
-                                maxlength="255"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                            Meta description
-                            <textarea
-                                v-model="form.seo.meta_description"
-                                :class="inputClass"
-                                rows="3"
-                                required
-                                maxlength="160"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Open Graph title
-                            <input
-                                v-model="form.seo.open_graph_title"
-                                :class="inputClass"
-                                required
-                                maxlength="60"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Canonical URL
-                            <input
-                                v-model="form.seo.canonical_url"
-                                :class="inputClass"
-                                type="url"
-                                placeholder="https://"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800 md:col-span-2">
-                            Open Graph description
-                            <textarea
-                                v-model="form.seo.open_graph_description"
-                                :class="inputClass"
-                                rows="3"
-                                required
-                                maxlength="160"
-                            />
-                        </label>
-                        <label class="text-sm font-semibold text-slate-800">
-                            Robots directive
-                            <select v-model="form.seo.robots_directive" :class="inputClass">
-                                <option value="index,follow">Index, follow</option>
-                                <option value="index,nofollow">Index, no follow</option>
-                                <option value="noindex,follow">No index, follow</option>
-                                <option value="noindex,nofollow">No index, no follow</option>
-                            </select>
-                        </label>
-                        <label
-                            class="flex items-center gap-3 self-end rounded-lg border border-slate-200 p-3 text-sm font-semibold text-slate-800"
-                        >
-                            <input
-                                v-model="form.seo.indexing_enabled"
-                                type="checkbox"
-                                class="website-theme-control size-4"
-                            />
-                            Allow search-engine indexing
-                        </label>
-                    </div>
+                    <WebsiteSeoEditor
+                        v-model="form.seo"
+                        :fallback-title="form.branding.clinic_name"
+                        :fallback-description="form.branding.tagline"
+                        :input-class="inputClass"
+                    />
                 </template>
             </ClinicOwnerDraftSections>
 
@@ -809,7 +781,38 @@ const editorThemeStyle = computed(() => websiteTemplateThemeStyle(form.template_
                         />
                         {{ section.label }}
                     </label>
+                    <div
+                        class="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 text-sm text-slate-800"
+                    >
+                        <input
+                            v-model="blogSectionVisible"
+                            type="checkbox"
+                            class="website-theme-control size-4 shrink-0"
+                            :disabled="blogVisibilitySaving"
+                            aria-label="Show Blog section on the Website"
+                        />
+                        <span class="min-w-0 flex-1">
+                            <span class="block font-semibold">Blog</span>
+                            <span class="block text-xs font-normal text-slate-600">
+                                {{
+                                    blogVisibilitySaving
+                                        ? 'Saving visibility…'
+                                        : hasBlogVisibilityChanges
+                                          ? 'Unsaved visibility change'
+                                          : 'Shown when published articles are available'
+                                }}
+                            </span>
+                        </span>
+                        <a
+                            :href="blogUrl"
+                            class="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100 hover:ring-emerald-300"
+                            >Manage</a
+                        >
+                    </div>
                 </div>
+                <p v-if="blogVisibilityError" class="mt-3 text-sm font-semibold text-red-700">
+                    {{ blogVisibilityError }}
+                </p>
             </section>
 
             <div

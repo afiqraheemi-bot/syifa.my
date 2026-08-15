@@ -334,9 +334,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         if ($actorType === ActorType::ClinicOwner) {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 8)
+                    ->has('navigation', 9)
                     ->where('navigation.3.key', 'services')
-                    ->where('welcomeTitle', 'Welcome back, Authenticated User')
+                    ->where('welcomeTitle', 'Selamat kembali, Authenticated User')
                     ->has('summaries', 4)
                     ->where('summaries.0.key', 'clinic')
                     ->where('summaries.0.value', 'Klinik Syifa')
@@ -357,8 +357,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         } elseif ($role === 'website_designer') {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 3)
-                    ->where('navigation.1.key', 'onboarding'),
+                    ->has('navigation', 4)
+                    ->where('navigation.1.key', 'onboarding')
+                    ->where('navigation.2.key', 'blog'),
             );
         } else {
             $response->assertInertia(
@@ -402,7 +403,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.2.href', route('dashboard.onboarding', ['status' => 'in_review']))
                     ->has('recentAssignments', 1)
                     ->where('recentAssignments.0.description', 'Website setup')
-                    ->has('navigation', 3),
+                    ->has('navigation', 4),
             );
     }
 
@@ -1284,9 +1285,10 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('pageTitle', 'Onboarding queue')
                     ->where('navigation.1.key', 'onboarding')
                     ->where('navigation.1.current', true)
-                    ->where('navigation.2.key', 'reports')
+                    ->where('navigation.2.key', 'blog')
                     ->where('navigation.2.current', false)
-                    ->has('navigation', 3)
+                    ->where('navigation.3.key', 'reports')
+                    ->has('navigation', 4)
                     ->where('onboardingQueue.search.value', 'job')
                     ->where('onboardingQueue.statusFilter.value', 'in_progress')
                     ->where('onboardingQueue.items.0.id', 'job-1')
@@ -1388,8 +1390,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('job.id', $jobId)
                     ->where('navigation.1.key', 'onboarding')
                     ->where('navigation.1.current', true)
-                    ->where('navigation.2.key', 'reports')
-                    ->has('navigation', 3)
+                    ->where('navigation.2.key', 'blog')
+                    ->where('navigation.3.key', 'reports')
+                    ->has('navigation', 4)
                     ->where('job.status', 'in_progress')
                     ->where('job.progress.value', 50)
                     ->has('job.stages', 4)
@@ -2618,7 +2621,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.0.key', 'edit')
                     ->where('quickActions.0.available', true)
                     ->where('quickActions.0.href', route('dashboard.website.content'))
-                    ->has('navigation', 8),
+                    ->has('navigation', 9),
             );
     }
 
@@ -2656,6 +2659,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->has('templateOptions', 5)
                     ->where('canChangeTemplate', true)
                     ->where('previewUrl', route('dashboard.website.preview'))
+                    ->where('blogUrl', route('dashboard.blog'))
                     ->where('publishedWebsite.host', 'klinik-aisyah.syifa.my')
                     ->where('publishedWebsite.url', 'https://klinik-aisyah.syifa.my')
                     ->where('updateUrl', route('dashboard.website.content.update'))
@@ -2670,7 +2674,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('contactProfile.whatsapp_number', '+60123456789')
                     ->where('contactProfile.version', 1)
                     ->where('contactUpdateUrl', route('dashboard.website.contact.update'))
-                    ->has('navigation', 8),
+                    ->has('navigation', 9),
             );
     }
 
@@ -2823,10 +2827,11 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                         ->where('navigation.2.key', 'content')
                         ->where('navigation.3.key', 'services')
                         ->where('navigation.4.key', 'bookings')
-                        ->where('navigation.5.key', 'subscription')
-                        ->where('navigation.6.key', 'notifications')
-                        ->where('navigation.7.key', 'reports')
-                        ->has('navigation', 8),
+                        ->where('navigation.5.key', 'blog')
+                        ->where('navigation.6.key', 'subscription')
+                        ->where('navigation.7.key', 'notifications')
+                        ->where('navigation.8.key', 'reports')
+                        ->has('navigation', 9),
                 );
         }
     }
@@ -2915,7 +2920,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('bookingSchedule.updateUrl', route('dashboard.bookings.schedule.update'))
                     ->where('bookingSchedule.businessHoursUpdateUrl', route('dashboard.bookings.business-hours.update'))
                     ->where('bookingSchedule.timezone', 'Asia/Kuala_Lumpur')
-                    ->has('navigation', 8),
+                    ->has('navigation', 9),
             );
     }
 

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\AcquisitionOffer\Infrastructure\AcquisitionOfferServiceProvider;
+use App\Modules\Blog\Infrastructure\BlogServiceProvider;
 use App\Modules\Booking\Infrastructure\BookingServiceProvider;
 use App\Modules\ClinicRegistration\Infrastructure\ClinicRegistrationServiceProvider;
 use App\Modules\Notification\Infrastructure\NotificationServiceProvider;
@@ -28,6 +29,7 @@ return [
     ReportingAnalyticsServiceProvider::class,
     SubscriptionBillingServiceProvider::class,
     BookingServiceProvider::class,
+    BlogServiceProvider::class,
     IdentityServiceProvider::class,
     ProvisioningServiceProvider::class,
 ];

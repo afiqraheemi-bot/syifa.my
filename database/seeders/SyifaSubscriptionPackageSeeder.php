@@ -100,6 +100,12 @@ final class SyifaSubscriptionPackageSeeder extends Seeder
             'description' => 'Use an approved custom public domain for the clinic Website.',
             'commercialMeaning' => 'Includes the custom-domain add-on capability and Designer-managed setup.',
         ],
+        [
+            'key' => 'website.blog.manage',
+            'name' => 'Clinic Blog Management',
+            'description' => 'Membolehkan pengurusan dan penerbitan artikel kesihatan klinik.',
+            'commercialMeaning' => 'Blog klinik, halaman artikel dan SEO artikel.',
+        ],
     ];
 
     /** @var list<array{code: string, name: string, intervalUnit: string, intervalCount: int, displayOrder: int}> */
@@ -143,7 +149,7 @@ final class SyifaSubscriptionPackageSeeder extends Seeder
         [
             'code' => 'syifa-standard',
             'name' => 'Syifa Standard',
-            'description' => 'Pakej tahunan lengkap dengan semua capability SYIFA.my, termasuk SYIFA AI dan custom domain yang diurus oleh Pereka.',
+            'description' => 'Pakej tahunan lengkap dengan SYIFA AI, custom domain dan Blog klinik mesra SEO — terbitkan artikel kesihatan dengan metadata, halaman artikel dan sitemap yang diurus secara tersusun.',
             'billingOptionCode' => 'syifa-annual',
             'amountMinor' => 39900,
             'capabilityReference' => 'package:syifa-standard',

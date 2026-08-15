@@ -1631,6 +1631,16 @@
         border-color: var(--border-default);
         box-shadow: var(--shadow-subtle);
     }
+    [data-template='syifa-essential'] .gallery-item {
+        border: 0.0625rem solid var(--border-subtle);
+        background: var(--surface-primary);
+    }
+    [data-template='syifa-essential'] .gallery-item figcaption {
+        min-height: 3rem;
+        border-top: 0.0625rem solid var(--border-subtle);
+        background: var(--surface-primary);
+        font-weight: 650;
+    }
     [data-template='syifa-essential'] .service-card {
         position: relative;
         min-height: 11rem;
@@ -1855,6 +1865,17 @@
     [data-template='syifa-care'] .gallery-item {
         border-radius: var(--radius-large);
     }
+    [data-template='syifa-care'] .gallery-item {
+        border: 0.0625rem solid var(--border-subtle);
+        background: var(--surface-primary);
+        box-shadow: var(--shadow-subtle);
+    }
+    [data-template='syifa-care'] .gallery-item figcaption {
+        min-height: 3.25rem;
+        background: color-mix(in srgb, var(--surface-primary) 88%, var(--surface-subtle));
+        padding-inline: var(--space-5);
+        font-weight: 650;
+    }
     [data-template='syifa-care'] .public-section--contact {
         border-radius: var(--radius-large) var(--radius-large) 0 0;
     }
@@ -1880,6 +1901,18 @@
     [data-template='syifa-care'] .testimonial-card blockquote {
         font-size: 1.2rem;
         font-weight: 620;
+    }
+    [data-template='syifa-care'] .faq-list {
+        display: grid;
+        gap: var(--space-3);
+        border-top: 0;
+    }
+    [data-template='syifa-care'] .faq-item {
+        border: 0.0625rem solid var(--border-subtle);
+        border-radius: var(--radius-medium);
+        background: var(--surface-primary);
+        padding-inline: var(--space-5);
+        box-shadow: 0 0.5rem 1.5rem rgb(11 42 31 / 4%);
     }
     [data-template='syifa-care'] .booking-panel {
         overflow: hidden;
@@ -2021,6 +2054,21 @@
         border: 0.0625rem solid var(--border-default);
         box-shadow: none;
     }
+    [data-template='syifa-dental'] .gallery-item {
+        background: var(--surface-primary);
+        padding: var(--space-1);
+    }
+    [data-template='syifa-dental'] .gallery-item__button,
+    [data-template='syifa-dental'] .gallery-item__image {
+        border-radius: var(--radius-small);
+    }
+    [data-template='syifa-dental'] .gallery-item figcaption {
+        min-height: 3rem;
+        border-top: 0.0625rem solid var(--border-subtle);
+        margin-top: var(--space-1);
+        color: var(--text-secondary);
+        font-weight: 700;
+    }
     [data-template='syifa-dental'] .doctor-card__content {
         border-top: 0.0625rem solid var(--border-subtle);
     }
@@ -2040,6 +2088,17 @@
     }
     [data-template='syifa-dental'] .faq-item summary {
         font-weight: 700;
+    }
+    [data-template='syifa-dental'] .faq-list {
+        display: grid;
+        gap: var(--space-2);
+        border-top: 0;
+    }
+    [data-template='syifa-dental'] .faq-item {
+        border: 0.0625rem solid var(--border-default);
+        border-radius: var(--radius-small);
+        background: var(--surface-primary);
+        padding-inline: var(--space-5);
     }
     [data-template='syifa-dental'] .booking-panel {
         border: 0.0625rem solid color-mix(in srgb, var(--brand-primary) 25%, transparent);
@@ -2214,8 +2273,26 @@
     [data-template='syifa-aesthetic'] .gallery-item__image {
         aspect-ratio: 4 / 5;
     }
+    [data-template='syifa-aesthetic'] .gallery-item {
+        border-radius: var(--radius-small);
+        background: transparent;
+    }
+    [data-template='syifa-aesthetic'] .gallery-item figcaption {
+        min-height: 3rem;
+        border-bottom: 0.0625rem solid var(--border-default);
+        padding: var(--space-4) 0;
+        color: var(--text-secondary);
+        font-family: var(--font-display);
+        font-size: 0.95rem;
+        line-height: 1.45;
+    }
     [data-template='syifa-aesthetic'] .faq-list {
         border-color: var(--border-strong);
+    }
+    [data-template='syifa-aesthetic'] .faq-item summary {
+        font-family: var(--font-display);
+        font-size: 1.1rem;
+        font-weight: 500;
     }
     [data-template='syifa-aesthetic'] .public-section--contact {
         background: var(--surface-inverse);
@@ -2381,6 +2458,23 @@
         border-left-width: 0.0625rem;
         background: var(--surface-primary);
     }
+    [data-template='syifa-specialist'] .gallery-item {
+        border: 0.0625rem solid var(--border-default);
+        border-radius: var(--radius-large);
+        background: var(--surface-primary);
+        box-shadow: var(--shadow-subtle);
+    }
+    [data-template='syifa-specialist'] .gallery-item__image {
+        aspect-ratio: 1;
+    }
+    [data-template='syifa-specialist'] .gallery-item figcaption {
+        min-height: 3rem;
+        border-top: 0.0625rem solid var(--border-subtle);
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        font-weight: 750;
+        letter-spacing: 0.025em;
+    }
     [data-template='syifa-specialist'] .public-section--contact {
         background: var(--surface-inverse);
     }
@@ -2410,8 +2504,21 @@
         font-size: 1.15rem;
         font-weight: 620;
     }
+    [data-template='syifa-specialist'] .testimonial-card {
+        border-left: 0.25rem solid var(--brand-primary);
+        border-radius: var(--radius-small);
+        background: var(--surface-primary);
+    }
+    [data-template='syifa-specialist'] .faq-list {
+        display: grid;
+        gap: var(--space-2);
+        border-top: 0;
+    }
     [data-template='syifa-specialist'] .faq-item {
-        border-color: var(--border-strong);
+        border: 0.0625rem solid var(--border-default);
+        border-radius: var(--radius-small);
+        background: var(--surface-primary);
+        padding-inline: var(--space-5);
     }
     [data-template='syifa-specialist'] .booking-panel {
         border-radius: var(--radius-medium);
@@ -2580,6 +2687,42 @@
             font-size: clamp(1.15rem, 5vw, 1.35rem);
             line-height: 1.2;
         }
+        [data-template='syifa-aesthetic'] .doctor-card {
+            grid-template-columns: minmax(7.5rem, 34%) minmax(0, 1fr);
+            grid-template-rows: minmax(10rem, auto);
+            align-items: stretch;
+        }
+        [data-template='syifa-aesthetic'] .doctor-card__media,
+        [data-template='syifa-aesthetic'] .doctor-card__fallback {
+            position: relative;
+            z-index: 0;
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            min-height: 10rem;
+            aspect-ratio: auto;
+        }
+        [data-template='syifa-aesthetic'] .doctor-card__content {
+            position: relative;
+            z-index: 1;
+            min-width: 0;
+            min-height: 0;
+            align-content: center;
+            background: var(--surface-primary);
+            padding: var(--space-5);
+        }
+        [data-template='syifa-aesthetic'] .doctor-card__content h3 {
+            max-width: 100%;
+            font-size: clamp(1.2rem, 5vw, 1.45rem);
+            line-height: 1.15;
+            overflow-wrap: anywhere;
+        }
+        [data-template='syifa-aesthetic'] .doctor-card__content p {
+            max-width: 100%;
+            font-size: 0.9rem;
+            line-height: 1.55;
+            overflow-wrap: anywhere;
+        }
         [data-template='syifa-specialist'] #services .service-card {
             min-height: 0;
             padding: var(--space-6) var(--space-10) var(--space-6) 5.25rem;
@@ -2708,6 +2851,116 @@
         [data-template='syifa-aesthetic'] .hero__media {
             max-height: none;
             aspect-ratio: 4 / 5;
+        }
+    }
+
+    /* Desktop art direction: shared content, deliberately different compositions. */
+    @media (min-width: 64rem) {
+        [data-template='syifa-essential'] .public-section > .public-container,
+        [data-template='syifa-essential'] .public-section > .public-container--wide {
+            position: relative;
+        }
+        [data-template='syifa-essential'] #services .card-grid,
+        [data-template='syifa-essential'] #doctors .card-grid,
+        [data-template='syifa-essential'] #testimonials .card-grid {
+            gap: var(--space-5);
+        }
+
+        [data-template='syifa-care'] #services .card-grid--count-4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        [data-template='syifa-care'] #services .service-card {
+            min-height: 13rem;
+        }
+        [data-template='syifa-care'] #services .service-card--featured {
+            grid-column: 1 / -1;
+            min-height: 11rem;
+        }
+        [data-template='syifa-care'] #testimonials .testimonial-card:nth-child(even) {
+            margin-top: var(--space-5);
+        }
+        [data-template='syifa-care'] #testimonials .card-grid {
+            padding-bottom: var(--space-5);
+        }
+
+        [data-template='syifa-dental'] #services .card-grid--count-4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        [data-template='syifa-dental'] #services .service-card {
+            min-height: 12rem;
+        }
+        [data-template='syifa-dental'] #testimonials > .public-container {
+            display: grid;
+            grid-template-columns: minmax(16rem, 0.7fr) minmax(0, 1.3fr);
+            align-items: start;
+            gap: clamp(var(--space-10), 6vw, var(--space-20));
+        }
+        [data-template='syifa-dental'] #testimonials .section-heading {
+            position: sticky;
+            top: calc(var(--header-height) + var(--space-8));
+            margin-bottom: 0;
+        }
+        [data-template='syifa-dental'] #testimonials .card-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        [data-template='syifa-aesthetic'] #services > .public-container,
+        [data-template='syifa-aesthetic'] #testimonials > .public-container,
+        [data-template='syifa-aesthetic'] #gallery > .public-container {
+            display: grid;
+            grid-template-columns: minmax(15rem, 0.65fr) minmax(0, 1.35fr);
+            align-items: start;
+            gap: clamp(var(--space-12), 7vw, var(--space-24));
+        }
+        [data-template='syifa-aesthetic'] #services .section-heading,
+        [data-template='syifa-aesthetic'] #testimonials .section-heading,
+        [data-template='syifa-aesthetic'] #gallery .section-heading {
+            position: sticky;
+            top: calc(var(--header-height) + var(--space-8));
+            margin-bottom: 0;
+        }
+        [data-template='syifa-aesthetic'] #services .card-grid,
+        [data-template='syifa-aesthetic'] #testimonials .card-grid,
+        [data-template='syifa-aesthetic'] #gallery .gallery-grid,
+        [data-template='syifa-aesthetic'] #services .section-action {
+            grid-column: 2;
+        }
+        [data-template='syifa-aesthetic'] #services .card-grid--count-4,
+        [data-template='syifa-aesthetic'] #gallery .gallery-grid--count-4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        [data-template='syifa-aesthetic'] #testimonials .card-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+        [data-template='syifa-aesthetic'] #testimonials .testimonial-card {
+            min-height: 0;
+            padding-block: var(--space-6);
+        }
+
+        [data-template='syifa-specialist'] #services > .public-container,
+        [data-template='syifa-specialist'] #gallery > .public-container {
+            display: grid;
+            grid-template-columns: minmax(16rem, 0.72fr) minmax(0, 1.28fr);
+            align-items: start;
+            gap: clamp(var(--space-10), 6vw, var(--space-20));
+        }
+        [data-template='syifa-specialist'] #services .section-heading,
+        [data-template='syifa-specialist'] #gallery .section-heading {
+            margin-bottom: 0;
+        }
+        [data-template='syifa-specialist'] #services .card-grid,
+        [data-template='syifa-specialist'] #gallery .gallery-grid,
+        [data-template='syifa-specialist'] #services .section-action {
+            grid-column: 2;
+        }
+        [data-template='syifa-specialist'] #services .card-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+        [data-template='syifa-specialist'] #services .service-card {
+            min-height: 8.5rem;
+        }
+        [data-template='syifa-specialist'] #gallery .gallery-grid--count-4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
     }
 }
@@ -2992,6 +3245,10 @@
     }
 
     @media (min-width: 48rem) and (max-width: 63.999rem) {
+        .gallery-grid.gallery-grid--count-4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         [data-template='syifa-aesthetic'] .card-grid--services .service-card:nth-child(2n) {
             border-right: 0;
         }
@@ -3110,6 +3367,21 @@
         }
         .navbar__booking-label--short {
             display: inline;
+        }
+    }
+
+    @media (max-width: 30rem) {
+        [data-template='syifa-aesthetic'] .doctor-card {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto auto;
+        }
+        [data-template='syifa-aesthetic'] .doctor-card__media,
+        [data-template='syifa-aesthetic'] .doctor-card__fallback {
+            min-height: 0;
+            aspect-ratio: 4 / 3;
+        }
+        [data-template='syifa-aesthetic'] .doctor-card__image {
+            object-position: center 20%;
         }
     }
 
@@ -4160,6 +4432,106 @@
     }
 }
 
+/* Gallery interaction follows the active template's existing layout and tokens. */
+.gallery-item__button {
+    position: relative;
+    display: block;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    overflow: hidden;
+    color: inherit;
+    cursor: zoom-in;
+    line-height: 0;
+}
+.gallery-item__image {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    transition: transform var(--motion-standard) var(--ease-standard);
+}
+.gallery-item__button:hover .gallery-item__image {
+    transform: scale(1.025);
+}
+.gallery-item__view {
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    border: 0.0625rem solid var(--border-inverse);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--surface-inverse) 82%, transparent);
+    padding: 0.35rem 0.7rem;
+    color: var(--text-inverse);
+    font-size: 0.72rem;
+    font-weight: 750;
+    opacity: 0;
+    transform: translateY(0.25rem);
+    transition:
+        opacity var(--motion-fast) var(--ease-standard),
+        transform var(--motion-fast) var(--ease-standard);
+}
+.gallery-item__button:hover .gallery-item__view,
+.gallery-item__button:focus-visible .gallery-item__view {
+    opacity: 1;
+    transform: none;
+}
+.gallery-lightbox {
+    width: min(92vw, 72rem);
+    max-width: none;
+    max-height: 92vh;
+    border: 0;
+    border-radius: var(--radius-medium);
+    background: var(--surface-inverse);
+    padding: 0;
+    overflow: visible;
+    color: #fff;
+    box-shadow: 0 2rem 6rem rgb(0 0 0 / 45%);
+}
+.gallery-lightbox::backdrop {
+    background: rgb(2 6 23 / 82%);
+    backdrop-filter: blur(0.25rem);
+}
+.gallery-lightbox figure {
+    margin: 0;
+}
+.gallery-lightbox img {
+    display: block;
+    width: 100%;
+    max-height: 82vh;
+    border-radius: inherit;
+    object-fit: contain;
+}
+.gallery-lightbox figcaption {
+    padding: 0.85rem 1rem 1rem;
+    color: var(--text-inverse-soft);
+    font-size: 0.9rem;
+}
+.gallery-lightbox__close {
+    position: absolute;
+    z-index: 1;
+    top: -0.9rem;
+    right: -0.9rem;
+    display: grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    border: 0.0625rem solid var(--border-default);
+    border-radius: 50%;
+    background: var(--surface-primary);
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+@media (max-width: 40rem) {
+    .gallery-lightbox__close {
+        top: 0.6rem;
+        right: 0.6rem;
+    }
+}
+
 @media (max-width: 39.999rem) {
     .booking-flow .booking-site-header__inner {
         min-height: 4rem;
@@ -4245,5 +4617,795 @@
 
     .booking-privacy-note {
         margin-left: 0;
+    }
+}
+/* Blog surfaces inherit each template's tokens while preserving a consistent reading rhythm. */
+.blog-listing,
+.blog-article {
+    padding-block: clamp(3rem, 8vw, 7rem);
+}
+.blog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: 1.25rem;
+    margin-block: 2rem;
+}
+.blog-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    border: 1px solid color-mix(in srgb, var(--brand-primary) 18%, #e2e8f0);
+    border-radius: 1.25rem;
+    background: var(--surface-primary);
+    padding: 0;
+    overflow: hidden;
+    box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, var(--brand-primary) 6%, transparent);
+    transition:
+        transform 180ms ease,
+        box-shadow 180ms ease;
+}
+.blog-card:hover,
+.blog-card:focus-within {
+    transform: translateY(-0.125rem);
+    box-shadow: 0 0.75rem 1.75rem color-mix(in srgb, var(--brand-primary) 8%, transparent);
+}
+.blog-card-image {
+    display: block;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--brand-primary) 8%, white);
+}
+.blog-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 300ms ease;
+}
+.blog-card:hover .blog-card-image img {
+    transform: scale(1.035);
+}
+.blog-card-body {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    padding: 1.5rem;
+}
+.blog-card h2,
+.blog-card h3 {
+    display: -webkit-box;
+    overflow: hidden;
+    margin: 0.5rem 0;
+    font-size: 1.25rem;
+    line-height: 1.3;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+.blog-card a {
+    color: var(--brand-primary);
+    text-decoration-thickness: 0.1em;
+    text-underline-offset: 0.2em;
+}
+.blog-card-category {
+    display: inline-flex;
+    margin: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--brand-primary) 10%, white);
+    color: var(--brand-primary);
+    padding: 0.35rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.blog-card-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.blog-card-meta-row time {
+    flex: 0 0 auto;
+    color: #64748b;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+.blog-card-excerpt {
+    display: -webkit-box;
+    overflow: hidden;
+    color: #475569;
+    line-height: 1.65;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+.blog-card-meta {
+    margin-top: 1.25rem;
+    color: #64748b;
+}
+.latest-articles {
+    padding-block: clamp(3rem, 7vw, 6rem);
+}
+.blog-slider {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--brand-primary) 4%, white);
+    padding-block: clamp(3rem, 6vw, 5rem);
+}
+.blog-slider::before {
+    content: none;
+}
+.blog-slider__header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1.5rem;
+}
+.blog-slider__header {
+    margin-bottom: clamp(1.75rem, 4vw, 2.75rem);
+}
+.blog-slider__controls {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.65rem;
+    padding-bottom: 1rem;
+}
+.blog-slider__status {
+    margin-right: 0.25rem;
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+.blog-slider__heading {
+    position: relative;
+    max-width: 40rem;
+}
+.blog-slider__eyebrow {
+    display: inline-flex;
+    margin-bottom: 0.6rem;
+    color: var(--brand-primary);
+    font-size: 0.75rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+.blog-slider__heading h2 {
+    max-width: 20ch;
+    margin: 0;
+    font-size: clamp(2rem, 3.5vw, 2.75rem);
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+}
+.blog-slider__heading p {
+    max-width: 36rem;
+    margin: 0.75rem 0 0;
+    color: #475569;
+    font-size: clamp(1rem, 1.4vw, 1.1rem);
+    line-height: 1.6;
+}
+.blog-slider__controls button {
+    display: grid;
+    width: 3rem;
+    height: 3rem;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--brand-primary) 25%, #cbd5e1);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--brand-primary);
+    font-size: 1.25rem;
+    cursor: pointer;
+}
+.blog-slider__controls button:hover:not(:disabled) {
+    background: var(--brand-primary);
+    color: var(--brand-on-primary);
+}
+.blog-slider__controls button:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+}
+.blog-slider__viewport {
+    margin-right: calc((100vw - min(100vw - 2rem, var(--container-content))) / -2);
+    padding-right: max(1rem, calc((100vw - var(--container-content)) / 2));
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 0;
+}
+.blog-slider__viewport::-webkit-scrollbar {
+    display: none;
+}
+.blog-slider__track {
+    display: flex;
+    gap: 1.25rem;
+    width: max-content;
+    padding-block: 1rem 2.25rem;
+}
+.blog-slider .blog-card {
+    width: clamp(21rem, 65vw, 30rem);
+    flex: 0 0 clamp(21rem, 65vw, 30rem);
+    scroll-snap-align: start;
+}
+.blog-slider--single .blog-slider__viewport {
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow: visible;
+}
+.blog-slider--single .blog-slider__track {
+    max-width: 64rem;
+    margin-inline: auto;
+    width: 100%;
+    padding-block: 0;
+}
+.blog-slider--single .blog-card {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    align-items: stretch;
+}
+.blog-slider--single .blog-card-image {
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 4 / 3;
+}
+.blog-slider--single .blog-card-body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(1.75rem, 4vw, 3rem);
+}
+.blog-slider--single .blog-card h3 {
+    margin-block: 0.85rem;
+    font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+    line-height: 1.2;
+}
+.blog-slider--single .blog-card-read-more {
+    margin-top: 1.25rem;
+}
+.blog-card-read-more {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+    margin-top: 0.75rem;
+    font-weight: 800;
+}
+.blog-card-body .blog-card-read-more {
+    margin-top: auto;
+    padding-top: 1rem;
+}
+.blog-cta a {
+    display: inline-flex;
+    border-radius: 999px;
+    background: var(--brand-primary);
+    color: var(--brand-on-primary);
+    padding: 0.8rem 1.2rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+.blog-page {
+    background: #fff;
+    color: #17211e;
+}
+.blog-page-header {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--brand-primary) 12%, #e2e8f0);
+    background: rgb(255 255 255 / 92%);
+    backdrop-filter: blur(0.8rem);
+}
+.blog-page-nav {
+    display: flex;
+    min-height: 4.5rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.blog-page-brand {
+    overflow: hidden;
+    color: #17211e;
+    font-size: 1rem;
+    font-weight: 850;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.blog-page-back,
+.blog-article__breadcrumb {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--brand-primary);
+    font-weight: 750;
+    text-decoration: none;
+}
+.blog-page-back:hover,
+.blog-article__breadcrumb:hover {
+    text-decoration: underline;
+}
+.blog-article {
+    max-width: none;
+    padding-block: 0 clamp(4rem, 8vw, 7rem);
+}
+.blog-article__header {
+    padding-block: clamp(2.5rem, 7vw, 5.5rem) clamp(2rem, 5vw, 3.5rem);
+}
+.blog-article__breadcrumb {
+    margin-bottom: clamp(1.75rem, 4vw, 2.75rem);
+    font-size: 0.88rem;
+}
+.blog-article__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+}
+.blog-article__meta time {
+    color: #64748b;
+    font-size: 0.88rem;
+    font-weight: 650;
+}
+.blog-article h1 {
+    max-width: 19ch;
+    margin: 0;
+    font-size: clamp(2.25rem, 6vw, 4.75rem);
+    line-height: 1.04;
+    letter-spacing: -0.045em;
+    text-wrap: balance;
+}
+.blog-article__lead {
+    max-width: 42rem;
+    margin: 1.5rem 0 0;
+    color: #475569;
+    font-size: clamp(1.08rem, 2vw, 1.3rem);
+    line-height: 1.65;
+}
+.blog-article__byline {
+    margin: 1.25rem 0 0;
+    color: #64748b;
+    font-size: 0.92rem;
+}
+.blog-article__byline strong {
+    color: #334155;
+}
+.blog-article__media {
+    max-width: var(--container-reading);
+    margin-bottom: clamp(2.75rem, 7vw, 5rem);
+    border: 1px solid color-mix(in srgb, var(--brand-primary) 12%, #e2e8f0);
+    border-radius: clamp(1rem, 2vw, 1.5rem);
+    background: color-mix(in srgb, var(--brand-primary) 4%, #f8fafc);
+    padding: 0;
+    overflow: hidden;
+    box-shadow: 0 1rem 2.75rem rgb(15 23 42 / 9%);
+}
+.blog-article__media img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    object-position: center;
+}
+.blog-prose {
+    color: #334155;
+    font-size: clamp(1rem, 1.4vw, 1.125rem);
+    line-height: 1.85;
+}
+.blog-prose > :first-child {
+    margin-top: 0;
+}
+.blog-prose h2,
+.blog-prose h3 {
+    color: #17211e;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+.blog-prose h2 {
+    margin: 2.3em 0 0.7em;
+    font-size: clamp(1.55rem, 3vw, 2rem);
+}
+.blog-prose h3 {
+    margin: 1.9em 0 0.55em;
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
+}
+.blog-prose p {
+    margin-block: 0 1.35em;
+}
+.blog-prose a {
+    color: var(--brand-primary);
+    font-weight: 700;
+}
+.blog-prose strong {
+    color: #17211e;
+}
+.blog-prose ul,
+.blog-prose ol {
+    padding-left: 1.35rem;
+}
+.blog-prose li + li {
+    margin-top: 0.55rem;
+}
+.blog-share {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: clamp(3rem, 7vw, 5rem);
+    border-top: 1px solid color-mix(in srgb, var(--brand-primary) 18%, #e2e8f0);
+    border-bottom: 1px solid color-mix(in srgb, var(--brand-primary) 18%, #e2e8f0);
+    padding-block: clamp(1.5rem, 4vw, 2.25rem);
+}
+.blog-share__eyebrow {
+    color: var(--brand-primary);
+    font-size: 0.72rem;
+    font-weight: 850;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+.blog-share h2 {
+    margin: 0.4rem 0 0;
+    font-size: clamp(1.2rem, 2.5vw, 1.55rem);
+    line-height: 1.25;
+}
+.blog-share__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+.blog-share__actions a,
+.blog-share__actions button {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--brand-primary) 25%, #cbd5e1);
+    border-radius: var(--radius-pill);
+    background: var(--surface-primary);
+    color: var(--brand-primary);
+    padding: 0.65rem 1rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 750;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        border-color 160ms ease,
+        background 160ms ease,
+        color 160ms ease;
+}
+.blog-share__actions a:hover,
+.blog-share__actions button:hover {
+    border-color: var(--brand-primary);
+    background: var(--brand-primary);
+    color: var(--brand-on-primary);
+}
+.blog-share__status {
+    min-height: 1.25rem;
+    margin: -0.5rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+[data-template='syifa-dental'] .blog-share__actions a,
+[data-template='syifa-dental'] .blog-share__actions button,
+[data-template='syifa-specialist'] .blog-share__actions a,
+[data-template='syifa-specialist'] .blog-share__actions button {
+    border-radius: var(--radius-small);
+}
+[data-template='syifa-aesthetic'] .blog-share__actions a,
+[data-template='syifa-aesthetic'] .blog-share__actions button {
+    border-radius: var(--radius-small);
+}
+.blog-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(1.5rem, 5vw, 3.5rem);
+    margin-top: clamp(3.5rem, 8vw, 6rem);
+    border: 1px solid color-mix(in srgb, var(--brand-primary) 16%, #e2e8f0);
+    border-radius: clamp(1rem, 2.5vw, 1.75rem);
+    background: color-mix(in srgb, var(--brand-primary) 7%, white);
+    padding: clamp(1.5rem, 5vw, 3rem);
+}
+.blog-cta__eyebrow {
+    color: var(--brand-primary);
+    font-size: 0.75rem;
+    font-weight: 850;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+.blog-cta h2 {
+    max-width: 24ch;
+    margin: 0.55rem 0 0;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    line-height: 1.2;
+    text-wrap: balance;
+}
+.blog-cta p {
+    max-width: 38rem;
+    margin: 0.75rem 0 0;
+    color: #475569;
+    line-height: 1.6;
+}
+.blog-cta a {
+    flex: 0 0 auto;
+    justify-content: center;
+    min-width: 10rem;
+}
+[data-template='syifa-dental'] .blog-card {
+    border-radius: 0.75rem;
+}
+[data-template='syifa-aesthetic'] .blog-card {
+    box-shadow: none;
+}
+[data-template='syifa-aesthetic'] .blog-card:hover,
+[data-template='syifa-aesthetic'] .blog-card:focus-within {
+    border-color: var(--border-strong);
+    box-shadow: 0 0.75rem 2rem color-mix(in srgb, var(--accent-warm) 7%, transparent);
+}
+[data-template='syifa-specialist'] .blog-card {
+    border-left: 4px solid var(--brand-primary);
+}
+[data-template='syifa-care'] .blog-card {
+    border-radius: 2rem;
+    box-shadow: 0 0.4rem 1.25rem color-mix(in srgb, var(--brand-primary) 4%, transparent);
+}
+[data-template='syifa-care'] .blog-card:hover,
+[data-template='syifa-care'] .blog-card:focus-within {
+    border-color: var(--border-strong);
+    background: color-mix(in srgb, var(--surface-primary) 96%, var(--surface-subtle));
+    box-shadow: 0 0.65rem 1.5rem color-mix(in srgb, var(--brand-primary) 6%, transparent);
+}
+[data-template='syifa-dental'] .blog-slider {
+    background: color-mix(in srgb, var(--brand-primary) 3%, #f8fafc);
+}
+[data-template='syifa-aesthetic'] .blog-slider {
+    background: color-mix(in srgb, var(--brand-secondary) 7%, #fffaf7);
+}
+[data-template='syifa-specialist'] .blog-slider__controls button {
+    border-radius: 0.5rem;
+}
+[data-template='syifa-care'] .blog-slider {
+    background: color-mix(in srgb, var(--brand-primary) 5%, white);
+}
+@media (max-width: 860px) {
+    .blog-article__media {
+        border-radius: 1.125rem;
+    }
+    .blog-cta {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .blog-cta a {
+        align-self: flex-start;
+    }
+    .blog-slider--single .blog-card {
+        display: block;
+    }
+    .blog-slider--single .blog-card-image {
+        height: auto;
+        min-height: 0;
+        aspect-ratio: 16 / 9;
+    }
+    .blog-slider--single .blog-card-body {
+        padding: clamp(1.5rem, 5vw, 2.5rem);
+    }
+}
+@media (min-width: 64rem) {
+    .blog-slider:not(.blog-slider--single) .blog-card {
+        width: clamp(22rem, 38vw, 28rem);
+        flex-basis: clamp(22rem, 38vw, 28rem);
+    }
+}
+@media (max-width: 640px) {
+    .blog-grid {
+        grid-template-columns: 1fr;
+    }
+    .blog-page-nav {
+        min-height: 4rem;
+    }
+    .blog-page-brand {
+        max-width: 52vw;
+        font-size: 0.92rem;
+    }
+    .blog-page-back {
+        font-size: 0.85rem;
+    }
+    .blog-article__header {
+        padding-block: 2rem 1.75rem;
+    }
+    .blog-article__breadcrumb {
+        margin-bottom: 1.5rem;
+    }
+    .blog-article h1 {
+        font-size: clamp(2rem, 10.5vw, 2.75rem);
+        line-height: 1.07;
+    }
+    .blog-article__lead {
+        margin-top: 1.1rem;
+        font-size: 1.02rem;
+        line-height: 1.6;
+    }
+    .blog-article__media {
+        margin-bottom: 2.5rem;
+        border-radius: 0.875rem;
+        box-shadow: 0 0.75rem 2rem rgb(15 23 42 / 8%);
+    }
+    .blog-article__media img {
+        aspect-ratio: 4 / 3;
+    }
+    .blog-prose {
+        font-size: 1rem;
+        line-height: 1.8;
+    }
+    .blog-cta {
+        margin-top: 3.25rem;
+        padding: 1.5rem;
+    }
+    .blog-cta a {
+        width: 100%;
+        align-self: stretch;
+    }
+    .blog-slider__header {
+        display: block;
+        margin-bottom: 1.5rem;
+    }
+    .blog-slider__controls {
+        margin-top: 1rem;
+        padding-bottom: 0;
+    }
+    .blog-slider__controls button {
+        width: 2.65rem;
+        height: 2.65rem;
+    }
+    .blog-slider__heading h2 {
+        max-width: 17ch;
+        font-size: clamp(1.7rem, 7vw, 2rem);
+        line-height: 1.15;
+    }
+    .blog-slider__heading p {
+        max-width: 32rem;
+        margin-top: 0.65rem;
+        font-size: 0.95rem;
+        line-height: 1.55;
+    }
+    .blog-slider__viewport {
+        margin-right: -1rem;
+        padding-right: 1rem;
+        scroll-padding-left: 0;
+    }
+    .blog-slider__track {
+        gap: 0.9rem;
+        padding-block: 1.25rem 1.5rem;
+    }
+    .blog-slider .blog-card,
+    .blog-slider--single .blog-card {
+        width: calc(100vw - 4rem);
+        flex-basis: calc(100vw - 4rem);
+    }
+    .blog-slider:not(.blog-slider--single) .blog-card {
+        display: flex;
+    }
+    .blog-slider--single .blog-slider__viewport {
+        margin-inline: 0;
+        padding-inline: 0;
+        overflow: visible;
+    }
+    .blog-slider--single .blog-slider__track {
+        width: 100%;
+        padding-block: 0;
+    }
+    .blog-slider--single .blog-card {
+        width: 100%;
+        flex-basis: auto;
+    }
+    .blog-slider--single .blog-card-image {
+        height: auto;
+        min-height: 0;
+        aspect-ratio: 16 / 10;
+    }
+    .blog-slider--single .blog-card-body,
+    .blog-card-body {
+        padding: 1.25rem;
+    }
+    .blog-slider--single .blog-card h3 {
+        margin-block: 0.8rem;
+        font-size: 1.35rem;
+    }
+}
+
+@layer components {
+    /* Doctor profiles provide structure only; template rules retain visual authority. */
+    #doctors .section-heading {
+        max-width: 42rem;
+        margin-bottom: clamp(1.75rem, 4vw, 3rem);
+    }
+    #doctors .section-heading > p:last-child:not(.eyebrow) {
+        max-width: 38rem;
+    }
+    .card-grid--doctors {
+        align-items: stretch;
+        gap: clamp(1rem, 2.5vw, 1.5rem);
+    }
+    .doctor-card {
+        display: grid;
+        height: 100%;
+        grid-template-rows: auto 1fr;
+    }
+    .doctor-card__media {
+        overflow: hidden;
+        aspect-ratio: 3 / 4;
+    }
+    .doctor-card__image {
+        object-position: center 20%;
+        transition: transform var(--motion-standard) var(--ease-standard);
+    }
+    .doctor-card:hover .doctor-card__image {
+        transform: scale(1.025);
+    }
+    .doctor-card__content {
+        align-content: start;
+        min-width: 0;
+        min-height: 8rem;
+        padding: clamp(1.2rem, 2.7vw, 1.65rem);
+    }
+    .doctor-card__content h3 {
+        margin: 0;
+        font-size: clamp(1.2rem, 2vw, 1.48rem);
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+    }
+    .doctor-card__title {
+        margin: 0;
+        font-size: 0.94rem;
+        line-height: 1.55;
+    }
+    .doctor-card__fallback {
+        display: grid;
+        aspect-ratio: 3 / 4;
+        place-items: center;
+        background: linear-gradient(145deg, var(--surface-emphasis), var(--brand-secondary));
+        color: var(--brand-primary);
+        font-family: var(--font-display);
+        font-size: clamp(3rem, 8vw, 5rem);
+        font-weight: 750;
+    }
+    .doctor-card--text {
+        min-height: 0;
+        align-content: stretch;
+    }
+
+    @media (max-width: 47.999rem) {
+        #doctors .section-heading {
+            margin-bottom: 1.5rem;
+        }
+        .card-grid--doctors {
+            gap: 0.875rem;
+        }
+        .doctor-card {
+            grid-template-columns: 8rem minmax(0, 1fr);
+            grid-template-rows: minmax(9.5rem, auto);
+            align-items: stretch;
+        }
+        .doctor-card__media,
+        .doctor-card__fallback {
+            height: 100%;
+            min-height: 9.5rem;
+            aspect-ratio: auto;
+        }
+        .doctor-card__content {
+            min-height: 0;
+            align-content: center;
+            padding: 1.2rem;
+        }
+        .doctor-card__content h3 {
+            font-size: 1.15rem;
+        }
+        .doctor-card__title {
+            font-size: 0.88rem;
+            line-height: 1.45;
+        }
+        .doctor-card--text {
+            grid-template-columns: 5.5rem minmax(0, 1fr);
+        }
     }
 }

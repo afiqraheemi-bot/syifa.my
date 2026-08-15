@@ -47,6 +47,7 @@ return [
             'booking.schedule.manage',
             'syifa_ai.assist',
             'custom_domain',
+            'website.blog.manage',
         ],
     ],
 ];

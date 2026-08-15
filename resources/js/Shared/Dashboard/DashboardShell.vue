@@ -44,16 +44,16 @@ defineProps({
 
 const collapsed = ref(false);
 const mobileOpen = ref(false);
-const operations = computed(() => usePage().props.superAdminOperations ?? null);
-const pendingJobs = computed(() => Math.max(0, Number(operations.value?.pending_jobs) || 0));
-const recentPendingJobs = computed(() => operations.value?.recent_jobs ?? []);
+const operations = computed(() => usePage().props.dashboardOperations ?? null);
+const pendingJobs = computed(() => Math.max(0, Number(operations.value?.pending_count) || 0));
+const recentPendingJobs = computed(() => operations.value?.items ?? []);
 const pendingJobsCount = computed(() =>
     pendingJobs.value > 99 ? '99+' : String(pendingJobs.value),
 );
 const pendingJobsLabel = computed(() =>
     pendingJobs.value === 1
-        ? '1 onboarding job is waiting'
-        : `${pendingJobs.value} onboarding jobs are waiting`,
+        ? `1 ${operations.value?.singular_label ?? 'task is waiting'}`
+        : `${pendingJobs.value} ${operations.value?.plural_label ?? 'tasks are waiting'}`,
 );
 
 function statusLabel(status) {
@@ -97,7 +97,7 @@ function statusLabel(status) {
                     <details v-if="pendingJobs > 0" class="group/pending relative">
                         <summary
                             class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2.5 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-2.5 py-1.5 text-amber-950 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 sm:px-3 [&::-webkit-details-marker]:hidden"
-                            :aria-label="`${pendingJobsLabel}. Show pending job list.`"
+                            :aria-label="`${pendingJobsLabel}. Show pending work list.`"
                         >
                             <span
                                 class="relative flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700"
@@ -149,10 +149,10 @@ function statusLabel(status) {
                         >
                             <div class="border-b border-slate-100 px-4 py-3.5">
                                 <p class="text-sm font-black text-slate-950">
-                                    Pending onboarding jobs
+                                    {{ operations.heading }}
                                 </p>
                                 <p class="mt-0.5 text-xs text-slate-500">
-                                    Choose a clinic to review its pending work.
+                                    {{ operations.description }}
                                 </p>
                             </div>
                             <ul
@@ -177,7 +177,11 @@ function statusLabel(status) {
                                             >
                                             <span
                                                 class="mt-0.5 block text-xs font-semibold text-amber-700"
-                                                >{{ statusLabel(job.status) }}</span
+                                                >{{
+                                                    job.pending_tasks
+                                                        ? `${job.pending_tasks} ${job.pending_tasks === 1 ? 'task' : 'tasks'} · ${statusLabel(job.status)}`
+                                                        : statusLabel(job.status)
+                                                }}</span
                                             >
                                         </span>
                                         <svg
@@ -195,13 +199,13 @@ function statusLabel(status) {
                                 </li>
                             </ul>
                             <p v-else class="px-4 py-5 text-center text-sm text-slate-500">
-                                Pending jobs are being refreshed.
+                                {{ operations.empty_label }}
                             </p>
                             <a
-                                :href="operations.onboarding_url"
+                                :href="operations.all_url"
                                 class="flex min-h-11 items-center justify-center border-t border-slate-100 px-4 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
                             >
-                                View all pending jobs
+                                {{ operations.all_label }}
                             </a>
                         </div>
                     </details>

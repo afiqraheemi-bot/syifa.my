@@ -26,11 +26,11 @@ const copy = computed(() =>
               empty: 'Package pricing will be available soon.',
               compareTitle: 'Basic or Standard?',
               compareBody:
-                  'Both cover the essentials. Choose Standard when you want more automation and a professional domain.',
+                  'Both cover the essentials. Clinic Blog publishing is available only with Standard.',
               basicLabel: 'Start with the essentials',
               basicSummary: 'Managed website + online booking',
               standardLabel: 'Grow with more capability',
-              standardSummary: 'Everything in Basic + AI + custom domain',
+              standardSummary: 'Everything in Basic + AI + custom domain + clinic Blog',
               bestFor: 'Best for',
               includes: 'What you get',
               everythingBasic: 'Everything in Basic, plus:',
@@ -46,6 +46,7 @@ const copy = computed(() =>
               standardFeatures: [
                   'SYIFA AI Assistant',
                   'Your own custom domain',
+                  'SEO-friendly clinic Blog with article metadata and sitemap',
                   'Managed website and online booking',
               ],
               trialFeatures: [
@@ -68,11 +69,11 @@ const copy = computed(() =>
               empty: 'Harga pakej akan tersedia tidak lama lagi.',
               compareTitle: 'Basic atau Standard?',
               compareBody:
-                  'Kedua-duanya merangkumi keperluan utama. Pilih Standard apabila anda mahukan lebih automasi dan domain profesional.',
+                  'Kedua-duanya merangkumi keperluan utama. Blog klinik hanya tersedia dalam Standard.',
               basicLabel: 'Mulakan dengan keperluan utama',
               basicSummary: 'Website terurus + tempahan online',
               standardLabel: 'Berkembang dengan lebih keupayaan',
-              standardSummary: 'Semua dalam Basic + AI + custom domain',
+              standardSummary: 'Semua dalam Basic + AI + custom domain + Blog klinik',
               bestFor: 'Paling sesuai untuk',
               includes: 'Apa yang anda dapat',
               everythingBasic: 'Semua dalam Basic, ditambah:',
@@ -89,6 +90,7 @@ const copy = computed(() =>
               standardFeatures: [
                   'SYIFA AI Assistant',
                   'Custom domain milik anda',
+                  'Blog klinik mesra SEO dengan metadata artikel dan sitemap',
                   'Website terurus dan tempahan online',
               ],
               trialFeatures: [

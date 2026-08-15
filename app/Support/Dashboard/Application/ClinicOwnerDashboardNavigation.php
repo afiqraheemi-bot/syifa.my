@@ -22,6 +22,7 @@ final class ClinicOwnerDashboardNavigation
                 ['key' => 'content', 'label' => 'Content', 'route' => 'dashboard.website.content'],
                 ['key' => 'services', 'label' => 'Services', 'route' => 'dashboard.services'],
                 ['key' => 'bookings', 'label' => 'Bookings', 'route' => 'dashboard.bookings'],
+                ['key' => 'blog', 'label' => 'Blog', 'route' => 'dashboard.blog'],
                 ['key' => 'subscription', 'label' => 'Subscription', 'route' => 'dashboard.subscription'],
                 ['key' => 'notifications', 'label' => 'Notifications', 'route' => 'dashboard.notifications'],
                 ['key' => 'reports', 'label' => 'Reports', 'route' => 'dashboard.reports'],

@@ -67,7 +67,7 @@ final class WebsiteDraftContentArchitectureTest extends TestCase
         self::assertStringContainsString('JSON.stringify(submission)', $draftEditor);
         self::assertStringContainsString('Your form is still intact', $draftEditor);
         self::assertStringContainsString(
-            "defineEmits(['state', 'website-version'])",
+            "defineEmits(['state', 'website-version', 'save-all'])",
             $draftEditor,
         );
         self::assertStringContainsString('@uploaded="synchronizeWebsiteVersion"', $draftEditor);

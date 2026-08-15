@@ -326,21 +326,21 @@ const trustBadges = [
                                     stroke-linejoin="round"
                                 />
                             </svg>
-                            Berdaftar Dengan KKM
+                            Registered with MOH Malaysia
                         </span>
 
                         <h1
                             class="mt-7 text-4xl leading-[1.1] font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl"
                         >
-                            Penjagaan mesra untuk
+                            Friendly care for
                             <span class="inline-block rounded-lg bg-blue-100 px-2 text-blue-700"
-                                >keluarga anda</span
-                            >, bila-bila masa.
+                                >your family</span
+                            >, whenever you need it.
                         </h1>
 
                         <p class="mt-6 max-w-lg text-lg leading-8 text-stone-600">
-                            Rawatan perubatan menyeluruh dengan sentuhan mesra, untuk setiap
-                            peringkat umur dalam keluarga anda — dari bayi hingga datuk nenek.
+                            Comprehensive medical care with a friendly touch for every generation in
+                            your family — from infants to grandparents.
                         </p>
 
                         <div class="mt-9 flex flex-wrap items-center gap-4">
@@ -466,10 +466,10 @@ const trustBadges = [
                     <span
                         class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1 text-xs font-bold tracking-wide text-blue-700"
                     >
-                        Perkhidmatan Kami
+                        Our Services
                     </span>
                     <h2 class="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                        Rawatan menyeluruh untuk setiap peringkat umur
+                        Comprehensive care for every stage of life
                     </h2>
                 </div>
 
@@ -543,10 +543,10 @@ const trustBadges = [
             <section id="doktor" class="mx-auto max-w-7xl px-6 py-20 sm:py-28 lg:px-10">
                 <div data-reveal class="reveal max-w-2xl">
                     <p class="text-sm font-bold tracking-[0.2em] text-blue-700 uppercase">
-                        Pasukan Perubatan
+                        Medical Team
                     </p>
                     <h2 class="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                        Doktor berpengalaman &amp; peramah
+                        Experienced and approachable doctors
                     </h2>
                 </div>
 
@@ -591,12 +591,12 @@ const trustBadges = [
                 <div class="mx-auto max-w-7xl px-6 lg:px-10">
                     <div data-reveal class="reveal max-w-2xl">
                         <p class="text-sm font-bold tracking-[0.2em] text-blue-700 uppercase">
-                            Testimoni Pesakit
+                            Patient Stories
                         </p>
                         <h2
                             class="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl"
                         >
-                            Dipercayai keluarga Malaysia
+                            Trusted by Malaysian families
                         </h2>
                     </div>
 
@@ -657,12 +657,12 @@ const trustBadges = [
                 <div class="grid gap-12 lg:grid-cols-2 lg:items-start">
                     <div data-reveal class="reveal">
                         <p class="text-sm font-bold tracking-[0.2em] text-blue-700 uppercase">
-                            Lokasi &amp; Waktu Operasi
+                            Location &amp; Opening Hours
                         </p>
                         <h2
                             class="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl"
                         >
-                            Kunjungi kami hari ini
+                            Visit us today
                         </h2>
                         <p class="mt-5 max-w-md text-stone-600">
                             47, Jalan Bestari 2, Seksyen 9, 46000 Petaling Jaya, Selangor, Malaysia.
@@ -737,11 +737,11 @@ const trustBadges = [
                     class="reveal overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-900 via-slate-800 to-blue-700 px-8 py-16 text-center text-white sm:px-16"
                 >
                     <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">
-                        Sedia jaga kesihatan keluarga anda?
+                        Ready to care for your family's health?
                     </h2>
                     <p class="mx-auto mt-4 max-w-xl text-slate-100">
-                        Tempah janji temu hari ini dan alami perkhidmatan perubatan yang peramah,
-                        telus, dan boleh dipercayai.
+                        Book an appointment today and experience friendly, transparent healthcare
+                        you can trust.
                     </p>
                     <a
                         href="#lokasi"

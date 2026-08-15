@@ -1,3 +1,4 @@
+@props(['document', 'blogEnabled' => false, 'blogUrl' => '/blog'])
 @php
     $logoId = $document->website->header->logoAssetId;
     $logoUrl = $logoId === null ? null : ($document->assetUrls[$logoId] ?? null);
@@ -24,6 +25,9 @@
                             <a href="{{ $item->url->value }}">{{ $item->label }}</a>
                         @endif
                     @endforeach
+                    @if($blogEnabled)
+                        <a href="{{ $blogUrl }}">Blog</a>
+                    @endif
                 </div>
             </nav>
             <div class="navbar__actions">
