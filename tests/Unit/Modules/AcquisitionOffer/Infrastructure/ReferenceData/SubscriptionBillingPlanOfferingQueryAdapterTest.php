@@ -21,12 +21,12 @@ final class SubscriptionBillingPlanOfferingQueryAdapterTest extends TestCase
         config()->set('subscription_packages.public_package_order', [
             'package:syifa-trial',
             'package:syifa-basic',
-            'package:syifa-standard',
+            'package:syifa-pro',
         ]);
 
         $offerings = [
             $this->offering('demo-offer', 'demo-plan', 'annual-cycle', 120000, 'package:demo-essential', 5),
-            $this->offering('standard-offer', 'standard-plan', 'annual-cycle', 39900, 'package:syifa-standard', 30),
+            $this->offering('pro-offer', 'pro-plan', 'annual-cycle', 39900, 'package:syifa-pro', 30),
             $this->offering('trial-offer', 'trial-plan', 'trial-cycle', 0, 'package:syifa-trial', 10),
             $this->offering('basic-offer', 'basic-plan', 'annual-cycle', 29900, 'package:syifa-basic', 20),
         ];
@@ -34,7 +34,7 @@ final class SubscriptionBillingPlanOfferingQueryAdapterTest extends TestCase
         $adapter = $this->adapter($offerings);
         $available = $adapter->listAvailable('2026-08-11');
 
-        self::assertSame(['Syifa Trial', 'Syifa Basic', 'Syifa Standard'], array_map(
+        self::assertSame(['Syifa Trial', 'Syifa Basic', 'Syifa Pro'], array_map(
             static fn ($offer): string => $offer->planName,
             $available,
         ));
@@ -50,7 +50,7 @@ final class SubscriptionBillingPlanOfferingQueryAdapterTest extends TestCase
         config()->set('subscription_packages.public_package_order', [
             'package:syifa-trial',
             'package:syifa-basic',
-            'package:syifa-standard',
+            'package:syifa-pro',
         ]);
 
         $offerings = [
@@ -78,7 +78,7 @@ final class SubscriptionBillingPlanOfferingQueryAdapterTest extends TestCase
         $plans = [
             'trial-plan' => $this->plan('trial-plan', 'Syifa Trial'),
             'basic-plan' => $this->plan('basic-plan', 'Syifa Basic'),
-            'standard-plan' => $this->plan('standard-plan', 'Syifa Standard'),
+            'pro-plan' => $this->plan('pro-plan', 'Syifa Pro'),
             'demo-plan' => $this->plan('demo-plan', 'Demo Essential Plan'),
         ];
         $billingOptions = [

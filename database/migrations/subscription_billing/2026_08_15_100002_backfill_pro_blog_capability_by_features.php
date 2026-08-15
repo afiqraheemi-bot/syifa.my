@@ -31,6 +31,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Subscription entitlement snapshots are historical commercial evidence.
+        // Subscription entitlement snapshots remain immutable commercial evidence.
     }
 };

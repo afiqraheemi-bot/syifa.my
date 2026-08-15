@@ -147,12 +147,12 @@ final class SyifaSubscriptionPackageSeeder extends Seeder
             'displayOrder' => 20,
         ],
         [
-            'code' => 'syifa-standard',
-            'name' => 'Syifa Standard',
+            'code' => 'syifa-pro',
+            'name' => 'Syifa Pro',
             'description' => 'Pakej tahunan lengkap dengan SYIFA AI, custom domain dan Blog klinik mesra SEO — terbitkan artikel kesihatan dengan metadata, halaman artikel dan sitemap yang diurus secara tersusun.',
             'billingOptionCode' => 'syifa-annual',
             'amountMinor' => 39900,
-            'capabilityReference' => 'package:syifa-standard',
+            'capabilityReference' => 'package:syifa-pro',
             'displayOrder' => 30,
         ],
     ];

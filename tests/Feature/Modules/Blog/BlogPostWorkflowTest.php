@@ -41,7 +41,7 @@ final class BlogPostWorkflowTest extends TestCase
         $this->website($this->uuid(2), $this->uuid(22));
     }
 
-    public function test_standard_owner_creates_sanitized_draft_with_audit(): void
+    public function test_pro_owner_creates_sanitized_draft_with_audit(): void
     {
         $this->entitlements->allow($this->uuid(1));
         $id = $this->service->create($this->owner($this->uuid(1)), $this->uuid(1), $this->uuid(11), $this->content([

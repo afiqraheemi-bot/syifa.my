@@ -24,26 +24,26 @@ const copy = computed(() =>
               recommended: 'Recommended',
               noCharge: 'No charge during trial',
               empty: 'Package pricing will be available soon.',
-              compareTitle: 'Basic or Standard?',
+              compareTitle: 'Basic or Pro?',
               compareBody:
-                  'Both cover the essentials. Clinic Blog publishing is available only with Standard.',
+                  'Both cover the essentials. Clinic Blog publishing is available only with Pro.',
               basicLabel: 'Start with the essentials',
               basicSummary: 'Managed website + online booking',
-              standardLabel: 'Grow with more capability',
-              standardSummary: 'Everything in Basic + AI + custom domain + clinic Blog',
+              proLabel: 'Grow with more capability',
+              proSummary: 'Everything in Basic + AI + custom domain + clinic Blog',
               bestFor: 'Best for',
               includes: 'What you get',
               everythingBasic: 'Everything in Basic, plus:',
               basicAudience:
                   'Clinics that need a professional website and organised online bookings.',
-              standardAudience: 'Clinics ready to automate work and strengthen their online brand.',
+              proAudience: 'Clinics ready to automate work and strengthen their online brand.',
               trialAudience: 'Clinics that want to explore the core workflow before subscribing.',
               basicFeatures: [
                   'Managed clinic website',
                   'Online booking system',
                   'Content and branding management',
               ],
-              standardFeatures: [
+              proFeatures: [
                   'SYIFA AI Assistant',
                   'Your own custom domain',
                   'SEO-friendly clinic Blog with article metadata and sitemap',
@@ -67,19 +67,19 @@ const copy = computed(() =>
               recommended: 'Disyorkan',
               noCharge: 'Tiada caj sepanjang tempoh percubaan',
               empty: 'Harga pakej akan tersedia tidak lama lagi.',
-              compareTitle: 'Basic atau Standard?',
+              compareTitle: 'Basic atau Pro?',
               compareBody:
-                  'Kedua-duanya merangkumi keperluan utama. Blog klinik hanya tersedia dalam Standard.',
+                  'Kedua-duanya merangkumi keperluan utama. Blog klinik hanya tersedia dalam Pro.',
               basicLabel: 'Mulakan dengan keperluan utama',
               basicSummary: 'Website terurus + tempahan online',
-              standardLabel: 'Berkembang dengan lebih keupayaan',
-              standardSummary: 'Semua dalam Basic + AI + custom domain + Blog klinik',
+              proLabel: 'Berkembang dengan lebih keupayaan',
+              proSummary: 'Semua dalam Basic + AI + custom domain + Blog klinik',
               bestFor: 'Paling sesuai untuk',
               includes: 'Apa yang anda dapat',
               everythingBasic: 'Semua dalam Basic, ditambah:',
               basicAudience:
                   'Klinik yang perlukan website profesional dan tempahan online yang teratur.',
-              standardAudience:
+              proAudience:
                   'Klinik yang bersedia mengautomasikan kerja dan mengukuhkan jenama online.',
               trialAudience: 'Klinik yang mahu mencuba aliran utama sebelum melanggan.',
               basicFeatures: [
@@ -87,7 +87,7 @@ const copy = computed(() =>
                   'Sistem tempahan online',
                   'Pengurusan kandungan dan penjenamaan',
               ],
-              standardFeatures: [
+              proFeatures: [
                   'SYIFA AI Assistant',
                   'Custom domain milik anda',
                   'Blog klinik mesra SEO dengan metadata artikel dan sitemap',
@@ -104,13 +104,13 @@ const copy = computed(() =>
 function packageKind(item) {
     const name = String(item.name).toLowerCase();
     if (item.isTrial || name.includes('trial')) return 'trial';
-    if (name.includes('standard')) return 'standard';
+    if (name.includes('pro')) return 'pro';
     if (name.includes('basic')) return 'basic';
     return 'other';
 }
 
 function isFeatured(item) {
-    return packageKind(item) === 'standard';
+    return packageKind(item) === 'pro';
 }
 
 function audience(item) {
@@ -135,7 +135,7 @@ function features(item) {
             <div
                 v-if="
                     packages.some((item) => packageKind(item) === 'basic') &&
-                    packages.some((item) => packageKind(item) === 'standard')
+                    packages.some((item) => packageKind(item) === 'pro')
                 "
                 class="mx-auto mt-10 max-w-4xl overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-sm shadow-emerald-900/5"
             >
@@ -163,11 +163,11 @@ function features(item) {
                     </div>
                     <div class="bg-emerald-50/70 p-5 sm:p-6">
                         <p class="text-xs font-black tracking-[0.14em] text-emerald-700 uppercase">
-                            Standard
+                            Pro
                         </p>
-                        <p class="mt-2 font-bold text-slate-950">{{ copy.standardLabel }}</p>
+                        <p class="mt-2 font-bold text-slate-950">{{ copy.proLabel }}</p>
                         <p class="mt-1 text-sm font-semibold text-emerald-800">
-                            {{ copy.standardSummary }}
+                            {{ copy.proSummary }}
                         </p>
                     </div>
                 </div>
@@ -222,11 +222,7 @@ function features(item) {
                     </div>
                     <div class="mt-6 flex-1">
                         <p class="text-xs font-black tracking-[0.12em] text-slate-500 uppercase">
-                            {{
-                                packageKind(item) === 'standard'
-                                    ? copy.everythingBasic
-                                    : copy.includes
-                            }}
+                            {{ packageKind(item) === 'pro' ? copy.everythingBasic : copy.includes }}
                         </p>
                         <ul class="mt-3 space-y-3">
                             <li

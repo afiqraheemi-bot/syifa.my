@@ -25,7 +25,7 @@ return new class extends Migration
             updated_at = CURRENT_TIMESTAMP
             FROM commercial_offers AS offer
             WHERE offer.id = subscription.commercial_offer_id
-              AND offer.capability_configuration_reference = 'package:syifa-standard'
+              AND offer.capability_configuration_reference = 'package:syifa-pro'
               AND NOT jsonb_exists(subscription.entitlement_capabilities::jsonb, 'website.blog.manage')
             SQL);
     }

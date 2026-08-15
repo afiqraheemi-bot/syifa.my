@@ -28,7 +28,7 @@ final readonly class BlogAuthorization
             return;
         }
         if (! $this->entitled($tenantId)) {
-            abort(403, 'Blog klinik hanya tersedia dalam pakej Syifa Standard. Naik taraf untuk mengurus dan menerbitkan artikel.');
+            abort(403, 'Blog klinik hanya tersedia dalam pakej Syifa Pro. Naik taraf untuk mengurus dan menerbitkan artikel.');
         }
         if ($actor->role === 'clinic_owner' && hash_equals((string) $actor->tenantId, $tenantId)) {
             return;

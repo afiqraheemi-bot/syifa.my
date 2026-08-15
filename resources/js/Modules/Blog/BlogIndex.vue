@@ -62,7 +62,7 @@ const labels = {
                 v-if="!entitled"
                 class="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5"
             >
-                <h2 class="font-black">Blog tersedia dengan Syifa Standard</h2>
+                <h2 class="font-black">Blog tersedia dengan Syifa Pro</h2>
                 <p class="mt-1">
                     Naik taraf untuk menerbitkan artikel dengan metadata, halaman artikel dan
                     sitemap yang diurus secara tersusun.

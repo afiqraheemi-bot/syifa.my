@@ -11,7 +11,7 @@ return [
     'public_package_order' => [
         'package:syifa-trial',
         'package:syifa-basic',
-        'package:syifa-standard',
+        'package:syifa-pro',
     ],
 
     /*
@@ -37,7 +37,7 @@ return [
             'booking.manage',
             'booking.schedule.manage',
         ],
-        'package:syifa-standard' => [
+        'package:syifa-pro' => [
             'website.managed',
             'website.content.manage',
             'website.branding.manage',

@@ -76,7 +76,7 @@ final readonly class BlogPostService
             ]);
         }
         if (in_array($action, ['publish', 'schedule'], true) && ! $this->authorization->entitled((string) $post->tenant_id)) {
-            abort(403, 'Penerbitan Blog memerlukan entitlement Syifa Standard yang aktif.');
+            abort(403, 'Penerbitan Blog memerlukan entitlement Syifa Pro yang aktif.');
         }
         $now = now();
         $values = ['status' => $to, 'last_changed_at' => $now, 'updated_at' => $now, 'version' => $expectedVersion + 1];

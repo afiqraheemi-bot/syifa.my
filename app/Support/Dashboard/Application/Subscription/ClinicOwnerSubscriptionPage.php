@@ -64,11 +64,11 @@ final readonly class ClinicOwnerSubscriptionPage
                     'href' => 'https://wa.me/60134079388?text='.rawurlencode('Saya ingin upgrade daripada Syifa Trial ke Syifa Basic dan teruskan pembayaran.'),
                 ],
                 [
-                    'name' => 'Syifa Standard',
+                    'name' => 'Syifa Pro',
                     'price' => 'RM399 / tahun',
                     'description' => 'Semua ciri Basic bersama SYIFA AI dan custom domain.',
                     'recommended' => true,
-                    'href' => 'https://wa.me/60134079388?text='.rawurlencode('Saya ingin upgrade daripada Syifa Trial ke Syifa Standard dan teruskan pembayaran.'),
+                    'href' => 'https://wa.me/60134079388?text='.rawurlencode('Saya ingin upgrade daripada Syifa Trial ke Syifa Pro dan teruskan pembayaran.'),
                 ],
             ] : [],
             'renewal' => $detail?->renewalEligible === true ? [
