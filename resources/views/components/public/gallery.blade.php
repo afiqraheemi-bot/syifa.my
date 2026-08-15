@@ -14,8 +14,9 @@
             :title="$presentation[1]"
             :description="$presentation[2]"
         />
-        <div class="gallery-grid gallery-grid--count-{{ min(count($section->images), 4) }}">
-            @foreach ($section->images as $image)
+        @php $resolvedImages = array_values(array_filter($section->images, static fn ($image) => array_key_exists($image->assetId, $assetUrls))); @endphp
+        <div class="gallery-grid gallery-grid--count-{{ min(count($resolvedImages), 4) }}">
+            @foreach ($resolvedImages as $image)
                 @php
                     $imageUrl = $assetUrls[$image->assetId];
                     $imageDimensions = $assetDimensions[$image->assetId] ?? [null, null];

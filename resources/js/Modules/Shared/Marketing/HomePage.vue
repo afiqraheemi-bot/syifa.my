@@ -19,6 +19,7 @@ const props = defineProps({
     clinicRegistrationUrl: { type: String, required: true },
     privacyUrl: { type: String, required: true },
     termsUrl: { type: String, required: true },
+    essentialPreviewUrl: { type: String, required: true },
     templatePreviewUrl: { type: String, required: true },
     carePreviewUrl: { type: String, required: true },
     specialistPreviewUrl: { type: String, required: true },
@@ -29,7 +30,7 @@ const props = defineProps({
 
 // Index order matches copy.templates.items: [Essential, Care, Dental, Aesthetic, Specialist].
 const previewUrls = computed(() => [
-    null,
+    props.essentialPreviewUrl,
     props.carePreviewUrl,
     props.templatePreviewUrl,
     props.aestheticPreviewUrl,

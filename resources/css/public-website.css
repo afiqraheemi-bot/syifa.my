@@ -950,9 +950,16 @@
     }
     .service-card__heading {
         display: flex;
+        flex-wrap: wrap;
         align-items: flex-start;
         justify-content: space-between;
         gap: var(--space-3);
+    }
+    .service-card__heading h3 {
+        /* break-word (not the inherited `anywhere`) keeps this flex item's min-content at word width, so a sibling `.badge` can't squeeze it into one-character-per-line. */
+        flex: 1 1 auto;
+        overflow-wrap: break-word;
+        min-width: min(12rem, 100%);
     }
     .service-card p,
     .testimonial-card blockquote {

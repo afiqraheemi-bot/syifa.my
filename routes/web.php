@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Http\Controllers\MarketingSeoController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\RootEntryController;
-use App\Http\Controllers\TemplatePreviewController;
 use App\Modules\Blog\Presentation\Http\Controllers\BlogDashboardController;
 use App\Modules\Blog\Presentation\Http\Controllers\PublicBlogController;
 use App\Modules\Booking\Presentation\Http\Controllers\ClinicOwnerBookingOperationController;
@@ -80,6 +79,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerWebsiteAd
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerWebsiteAssetController;
 use App\Support\Dashboard\Presentation\Http\Middleware\RedirectMisdirectedWebsitePreviewRequest;
 use App\Support\Marketing\Presentation\Http\Controllers\MarketingHomeController;
+use App\Support\Marketing\Presentation\Http\Controllers\TemplatePreviewController;
 use App\Support\PublicWebsite\Presentation\Http\Controllers\PublicWebsiteAssetController;
 use Illuminate\Support\Facades\Route;
 

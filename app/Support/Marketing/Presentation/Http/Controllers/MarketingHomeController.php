@@ -75,6 +75,7 @@ final readonly class MarketingHomeController
             'clinicRegistrationUrl' => route('clinic-registration.browser', [], false),
             'privacyUrl' => route('public-website.privacy', [], false),
             'termsUrl' => route('public-website.terms', [], false),
+            'essentialPreviewUrl' => route('templates.preview', ['slug' => 'syifa-essential'], false),
             'templatePreviewUrl' => route('templates.preview', ['slug' => 'syifa-dental'], false),
             'carePreviewUrl' => route('templates.preview', ['slug' => 'syifa-care'], false),
             'specialistPreviewUrl' => route('templates.preview', ['slug' => 'syifa-specialist'], false),
