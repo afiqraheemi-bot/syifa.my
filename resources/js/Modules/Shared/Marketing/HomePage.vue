@@ -14,7 +14,7 @@ import TemplatesSection from './Landing/TemplatesSection.vue';
 import TestimonialSection from './Landing/TestimonialSection.vue';
 import WhySyifaSection from './Landing/WhySyifaSection.vue';
 
-const props = defineProps({
+defineProps({
     loginUrl: { type: String, required: true },
     clinicRegistrationUrl: { type: String, required: true },
     privacyUrl: { type: String, required: true },
@@ -27,15 +27,6 @@ const props = defineProps({
     packages: { type: Array, required: true },
     packagePreview: { type: Boolean, default: false },
 });
-
-// Index order matches copy.templates.items: [Essential, Care, Dental, Aesthetic, Specialist].
-const previewUrls = computed(() => [
-    props.essentialPreviewUrl,
-    props.carePreviewUrl,
-    props.templatePreviewUrl,
-    props.aestheticPreviewUrl,
-    props.specialistPreviewUrl,
-]);
 
 const whatsappUrl = computed(() => {
     const message =
@@ -247,9 +238,9 @@ const copy = {
         },
         templates: {
             eyebrow: 'Templat Kami',
-            title: 'Preview Templat Sebenar',
+            title: 'Rekaan Untuk Klinik Sebenar',
             subtitle:
-                'Pratonton konsep reka bentuk — setiap klinik memilih satu personaliti templat semasa onboarding, dikonfigurasikan oleh Pereka Laman Web anda.',
+                'Lihat bagaimana identiti dan mesej klinik anda boleh tampil secara profesional melalui setiap gaya rekaan SYIFA.',
             note: 'Mockup ringkas',
             viewPreview: 'Mockup ringkas',
             livePreviews: 'mockup templat',
@@ -258,28 +249,114 @@ const copy = {
             livePreviewLabel: 'Paparan live',
             managedNote: 'Responsif pada telefon, tablet dan desktop',
             managedTemplate: 'Templat terurus',
+            chooseTemplate: 'Pilih templat ini',
+            selectedTemplate: 'Pilihan reka bentuk',
+            bestFor: 'Paling sesuai untuk',
+            desktop: 'Desktop',
+            tablet: 'Tablet',
+            mobile: 'Mobile',
+            devicePreview: 'Saiz preview',
+            responsiveNote: 'Preview responsif sebenar',
+            templateSelector: 'Pilih templat website',
+            clinicReady: 'Maklumat klinik lengkap',
+            mobileReady: 'Mesra telefon',
             selectionNote:
                 'Tidak pasti templat mana paling sesuai? Pereka Laman Web kami akan membantu anda memilih dan menyesuaikannya semasa onboarding.',
             items: [
                 {
                     name: 'Syifa Essential',
                     tagline: 'Jelas, tenang, dan sesuai untuk kebanyakan klinik.',
+                    demoClinic: 'Klinik Keluarga Ihsan',
+                    demoDomain: 'klinikihsan.syifa.my',
+                    demoEyebrow: 'Penjagaan keluarga dipercayai',
+                    demoHeadline: 'Kesihatan keluarga, keutamaan kami',
+                    demoBody:
+                        'Rawatan perubatan yang menyeluruh, mesra dan mudah diakses untuk setiap peringkat usia.',
+                    demoCta: 'Buat Temu Janji',
+                    demoSecondary: 'Hubungi Klinik',
+                    demoImageAlt: 'Konsultasi keluarga di klinik moden',
+                    bestFor: 'Klinik am, klinik komuniti dan amalan perubatan baharu',
+                    features: [
+                        'Susunan maklumat yang jelas dan mudah difahami',
+                        'Fokus pada servis, doktor dan tempahan',
+                        'Gaya profesional yang fleksibel untuk pelbagai klinik',
+                    ],
                 },
                 {
                     name: 'Syifa Care',
                     tagline: 'Mesra dan menenangkan, sesuai untuk klinik keluarga.',
+                    demoClinic: 'Klinik Ceria',
+                    demoDomain: 'klinikceria.syifa.my',
+                    demoEyebrow: 'Penjagaan untuk setiap generasi',
+                    demoHeadline: 'Membesar sihat bersama keluarga',
+                    demoBody:
+                        'Penjagaan yang sabar dan menenangkan untuk bayi, kanak-kanak, ibu bapa dan warga emas.',
+                    demoCta: 'Buat Temu Janji',
+                    demoSecondary: 'Chat WhatsApp',
+                    demoImageAlt: 'Doktor memeriksa kanak-kanak bersama ibunya',
+                    bestFor: 'Klinik keluarga, pediatrik dan penjagaan primer',
+                    features: [
+                        'Visual mesra untuk pesakit dan keluarga',
+                        'Perjalanan tempahan yang mudah dan meyakinkan',
+                        'Ruang kandungan yang hangat dan mudah didekati',
+                    ],
                 },
                 {
                     name: 'Syifa Dental',
                     tagline: 'Tepat, terang, dan tersusun untuk klinik pergigian.',
+                    demoClinic: 'Klinik Pergigian Senyum',
+                    demoDomain: 'senyum.syifa.my',
+                    demoEyebrow: 'Pergigian moden dan selesa',
+                    demoHeadline: 'Senyuman sihat bermula di sini',
+                    demoBody:
+                        'Rawatan pergigian teliti dengan teknologi moden dan pengalaman yang selesa untuk setiap pesakit.',
+                    demoCta: 'Tempah Pemeriksaan',
+                    demoSecondary: 'Lihat Rawatan',
+                    demoImageAlt: 'Konsultasi pesakit di klinik pergigian moden',
+                    bestFor: 'Klinik pergigian, ortodontik dan pusat rawatan oral',
+                    features: [
+                        'Presentation servis yang terang dan tersusun',
+                        'Profil doktor yang membina keyakinan pesakit',
+                        'CTA tempahan jelas pada setiap peranti',
+                    ],
                 },
                 {
                     name: 'Syifa Aesthetic',
                     tagline: 'Halus dan bergaya editorial untuk klinik estetik.',
+                    demoClinic: 'Klinik Estetika Aura',
+                    demoDomain: 'aura.syifa.my',
+                    demoEyebrow: 'Estetik dipandu kepakaran',
+                    demoHeadline: 'Keyakinan yang terasa semula jadi',
+                    demoBody:
+                        'Rundingan peribadi dan rawatan estetik yang dirancang dengan teliti untuk hasil halus dan elegan.',
+                    demoCta: 'Tempah Rundingan',
+                    demoSecondary: 'Terokai Rawatan',
+                    demoImageAlt: 'Rundingan peribadi di klinik estetik premium',
+                    bestFor: 'Klinik estetik, pusat kulit dan wellness',
+                    features: [
+                        'Typography editorial dengan rasa premium',
+                        'Presentation rawatan berasaskan visual',
+                        'Pengalaman konsultasi yang elegan dan peribadi',
+                    ],
                 },
                 {
                     name: 'Syifa Specialist',
                     tagline: 'Berwibawa dan padat maklumat untuk klinik pakar.',
+                    demoClinic: 'Klinik Pakar Utama',
+                    demoDomain: 'pakarutama.syifa.my',
+                    demoEyebrow: 'Kepakaran klinikal berfokus',
+                    demoHeadline: 'Jawapan tepat untuk penjagaan kompleks',
+                    demoBody:
+                        'Penilaian pakar yang menyeluruh, jelas dan berasaskan bukti untuk membantu anda membuat keputusan terbaik.',
+                    demoCta: 'Jumpa Pakar',
+                    demoSecondary: 'Bidang Kepakaran',
+                    demoImageAlt: 'Pakar perubatan menerangkan keputusan kepada pesakit',
+                    bestFor: 'Klinik pakar, pusat diagnostik dan konsultasi khusus',
+                    features: [
+                        'Hierarchy klinikal yang kukuh dan meyakinkan',
+                        'Maklumat kompleks dipersembahkan dengan jelas',
+                        'Profil pakar dan kemudahan diberi penekanan',
+                    ],
                 },
             ],
         },
@@ -487,9 +564,9 @@ const copy = {
         },
         templates: {
             eyebrow: 'Our Templates',
-            title: 'Real Template Previews',
+            title: 'Designed For Real Clinics',
             subtitle:
-                'A concept preview — each clinic selects one template personality during onboarding, configured by your Website Designer.',
+                'See how your clinic identity and message can come to life professionally through each SYIFA design style.',
             note: 'Simple mockup',
             viewPreview: 'Simple mockup',
             livePreviews: 'template mockups',
@@ -498,28 +575,114 @@ const copy = {
             livePreviewLabel: 'Live view',
             managedNote: 'Responsive across mobile, tablet and desktop',
             managedTemplate: 'Managed template',
+            chooseTemplate: 'Choose this template',
+            selectedTemplate: 'Selected design',
+            bestFor: 'Best suited for',
+            desktop: 'Desktop',
+            tablet: 'Tablet',
+            mobile: 'Mobile',
+            devicePreview: 'Preview size',
+            responsiveNote: 'True responsive preview',
+            templateSelector: 'Choose a website template',
+            clinicReady: 'Complete clinic information',
+            mobileReady: 'Mobile friendly',
             selectionNote:
                 'Not sure which template fits best? Your Website Designer will help you select and configure it during onboarding.',
             items: [
                 {
                     name: 'Syifa Essential',
                     tagline: 'Clear, calm, and broadly suitable for most clinics.',
+                    demoClinic: 'Klinik Keluarga Ihsan',
+                    demoDomain: 'klinikihsan.syifa.my',
+                    demoEyebrow: 'Trusted family healthcare',
+                    demoHeadline: 'Your family’s health comes first',
+                    demoBody:
+                        'Complete, approachable and accessible medical care for every stage of life.',
+                    demoCta: 'Book Appointment',
+                    demoSecondary: 'Contact Clinic',
+                    demoImageAlt: 'Family consultation in a modern clinic',
+                    bestFor: 'General practices, community clinics and new medical practices',
+                    features: [
+                        'Clear information hierarchy that is easy to understand',
+                        'Focused presentation of services, doctors and booking',
+                        'A flexible professional style for a wide range of clinics',
+                    ],
                 },
                 {
                     name: 'Syifa Care',
                     tagline: 'Warm and reassuring, ideal for family-oriented clinics.',
+                    demoClinic: 'Klinik Ceria',
+                    demoDomain: 'klinikceria.syifa.my',
+                    demoEyebrow: 'Care for every generation',
+                    demoHeadline: 'Growing healthier, together',
+                    demoBody:
+                        'Patient and reassuring care for babies, children, parents and older family members.',
+                    demoCta: 'Book Appointment',
+                    demoSecondary: 'Chat on WhatsApp',
+                    demoImageAlt: 'Doctor examining a child with her mother',
+                    bestFor: 'Family clinics, paediatrics and primary care practices',
+                    features: [
+                        'Warm visuals designed for patients and families',
+                        'A simple and reassuring booking journey',
+                        'Approachable content presentation throughout',
+                    ],
                 },
                 {
                     name: 'Syifa Dental',
                     tagline: 'Precise, bright, and structured for dental practices.',
+                    demoClinic: 'Klinik Pergigian Senyum',
+                    demoDomain: 'senyum.syifa.my',
+                    demoEyebrow: 'Modern, comfortable dentistry',
+                    demoHeadline: 'A healthier smile starts here',
+                    demoBody:
+                        'Thoughtful dental treatment supported by modern technology and a comfortable patient experience.',
+                    demoCta: 'Book a Check-up',
+                    demoSecondary: 'View Treatments',
+                    demoImageAlt: 'Patient consultation in a modern dental clinic',
+                    bestFor: 'Dental clinics, orthodontics and oral care centres',
+                    features: [
+                        'Bright and structured treatment presentation',
+                        'Confidence-building clinician profiles',
+                        'Clear appointment actions across every device',
+                    ],
                 },
                 {
                     name: 'Syifa Aesthetic',
                     tagline: 'Refined and editorial for aesthetic clinics.',
+                    demoClinic: 'Klinik Estetika Aura',
+                    demoDomain: 'aura.syifa.my',
+                    demoEyebrow: 'Expert-led aesthetics',
+                    demoHeadline: 'Confidence that feels natural',
+                    demoBody:
+                        'Personal consultations and carefully planned aesthetic treatments for subtle, elegant results.',
+                    demoCta: 'Book Consultation',
+                    demoSecondary: 'Explore Treatments',
+                    demoImageAlt: 'Private consultation in a premium aesthetic clinic',
+                    bestFor: 'Aesthetic clinics, skin centres and wellness practices',
+                    features: [
+                        'Premium editorial typography',
+                        'Image-led treatment presentation',
+                        'An elegant and personal consultation journey',
+                    ],
                 },
                 {
                     name: 'Syifa Specialist',
                     tagline: 'Authoritative and information-led for specialist clinics.',
+                    demoClinic: 'Klinik Pakar Utama',
+                    demoDomain: 'pakarutama.syifa.my',
+                    demoEyebrow: 'Focused clinical expertise',
+                    demoHeadline: 'Clear answers for complex care',
+                    demoBody:
+                        'Thorough, evidence-led specialist assessment to help you make confident healthcare decisions.',
+                    demoCta: 'See a Specialist',
+                    demoSecondary: 'Our Specialties',
+                    demoImageAlt: 'Medical specialist explaining results to a patient',
+                    bestFor: 'Specialist clinics, diagnostic centres and consultant practices',
+                    features: [
+                        'Strong and credible clinical hierarchy',
+                        'Complex information presented with clarity',
+                        'Prominent specialist and facility profiles',
+                    ],
                 },
             ],
         },
@@ -686,7 +849,7 @@ const structuredData = computed(() =>
             <SolutionSection :copy="t.solution" />
             <HowItWorksSection :copy="t.how" />
             <WhySyifaSection :copy="t.why" />
-            <TemplatesSection :copy="t.templates" :preview-urls="previewUrls" />
+            <TemplatesSection :copy="t.templates" :register-url="clinicRegistrationUrl" />
             <TestimonialSection :copy="t.testimonial" />
             <PricingSection
                 :packages="packages"

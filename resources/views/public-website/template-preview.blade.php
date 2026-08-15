@@ -13,13 +13,16 @@
     class="public-site"
     data-template="{{ strtolower(str_replace('_', '-', $document->website->website->templateId)) }}"
 >
-    <div
-        role="status"
-        style="position:sticky;top:0;z-index:1000;padding:.75rem 1rem;background:#18221f;color:#fff;text-align:center;font-weight:700;font-size:.875rem"
-    >
-        Template design preview by SYIFA.my — this is exactly what your published Website will look like, filled with sample content.
-        <a href="{{ $homeUrl }}" style="color:#fff;text-decoration:underline">Back to SYIFA.my</a>
-    </div>
+    @php
+        $previewHeroImages = [
+            'SYIFA_ESSENTIAL' => asset('images/template-previews/syifa-essential-hero.webp'),
+            'SYIFA_CARE' => asset('images/template-previews/syifa-care-hero.webp'),
+            'SYIFA_DENTAL' => asset('images/template-previews/syifa-dental-hero.webp'),
+            'SYIFA_AESTHETIC' => asset('images/template-previews/syifa-aesthetic-hero.webp'),
+            'SYIFA_SPECIALIST' => asset('images/template-previews/syifa-specialist-hero.webp'),
+        ];
+        $previewHeroImage = $previewHeroImages[$document->website->website->templateId] ?? null;
+    @endphp
     <x-public.skip-link />
     <x-public.navbar :document="$document" :blog-enabled="false" blog-url="#" />
 
@@ -36,7 +39,7 @@
         @foreach ($document->website->sections as $section)
             @switch($section->type())
                 @case('HERO')
-                    <x-public.hero :section="$section" :document="$document" />
+                    <x-public.hero :section="$section" :document="$document" :preview-image-url="$previewHeroImage" />
                     @break
                 @case('ABOUT')
                     <x-public.about :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" />
@@ -51,7 +54,9 @@
                     <x-public.testimonials :section="$section" :template-id="$document->website->website->templateId" />
                     @break
                 @case('GALLERY')
-                    <x-public.gallery :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" :template-id="$document->website->website->templateId" />
+                    @if ($section->images !== [])
+                        <x-public.gallery :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" :template-id="$document->website->website->templateId" />
+                    @endif
                     @break
                 @case('FAQ')
                     <x-public.faq :section="$section" :template-id="$document->website->website->templateId" />

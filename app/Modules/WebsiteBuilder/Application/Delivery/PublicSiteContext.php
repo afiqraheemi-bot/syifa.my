@@ -57,6 +57,20 @@ final readonly class PublicSiteContext
         $hostname = explode(':', $host, 2)[0];
 
         return in_array($hostname, ['localhost', '127.0.0.1'], true)
-            || str_ends_with($hostname, '.localhost');
+            || str_ends_with($hostname, '.localhost')
+            || self::isPrivateIpv4Address($hostname);
+    }
+
+    private static function isPrivateIpv4Address(string $hostname): bool
+    {
+        if (filter_var($hostname, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
+            return false;
+        }
+
+        $octets = array_map(static fn (string $octet): int => (int) $octet, explode('.', $hostname));
+
+        return $octets[0] === 10
+            || ($octets[0] === 172 && $octets[1] >= 16 && $octets[1] <= 31)
+            || ($octets[0] === 192 && $octets[1] === 168);
     }
 }

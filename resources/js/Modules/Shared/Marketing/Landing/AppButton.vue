@@ -3,6 +3,8 @@ defineProps({
     href: { type: String, required: true },
     variant: { type: String, default: 'primary' }, // 'primary' | 'secondary' | 'ghost' | 'ghost-inverse'
     size: { type: String, default: 'md' }, // 'md' | 'lg'
+    target: { type: String, default: null },
+    rel: { type: String, default: null },
 });
 
 const base =
@@ -26,7 +28,7 @@ const sizes = {
 </script>
 
 <template>
-    <a :href="href" :class="[base, variants[variant], sizes[size]]">
+    <a :href="href" :target="target" :rel="rel" :class="[base, variants[variant], sizes[size]]">
         <slot />
     </a>
 </template>

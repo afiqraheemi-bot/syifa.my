@@ -5,45 +5,45 @@
         --font-sans:
             Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
             sans-serif;
-        --surface-primary: #fffdf9;
-        --surface-subtle: #f4f7f3;
-        --surface-emphasis: #e8f0ea;
-        --surface-inverse: #16372d;
-        --text-primary: #18221f;
-        --text-secondary: #44524d;
-        --text-muted: #687570;
+        --surface-primary: #fbfefd;
+        --surface-subtle: #f2f9f7;
+        --surface-emphasis: #e8f4f2;
+        --surface-inverse: #123b38;
+        --text-primary: #123b38;
+        --text-secondary: #405f5c;
+        --text-muted: #58706d;
         --text-inverse: #f9fcfa;
         --text-inverse-muted: #b9ccc4;
         --text-inverse-soft: #d7e3dd;
-        --action-primary: #176b50;
-        --action-primary-hover: #10543f;
-        --action-primary-active: #0c4434;
-        --action-secondary: #e6f0eb;
-        --action-secondary-hover: #d8e8df;
-        --border-default: #cbd7d1;
+        --action-primary: #0f766e;
+        --action-primary-hover: #0d625d;
+        --action-primary-active: #0b504c;
+        --action-secondary: #e8f4f2;
+        --action-secondary-hover: #d9ebe8;
+        --border-default: #bad5d1;
         /* Patch (2026-08-08): darkened from #869c92 (2.88:1 on
            --surface-primary — fails WCAG 1.4.11's 3:1 non-text minimum for
            UI component boundaries, e.g. .button--secondary and the booking
            consent checkbox's border) to #749183 (3.38:1). Meaning and every
            consumer unchanged per 09_DESIGN_SYSTEM_GOVERNANCE.md's Patch class. */
-        --border-strong: #749183;
-        --border-subtle: #e1e8e4;
+        --border-strong: #6f918d;
+        --border-subtle: #dcebe8;
         --focus-ring: #875c00;
         --accent-warm: #c9854c;
-        --accent-inverse: #c9e9dc;
+        --accent-inverse: #bce7df;
         /* Governed brand-* family (01_DESIGN_TOKEN_TAXONOMY.md). Defaults
            below reproduce the exact current Syifa Essential appearance;
            a per-Website <style> override (see BrandTokenResolver) replaces
            them only with contrast-validated tenant values. */
-        --brand-primary: #176b50;
-        --brand-primary-hover: #10543f;
-        --brand-primary-active: #0c4434;
+        --brand-primary: #0f766e;
+        --brand-primary-hover: #0d625d;
+        --brand-primary-active: #0b504c;
         --brand-on-primary: #f9fcfa;
-        --brand-secondary: #e8f0ea;
-        --brand-on-secondary: #18221f;
+        --brand-secondary: #e8f4f2;
+        --brand-on-secondary: #123b38;
         --border-inverse: rgb(255 255 255 / 18%);
-        --surface-footer: #0e251f;
-        --surface-translucent: rgb(255 253 249 / 96%);
+        --surface-footer: #0b2f2c;
+        --surface-translucent: rgb(251 254 253 / 96%);
         --space-0: 0;
         --space-1: 0.25rem;
         --space-2: 0.5rem;
@@ -78,84 +78,84 @@
      * presentation axes approved by the design language vary.
      */
     [data-template='syifa-care'] {
-        --surface-primary: #ffffff;
-        --surface-subtle: #eef6f0;
-        --surface-emphasis: #ddf0c3;
-        --surface-inverse: #0b2a1f;
-        --surface-footer: #0b2a1f;
-        --text-primary: #122019;
-        --text-secondary: #47564c;
+        --surface-primary: #fbfefb;
+        --surface-subtle: #f4faf4;
+        --surface-emphasis: #edf7ee;
+        --surface-inverse: #173d25;
+        --surface-footer: #102d1a;
+        --text-primary: #173d25;
+        --text-secondary: #465f4c;
         /* Patch (2026-08-08): darkened from #6b7c70 (4.43:1 on
            --surface-primary — fails WCAG 2.1 AA's 4.5:1 for normal-size
            text) to #66766b (4.81:1). Same sage-grey hue family; meaning
            and every consumer (.brand__copy span, .booking-secure-label,
            etc.) unchanged per 09_DESIGN_SYSTEM_GOVERNANCE.md's Patch class. */
-        --text-muted: #66766b;
-        --action-primary: #0b2a1f;
-        --action-primary-hover: #0f3d2e;
-        --action-primary-active: #061a12;
-        --action-secondary: #eef6f0;
-        --action-secondary-hover: #ddf0c3;
-        --border-default: #d7e4da;
+        --text-muted: #5b705f;
+        --action-primary: #15803d;
+        --action-primary-hover: #116b33;
+        --action-primary-active: #0e5729;
+        --action-secondary: #edf7ee;
+        --action-secondary-hover: #dcefe0;
+        --border-default: #bcd7c1;
         /* Patch (2026-08-08): darkened from #9ab5a3 (2.21:1 on
            --surface-primary — fails WCAG 1.4.11's 3:1 non-text minimum) to
            #719684 (3.28:1). Same rationale as Essential's border-strong fix
            above; meaning and every consumer unchanged. */
-        --border-strong: #719684;
-        --border-subtle: #e6f0e9;
-        --accent-inverse: #bef264;
+        --border-strong: #75917a;
+        --border-subtle: #dfede1;
+        --accent-inverse: #c7efcf;
         /* Byte-identical fallback of this template's own action-* / surface-emphasis /
            text-primary, mirroring how :root's brand-* mirrors Syifa Essential's
            action-* (see the tokens layer comment above). BrandTokenResolver still
            owns the only tenant-facing override; this is only the pre-override
            default for this template, per 13_REFERENCE_LOCK_V1.md's Action row
            ("Template-governed: Yes"). */
-        --brand-primary: #0b2a1f;
-        --brand-primary-hover: #0f3d2e;
-        --brand-primary-active: #061a12;
-        --brand-secondary: #ddf0c3;
-        --brand-on-secondary: #122019;
+        --brand-primary: #15803d;
+        --brand-primary-hover: #116b33;
+        --brand-primary-active: #0e5729;
+        --brand-secondary: #edf7ee;
+        --brand-on-secondary: #173d25;
         --radius-small: 0.875rem;
         --radius-medium: 1.5rem;
         --radius-large: 2.5rem;
-        --shadow-subtle: 0 1rem 3rem rgb(11 42 31 / 8%);
-        --shadow-raised: 0 1.75rem 4rem rgb(11 42 31 / 14%);
+        --shadow-subtle: 0 1rem 3rem rgb(21 128 61 / 7%);
+        --shadow-raised: 0 1.75rem 4rem rgb(21 128 61 / 13%);
     }
 
     [data-template='syifa-dental'] {
-        --surface-primary: #ffffff;
-        --surface-subtle: #f4f9fb;
-        --surface-emphasis: #e7f3f7;
-        --surface-inverse: #123643;
-        --surface-footer: #092630;
-        --text-primary: #102d36;
-        --text-secondary: #415f69;
-        --text-muted: #607a83;
-        --action-primary: #0f6e96;
-        --action-primary-hover: #0b5675;
-        --action-primary-active: #094560;
-        --action-secondary: #e7f3f7;
-        --action-secondary-hover: #d5ebf2;
-        --border-default: #bfd2d9;
-        --border-strong: #7599a6;
-        --border-subtle: #dce8ec;
-        --accent-inverse: #c8edf5;
+        --surface-primary: #fbfdff;
+        --surface-subtle: #f2f8fc;
+        --surface-emphasis: #eaf4fa;
+        --surface-inverse: #123b54;
+        --surface-footer: #0b2d41;
+        --text-primary: #123b54;
+        --text-secondary: #405f72;
+        --text-muted: #587181;
+        --action-primary: #0369a1;
+        --action-primary-hover: #025985;
+        --action-primary-active: #024a70;
+        --action-secondary: #eaf4fa;
+        --action-secondary-hover: #dbeef7;
+        --border-default: #b9d2e1;
+        --border-strong: #6e91a5;
+        --border-subtle: #dceaf2;
+        --accent-inverse: #bfe6f5;
         /* Byte-identical fallback of this template's own action-* / surface-emphasis /
            text-primary, mirroring how :root's brand-* mirrors Syifa Essential's
            action-* (see the tokens layer comment above). BrandTokenResolver still
            owns the only tenant-facing override; this is only the pre-override
            default for this template, per 13_REFERENCE_LOCK_V1.md's Action row
            ("Template-governed: Yes"). */
-        --brand-primary: #0f6e96;
-        --brand-primary-hover: #0b5675;
-        --brand-primary-active: #094560;
-        --brand-secondary: #e7f3f7;
-        --brand-on-secondary: #102d36;
+        --brand-primary: #0369a1;
+        --brand-primary-hover: #025985;
+        --brand-primary-active: #024a70;
+        --brand-secondary: #eaf4fa;
+        --brand-on-secondary: #123b54;
         --radius-small: 0.375rem;
         --radius-medium: 0.625rem;
         --radius-large: 1rem;
-        --shadow-subtle: 0 0.75rem 2rem rgb(13 55 70 / 7%);
-        --shadow-raised: 0 1.25rem 3rem rgb(13 55 70 / 12%);
+        --shadow-subtle: 0 0.75rem 2rem rgb(3 105 161 / 7%);
+        --shadow-raised: 0 1.25rem 3rem rgb(3 105 161 / 13%);
     }
 
     [data-template='syifa-aesthetic'] {
@@ -166,78 +166,235 @@
            before; matches the marketing preview's Tailwind font-serif
            stack, which already led with ui-serif. */
         --font-display: ui-serif, Georgia, 'Times New Roman', serif;
-        --surface-primary: #fdfbf8;
-        --surface-subtle: #f5f0eb;
-        --surface-emphasis: #ece3dc;
-        --surface-inverse: #302824;
-        --surface-footer: #211c19;
-        --text-primary: #2d2825;
-        --text-secondary: #625954;
-        --text-muted: #7d716a;
-        --action-primary: #302824;
-        --action-primary-hover: #241e1b;
-        --action-primary-active: #1a1512;
-        --action-secondary: #ece3dc;
-        --action-secondary-hover: #e0d3c8;
-        --border-default: #d8cbc2;
-        --border-strong: #9d887a;
-        --border-subtle: #e9dfd8;
-        --accent-warm: #a8765d;
-        --accent-inverse: #ead9ce;
+        --surface-primary: #fffafb;
+        --surface-subtle: #fdf4f7;
+        --surface-emphasis: #f9edf2;
+        --surface-inverse: #4d1d30;
+        --surface-footer: #3a1023;
+        --text-primary: #3f1727;
+        --text-secondary: #674355;
+        --text-muted: #725a64;
+        --action-primary: #9d174d;
+        --action-primary-hover: #831843;
+        --action-primary-active: #701a3d;
+        --action-secondary: #f9edf2;
+        --action-secondary-hover: #f3dce5;
+        --border-default: #ddb8c7;
+        --border-strong: #a86b83;
+        --border-subtle: #f0dce4;
+        --accent-warm: #be4b78;
+        --accent-inverse: #f8c8da;
         /* Byte-identical fallback of this template's own action-* / surface-emphasis /
            text-primary, mirroring how :root's brand-* mirrors Syifa Essential's
            action-* (see the tokens layer comment above). BrandTokenResolver still
            owns the only tenant-facing override; this is only the pre-override
            default for this template, per 13_REFERENCE_LOCK_V1.md's Action row
            ("Template-governed: Yes"). */
-        --brand-primary: #302824;
-        --brand-primary-hover: #241e1b;
-        --brand-primary-active: #1a1512;
-        --brand-secondary: #ece3dc;
-        --brand-on-secondary: #2d2825;
+        --brand-primary: #9d174d;
+        --brand-primary-hover: #831843;
+        --brand-primary-active: #701a3d;
+        --brand-secondary: #f9edf2;
+        --brand-on-secondary: #4d1d30;
         --radius-small: 0.25rem;
         --radius-medium: 0.5rem;
         --radius-large: 0.75rem;
-        --shadow-subtle: 0 1.25rem 3.5rem rgb(57 43 35 / 7%);
-        --shadow-raised: 0 2rem 5rem rgb(57 43 35 / 12%);
+        --shadow-subtle: 0 1.25rem 3.5rem rgb(96 20 50 / 7%);
+        --shadow-raised: 0 2rem 5rem rgb(96 20 50 / 13%);
         --container-reading: 43rem;
     }
 
     [data-template='syifa-specialist'] {
-        --surface-primary: #fbfcfd;
-        --surface-subtle: #f0f3f6;
-        --surface-emphasis: #e2e8ee;
-        --surface-inverse: #1d2c3b;
-        --surface-footer: #111e2a;
-        --text-primary: #182735;
-        --text-secondary: #405365;
-        --text-muted: #607181;
-        --action-primary: #1d2c3b;
-        --action-primary-hover: #16222e;
-        --action-primary-active: #0f171f;
-        --action-secondary: #e2e8ee;
-        --action-secondary-hover: #d3dce4;
-        --border-default: #bdc9d3;
-        --border-strong: #71879a;
-        --border-subtle: #dce3e9;
-        --accent-inverse: #d1e2ef;
+        --surface-primary: #fbfcff;
+        --surface-subtle: #f4f6fc;
+        --surface-emphasis: #edf1fa;
+        --surface-inverse: #172554;
+        --surface-footer: #111a3f;
+        --text-primary: #172554;
+        --text-secondary: #445273;
+        --text-muted: #5e687f;
+        --action-primary: #1e3a8a;
+        --action-primary-hover: #172f70;
+        --action-primary-active: #12245a;
+        --action-secondary: #edf1fa;
+        --action-secondary-hover: #dfe6f5;
+        --border-default: #b9c4e0;
+        --border-strong: #7181a8;
+        --border-subtle: #dce3f2;
+        --accent-inverse: #c7d2fe;
         /* Byte-identical fallback of this template's own action-* / surface-emphasis /
            text-primary, mirroring how :root's brand-* mirrors Syifa Essential's
            action-* (see the tokens layer comment above). BrandTokenResolver still
            owns the only tenant-facing override; this is only the pre-override
            default for this template, per 13_REFERENCE_LOCK_V1.md's Action row
            ("Template-governed: Yes"). */
-        --brand-primary: #1d2c3b;
-        --brand-primary-hover: #16222e;
-        --brand-primary-active: #0f171f;
-        --brand-secondary: #e2e8ee;
-        --brand-on-secondary: #182735;
+        --brand-primary: #1e3a8a;
+        --brand-primary-hover: #172f70;
+        --brand-primary-active: #12245a;
+        --brand-secondary: #edf1fa;
+        --brand-on-secondary: #172554;
         --radius-small: 0.375rem;
         --radius-medium: 0.5rem;
         --radius-large: 0.75rem;
-        --shadow-subtle: 0 0.75rem 2.25rem rgb(20 42 61 / 6%);
-        --shadow-raised: 0 1.25rem 3rem rgb(20 42 61 / 11%);
+        --shadow-subtle: 0 0.75rem 2.25rem rgb(30 58 138 / 7%);
+        --shadow-raised: 0 1.25rem 3rem rgb(30 58 138 / 13%);
         --container-reading: 42rem;
+    }
+}
+
+/* 2026-08-16 — premium composition pass for the three core templates.
+   These refinements deliberately change layout rhythm, not the shared
+   rendering contract, so every governed section remains data-driven. */
+@layer templates {
+    [data-template='syifa-essential'] .hero__media,
+    [data-template='syifa-care'] .hero__media,
+    [data-template='syifa-dental'] .hero__media {
+        isolation: isolate;
+    }
+
+    [data-template='syifa-essential'] .hero__image,
+    [data-template='syifa-care'] .hero__image,
+    [data-template='syifa-dental'] .hero__image {
+        transition: transform 700ms var(--ease-standard);
+    }
+
+    [data-template='syifa-essential'] .hero__media:hover .hero__image,
+    [data-template='syifa-care'] .hero__media:hover .hero__image,
+    [data-template='syifa-dental'] .hero__media:hover .hero__image {
+        transform: scale(1.025);
+    }
+
+    [data-template='syifa-essential'] .hero__media {
+        min-height: 31rem;
+        background: var(--surface-emphasis);
+    }
+    [data-template='syifa-essential'] .hero__actions {
+        margin-top: var(--space-2);
+    }
+    [data-template='syifa-essential'] #services {
+        background:
+            radial-gradient(circle at 8% 10%, var(--surface-emphasis), transparent 22rem),
+            var(--surface-primary);
+    }
+
+    [data-template='syifa-care'] .hero__layout {
+        align-items: center;
+    }
+    [data-template='syifa-care'] .hero__media {
+        position: relative;
+        overflow: hidden;
+        border-radius: 3.5rem 3.5rem 3.5rem 1.25rem;
+    }
+    [data-template='syifa-care'] .hero__media::after {
+        position: absolute;
+        right: -4rem;
+        bottom: -4rem;
+        width: 11rem;
+        height: 11rem;
+        border: 1.5rem solid rgb(255 255 255 / 28%);
+        border-radius: 50%;
+        content: '';
+        pointer-events: none;
+    }
+    [data-template='syifa-care'] #doctors .doctor-card:nth-child(even),
+    [data-template='syifa-care'] #testimonials .testimonial-card:nth-child(even) {
+        transform: translateY(var(--space-6));
+    }
+    [data-template='syifa-care'] #doctors,
+    [data-template='syifa-care'] #testimonials {
+        overflow: hidden;
+        padding-bottom: calc(var(--space-20) + var(--space-6));
+    }
+
+    [data-template='syifa-dental'] .hero__layout {
+        align-items: center;
+    }
+    [data-template='syifa-dental'] .hero__media::before {
+        position: absolute;
+        inset: var(--space-4);
+        z-index: 1;
+        border: 0.0625rem solid rgb(255 255 255 / 58%);
+        border-radius: calc(var(--radius-large) * 1.05);
+        content: '';
+        pointer-events: none;
+    }
+    [data-template='syifa-dental'] .service-card {
+        overflow: hidden;
+        background:
+            linear-gradient(145deg, rgb(255 255 255 / 96%), rgb(255 255 255 / 78%)),
+            var(--surface-emphasis);
+    }
+    [data-template='syifa-dental'] #doctors .doctor-card {
+        border-bottom: 0.25rem solid var(--brand-primary);
+    }
+    [data-template='syifa-dental'] #testimonials {
+        background:
+            linear-gradient(90deg, var(--surface-emphasis) 0 32%, transparent 32%),
+            var(--surface-primary);
+    }
+}
+
+@layer responsive {
+    @media (min-width: 64rem) {
+        [data-template='syifa-essential'] .hero__layout {
+            grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+            min-height: 36rem;
+        }
+        [data-template='syifa-essential'] .hero__media {
+            min-height: 36rem;
+            border-top: 0;
+            border-left: 0.0625rem solid var(--border-subtle);
+        }
+        [data-template='syifa-essential'] #services .service-card--featured {
+            grid-column: span 2;
+            min-height: 14rem;
+            padding-right: clamp(3rem, 8vw, 8rem);
+        }
+
+        [data-template='syifa-care'] .hero__layout {
+            grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+            gap: clamp(2rem, 5vw, 5rem);
+        }
+        [data-template='syifa-care'] .hero__content {
+            z-index: 2;
+            margin-right: -4rem;
+        }
+        [data-template='syifa-care'] .hero__media {
+            min-height: 38rem;
+        }
+        [data-template='syifa-care'] #services .service-card--featured {
+            grid-column: span 2;
+            min-height: 15rem;
+        }
+
+        [data-template='syifa-dental'] .hero__layout {
+            grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+            gap: clamp(3rem, 6vw, 6rem);
+        }
+        [data-template='syifa-dental'] .hero__media {
+            min-height: 39rem;
+        }
+        [data-template='syifa-dental'] #services .service-card--featured {
+            grid-row: span 2;
+            min-height: 100%;
+        }
+    }
+
+    @media (max-width: 63.999rem) {
+        [data-template='syifa-care'] #doctors .doctor-card:nth-child(even),
+        [data-template='syifa-care'] #testimonials .testimonial-card:nth-child(even) {
+            transform: none;
+        }
+        [data-template='syifa-dental'] #testimonials {
+            background: var(--surface-emphasis);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        [data-template='syifa-essential'] .hero__image,
+        [data-template='syifa-care'] .hero__image,
+        [data-template='syifa-dental'] .hero__image {
+            transition: none;
+        }
     }
 }
 
@@ -1819,16 +1976,16 @@
         color: var(--accent-inverse);
     }
     [data-template='syifa-care'] .card-grid--services .service-card:nth-child(3n + 1) {
-        border-color: #c7dfd0;
-        background: linear-gradient(145deg, #e8f6ed, #dcefe4);
+        border-color: color-mix(in srgb, var(--brand-primary) 20%, white);
+        background: linear-gradient(145deg, var(--surface-primary), var(--brand-secondary));
     }
     [data-template='syifa-care'] .card-grid--services .service-card:nth-child(3n + 2) {
-        border-color: #e4deca;
-        background: linear-gradient(145deg, #fffdf8, #f7f2e4);
+        border-color: var(--border-subtle);
+        background: linear-gradient(145deg, #fff, var(--surface-subtle));
     }
     [data-template='syifa-care'] .card-grid--services .service-card:nth-child(3n + 3) {
-        border-color: #cbdeda;
-        background: linear-gradient(145deg, #edf6f3, #e0eeea);
+        border-color: color-mix(in srgb, var(--brand-primary) 14%, white);
+        background: linear-gradient(145deg, var(--surface-primary), var(--surface-emphasis));
     }
     [data-template='syifa-care'] .service-card {
         position: relative;
@@ -1937,8 +2094,7 @@
     }
 
     [data-template='syifa-dental'] {
-        --surface-primary: #fbfaf8;
-        --surface-translucent: rgb(251 250 248 / 96%);
+        --surface-translucent: rgb(251 253 255 / 96%);
     }
     [data-template='syifa-dental'] .site-header {
         background: var(--surface-translucent);
@@ -1986,10 +2142,11 @@
     }
     [data-template='syifa-dental'] .hero__media {
         min-height: 34rem;
-        border: 0.125rem dashed color-mix(in srgb, var(--brand-primary) 28%, transparent);
-        border-radius: var(--radius-large);
+        overflow: hidden;
+        border: 0.0625rem solid var(--border-default);
+        border-radius: calc(var(--radius-large) * 1.35);
         background: color-mix(in srgb, var(--brand-secondary) 58%, white);
-        box-shadow: none;
+        box-shadow: 0 1.5rem 4rem rgb(3 105 161 / 12%);
     }
     [data-template='syifa-dental'] .hero__media--fallback {
         background:
@@ -5414,5 +5571,3743 @@
         .doctor-card--text {
             grid-template-columns: 5.5rem minmax(0, 1fr);
         }
+    }
+}
+
+/* Premium signature pass — each template keeps one rendering contract while
+   expressing a distinct, high-end clinic personality. Kept at the end of the
+   governed layers so these intentional compositions win over legacy patches. */
+@layer templates {
+    .public-site .site-header {
+        backdrop-filter: blur(1.1rem) saturate(1.18);
+        -webkit-backdrop-filter: blur(1.1rem) saturate(1.18);
+    }
+    .public-site .section-heading h2,
+    .public-site .hero__content h1,
+    .public-site .booking-panel h2 {
+        text-wrap: balance;
+    }
+    .public-site .section-heading > p:last-child,
+    .public-site .hero__lead,
+    .public-site .booking-panel > div > p {
+        text-wrap: pretty;
+    }
+    .public-site .hero__image,
+    .public-site .about__image,
+    .public-site .doctor-card__image,
+    .public-site .gallery-item__image {
+        filter: saturate(0.94) contrast(1.02);
+    }
+
+    /* Essential — quiet confidence, practical clarity, restrained depth. */
+    [data-template='syifa-essential'] .navbar {
+        min-height: 5.25rem;
+    }
+    [data-template='syifa-essential'] .brand__copy strong {
+        letter-spacing: -0.035em;
+    }
+    [data-template='syifa-essential'] .hero {
+        padding-block: clamp(2.5rem, 7vw, 6.5rem);
+    }
+    [data-template='syifa-essential'] .hero__layout {
+        border-color: color-mix(in srgb, var(--brand-primary) 16%, transparent);
+        box-shadow: 0 2rem 6rem rgb(15 118 110 / 10%);
+    }
+    [data-template='syifa-essential'] .hero__content {
+        padding: clamp(2rem, 5vw, 4.75rem);
+    }
+    [data-template='syifa-essential'] .hero__content h1 {
+        font-size: clamp(2.75rem, 5.8vw, 5.25rem);
+        line-height: 0.99;
+        letter-spacing: -0.058em;
+    }
+    [data-template='syifa-essential'] .hero__media {
+        min-height: 34rem;
+    }
+    [data-template='syifa-essential'] .hero__image {
+        object-position: center;
+    }
+    [data-template='syifa-essential'] .section-heading {
+        max-width: 42rem;
+    }
+    [data-template='syifa-essential'] .service-card {
+        border-top-width: 0;
+        background: linear-gradient(155deg, #fff, var(--surface-subtle));
+        box-shadow: 0 1rem 2.75rem rgb(15 118 110 / 7%);
+    }
+    [data-template='syifa-essential'] .service-card::after {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0.22rem;
+        border-radius: inherit;
+        background: var(--brand-primary);
+        content: '';
+    }
+    [data-template='syifa-essential'] .doctor-card {
+        overflow: hidden;
+        background: var(--surface-primary);
+    }
+    [data-template='syifa-essential'] .doctor-card__content {
+        padding: var(--space-6);
+    }
+    [data-template='syifa-essential'] .booking-panel {
+        padding: clamp(2rem, 5vw, 4.5rem);
+        box-shadow: 0 2rem 5rem rgb(11 47 44 / 18%);
+    }
+
+    /* Care — warm, human, soft geometry and approachable rhythm. */
+    [data-template='syifa-care'] .site-header {
+        border-bottom-color: color-mix(in srgb, var(--brand-primary) 12%, transparent);
+    }
+    [data-template='syifa-care'] .hero {
+        overflow: hidden;
+        padding-block: clamp(3rem, 7vw, 7rem);
+    }
+    [data-template='syifa-care'] .hero__content {
+        border: 0;
+        border-radius: 3rem 3rem 3rem 1.25rem;
+        box-shadow: 0 2rem 5rem rgb(21 128 61 / 11%);
+    }
+    [data-template='syifa-care'] .hero__content h1 {
+        font-size: clamp(2.8rem, 6vw, 5.4rem);
+        line-height: 1;
+        letter-spacing: -0.06em;
+    }
+    [data-template='syifa-care'] .hero__media {
+        min-height: 37rem;
+        border-width: 0.5rem;
+        box-shadow: 0 2.25rem 5rem rgb(16 45 26 / 16%);
+    }
+    [data-template='syifa-care'] .section-heading .eyebrow {
+        display: inline-flex;
+        width: fit-content;
+        border-radius: var(--radius-pill);
+        background: var(--surface-emphasis);
+        padding: var(--space-1) var(--space-3);
+    }
+    [data-template='syifa-care'] .service-card {
+        border: 0;
+        box-shadow: 0 1.2rem 3rem rgb(21 128 61 / 8%);
+    }
+    [data-template='syifa-care'] .doctor-card {
+        overflow: hidden;
+        border: 0;
+        box-shadow: 0 1.5rem 3.5rem rgb(16 45 26 / 10%);
+    }
+    [data-template='syifa-care'] .testimonial-card {
+        border: 0;
+        background: color-mix(in srgb, var(--surface-primary) 82%, var(--surface-emphasis));
+        box-shadow: 0 1.25rem 3rem rgb(21 128 61 / 7%);
+    }
+    [data-template='syifa-care'] .booking-panel {
+        border-radius: 3rem 3rem 3rem 1.25rem;
+        padding: clamp(2.25rem, 5vw, 4.5rem);
+        box-shadow: 0 2rem 5rem rgb(16 45 26 / 20%);
+    }
+
+    /* Dental — bright precision, crisp grids and clinical confidence. */
+    [data-template='syifa-dental'] .navbar {
+        min-height: 5.25rem;
+    }
+    [data-template='syifa-dental'] .public-navigation__links {
+        gap: clamp(1rem, 2.2vw, 2rem);
+    }
+    [data-template='syifa-dental'] .hero {
+        min-height: auto;
+        padding-block: clamp(3.5rem, 8vw, 7.5rem);
+    }
+    [data-template='syifa-dental'] .hero__content h1 {
+        font-size: clamp(3rem, 6.5vw, 5.75rem);
+        line-height: 0.96;
+    }
+    [data-template='syifa-dental'] .hero__media {
+        min-height: 39rem;
+        border-radius: 2rem 0.75rem 2rem 0.75rem;
+        box-shadow: 0 2.25rem 6rem rgb(3 105 161 / 14%);
+    }
+    [data-template='syifa-dental'] .hero__media::before {
+        border-radius: 1.4rem 0.45rem 1.4rem 0.45rem;
+    }
+    [data-template='syifa-dental'] .section-heading .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+    }
+    [data-template='syifa-dental'] .section-heading .eyebrow::before {
+        width: 2rem;
+        height: 0.12rem;
+        background: var(--brand-primary);
+        content: '';
+    }
+    [data-template='syifa-dental'] .service-card {
+        border-color: color-mix(in srgb, var(--brand-primary) 18%, white);
+        box-shadow: 0 1rem 3rem rgb(3 105 161 / 6%);
+    }
+    [data-template='syifa-dental'] .service-card:hover,
+    [data-template='syifa-dental'] .doctor-card:hover {
+        border-color: color-mix(in srgb, var(--brand-primary) 42%, white);
+        box-shadow: 0 1.5rem 3.5rem rgb(3 105 161 / 11%);
+        transform: translateY(-0.2rem);
+    }
+    [data-template='syifa-dental'] .doctor-card {
+        overflow: hidden;
+        transition:
+            transform var(--motion-standard) var(--ease-standard),
+            border-color var(--motion-standard) var(--ease-standard),
+            box-shadow var(--motion-standard) var(--ease-standard);
+    }
+    [data-template='syifa-dental'] .booking-panel {
+        padding: clamp(2.25rem, 5vw, 4.5rem);
+        box-shadow: 0 2rem 5rem rgb(3 74 112 / 22%);
+    }
+
+    /* Aesthetic — editorial luxury, burgundy restraint and image-led rhythm. */
+    [data-template='syifa-aesthetic'] .site-header {
+        border-bottom-color: color-mix(in srgb, var(--brand-primary) 12%, transparent);
+    }
+    [data-template='syifa-aesthetic'] .brand__copy strong {
+        font-family: var(--font-display);
+        font-size: 1.35rem;
+        font-weight: 500;
+        letter-spacing: -0.035em;
+    }
+    [data-template='syifa-aesthetic'] .hero {
+        padding-block: clamp(4rem, 9vw, 9rem);
+    }
+    [data-template='syifa-aesthetic'] .hero__content h1 {
+        max-width: 10ch;
+        font-size: clamp(3.4rem, 7vw, 7.25rem);
+        font-weight: 500;
+        letter-spacing: -0.065em;
+        line-height: 0.9;
+    }
+    [data-template='syifa-aesthetic'] .hero__lead {
+        max-width: 38rem;
+        font-size: clamp(1rem, 1.4vw, 1.2rem);
+    }
+    [data-template='syifa-aesthetic'] .hero__media {
+        min-height: 43rem;
+        border-radius: 12rem 12rem 0.75rem 0.75rem;
+        box-shadow: 0 2.5rem 7rem rgb(77 29 48 / 16%);
+    }
+    [data-template='syifa-aesthetic'] .section-heading h2 {
+        font-weight: 500;
+        line-height: 0.98;
+    }
+    [data-template='syifa-aesthetic'] .service-card {
+        border-inline: 0;
+        border-top: 0;
+        border-bottom: 0.0625rem solid var(--border-default);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+    [data-template='syifa-aesthetic'] .doctor-card {
+        border-color: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+        background: var(--surface-primary);
+    }
+    [data-template='syifa-aesthetic'] .testimonial-card {
+        background: transparent;
+    }
+    [data-template='syifa-aesthetic'] .booking-panel {
+        border-radius: 0.75rem 7rem 0.75rem 0.75rem;
+        padding: clamp(2.5rem, 6vw, 5.5rem);
+        box-shadow: 0 2.5rem 6rem rgb(58 16 35 / 22%);
+    }
+
+    /* Specialist — authoritative hierarchy, structured lines, institutional polish. */
+    [data-template='syifa-specialist'] .site-header {
+        border-bottom: 0.18rem solid var(--brand-primary);
+    }
+    [data-template='syifa-specialist'] .brand__copy strong {
+        letter-spacing: -0.035em;
+    }
+    [data-template='syifa-specialist'] .hero {
+        padding-block: clamp(3.5rem, 7vw, 7rem);
+    }
+    [data-template='syifa-specialist'] .hero__content h1 {
+        max-width: 12ch;
+        font-size: clamp(3rem, 6.2vw, 5.8rem);
+        line-height: 0.98;
+        letter-spacing: -0.055em;
+    }
+    [data-template='syifa-specialist'] .hero__media {
+        min-height: 40rem;
+        border-radius: 0.5rem;
+        box-shadow: 1.25rem 1.25rem 0 var(--surface-emphasis);
+    }
+    [data-template='syifa-specialist'] .section-heading {
+        padding-left: var(--space-6);
+        border-left: 0.25rem solid var(--brand-primary);
+    }
+    [data-template='syifa-specialist'] .service-card {
+        border-radius: 0.35rem;
+        box-shadow: 0 1rem 2.75rem rgb(30 58 138 / 7%);
+    }
+    [data-template='syifa-specialist'] .doctor-card {
+        overflow: hidden;
+        border-radius: 0.35rem;
+        border-top: 0.25rem solid var(--brand-primary);
+    }
+    [data-template='syifa-specialist'] .testimonial-card {
+        border-left: 0.25rem solid var(--brand-primary);
+        border-radius: 0.25rem;
+        background: var(--surface-primary);
+    }
+    [data-template='syifa-specialist'] .booking-panel {
+        border-radius: 0.5rem;
+        padding: clamp(2.5rem, 5vw, 4.5rem);
+        box-shadow: 1rem 1rem 0 color-mix(in srgb, var(--brand-primary) 24%, transparent);
+    }
+}
+
+@layer responsive {
+    @media (min-width: 64rem) {
+        [data-template='syifa-essential'] .hero__layout {
+            grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+            min-height: 38rem;
+        }
+        [data-template='syifa-essential'] .hero__media {
+            min-height: 38rem;
+            border-top: 0;
+            border-left: 0.0625rem solid var(--border-subtle);
+        }
+        [data-template='syifa-essential'] #services .service-card--featured {
+            grid-column: span 2;
+            min-height: 15rem;
+        }
+
+        [data-template='syifa-care'] .hero__layout {
+            grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
+            gap: clamp(2rem, 5vw, 5rem);
+        }
+        [data-template='syifa-care'] .hero__content {
+            z-index: 2;
+            margin-right: -4.5rem;
+        }
+        [data-template='syifa-care'] #services .service-card--featured {
+            grid-column: span 2;
+        }
+
+        [data-template='syifa-dental'] .hero__layout {
+            grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+            gap: clamp(3rem, 6vw, 6rem);
+        }
+        [data-template='syifa-dental'] #services .service-card--featured {
+            grid-row: span 2;
+            min-height: 100%;
+        }
+
+        [data-template='syifa-aesthetic'] .hero__layout {
+            grid-template-columns: minmax(0, 1.08fr) minmax(22rem, 0.72fr);
+            gap: clamp(4rem, 8vw, 9rem);
+        }
+        [data-template='syifa-aesthetic'] #services .card-grid {
+            gap: 0 var(--space-10);
+        }
+
+        [data-template='syifa-specialist'] .hero__layout {
+            grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+            gap: clamp(3rem, 6vw, 6rem);
+        }
+        [data-template='syifa-specialist'] #services .card-grid {
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+        }
+        [data-template='syifa-specialist'] #services .service-card {
+            grid-column: span 4;
+        }
+        [data-template='syifa-specialist'] #services .service-card--featured {
+            grid-column: span 8;
+        }
+    }
+
+    @media (max-width: 63.999rem) {
+        [data-template='syifa-care'] .hero__content {
+            margin: 0;
+        }
+        [data-template='syifa-aesthetic'] .hero__media,
+        [data-template='syifa-specialist'] .hero__media {
+            min-height: 30rem;
+        }
+        [data-template='syifa-specialist'] .hero__media,
+        [data-template='syifa-specialist'] .booking-panel {
+            box-shadow: var(--shadow-raised);
+        }
+    }
+
+    @media (max-width: 47.999rem) {
+        [data-template='syifa-essential'] .hero__content h1,
+        [data-template='syifa-care'] .hero__content h1,
+        [data-template='syifa-dental'] .hero__content h1,
+        [data-template='syifa-aesthetic'] .hero__content h1,
+        [data-template='syifa-specialist'] .hero__content h1 {
+            font-size: clamp(2.45rem, 12vw, 3.7rem);
+        }
+        [data-template='syifa-essential'] .hero__media,
+        [data-template='syifa-care'] .hero__media,
+        [data-template='syifa-dental'] .hero__media,
+        [data-template='syifa-aesthetic'] .hero__media,
+        [data-template='syifa-specialist'] .hero__media {
+            min-height: 22rem;
+        }
+        [data-template='syifa-care'] .hero__content,
+        [data-template='syifa-care'] .hero__media {
+            border-radius: 2rem 2rem 2rem 0.75rem;
+        }
+        [data-template='syifa-aesthetic'] .hero__media {
+            border-radius: 7rem 7rem 0.75rem 0.75rem;
+        }
+        [data-template='syifa-aesthetic'] .booking-panel {
+            border-radius: 0.75rem 3rem 0.75rem 0.75rem;
+        }
+        [data-template='syifa-specialist'] .section-heading {
+            padding-left: var(--space-4);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        [data-template] .hero__image,
+        [data-template] .service-card,
+        [data-template] .doctor-card {
+            transition: none;
+        }
+    }
+}
+
+@layer templates {
+    [data-template='syifa-specialist'] #testimonials .testimonial-card {
+        min-height: 15rem;
+        align-content: space-between;
+        gap: clamp(1.5rem, 3vw, 2.5rem);
+        border-top: 0.0625rem solid var(--border-subtle);
+        border-right: 0.0625rem solid var(--border-subtle);
+        border-bottom: 0.0625rem solid var(--border-subtle);
+        border-left: 0.35rem solid var(--brand-primary);
+        padding: clamp(1.75rem, 4vw, 3rem);
+    }
+    [data-template='syifa-specialist'] #testimonials .testimonial-card blockquote {
+        margin: 0;
+        padding-left: 0.2rem;
+        color: var(--text-secondary);
+        font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+        font-weight: 620;
+        line-height: 1.55;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+    [data-template='syifa-specialist'] #testimonials .testimonial-card blockquote p {
+        margin: 0;
+    }
+    [data-template='syifa-specialist'] #testimonials .testimonial-card figcaption {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        font-weight: 750;
+        line-height: 1.4;
+    }
+}
+
+@layer responsive {
+    @media (max-width: 47.999rem) {
+        [data-template='syifa-specialist'] #testimonials .testimonial-card {
+            min-height: 0;
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+        [data-template='syifa-specialist'] #testimonials .testimonial-card blockquote {
+            padding-left: 0.1rem;
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+        [data-template='syifa-specialist'] #testimonials .testimonial-card figcaption {
+            font-size: 0.88rem;
+        }
+    }
+}
+
+/* Doctor-card layout contract — prevent media/content collisions across every template. */
+@layer templates {
+    [data-template] #doctors .doctor-card {
+        isolation: isolate;
+        min-width: 0;
+    }
+
+    [data-template] #doctors .doctor-card__media,
+    [data-template] #doctors .doctor-card__fallback {
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    [data-template] #doctors .doctor-card__image {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    [data-template] #doctors .doctor-card__content {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        background: var(--surface-primary);
+    }
+
+    [data-template] #doctors .doctor-card__content h3,
+    [data-template] #doctors .doctor-card__content p {
+        max-width: 100%;
+        overflow-wrap: break-word;
+        word-break: normal;
+    }
+}
+
+@layer responsive {
+    @media (min-width: 48rem) {
+        [data-template='syifa-dental'] #doctors .doctor-card,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card,
+        [data-template='syifa-specialist'] #doctors .doctor-card {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto 1fr;
+        }
+
+        [data-template='syifa-dental'] #doctors .doctor-card__media,
+        [data-template='syifa-dental'] #doctors .doctor-card__fallback {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1 / 1;
+        }
+
+        [data-template='syifa-aesthetic'] #doctors .doctor-card__media,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card__fallback {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 4 / 5;
+        }
+
+        [data-template='syifa-specialist'] #doctors .doctor-card__media,
+        [data-template='syifa-specialist'] #doctors .doctor-card__fallback {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 4 / 3;
+        }
+
+        [data-template='syifa-dental'] #doctors .doctor-card__content,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card__content,
+        [data-template='syifa-specialist'] #doctors .doctor-card__content {
+            min-height: 8.5rem;
+            align-content: start;
+            padding: 1.5rem;
+        }
+    }
+
+    @media (max-width: 47.999rem) {
+        [data-template='syifa-dental'] #doctors .card-grid--doctors,
+        [data-template='syifa-aesthetic'] #doctors .card-grid--doctors,
+        [data-template='syifa-specialist'] #doctors .card-grid--doctors {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1rem;
+        }
+
+        [data-template='syifa-dental'] #doctors .doctor-card,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card,
+        [data-template='syifa-specialist'] #doctors .doctor-card {
+            grid-template-columns: minmax(7.5rem, 36%) minmax(0, 1fr);
+            grid-template-rows: minmax(10.5rem, auto);
+            align-items: stretch;
+            overflow: hidden;
+        }
+
+        [data-template='syifa-dental'] #doctors .doctor-card__media,
+        [data-template='syifa-dental'] #doctors .doctor-card__fallback,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card__media,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card__fallback,
+        [data-template='syifa-specialist'] #doctors .doctor-card__media,
+        [data-template='syifa-specialist'] #doctors .doctor-card__fallback {
+            position: relative;
+            z-index: 0;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            min-height: 10.5rem;
+            margin: 0;
+            aspect-ratio: auto;
+            border-right: 0.0625rem solid var(--border-subtle);
+            border-bottom: 0;
+            border-radius: 0;
+        }
+
+        [data-template='syifa-dental'] #doctors .doctor-card__content,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card__content,
+        [data-template='syifa-specialist'] #doctors .doctor-card__content {
+            grid-column: 2;
+            grid-row: 1;
+            min-height: 0;
+            align-content: center;
+            padding: clamp(1rem, 4vw, 1.4rem);
+        }
+
+        [data-template='syifa-dental'] #doctors .doctor-card__content h3,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card__content h3,
+        [data-template='syifa-specialist'] #doctors .doctor-card__content h3 {
+            font-size: clamp(1.08rem, 5vw, 1.3rem);
+            line-height: 1.2;
+        }
+
+        [data-template='syifa-dental'] #doctors .doctor-card__title,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card__title,
+        [data-template='syifa-specialist'] #doctors .doctor-card__title {
+            font-size: clamp(0.82rem, 3.7vw, 0.93rem);
+            line-height: 1.5;
+        }
+
+        [data-template='syifa-dental'] #doctors .doctor-card {
+            border-radius: 0.4rem;
+        }
+
+        [data-template='syifa-aesthetic'] #doctors .doctor-card {
+            border-radius: 0.75rem;
+        }
+
+        [data-template='syifa-specialist'] #doctors .doctor-card {
+            border-radius: 0.35rem;
+        }
+    }
+
+    @media (max-width: 25rem) {
+        [data-template='syifa-dental'] #doctors .doctor-card,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card,
+        [data-template='syifa-specialist'] #doctors .doctor-card {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto auto;
+        }
+
+        [data-template='syifa-dental'] #doctors .doctor-card__media,
+        [data-template='syifa-dental'] #doctors .doctor-card__fallback,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card__media,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card__fallback,
+        [data-template='syifa-specialist'] #doctors .doctor-card__media,
+        [data-template='syifa-specialist'] #doctors .doctor-card__fallback {
+            grid-column: 1;
+            grid-row: 1;
+            height: auto;
+            min-height: 0;
+            aspect-ratio: 4 / 3;
+            border-right: 0;
+            border-bottom: 0.0625rem solid var(--border-subtle);
+        }
+
+        [data-template='syifa-dental'] #doctors .doctor-card__content,
+        [data-template='syifa-aesthetic'] #doctors .doctor-card__content,
+        [data-template='syifa-specialist'] #doctors .doctor-card__content {
+            grid-column: 1;
+            grid-row: 2;
+            padding: 1.25rem;
+        }
+    }
+}
+
+/* Syifa Care doctors — soft geometry with isolated, collision-free columns. */
+@layer templates {
+    [data-template='syifa-care'] #doctors .doctor-card {
+        isolation: isolate;
+        min-width: 0;
+    }
+
+    [data-template='syifa-care'] #doctors .doctor-card__media,
+    [data-template='syifa-care'] #doctors .doctor-card__fallback {
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    [data-template='syifa-care'] #doctors .doctor-card__image {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center 18%;
+    }
+
+    [data-template='syifa-care'] #doctors .doctor-card__content {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+        overflow: hidden;
+        background: var(--surface-primary);
+    }
+
+    [data-template='syifa-care'] #doctors .doctor-card__content h3,
+    [data-template='syifa-care'] #doctors .doctor-card__content p {
+        max-width: 100%;
+        overflow-wrap: break-word;
+    }
+}
+
+@layer responsive {
+    @media (min-width: 48rem) {
+        [data-template='syifa-care'] #doctors .doctor-card {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto 1fr;
+        }
+
+        [data-template='syifa-care'] #doctors .doctor-card__media,
+        [data-template='syifa-care'] #doctors .doctor-card__fallback {
+            width: auto;
+            height: auto;
+            margin: 0.75rem 0.75rem 0;
+            aspect-ratio: 5 / 4;
+            border-radius: 2rem 2rem 0.75rem 2rem;
+        }
+
+        [data-template='syifa-care'] #doctors .doctor-card__content {
+            min-height: 8.5rem;
+            align-content: start;
+            padding: 1.5rem;
+        }
+    }
+
+    @media (max-width: 47.999rem) {
+        [data-template='syifa-care'] #doctors .card-grid--doctors {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1rem;
+        }
+
+        [data-template='syifa-care'] #doctors .doctor-card {
+            grid-template-columns: minmax(7.75rem, 38%) minmax(0, 1fr);
+            grid-template-rows: minmax(11rem, auto);
+            align-items: stretch;
+            overflow: hidden;
+            border-radius: 2rem 2rem 0.75rem 2rem;
+        }
+
+        [data-template='syifa-care'] #doctors .doctor-card__media,
+        [data-template='syifa-care'] #doctors .doctor-card__fallback {
+            position: relative;
+            z-index: 0;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            min-height: 11rem;
+            margin: 0;
+            aspect-ratio: auto;
+            border: 0;
+            border-right: 0.0625rem solid var(--border-subtle);
+            border-radius: 2rem 0 0 2rem;
+        }
+
+        [data-template='syifa-care'] #doctors .doctor-card__content {
+            grid-column: 2;
+            grid-row: 1;
+            min-height: 0;
+            align-content: center;
+            padding: clamp(1rem, 4vw, 1.4rem);
+        }
+
+        [data-template='syifa-care'] #doctors .doctor-card__content h3 {
+            font-size: clamp(1.08rem, 5vw, 1.3rem);
+            line-height: 1.2;
+        }
+
+        [data-template='syifa-care'] #doctors .doctor-card__title {
+            font-size: clamp(0.82rem, 3.7vw, 0.93rem);
+            line-height: 1.5;
+        }
+    }
+
+    @media (max-width: 25rem) {
+        [data-template='syifa-care'] #doctors .doctor-card {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto auto;
+        }
+
+        [data-template='syifa-care'] #doctors .doctor-card__media,
+        [data-template='syifa-care'] #doctors .doctor-card__fallback {
+            grid-column: 1;
+            grid-row: 1;
+            height: auto;
+            min-height: 0;
+            aspect-ratio: 4 / 3;
+            border-right: 0;
+            border-bottom: 0.0625rem solid var(--border-subtle);
+            border-radius: 2rem 2rem 0 0;
+        }
+
+        [data-template='syifa-care'] #doctors .doctor-card__content {
+            grid-column: 1;
+            grid-row: 2;
+            padding: 1.25rem;
+        }
+    }
+}
+
+/* Syifa Essential doctors — strict media/content boundaries at every viewport. */
+@layer templates {
+    [data-template='syifa-essential'] #doctors .doctor-card {
+        isolation: isolate;
+        min-width: 0;
+    }
+
+    [data-template='syifa-essential'] #doctors .doctor-card__media,
+    [data-template='syifa-essential'] #doctors .doctor-card__fallback {
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    [data-template='syifa-essential'] #doctors .doctor-card__image {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center 18%;
+    }
+
+    [data-template='syifa-essential'] #doctors .doctor-card__content {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+        overflow: hidden;
+        background: var(--surface-primary);
+    }
+
+    [data-template='syifa-essential'] #doctors .doctor-card__content h3,
+    [data-template='syifa-essential'] #doctors .doctor-card__content p {
+        max-width: 100%;
+        overflow-wrap: break-word;
+    }
+}
+
+@layer responsive {
+    @media (min-width: 48rem) {
+        [data-template='syifa-essential'] #doctors .doctor-card {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto 1fr;
+        }
+
+        [data-template='syifa-essential'] #doctors .doctor-card__media,
+        [data-template='syifa-essential'] #doctors .doctor-card__fallback {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 4 / 3;
+        }
+
+        [data-template='syifa-essential'] #doctors .doctor-card__content {
+            min-height: 8.5rem;
+            align-content: start;
+            padding: 1.5rem;
+        }
+    }
+
+    @media (max-width: 47.999rem) {
+        [data-template='syifa-essential'] #doctors .card-grid--doctors {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1rem;
+        }
+
+        [data-template='syifa-essential'] #doctors .doctor-card {
+            grid-template-columns: minmax(7.5rem, 36%) minmax(0, 1fr);
+            grid-template-rows: minmax(10.5rem, auto);
+            align-items: stretch;
+            overflow: hidden;
+            border-radius: 1rem;
+        }
+
+        [data-template='syifa-essential'] #doctors .doctor-card__media,
+        [data-template='syifa-essential'] #doctors .doctor-card__fallback {
+            position: relative;
+            z-index: 0;
+            grid-column: 1;
+            grid-row: 1;
+            width: 100%;
+            height: 100%;
+            min-height: 10.5rem;
+            aspect-ratio: auto;
+            border-right: 0.0625rem solid var(--border-subtle);
+            border-bottom: 0;
+        }
+
+        [data-template='syifa-essential'] #doctors .doctor-card__content {
+            grid-column: 2;
+            grid-row: 1;
+            min-height: 0;
+            align-content: center;
+            padding: clamp(1rem, 4vw, 1.35rem);
+        }
+
+        [data-template='syifa-essential'] #doctors .doctor-card__content h3 {
+            font-size: clamp(1.08rem, 5vw, 1.3rem);
+            line-height: 1.2;
+        }
+
+        [data-template='syifa-essential'] #doctors .doctor-card__title {
+            font-size: clamp(0.82rem, 3.7vw, 0.93rem);
+            line-height: 1.5;
+        }
+    }
+
+    @media (max-width: 25rem) {
+        [data-template='syifa-essential'] #doctors .doctor-card {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto auto;
+        }
+
+        [data-template='syifa-essential'] #doctors .doctor-card__media,
+        [data-template='syifa-essential'] #doctors .doctor-card__fallback {
+            grid-column: 1;
+            grid-row: 1;
+            height: auto;
+            min-height: 0;
+            aspect-ratio: 4 / 3;
+            border-right: 0;
+            border-bottom: 0.0625rem solid var(--border-subtle);
+        }
+
+        [data-template='syifa-essential'] #doctors .doctor-card__content {
+            grid-column: 1;
+            grid-row: 2;
+            padding: 1.25rem;
+        }
+    }
+}
+
+/* 2026-08-16 — full premium template pass.
+   Shared craft stays restrained; identity comes from composition, rhythm and image treatment. */
+@layer templates {
+    [data-template] .public-section {
+        padding-block: clamp(4.5rem, 8vw, 8rem);
+    }
+
+    [data-template] .section-heading {
+        gap: 0.85rem;
+        margin-bottom: clamp(2.25rem, 5vw, 4.5rem);
+    }
+
+    [data-template] .section-heading h2,
+    [data-template] .about__content h2,
+    [data-template] .contact-layout h2 {
+        line-height: 1.06;
+        letter-spacing: -0.045em;
+        text-wrap: balance;
+    }
+
+    [data-template] .section-heading > p:last-child,
+    [data-template] .prose-lead {
+        max-width: 52ch;
+        line-height: 1.7;
+        text-wrap: pretty;
+    }
+
+    [data-template] .eyebrow {
+        font-size: 0.76rem;
+        font-weight: 760;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+    }
+
+    [data-template] .about__media,
+    [data-template] .doctor-card__media,
+    [data-template] .gallery-item__button {
+        isolation: isolate;
+    }
+
+    [data-template] .about__image,
+    [data-template] .doctor-card__image,
+    [data-template] .gallery-item__image {
+        transition: transform 650ms var(--ease-standard), filter 350ms var(--ease-standard);
+    }
+
+    [data-template] .about__media:hover .about__image,
+    [data-template] .doctor-card:hover .doctor-card__image,
+    [data-template] .gallery-item__button:hover .gallery-item__image {
+        transform: scale(1.025);
+    }
+
+    [data-template] .service-card,
+    [data-template] .doctor-card,
+    [data-template] .testimonial-card,
+    [data-template] .gallery-item {
+        transition: transform 240ms var(--ease-standard), border-color 240ms var(--ease-standard), box-shadow 240ms var(--ease-standard);
+    }
+
+    [data-template] .service-card:hover,
+    [data-template] .doctor-card:hover,
+    [data-template] .testimonial-card:hover {
+        transform: translateY(-0.25rem);
+    }
+
+    [data-template] .gallery-item__view {
+        backdrop-filter: blur(0.5rem);
+        -webkit-backdrop-filter: blur(0.5rem);
+    }
+
+    [data-template] :where(a, button, summary):focus-visible {
+        outline: 0.1875rem solid color-mix(in srgb, var(--brand-primary) 46%, white);
+        outline-offset: 0.2rem;
+    }
+
+    /* Essential: disciplined whitespace and understated horizontal structure. */
+    [data-template='syifa-essential'] .public-section {
+        border-top: 0.0625rem solid color-mix(in srgb, var(--brand-primary) 10%, transparent);
+    }
+
+    [data-template='syifa-essential'] .section-heading .eyebrow {
+        border-left: 0.2rem solid var(--brand-primary);
+        border-radius: 0;
+        background: transparent;
+        padding: 0.15rem 0 0.15rem 0.85rem;
+    }
+
+    [data-template='syifa-essential'] .about {
+        align-items: center;
+    }
+
+    [data-template='syifa-essential'] .about__media {
+        overflow: hidden;
+        border-radius: 0.5rem;
+        box-shadow: 1rem 1rem 0 var(--surface-emphasis);
+    }
+
+    [data-template='syifa-essential'] .doctor-card__media {
+        aspect-ratio: 4 / 3;
+    }
+
+    [data-template='syifa-essential'] .testimonial-card {
+        min-height: 13rem;
+        justify-content: space-between;
+    }
+
+    /* Care: welcoming, tactile surfaces with gentle stagger and softer imagery. */
+    [data-template='syifa-care'] .public-section--subtle {
+        background:
+            radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--brand-secondary) 58%, transparent), transparent 24rem),
+            var(--surface-subtle);
+    }
+
+    [data-template='syifa-care'] .section-heading {
+        max-width: 45rem;
+    }
+
+    [data-template='syifa-care'] .about__media {
+        overflow: hidden;
+        border: 0.5rem solid var(--surface-primary);
+        border-radius: 3rem 3rem 1rem 3rem;
+        box-shadow: 0 2rem 4.5rem rgb(21 128 61 / 12%);
+    }
+
+    [data-template='syifa-care'] .doctor-card__media {
+        aspect-ratio: 5 / 4;
+    }
+
+    [data-template='syifa-care'] .doctor-card__image {
+        object-position: center 22%;
+    }
+
+    [data-template='syifa-care'] .testimonial-card blockquote {
+        line-height: 1.65;
+    }
+
+    [data-template='syifa-care'] .faq-item {
+        border: 0;
+        border-radius: 1.25rem;
+        background: var(--surface-primary);
+        box-shadow: 0 0.75rem 2rem rgb(21 128 61 / 5%);
+    }
+
+    /* Dental: crisp technical grid, measured alignment and precision accents. */
+    [data-template='syifa-dental'] .public-section {
+        position: relative;
+        background-image: linear-gradient(90deg, color-mix(in srgb, var(--brand-primary) 5%, transparent) 0.0625rem, transparent 0.0625rem);
+        background-size: min(8vw, 7rem) 100%;
+    }
+
+    [data-template='syifa-dental'] .public-section > .public-container {
+        position: relative;
+        z-index: 1;
+    }
+
+    [data-template='syifa-dental'] .section-heading {
+        padding-bottom: 1.5rem;
+        border-bottom: 0.0625rem solid var(--border-default);
+    }
+
+    [data-template='syifa-dental'] .service-card {
+        border-top-width: 0.3rem;
+        background: rgb(255 255 255 / 94%);
+    }
+
+    [data-template='syifa-dental'] .doctor-card__media {
+        aspect-ratio: 1 / 1;
+        background: var(--surface-emphasis);
+    }
+
+    [data-template='syifa-dental'] .doctor-card__image {
+        object-position: center 18%;
+    }
+
+    [data-template='syifa-dental'] .gallery-item {
+        border-radius: 0.35rem;
+    }
+
+    [data-template='syifa-dental'] .faq-item summary {
+        min-height: 4.75rem;
+    }
+
+    /* Aesthetic: editorial scale, fine rules and portrait-led composition. */
+    [data-template='syifa-aesthetic'] .public-section {
+        padding-block: clamp(5.5rem, 10vw, 10rem);
+    }
+
+    [data-template='syifa-aesthetic'] .section-heading {
+        max-width: 52rem;
+    }
+
+    [data-template='syifa-aesthetic'] .section-heading .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+
+    [data-template='syifa-aesthetic'] .section-heading .eyebrow::after {
+        width: 3rem;
+        height: 0.0625rem;
+        background: currentColor;
+        content: '';
+        opacity: 0.45;
+    }
+
+    [data-template='syifa-aesthetic'] .about__media {
+        overflow: hidden;
+        border-radius: 8rem 8rem 0.75rem 0.75rem;
+        box-shadow: 0 2.5rem 6rem rgb(77 29 48 / 12%);
+    }
+
+    [data-template='syifa-aesthetic'] .about__image {
+        filter: saturate(0.82) contrast(1.02) sepia(0.05);
+    }
+
+    [data-template='syifa-aesthetic'] .doctor-card__media {
+        aspect-ratio: 4 / 5;
+    }
+
+    [data-template='syifa-aesthetic'] .doctor-card__image {
+        object-position: center 16%;
+        filter: saturate(0.88) contrast(1.02);
+    }
+
+    [data-template='syifa-aesthetic'] .testimonial-card {
+        position: relative;
+        padding-top: clamp(1.5rem, 3vw, 2.25rem);
+    }
+
+    [data-template='syifa-aesthetic'] .testimonial-card::before {
+        display: none;
+        content: none;
+    }
+
+    [data-template='syifa-aesthetic'] .testimonial-card blockquote,
+    [data-template='syifa-aesthetic'] .testimonial-card blockquote p {
+        margin: 0;
+    }
+
+    [data-template='syifa-aesthetic'] .testimonial-card blockquote {
+        max-width: 42ch;
+        line-height: 1.65;
+    }
+
+    /* Specialist: authoritative information architecture and institutional rhythm. */
+    [data-template='syifa-specialist'] .public-section {
+        border-top: 0.0625rem solid var(--border-default);
+    }
+
+    [data-template='syifa-specialist'] .section-heading {
+        max-width: 54rem;
+        border-left: 0.3rem solid var(--brand-primary);
+        padding-left: clamp(1.25rem, 2.5vw, 2rem);
+    }
+
+    [data-template='syifa-specialist'] .section-heading .eyebrow {
+        color: var(--brand-primary);
+    }
+
+    [data-template='syifa-specialist'] .about__media {
+        overflow: hidden;
+        border-radius: 0.25rem;
+        box-shadow: 1rem 1rem 0 var(--surface-emphasis);
+    }
+
+    [data-template='syifa-specialist'] .service-card {
+        position: relative;
+        min-height: 12rem;
+        padding-top: 2.75rem;
+    }
+
+    [data-template='syifa-specialist'] .service-card::after {
+        position: absolute;
+        top: 1.1rem;
+        left: 1.5rem;
+        width: 2rem;
+        height: 0.16rem;
+        background: var(--brand-primary);
+        content: '';
+    }
+
+    [data-template='syifa-specialist'] .doctor-card__media {
+        aspect-ratio: 4 / 3;
+        background: var(--surface-emphasis);
+    }
+
+    [data-template='syifa-specialist'] .doctor-card__image {
+        object-position: center 18%;
+    }
+
+    [data-template='syifa-specialist'] .faq-list {
+        gap: 0.75rem;
+    }
+}
+
+@layer responsive {
+    @media (min-width: 64rem) {
+        [data-template='syifa-essential'] .about,
+        [data-template='syifa-dental'] .about,
+        [data-template='syifa-specialist'] .about {
+            grid-template-columns: minmax(0, 1.08fr) minmax(22rem, 0.92fr);
+            gap: clamp(4rem, 8vw, 8rem);
+        }
+
+        [data-template='syifa-care'] .about {
+            grid-template-columns: minmax(24rem, 0.9fr) minmax(0, 1.1fr);
+            gap: clamp(3rem, 7vw, 7rem);
+        }
+
+        [data-template='syifa-care'] .about__content {
+            padding-right: clamp(1rem, 3vw, 3rem);
+        }
+
+        [data-template='syifa-dental'] #testimonials .section-heading,
+        [data-template='syifa-specialist'] #testimonials .section-heading {
+            max-width: 48rem;
+        }
+
+        [data-template='syifa-aesthetic'] .about {
+            grid-template-columns: minmax(22rem, 0.78fr) minmax(0, 1.22fr);
+            gap: clamp(4rem, 9vw, 9rem);
+        }
+
+        [data-template='syifa-aesthetic'] .about__content {
+            max-width: 36rem;
+        }
+
+        [data-template='syifa-aesthetic'] #testimonials .card-grid--count-3,
+        [data-template='syifa-aesthetic'] #testimonials .card-grid--count-4 {
+            grid-template-columns: 1.15fr 0.85fr;
+            align-items: start;
+        }
+
+        [data-template='syifa-aesthetic'] #testimonials .testimonial-card:nth-child(even) {
+            margin-top: 3rem;
+        }
+
+        [data-template='syifa-specialist'] #doctors .card-grid--count-3,
+        [data-template='syifa-specialist'] #doctors .card-grid--count-4 {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 63.999rem) {
+        [data-template] .public-section {
+            padding-block: clamp(4rem, 9vw, 6rem);
+        }
+
+        [data-template='syifa-care'] #doctors .doctor-card:nth-child(even),
+        [data-template='syifa-care'] #testimonials .testimonial-card:nth-child(even),
+        [data-template='syifa-aesthetic'] #testimonials .testimonial-card:nth-child(even) {
+            transform: none;
+            margin-top: 0;
+        }
+    }
+
+    @media (max-width: 47.999rem) {
+        [data-template] .public-section {
+            padding-block: 3.75rem;
+        }
+
+        [data-template] .section-heading {
+            margin-bottom: 2rem;
+        }
+
+        [data-template] .section-heading h2,
+        [data-template] .about__content h2,
+        [data-template] .contact-layout h2 {
+            font-size: clamp(2rem, 9vw, 2.75rem);
+        }
+
+        [data-template] .service-card:hover,
+        [data-template] .doctor-card:hover,
+        [data-template] .testimonial-card:hover {
+            transform: none;
+        }
+
+        [data-template='syifa-essential'] .about__media,
+        [data-template='syifa-specialist'] .about__media {
+            box-shadow: 0.5rem 0.5rem 0 var(--surface-emphasis);
+        }
+
+        [data-template='syifa-care'] .about__media {
+            border-width: 0.35rem;
+            border-radius: 2rem 2rem 0.75rem 2rem;
+        }
+
+        [data-template='syifa-aesthetic'] .public-section {
+            padding-block: 4.5rem;
+        }
+
+        [data-template='syifa-aesthetic'] .about__media {
+            border-radius: 5rem 5rem 0.5rem 0.5rem;
+        }
+
+        [data-template='syifa-specialist'] .section-heading {
+            padding-left: 1rem;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        [data-template] .about__image,
+        [data-template] .doctor-card__image,
+        [data-template] .gallery-item__image,
+        [data-template] .service-card,
+        [data-template] .doctor-card,
+        [data-template] .testimonial-card {
+            transition: none;
+        }
+    }
+}
+
+/* Syifa Care hero — balanced editorial composition and predictable ornament placement. */
+@layer templates {
+    [data-template='syifa-care'] .hero {
+        padding-block: clamp(2.5rem, 5vw, 5rem);
+    }
+
+    [data-template='syifa-care'] .hero__layout {
+        gap: clamp(1.5rem, 3vw, 3rem);
+    }
+
+    [data-template='syifa-care'] .hero__content {
+        gap: clamp(1.25rem, 2vw, 1.75rem);
+        padding: clamp(2rem, 3.6vw, 3.75rem);
+    }
+
+    [data-template='syifa-care'] .hero__content .eyebrow {
+        margin: 0;
+        letter-spacing: 0.14em;
+    }
+
+    [data-template='syifa-care'] .hero__content h1 {
+        max-width: 12ch;
+        margin: 0;
+        font-size: clamp(2.65rem, 4.2vw, 4.5rem);
+        line-height: 1.01;
+        letter-spacing: -0.052em;
+    }
+
+    [data-template='syifa-care'] .hero__lead {
+        max-width: 44ch;
+        margin: 0;
+        font-size: clamp(1.05rem, 1.45vw, 1.25rem);
+        line-height: 1.65;
+    }
+
+    [data-template='syifa-care'] .hero__actions {
+        margin-top: 0.25rem;
+    }
+
+    [data-template='syifa-care'] .hero__actions .button {
+        min-height: 3.25rem;
+        padding-inline: 1.6rem;
+    }
+
+    [data-template='syifa-care'] .hero__trust {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0;
+        margin-top: 0.25rem;
+        border: 0.0625rem solid rgb(255 255 255 / 10%);
+        border-radius: 1.25rem;
+        padding: 0.25rem 1.25rem;
+    }
+
+    [data-template='syifa-care'] .hero__trust li {
+        min-width: 0;
+        padding-block: 0.8rem;
+        font-size: 0.88rem;
+        line-height: 1.45;
+    }
+
+    [data-template='syifa-care'] .hero__trust li:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+        border-top: 0.0625rem solid rgb(255 255 255 / 12%);
+    }
+
+    [data-template='syifa-care'] .hero__trust li:nth-child(even) {
+        border-left: 0.0625rem solid rgb(255 255 255 / 12%);
+        padding-left: 1rem;
+    }
+
+    [data-template='syifa-care'] .hero__trust li:last-child:nth-child(odd) {
+        padding-left: 0;
+    }
+
+    [data-template='syifa-care'] .hero__trust span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    [data-template='syifa-care'] .hero__media {
+        min-height: 0;
+        aspect-ratio: 4 / 3;
+        border-width: 0.55rem;
+        border-radius: 3rem 3rem 3rem 1.1rem;
+    }
+
+    [data-template='syifa-care'] .hero__media::after {
+        inset: auto -3.5rem -3.5rem auto;
+        width: 9rem;
+        height: 9rem;
+        border-width: 1.15rem;
+        border-radius: 50%;
+    }
+
+    [data-template='syifa-care'] .hero__image {
+        object-position: center;
+    }
+}
+
+@layer responsive {
+    @media (min-width: 64rem) {
+        [data-template='syifa-care'] .hero__layout {
+            grid-template-columns: minmax(28rem, 0.92fr) minmax(0, 1.08fr);
+        }
+
+        [data-template='syifa-care'] .hero__content {
+            z-index: auto;
+            align-self: center;
+            margin-right: 0;
+        }
+
+        [data-template='syifa-care'] .hero__media {
+            max-height: 36rem;
+        }
+    }
+
+    @media (min-width: 48rem) and (max-width: 63.999rem) {
+        [data-template='syifa-care'] .hero__layout {
+            grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.9fr);
+            gap: 1.5rem;
+        }
+
+        [data-template='syifa-care'] .hero__content {
+            padding: 2rem;
+        }
+
+        [data-template='syifa-care'] .hero__content h1 {
+            font-size: clamp(2.45rem, 5vw, 3.25rem);
+        }
+
+        [data-template='syifa-care'] .hero__trust {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        [data-template='syifa-care'] .hero__trust li,
+        [data-template='syifa-care'] .hero__trust li:nth-child(even),
+        [data-template='syifa-care'] .hero__trust li:last-child:nth-child(odd) {
+            grid-column: auto;
+            border-left: 0;
+            padding-left: 0;
+        }
+
+        [data-template='syifa-care'] .hero__trust li + li {
+            border-top: 0.0625rem solid rgb(255 255 255 / 12%);
+        }
+    }
+
+    @media (max-width: 47.999rem) {
+        [data-template='syifa-care'] .hero {
+            padding-block: 1.5rem 3rem;
+        }
+
+        [data-template='syifa-care'] .hero__layout {
+            gap: 1.25rem;
+        }
+
+        [data-template='syifa-care'] .hero__content {
+            gap: 1.25rem;
+            padding: 1.5rem;
+        }
+
+        [data-template='syifa-care'] .hero__content h1 {
+            max-width: 13ch;
+            font-size: clamp(2.35rem, 11vw, 3.25rem);
+        }
+
+        [data-template='syifa-care'] .hero__lead {
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        [data-template='syifa-care'] .hero__actions,
+        [data-template='syifa-care'] .hero__actions .button {
+            width: 100%;
+        }
+
+        [data-template='syifa-care'] .hero__trust {
+            grid-template-columns: minmax(0, 1fr);
+            padding-inline: 1rem;
+        }
+
+        [data-template='syifa-care'] .hero__trust li,
+        [data-template='syifa-care'] .hero__trust li:nth-child(even),
+        [data-template='syifa-care'] .hero__trust li:last-child:nth-child(odd) {
+            grid-column: auto;
+            border-left: 0;
+            padding-left: 0;
+        }
+
+        [data-template='syifa-care'] .hero__trust li + li {
+            border-top: 0.0625rem solid rgb(255 255 255 / 12%);
+        }
+
+        [data-template='syifa-care'] .hero__media {
+            min-height: 18rem;
+            aspect-ratio: 4 / 3;
+            border-width: 0.4rem;
+            border-radius: 2rem 2rem 2rem 0.75rem;
+        }
+    }
+}
+
+/* Responsive excellence pass — shared ergonomics for phone and tablet viewports. */
+@layer responsive {
+    @media (min-width: 48rem) and (max-width: 63.999rem) {
+        [data-template] .public-container,
+        [data-template] .public-container--wide {
+            width: min(calc(100% - 3rem), var(--container-content));
+        }
+
+        [data-template] .public-section {
+            padding-block: clamp(4.5rem, 8vw, 6.5rem);
+        }
+
+        [data-template] .section-heading {
+            max-width: 44rem;
+            margin-bottom: 2.75rem;
+        }
+
+        [data-template] .hero__layout,
+        [data-template] .about,
+        [data-template] .contact-layout,
+        [data-template] .site-footer__visit {
+            gap: clamp(2rem, 5vw, 3.5rem);
+        }
+
+        [data-template] .card-grid--services,
+        [data-template] .card-grid--doctors,
+        [data-template] .card-grid--testimonials {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        [data-template] .gallery-grid.gallery-grid--count-3,
+        [data-template] .gallery-grid.gallery-grid--count-4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        [data-template] .booking-panel {
+            gap: 2rem;
+            padding: clamp(2.25rem, 5vw, 3.5rem);
+        }
+    }
+
+    @media (max-width: 47.999rem) {
+        html {
+            scroll-padding-top: calc(var(--header-height) + 1rem);
+        }
+
+        body {
+            overflow-x: clip;
+        }
+
+        [data-template] {
+            --mobile-gutter: clamp(1rem, 4.5vw, 1.35rem);
+        }
+
+        [data-template] .public-container,
+        [data-template] .public-container--wide,
+        [data-template] .public-container--reading {
+            width: calc(100% - (var(--mobile-gutter) * 2));
+            max-width: 100%;
+        }
+
+        [data-template] :where(a, button, summary, input, select, textarea) {
+            scroll-margin-top: calc(var(--header-height) + 1rem);
+        }
+
+        [data-template] :where(.button, .menu-toggle, .contact-action, .footer-contact, .gallery-item__button) {
+            min-height: 3rem;
+        }
+
+        [data-template] .site-header,
+        [data-template] .navbar {
+            min-height: 4.5rem;
+        }
+
+        [data-template] .navbar {
+            gap: 0.65rem;
+        }
+
+        [data-template] .brand {
+            min-width: 0;
+            margin-inline-start: 0;
+        }
+
+        [data-template] .brand__logo {
+            max-width: min(9rem, 38vw);
+            max-height: 3.5rem;
+        }
+
+        [data-template] .navbar__cluster,
+        [data-template] .navbar__actions {
+            gap: 0.5rem;
+        }
+
+        [data-template] .menu-toggle,
+        [data-template] .navbar__booking {
+            min-width: 2.875rem;
+            min-height: 2.875rem;
+        }
+
+        [data-template] .public-navigation[data-open='true'] {
+            max-height: calc(100dvh - 5.5rem);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
+
+        [data-template] .public-navigation__links a {
+            min-height: 3rem;
+            display: flex;
+            align-items: center;
+        }
+
+        [data-template] .hero {
+            min-height: 0;
+            padding-block: 1.5rem 3.5rem;
+        }
+
+        [data-template] .hero__layout {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1.25rem;
+        }
+
+        [data-template] .hero__content {
+            min-width: 0;
+            gap: 1.25rem;
+            padding: clamp(1.4rem, 6vw, 2rem);
+        }
+
+        [data-template] .hero__content h1 {
+            max-width: 14ch;
+            margin: 0;
+            font-size: clamp(2.25rem, 11vw, 3.35rem);
+            line-height: 1.02;
+            letter-spacing: -0.05em;
+            overflow-wrap: break-word;
+        }
+
+        [data-template] .hero__lead {
+            max-width: 38ch;
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1.65;
+        }
+
+        [data-template] .hero__actions {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            width: 100%;
+        }
+
+        [data-template] .hero__actions .button {
+            width: 100%;
+            min-height: 3.25rem;
+        }
+
+        [data-template] .hero__trust {
+            min-width: 0;
+            font-size: 0.86rem;
+        }
+
+        [data-template] .hero__trust li,
+        [data-template] .hero__trust span {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        [data-template] .hero__media {
+            width: 100%;
+            min-height: 0;
+            max-height: none;
+            aspect-ratio: 4 / 3;
+        }
+
+        [data-template] .hero__image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        [data-template] .public-section {
+            overflow: clip;
+            padding-block: 3.75rem;
+        }
+
+        [data-template] .section-heading {
+            max-width: 100%;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        [data-template] .section-heading h2,
+        [data-template] .about__content h2,
+        [data-template] .contact-layout h2,
+        [data-template] .booking-panel h2 {
+            max-width: 16ch;
+            font-size: clamp(2rem, 9vw, 2.75rem);
+            line-height: 1.06;
+            letter-spacing: -0.04em;
+            overflow-wrap: break-word;
+        }
+
+        [data-template] .section-heading > p:last-child,
+        [data-template] .prose-lead,
+        [data-template] .booking-panel > div > p {
+            max-width: 38ch;
+            font-size: 1rem;
+            line-height: 1.65;
+        }
+
+        [data-template] .about,
+        [data-template] .contact-layout,
+        [data-template] .site-footer__visit {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 2rem;
+        }
+
+        [data-template] .about__content,
+        [data-template] .contact-layout__intro,
+        [data-template] .contact-layout__details,
+        [data-template] .site-footer__visit-intro,
+        [data-template] .site-footer__visit-details {
+            min-width: 0;
+        }
+
+        [data-template] .about__media {
+            width: 100%;
+            min-height: 0;
+            aspect-ratio: 4 / 3;
+        }
+
+        [data-template] .about__image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        [data-template] .card-grid--services,
+        [data-template] .card-grid--doctors,
+        [data-template] .card-grid--testimonials {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1rem;
+        }
+
+        [data-template] .service-card,
+        [data-template] .testimonial-card {
+            min-width: 0;
+            min-height: 0;
+        }
+
+        [data-template] .testimonial-card {
+            padding: 1.35rem;
+        }
+
+        [data-template] .service-card__heading {
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        [data-template] .service-card__heading h3,
+        [data-template] .testimonial-card blockquote {
+            overflow-wrap: break-word;
+        }
+
+        [data-template] .section-action,
+        [data-template] .section-action .button {
+            width: 100%;
+        }
+
+        [data-template] .gallery-grid,
+        [data-template] .gallery-grid.gallery-grid--count-4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        [data-template] .gallery-item,
+        [data-template] .gallery-item:nth-child(even) {
+            min-width: 0;
+            margin-top: 0;
+        }
+
+        [data-template] .gallery-item__button {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+        }
+
+        [data-template] .gallery-item figcaption {
+            min-height: 0;
+            padding: 0.75rem;
+            font-size: 0.8rem;
+            line-height: 1.35;
+        }
+
+        [data-template] .faq-list {
+            gap: 0.65rem;
+        }
+
+        [data-template] .faq-item summary {
+            min-height: 3.75rem;
+            gap: 1rem;
+            padding: 1rem;
+            line-height: 1.4;
+        }
+
+        [data-template] .faq-item__answer {
+            padding-inline: 1rem;
+        }
+
+        [data-template] .booking-panel {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1.75rem;
+            padding: clamp(1.5rem, 6vw, 2rem);
+        }
+
+        [data-template] .booking-panel__actions {
+            width: 100%;
+            align-items: stretch;
+        }
+
+        [data-template] .booking-panel__actions .button,
+        [data-template] .booking-panel__actions .text-action {
+            width: 100%;
+            justify-content: center;
+        }
+
+        [data-template] .contact-actions,
+        [data-template] .site-footer__contact-actions {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.75rem;
+        }
+
+        [data-template] .contact-action,
+        [data-template] .footer-contact {
+            min-width: 0;
+            padding: 1rem;
+        }
+
+        [data-template] .contact-action__copy,
+        [data-template] .contact-action__copy strong,
+        [data-template] .footer-contact span,
+        [data-template] .footer-contact strong {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        [data-template] .business-hours,
+        [data-template] .social-links {
+            min-width: 0;
+            padding: 1.25rem;
+        }
+
+        [data-template] .site-footer__grid {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 2rem;
+        }
+
+        [data-template] .site-footer__legal {
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+        }
+
+        [data-template] .whatsapp-float {
+            right: max(1rem, env(safe-area-inset-right));
+            bottom: max(1rem, env(safe-area-inset-bottom));
+            width: 3.5rem;
+            height: 3.5rem;
+            min-width: 3.5rem;
+            min-height: 3.5rem;
+            padding: 0;
+            box-shadow: 0 0.9rem 2.25rem rgb(0 0 0 / 18%);
+        }
+
+        [data-template='syifa-aesthetic'] .hero__media,
+        [data-template='syifa-aesthetic'] .about__media {
+            aspect-ratio: 4 / 5;
+        }
+
+        [data-template='syifa-specialist'] .hero__media {
+            aspect-ratio: 16 / 11;
+        }
+    }
+
+    @media (max-width: 29.999rem) {
+        [data-template] .gallery-grid,
+        [data-template] .gallery-grid.gallery-grid--count-4 {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        [data-template] .gallery-item__button {
+            aspect-ratio: 4 / 3;
+        }
+
+        [data-template] .hero__content h1 {
+            font-size: clamp(2.1rem, 10.5vw, 2.8rem);
+        }
+    }
+}
+
+/* Blog slider is intentionally unlayered in the existing stylesheet. */
+@media (max-width: 47.999rem) {
+    [data-template] .blog-section {
+        overflow: clip;
+    }
+
+    [data-template] .blog-slider__viewport {
+        margin-inline: calc(var(--mobile-gutter, 1rem) * -1);
+        padding-inline: var(--mobile-gutter, 1rem);
+        scroll-padding-inline: var(--mobile-gutter, 1rem);
+    }
+
+    [data-template] .blog-slider .blog-card,
+    [data-template] .blog-slider:not(.blog-slider--single) .blog-card {
+        width: min(86vw, 22rem);
+        flex-basis: min(86vw, 22rem);
+    }
+
+    [data-template] .blog-card-body {
+        padding: 1.2rem;
+    }
+
+    [data-template] .blog-card h3 {
+        font-size: clamp(1.2rem, 6vw, 1.45rem);
+        line-height: 1.25;
+    }
+
+    [data-template] .blog-slider__controls button {
+        width: 3rem;
+        height: 3rem;
+        min-width: 3rem;
+        min-height: 3rem;
+    }
+}
+
+/* Final quality lock — content resilience, precise hierarchy and refined interaction. */
+@layer templates {
+    [data-template] main {
+        min-width: 0;
+    }
+
+    [data-template] :where(h1, h2, h3, p, li, a, span) {
+        text-decoration-thickness: 0.075em;
+        text-underline-offset: 0.16em;
+    }
+
+    [data-template] :where(.hero__content, .section-heading, .about__content, .doctor-card__content, .service-card, .testimonial-card, .booking-panel) {
+        min-width: 0;
+    }
+
+    [data-template] .section-heading h2 {
+        max-width: 18ch;
+    }
+
+    [data-template] .service-card__heading h3,
+    [data-template] .doctor-card__content h3,
+    [data-template] .blog-card h3 {
+        text-wrap: balance;
+    }
+
+    [data-template] .service-card > p,
+    [data-template] .doctor-card__title,
+    [data-template] .testimonial-card blockquote,
+    [data-template] .blog-card-excerpt {
+        text-wrap: pretty;
+    }
+
+    [data-template] #doctors .doctor-card__title {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 4;
+    }
+
+    [data-template] .button {
+        max-width: 100%;
+        justify-content: center;
+        text-align: center;
+        text-wrap: balance;
+    }
+
+    [data-template] .gallery-item__button::after {
+        position: absolute;
+        background: linear-gradient(180deg, transparent 58%, rgb(0 0 0 / 24%));
+        content: '';
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 240ms var(--ease-standard);
+    }
+
+    [data-template] .gallery-item__button:hover::after,
+    [data-template] .gallery-item__button:focus-visible::after {
+        opacity: 1;
+    }
+
+    [data-template] .gallery-item__view {
+        z-index: 2;
+    }
+
+    [data-template] .faq-item[open] {
+        border-color: color-mix(in srgb, var(--brand-primary) 28%, var(--border-default));
+    }
+
+    [data-template] .faq-item summary > span:last-child {
+        display: grid;
+        width: 1.75rem;
+        height: 1.75rem;
+        flex: none;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--surface-emphasis);
+        color: var(--brand-primary);
+        transition: transform 220ms var(--ease-standard), background-color 220ms var(--ease-standard);
+    }
+
+    [data-template] .faq-item[open] summary > span:last-child {
+        transform: rotate(45deg);
+    }
+
+    [data-template] .booking-panel__actions {
+        min-width: min(100%, 14rem);
+    }
+
+    [data-template] .contact-action,
+    [data-template] .footer-contact {
+        transition: background-color 220ms var(--ease-standard), border-color 220ms var(--ease-standard), transform 220ms var(--ease-standard);
+    }
+
+    [data-template] .contact-action:hover,
+    [data-template] .footer-contact:hover {
+        transform: translateY(-0.125rem);
+    }
+
+    /* Final signature calibration, deliberately subtle. */
+    [data-template='syifa-essential'] .section-heading h2 {
+        max-width: 15ch;
+    }
+
+    [data-template='syifa-essential'] .doctor-card__content h3 {
+        color: var(--text-primary);
+    }
+
+    [data-template='syifa-care'] .section-heading h2 {
+        max-width: 16ch;
+    }
+
+    [data-template='syifa-care'] .doctor-card__content {
+        border-radius: 0 0 1.5rem 0.6rem;
+    }
+
+    [data-template='syifa-dental'] .section-heading > p:last-child {
+        max-width: 48ch;
+    }
+
+    [data-template='syifa-dental'] .doctor-card__content h3,
+    [data-template='syifa-dental'] .service-card__heading h3 {
+        letter-spacing: -0.025em;
+    }
+
+    [data-template='syifa-aesthetic'] .section-heading h2 {
+        max-width: 14ch;
+    }
+
+    [data-template='syifa-aesthetic'] .doctor-card__content h3 {
+        line-height: 1.08;
+    }
+
+    [data-template='syifa-specialist'] .doctor-card__title {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.55;
+    }
+
+    [data-template='syifa-specialist'] .doctor-card__content h3 {
+        letter-spacing: -0.03em;
+    }
+}
+
+@layer responsive {
+    @media (min-width: 64rem) {
+        [data-template] .card-grid--doctors,
+        [data-template] .card-grid--testimonials {
+            align-items: stretch;
+        }
+
+        [data-template] .doctor-card__content {
+            min-height: 9rem;
+        }
+
+        [data-template] .testimonial-card {
+            height: 100%;
+        }
+    }
+
+    @media (min-width: 48rem) and (max-width: 63.999rem) {
+        [data-template] #doctors .doctor-card__title {
+            -webkit-line-clamp: 3;
+        }
+
+        [data-template] .hero__content h1 {
+            font-size: clamp(2.75rem, 6vw, 4rem);
+        }
+
+        [data-template] .section-heading h2,
+        [data-template] .about__content h2,
+        [data-template] .contact-layout h2 {
+            font-size: clamp(2.25rem, 5vw, 3.25rem);
+        }
+    }
+
+    @media (max-width: 47.999rem) {
+        [data-template] #doctors .doctor-card__title {
+            -webkit-line-clamp: 4;
+        }
+
+        [data-template] .eyebrow {
+            font-size: 0.7rem;
+            line-height: 1.4;
+            letter-spacing: 0.12em;
+        }
+
+        [data-template] .testimonial-card blockquote {
+            font-size: 1rem;
+            line-height: 1.65;
+        }
+
+        [data-template] .testimonial-card figcaption {
+            font-size: 0.86rem;
+        }
+
+        [data-template] .faq-item summary > span:last-child {
+            width: 2rem;
+            height: 2rem;
+        }
+
+        [data-template] .contact-action:hover,
+        [data-template] .footer-contact:hover {
+            transform: none;
+        }
+    }
+
+    @media (hover: none), (pointer: coarse) {
+        [data-template] .service-card:hover,
+        [data-template] .doctor-card:hover,
+        [data-template] .testimonial-card:hover,
+        [data-template] .gallery-item:hover,
+        [data-template] .contact-action:hover,
+        [data-template] .footer-contact:hover {
+            transform: none;
+        }
+
+        [data-template] .gallery-item__button::after {
+            opacity: 0;
+        }
+    }
+
+    @media (prefers-contrast: more) {
+        [data-template] :where(.service-card, .doctor-card, .testimonial-card, .gallery-item, .faq-item) {
+            border-color: currentColor;
+        }
+
+        [data-template] :where(.eyebrow, .doctor-card__title, .section-heading > p:last-child) {
+            color: var(--text-primary);
+        }
+    }
+}
+
+/* Testimonial quote contract — quotation punctuation belongs to content, never decoration. */
+@layer templates {
+    [data-template] #testimonials .testimonial-card::before,
+    [data-template] #testimonials .testimonial-card blockquote::before,
+    [data-template] #testimonials .testimonial-card blockquote p::before {
+        display: none;
+        content: none;
+    }
+
+    [data-template] #testimonials .testimonial-card {
+        padding-top: clamp(1.5rem, 3vw, 2.25rem);
+    }
+
+    [data-template] #testimonials .testimonial-card blockquote,
+    [data-template] #testimonials .testimonial-card blockquote p {
+        margin: 0;
+    }
+}
+
+@layer responsive {
+    @media (max-width: 47.999rem) {
+        [data-template] #testimonials .testimonial-card {
+            padding: 1.35rem;
+        }
+    }
+}
+
+/* Dental testimonial layout lock sits unlayered to override legacy art-direction rules. */
+[data-template='syifa-dental'] #testimonials .testimonial-card::before,
+[data-template='syifa-dental'] #testimonials .testimonial-card blockquote::before,
+[data-template='syifa-dental'] #testimonials .testimonial-card blockquote p::before {
+    display: none !important;
+    content: none !important;
+}
+
+[data-template='syifa-dental'] #testimonials .testimonial-card {
+    width: 100%;
+    max-width: 100%;
+    padding-top: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+[data-template='syifa-dental'] #testimonials .testimonial-card blockquote,
+[data-template='syifa-dental'] #testimonials .testimonial-card blockquote p {
+    max-width: 100%;
+    margin: 0;
+    overflow-wrap: break-word;
+}
+
+@media (min-width: 64rem) {
+    [data-template='syifa-dental'] #testimonials {
+        background:
+            linear-gradient(90deg, var(--surface-emphasis) 0 43%, transparent 43%),
+            var(--surface-primary);
+    }
+
+    [data-template='syifa-dental'] #testimonials > .public-container {
+        display: grid;
+        width: min(calc(100% - 4rem), var(--container-content));
+        grid-template-columns: minmax(18rem, 0.82fr) minmax(26rem, 1.18fr);
+        align-items: start;
+        gap: clamp(3rem, 6vw, 6rem);
+        overflow: visible;
+    }
+
+    [data-template='syifa-dental'] #testimonials .section-heading {
+        position: sticky;
+        top: calc(var(--header-height) + 2rem);
+        min-width: 0;
+        max-width: 32rem;
+        margin: 0;
+    }
+
+    [data-template='syifa-dental'] #testimonials .card-grid {
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        grid-template-columns: minmax(0, 1fr);
+        justify-content: stretch;
+        gap: 1.25rem;
+    }
+}
+
+@media (max-width: 63.999rem) {
+    [data-template='syifa-dental'] #testimonials > .public-container {
+        display: block;
+        width: min(calc(100% - 2rem), var(--container-content));
+    }
+
+    [data-template='syifa-dental'] #testimonials .section-heading {
+        position: static;
+        max-width: 40rem;
+        margin-bottom: 2rem;
+    }
+
+    [data-template='syifa-dental'] #testimonials .card-grid {
+        width: 100%;
+        min-width: 0;
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Gallery media lock — images must always fill their responsive frame. */
+@media (max-width: 63.999rem) {
+    [data-template] #gallery .gallery-item {
+        min-width: 0;
+        background: var(--surface-primary);
+    }
+
+    [data-template] #gallery .gallery-item__button {
+        display: block;
+        width: 100%;
+        overflow: hidden;
+        aspect-ratio: 4 / 3;
+        background: var(--surface-emphasis);
+    }
+
+    [data-template] #gallery .gallery-item__image {
+        display: block;
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        aspect-ratio: auto;
+        object-fit: cover;
+        object-position: center;
+    }
+}
+
+@media (max-width: 47.999rem) and (min-width: 30rem) {
+    [data-template] #gallery .gallery-item__button {
+        aspect-ratio: 1 / 1;
+    }
+}
+
+/* Desktop hero viewport composition — keep the complete first impression in one view. */
+@media (min-width: 64rem) {
+    [data-template] .hero {
+        display: grid;
+        min-height: calc(100svh - var(--header-height));
+        align-items: center;
+        padding-block: clamp(1.75rem, 3.5vh, 3rem);
+    }
+
+    .public-site--draft-preview[data-template] .hero {
+        min-height: calc(100svh - var(--header-height) - 3rem);
+    }
+
+    [data-template] .hero__layout {
+        width: min(calc(100% - 4rem), var(--container-content));
+        align-items: center;
+        gap: clamp(2rem, 4vw, 4rem);
+    }
+
+    [data-template] .hero__content {
+        align-self: center;
+        gap: clamp(1rem, 2vh, 1.5rem);
+        padding: clamp(2rem, 3.5vw, 3.25rem);
+    }
+
+    [data-template] .hero__content h1 {
+        margin: 0;
+        font-size: clamp(3rem, 4.1vw, 4.35rem);
+        line-height: 1;
+    }
+
+    [data-template] .hero__lead {
+        margin: 0;
+        font-size: clamp(1rem, 1.25vw, 1.18rem);
+        line-height: 1.55;
+    }
+
+    [data-template] .hero__actions {
+        margin-top: 0;
+    }
+
+    [data-template] .hero__actions .button {
+        min-height: 3rem;
+        padding-block: 0.7rem;
+    }
+
+    [data-template] .hero__trust {
+        margin-top: 0;
+    }
+
+    [data-template] .hero__media {
+        align-self: center;
+        min-height: 0;
+        max-height: min(34rem, 62vh);
+        aspect-ratio: 4 / 3;
+    }
+
+    [data-template] .hero__image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    [data-template='syifa-care'] .hero__layout {
+        grid-template-columns: minmax(26rem, 0.9fr) minmax(0, 1.1fr);
+        gap: clamp(2rem, 3.5vw, 3.5rem);
+    }
+
+    [data-template='syifa-care'] .hero__content {
+        margin-right: 0;
+        gap: clamp(0.85rem, 1.6vh, 1.2rem);
+        padding: clamp(1.75rem, 2.75vw, 2.5rem);
+    }
+
+    [data-template='syifa-care'] .hero__content h1 {
+        max-width: none;
+        font-size: clamp(2.85rem, 3.35vw, 3.65rem);
+        line-height: 0.98;
+        letter-spacing: -0.055em;
+        text-wrap: balance;
+    }
+
+    [data-template='syifa-care'] .hero__lead {
+        max-width: 46ch;
+        font-size: clamp(0.98rem, 1.08vw, 1.08rem);
+        line-height: 1.5;
+    }
+
+    [data-template='syifa-care'] .hero__trust {
+        padding: 0.15rem 1rem;
+    }
+
+    [data-template='syifa-care'] .hero__trust li {
+        padding-block: 0.55rem;
+        font-size: 0.82rem;
+        line-height: 1.35;
+    }
+
+    [data-template='syifa-care'] .hero__actions .button {
+        min-height: 2.85rem;
+        padding-block: 0.65rem;
+    }
+}
+
+@media (min-width: 64rem) and (max-height: 50rem) {
+    [data-template] .hero,
+    .public-site--draft-preview[data-template] .hero {
+        min-height: 0;
+        padding-block: 1.5rem;
+    }
+
+    [data-template] .hero__content {
+        gap: 0.9rem;
+        padding: 1.75rem 2rem;
+    }
+
+    [data-template] .hero__content h1,
+    [data-template='syifa-care'] .hero__content h1 {
+        font-size: clamp(2.6rem, 3.6vw, 3.5rem);
+    }
+
+    [data-template] .hero__lead {
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+
+    [data-template] .hero__media {
+        max-height: 28rem;
+    }
+}
+
+/* Mobile hero controls — keep actions and clinic details visually lightweight. */
+@media (max-width: 47.999rem) {
+    [data-template] .hero__actions,
+    [data-template='syifa-dental'] .hero__actions,
+    [data-template='syifa-specialist'] .hero__actions {
+        display: flex;
+        width: 100%;
+        align-items: stretch;
+        gap: 0.65rem;
+    }
+
+    [data-template] .hero__actions .button,
+    [data-template='syifa-dental'] .hero__actions .button,
+    [data-template='syifa-specialist'] .hero__actions .button {
+        width: fit-content;
+        min-width: min(100%, 11.5rem);
+        min-height: 3rem;
+        flex: 0 1 auto;
+        padding: 0.7rem 1.15rem;
+        border-radius: 0.8rem;
+        font-size: clamp(0.9rem, 3.8vw, 1rem);
+        line-height: 1.25;
+    }
+
+    [data-template] .hero__trust li,
+    [data-template='syifa-essential'] .hero__trust li,
+    [data-template='syifa-care'] .hero__trust li,
+    [data-template='syifa-dental'] .hero__trust li,
+    [data-template='syifa-aesthetic'] .hero__trust li,
+    [data-template='syifa-specialist'] .hero__trust li {
+        width: 100%;
+        min-height: 0;
+        margin: 0;
+        padding: 0.7rem 0;
+        border: 0;
+        border-top: 0.0625rem solid var(--border-subtle);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    [data-template] .hero__trust li:first-child,
+    [data-template='syifa-dental'] .hero__trust li:first-child {
+        border-top-color: color-mix(in srgb, var(--brand-primary) 20%, transparent);
+    }
+}
+
+@media (max-width: 29.999rem) {
+    [data-template] .hero__actions .button,
+    [data-template='syifa-dental'] .hero__actions .button,
+    [data-template='syifa-specialist'] .hero__actions .button {
+        width: fit-content;
+        min-width: min(100%, 11.5rem);
+        flex: 0 1 auto;
+    }
+}
+
+/* Dental mobile final composition — compact clinical hierarchy. */
+@media (max-width: 47.999rem) {
+    [data-template='syifa-dental'] .site-header,
+    [data-template='syifa-dental'] .navbar {
+        min-height: 4.25rem;
+    }
+
+    [data-template='syifa-dental'] .navbar {
+        gap: 0.5rem;
+        padding-block: 0.55rem;
+    }
+
+    [data-template='syifa-dental'] .brand__logo {
+        max-width: min(7.5rem, 31vw);
+        max-height: 2.75rem;
+    }
+
+    [data-template='syifa-dental'] .navbar__actions {
+        gap: 0.45rem;
+    }
+
+    [data-template='syifa-dental'] .navbar__booking,
+    [data-template='syifa-dental'] .menu-toggle {
+        width: auto;
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        padding: 0.58rem 0.85rem;
+        font-size: 0.92rem;
+        line-height: 1;
+    }
+
+    [data-template='syifa-dental'] .menu-toggle {
+        gap: 0.45rem;
+        border-radius: 0.8rem;
+    }
+
+    [data-template='syifa-dental'] .hero,
+    .public-site--draft-preview[data-template='syifa-dental'] .hero {
+        padding-block: 1rem 3rem;
+    }
+
+    [data-template='syifa-dental'] .hero__layout {
+        gap: 0.9rem;
+    }
+
+    [data-template='syifa-dental'] .hero__content {
+        gap: 0.78rem;
+        padding: 0.85rem 0.15rem 0.95rem;
+    }
+
+    [data-template='syifa-dental'] .hero__content .eyebrow {
+        width: fit-content;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.74rem;
+        letter-spacing: 0.13em;
+    }
+
+    [data-template='syifa-dental'] .hero__content h1 {
+        max-width: 15ch;
+        font-size: clamp(2.2rem, 8.75vw, 2.85rem);
+        line-height: 1.015;
+        letter-spacing: -0.048em;
+        text-wrap: balance;
+    }
+
+    [data-template='syifa-dental'] .hero__lead {
+        max-width: 40ch;
+        font-size: clamp(0.92rem, 3.8vw, 1rem);
+        line-height: 1.55;
+    }
+
+    [data-template='syifa-dental'] .hero__actions {
+        margin-top: 0.15rem;
+    }
+
+    [data-template='syifa-dental'] .hero__actions .button {
+        min-width: 10.75rem;
+        min-height: 2.9rem;
+        padding: 0.68rem 1rem;
+        border-radius: 0.7rem;
+        font-size: 0.93rem;
+    }
+
+    [data-template='syifa-dental'] .hero__trust {
+        margin-top: 0.15rem;
+        padding: 0;
+    }
+
+    [data-template='syifa-dental'] .hero__trust li {
+        min-height: 0;
+        padding-block: 0.62rem;
+        font-size: 0.82rem;
+        line-height: 1.4;
+    }
+
+    [data-template='syifa-dental'] .hero__media {
+        aspect-ratio: 16 / 10;
+        border-radius: 0.85rem;
+    }
+}
+
+@media (max-width: 23.999rem) {
+    [data-template='syifa-dental'] .navbar__booking {
+        display: none;
+    }
+
+    [data-template='syifa-dental'] .hero__content h1 {
+        max-width: 14ch;
+        font-size: clamp(2rem, 10vw, 2.35rem);
+    }
+}
+
+/* Mobile hero contact details: spacing only, without separator lines. */
+@media (max-width: 47.999rem) {
+    [data-template] .hero__trust,
+    [data-template='syifa-essential'] .hero__trust,
+    [data-template='syifa-care'] .hero__trust,
+    [data-template='syifa-dental'] .hero__trust,
+    [data-template='syifa-aesthetic'] .hero__trust,
+    [data-template='syifa-specialist'] .hero__trust {
+        border: 0 !important;
+        outline: 0;
+        box-shadow: none;
+    }
+
+    [data-template] .hero__trust li,
+    [data-template='syifa-essential'] .hero__trust li,
+    [data-template='syifa-care'] .hero__trust li,
+    [data-template='syifa-dental'] .hero__trust li,
+    [data-template='syifa-aesthetic'] .hero__trust li,
+    [data-template='syifa-specialist'] .hero__trust li,
+    [data-template] .hero__trust li + li,
+    [data-template='syifa-care'] .hero__trust li + li,
+    [data-template='syifa-specialist'] .hero__trust li + li {
+        border: 0;
+        border-top: 0;
+    }
+
+    [data-template] .hero__trust li + li {
+        padding-top: 0.45rem;
+    }
+}
+
+/* Dental desktop: precise two-column contact strip, without legacy pills. */
+@media (min-width: 64rem) {
+    [data-template='syifa-dental'] .hero__trust {
+        display: grid;
+        width: 100%;
+        grid-template-columns: minmax(10rem, 0.72fr) minmax(0, 1.28fr);
+        gap: 0;
+        margin-top: 0;
+        padding: 0.65rem 0 0;
+        border: 0;
+        border-top: 0.0625rem solid var(--border-default);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    [data-template='syifa-dental'] .hero__trust li {
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        min-height: 2.75rem;
+        grid-template-columns: 1.1rem minmax(0, 1fr);
+        gap: 0.65rem;
+        align-items: start;
+        margin: 0;
+        padding: 0.65rem 1rem;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        font-size: 0.82rem;
+        line-height: 1.4;
+    }
+
+    [data-template='syifa-dental'] .hero__trust li:first-child {
+        padding-left: 0;
+        border-right: 0.0625rem solid var(--border-subtle);
+    }
+
+    [data-template='syifa-dental'] .hero__trust li:last-child {
+        padding-right: 0;
+    }
+
+    [data-template='syifa-dental'] .hero__trust .icon {
+        width: 1rem;
+        height: 1rem;
+        margin-top: 0.08rem;
+    }
+
+    [data-template='syifa-dental'] .hero__trust span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    [data-template='syifa-dental'] .hero__trust li:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+        padding-inline: 0;
+        border-right: 0;
+    }
+}
+
+/* Mobile hero detail rows: no residual desktop capsules on any template. */
+@media (max-width: 47.999rem) {
+    [data-template] .hero__trust,
+    [data-template='syifa-essential'] .hero__trust,
+    [data-template='syifa-care'] .hero__trust,
+    [data-template='syifa-dental'] .hero__trust,
+    [data-template='syifa-aesthetic'] .hero__trust,
+    [data-template='syifa-specialist'] .hero__trust {
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    [data-template] .hero__trust li,
+    [data-template='syifa-essential'] .hero__trust li,
+    [data-template='syifa-care'] .hero__trust li,
+    [data-template='syifa-dental'] .hero__trust li,
+    [data-template='syifa-aesthetic'] .hero__trust li,
+    [data-template='syifa-specialist'] .hero__trust li {
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+}
+
+/* Care mobile: clinic details belong to the content flow, not a heavy dark panel. */
+@media (max-width: 47.999rem) {
+    [data-template='syifa-care'] .hero__trust {
+        display: grid;
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+        margin-top: 0.1rem;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--text-secondary);
+        box-shadow: none;
+    }
+
+    [data-template='syifa-care'] .hero__trust li,
+    [data-template='syifa-care'] .hero__trust li:nth-child(even),
+    [data-template='syifa-care'] .hero__trust li:last-child:nth-child(odd) {
+        grid-column: auto;
+        min-height: 0;
+        padding: 0.68rem 0;
+        border: 0;
+        border-top: 0.0625rem solid color-mix(in srgb, var(--brand-primary) 14%, transparent);
+        border-radius: 0;
+        background: transparent;
+        color: inherit;
+        box-shadow: none;
+    }
+
+    [data-template='syifa-care'] .hero__trust .icon {
+        color: var(--brand-primary);
+    }
+}
+
+/* Mobile hero art direction — compact, readable and faithful to every template. */
+@media (max-width: 47.999rem) {
+    [data-template] .hero,
+    .public-site--draft-preview[data-template] .hero {
+        display: block;
+        min-height: 0;
+        height: auto;
+        padding-block: clamp(1rem, 4vw, 1.5rem) clamp(2.75rem, 10vw, 4rem);
+    }
+
+    [data-template] .hero__layout,
+    [data-template='syifa-essential'] .hero__layout,
+    [data-template='syifa-care'] .hero__layout,
+    [data-template='syifa-dental'] .hero__layout,
+    [data-template='syifa-aesthetic'] .hero__layout,
+    [data-template='syifa-specialist'] .hero__layout {
+        display: grid;
+        width: calc(100% - (var(--mobile-gutter, 1rem) * 2));
+        min-height: 0;
+        max-height: none;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+        align-items: stretch;
+        margin-inline: auto;
+    }
+
+    [data-template] .hero__content,
+    [data-template='syifa-essential'] .hero__content,
+    [data-template='syifa-care'] .hero__content,
+    [data-template='syifa-dental'] .hero__content,
+    [data-template='syifa-aesthetic'] .hero__content,
+    [data-template='syifa-specialist'] .hero__content {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+        gap: 0.9rem;
+        margin: 0;
+        padding: clamp(1.35rem, 6vw, 1.75rem);
+    }
+
+    [data-template] .hero__content .eyebrow {
+        max-width: 100%;
+        margin: 0;
+        font-size: clamp(0.72rem, 3.25vw, 0.82rem);
+        line-height: 1.25;
+        letter-spacing: 0.16em;
+        overflow-wrap: anywhere;
+    }
+
+    [data-template] .hero__content h1,
+    [data-template='syifa-essential'] .hero__content h1,
+    [data-template='syifa-care'] .hero__content h1,
+    [data-template='syifa-dental'] .hero__content h1,
+    [data-template='syifa-aesthetic'] .hero__content h1,
+    [data-template='syifa-specialist'] .hero__content h1 {
+        max-width: 14ch;
+        margin: 0;
+        font-size: clamp(2.15rem, 10.25vw, 3.15rem);
+        line-height: 1.01;
+        letter-spacing: -0.052em;
+        text-wrap: balance;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+
+    [data-template] .hero__lead,
+    [data-template='syifa-dental'] .hero__lead,
+    [data-template='syifa-aesthetic'] .hero__lead,
+    [data-template='syifa-specialist'] .hero__lead {
+        max-width: 38ch;
+        margin: 0;
+        font-size: clamp(0.95rem, 4vw, 1.04rem);
+        line-height: 1.58;
+        text-wrap: pretty;
+    }
+
+    [data-template] .hero__actions {
+        display: flex;
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin-top: 0.15rem;
+    }
+
+    [data-template] .hero__actions .button {
+        width: auto;
+        max-width: 100%;
+        min-height: 3rem;
+        flex: 1 1 12rem;
+        justify-content: center;
+        padding: 0.72rem 1.1rem;
+        white-space: normal;
+        text-align: center;
+    }
+
+    [data-template] .hero__trust,
+    [data-template='syifa-care'] .hero__trust,
+    [data-template='syifa-dental'] .hero__trust,
+    [data-template='syifa-aesthetic'] .hero__trust,
+    [data-template='syifa-specialist'] .hero__trust {
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+        margin: 0.15rem 0 0;
+        padding: 0;
+    }
+
+    [data-template] .hero__trust li,
+    [data-template='syifa-care'] .hero__trust li,
+    [data-template='syifa-dental'] .hero__trust li,
+    [data-template='syifa-specialist'] .hero__trust li {
+        display: grid;
+        min-width: 0;
+        min-height: 2.4rem;
+        grid-template-columns: 1.15rem minmax(0, 1fr);
+        gap: 0.65rem;
+        align-items: start;
+        margin: 0;
+        padding: 0.65rem 0;
+        border: 0;
+        border-top: 0.0625rem solid var(--border-subtle);
+        font-size: clamp(0.78rem, 3.45vw, 0.88rem);
+        line-height: 1.4;
+    }
+
+    [data-template] .hero__trust li + li,
+    [data-template='syifa-care'] .hero__trust li + li,
+    [data-template='syifa-specialist'] .hero__trust li + li {
+        margin: 0;
+        border-top: 0.0625rem solid var(--border-subtle);
+    }
+
+    [data-template] .hero__trust .icon {
+        width: 1.05rem;
+        height: 1.05rem;
+        margin-top: 0.08rem;
+    }
+
+    [data-template] .hero__trust span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    [data-template] .hero__media,
+    [data-template='syifa-essential'] .hero__media,
+    [data-template='syifa-care'] .hero__media,
+    [data-template='syifa-dental'] .hero__media,
+    [data-template='syifa-aesthetic'] .hero__media,
+    [data-template='syifa-specialist'] .hero__media {
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        align-self: stretch;
+        justify-self: stretch;
+        aspect-ratio: 16 / 10;
+        overflow: hidden;
+    }
+
+    [data-template] .hero__image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+    }
+
+    /* Essential retains its clean single-card split language. */
+    [data-template='syifa-essential'] .hero__layout {
+        gap: 0;
+        overflow: hidden;
+        border: 0.0625rem solid var(--border-subtle);
+        border-radius: clamp(1.35rem, 6vw, 2rem);
+        background: var(--surface-primary);
+        box-shadow: 0 1.25rem 3rem rgb(15 118 110 / 8%);
+    }
+
+    [data-template='syifa-essential'] .hero__content {
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    [data-template='syifa-essential'] .hero__media {
+        border: 0;
+        border-top: 0.0625rem solid var(--border-subtle);
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    /* Care keeps its friendly paired-card silhouette. */
+    [data-template='syifa-care'] .hero__layout {
+        gap: 0.85rem;
+    }
+
+    [data-template='syifa-care'] .hero__content,
+    [data-template='syifa-care'] .hero__media {
+        border-radius: 1.6rem 1.6rem 1.6rem 0.65rem;
+    }
+
+    [data-template='syifa-care'] .hero__content h1 {
+        max-width: 13ch;
+    }
+
+    /* Dental remains crisp and architectural. */
+    [data-template='syifa-dental'] .hero__content {
+        padding-inline: 0.35rem;
+        padding-block: 1rem 1.15rem;
+    }
+
+    [data-template='syifa-dental'] .hero__content h1 {
+        max-width: 11ch;
+    }
+
+    [data-template='syifa-dental'] .hero__media {
+        border-radius: 1rem;
+    }
+
+    /* Aesthetic uses an editorial image arch without excessive mobile height. */
+    [data-template='syifa-aesthetic'] .hero__content {
+        padding-inline: 0.35rem;
+        padding-block: 1.25rem 1.4rem;
+    }
+
+    [data-template='syifa-aesthetic'] .hero__content h1 {
+        max-width: 14ch;
+        font-size: clamp(2.25rem, 10.5vw, 3.25rem);
+        line-height: 1.04;
+        letter-spacing: -0.035em;
+    }
+
+    [data-template='syifa-aesthetic'] .hero__media {
+        aspect-ratio: 4 / 3;
+        border-radius: 5rem 5rem 0.75rem 0.75rem;
+        box-shadow: 0.75rem 0.75rem 0 color-mix(in srgb, var(--accent-warm) 11%, transparent);
+    }
+
+    /* Specialist stays authoritative while keeping every contact item visible. */
+    [data-template='syifa-specialist'] .hero__content {
+        padding-inline: 0.35rem;
+        padding-block: 1rem 1.2rem;
+    }
+
+    [data-template='syifa-specialist'] .hero__content h1 {
+        max-width: 11ch;
+    }
+
+    [data-template='syifa-specialist'] .hero__media {
+        aspect-ratio: 16 / 10;
+        border-radius: 0.85rem;
+        box-shadow: 0.6rem 0.6rem 0 color-mix(in srgb, var(--brand-primary) 10%, transparent);
+    }
+}
+
+@media (max-width: 23.999rem) {
+    [data-template] .hero__content,
+    [data-template='syifa-essential'] .hero__content,
+    [data-template='syifa-care'] .hero__content {
+        padding: 1.2rem;
+    }
+
+    [data-template] .hero__content h1,
+    [data-template='syifa-essential'] .hero__content h1,
+    [data-template='syifa-care'] .hero__content h1,
+    [data-template='syifa-dental'] .hero__content h1,
+    [data-template='syifa-aesthetic'] .hero__content h1,
+    [data-template='syifa-specialist'] .hero__content h1 {
+        font-size: clamp(2rem, 10.5vw, 2.5rem);
+    }
+
+    [data-template] .hero__media,
+    [data-template='syifa-aesthetic'] .hero__media,
+    [data-template='syifa-specialist'] .hero__media {
+        aspect-ratio: 4 / 3;
+    }
+}
+
+@media (min-width: 64rem) and (min-height: 50.001rem) {
+    .public-site--draft-preview[data-template='syifa-care'] .hero {
+        height: calc(100svh - var(--header-height) - 3rem);
+        min-height: 41rem;
+        box-sizing: border-box;
+        padding-block: clamp(1.25rem, 2.5vh, 2rem);
+    }
+
+    .public-site--draft-preview[data-template='syifa-care'] .hero__layout {
+        max-height: 100%;
+    }
+
+    .public-site--draft-preview[data-template='syifa-care'] .hero__content {
+        max-height: calc(100% - 1rem);
+    }
+
+    .public-site--draft-preview[data-template='syifa-care'] .hero__media {
+        max-height: min(32rem, 58vh);
+    }
+}
+
+/* Essential hero restoration — original clean split-card composition. */
+@media (min-width: 64rem) {
+    [data-template='syifa-essential'] .hero {
+        display: grid;
+        min-height: calc(100svh - var(--header-height));
+        align-items: center;
+        padding-block: clamp(1.5rem, 3vh, 2.5rem);
+    }
+
+    .public-site--draft-preview[data-template='syifa-essential'] .hero {
+        min-height: calc(100svh - var(--header-height) - 3rem);
+    }
+
+    [data-template='syifa-essential'] .hero__layout {
+        width: min(calc(100% - 4rem), var(--container-content));
+        min-height: clamp(34rem, 62vh, 40rem);
+        max-height: 40rem;
+        grid-template-columns: minmax(27rem, 0.92fr) minmax(0, 1.08fr);
+        align-items: stretch;
+        gap: 0;
+        overflow: hidden;
+        border: 0.0625rem solid color-mix(in srgb, var(--brand-primary) 16%, transparent);
+        border-radius: var(--radius-large);
+        background: var(--surface-primary);
+        box-shadow: 0 2rem 6rem rgb(15 118 110 / 10%);
+    }
+
+    [data-template='syifa-essential'] .hero__content {
+        align-self: stretch;
+        align-content: center;
+        gap: clamp(1rem, 1.8vh, 1.5rem);
+        padding: clamp(2.25rem, 3.75vw, 4rem);
+    }
+
+    [data-template='syifa-essential'] .hero__content h1 {
+        max-width: none;
+        margin: 0;
+        font-size: clamp(3rem, 3.55vw, 3.85rem);
+        line-height: 0.99;
+        letter-spacing: -0.055em;
+        text-wrap: balance;
+    }
+
+    [data-template='syifa-essential'] .hero__lead {
+        max-width: 43ch;
+        margin: 0;
+        font-size: clamp(1rem, 1.15vw, 1.12rem);
+        line-height: 1.55;
+    }
+
+    [data-template='syifa-essential'] .hero__media {
+        align-self: stretch;
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+        max-height: none;
+        aspect-ratio: auto;
+        border: 0;
+        border-left: 0.0625rem solid var(--border-subtle);
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    [data-template='syifa-essential'] .hero__media::after {
+        display: none;
+        content: none;
+    }
+
+    [data-template='syifa-essential'] .hero__image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+    }
+
+    [data-template='syifa-essential'] .hero__actions {
+        margin-top: 0;
+    }
+
+    [data-template='syifa-essential'] .hero__trust {
+        gap: 0.6rem;
+        margin-top: 0;
+    }
+
+    [data-template='syifa-essential'] .hero__trust li {
+        min-height: 2.35rem;
+        padding: 0.5rem 0.85rem;
+        font-size: 0.82rem;
+        line-height: 1.35;
+    }
+}
+
+@media (min-width: 64rem) and (max-height: 50rem) {
+    [data-template='syifa-essential'] .hero,
+    .public-site--draft-preview[data-template='syifa-essential'] .hero {
+        min-height: 0;
+        padding-block: 1.25rem;
+    }
+
+    [data-template='syifa-essential'] .hero__layout {
+        min-height: 31rem;
+        max-height: 34rem;
+    }
+
+    [data-template='syifa-essential'] .hero__content {
+        padding: 1.75rem 2.25rem;
+    }
+
+    [data-template='syifa-essential'] .hero__content h1 {
+        font-size: clamp(2.65rem, 3.2vw, 3.35rem);
+    }
+}
+
+/* Universal desktop hero alignment — clear focal point, vertically and horizontally centred. */
+@media (min-width: 64rem) and (min-height: 50.001rem) {
+    [data-template] .hero {
+        display: flex;
+        width: 100%;
+        height: calc(100svh - var(--header-height));
+        min-height: 0;
+        box-sizing: border-box;
+        align-items: center;
+        justify-content: center;
+        padding-block: clamp(1.5rem, 3vh, 2.5rem);
+    }
+
+    .public-site--draft-preview[data-template] .hero {
+        height: calc(100svh - var(--header-height) - 3rem);
+        min-height: 0;
+    }
+
+    [data-template] .hero__layout {
+        width: min(calc(100% - 4rem), var(--container-content));
+        max-height: calc(100% - 0.5rem);
+        margin-block: auto;
+        align-items: center;
+    }
+
+    [data-template] .hero__content {
+        position: relative;
+        z-index: 2;
+        align-self: center;
+    }
+
+    [data-template] .hero__media {
+        position: relative;
+        z-index: 1;
+        align-self: center;
+        max-height: min(34rem, 60vh);
+    }
+
+    [data-template] .hero__content .eyebrow,
+    [data-template] .hero__content h1,
+    [data-template] .hero__lead {
+        position: relative;
+        z-index: 1;
+    }
+
+    [data-template] .hero__content h1 {
+        text-wrap: balance;
+    }
+
+    [data-template='syifa-essential'] .hero__layout {
+        align-items: stretch;
+    }
+
+    [data-template='syifa-essential'] .hero__media {
+        align-self: stretch;
+        max-height: none;
+    }
+
+    [data-template='syifa-care'] .hero__layout,
+    [data-template='syifa-dental'] .hero__layout,
+    [data-template='syifa-aesthetic'] .hero__layout,
+    [data-template='syifa-specialist'] .hero__layout {
+        align-items: center;
+    }
+
+    [data-template='syifa-care'] .hero__content,
+    [data-template='syifa-dental'] .hero__content,
+    [data-template='syifa-aesthetic'] .hero__content,
+    [data-template='syifa-specialist'] .hero__content {
+        margin-block: auto;
+    }
+}
+
+@media (min-width: 64rem) and (max-height: 50rem) {
+    [data-template] .hero {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    [data-template] .hero__layout {
+        margin-block: auto;
+        align-items: center;
+    }
+
+    [data-template='syifa-essential'] .hero__layout {
+        align-items: stretch;
+    }
+}
+
+/* Per-template desktop hero art direction — final, explicit compositions. */
+@media (min-width: 64rem) {
+    [data-template] .hero__layout {
+        box-sizing: border-box;
+    }
+
+    /* Care: warm paired cards with equal visual weight. */
+    [data-template='syifa-care'] .hero__layout {
+        min-height: 0;
+        max-height: min(39rem, calc(100svh - var(--header-height) - 6rem));
+        grid-template-columns: minmax(27rem, 0.92fr) minmax(0, 1.08fr);
+        gap: clamp(2rem, 3.5vw, 3.5rem);
+    }
+
+    [data-template='syifa-care'] .hero__content {
+        width: 100%;
+        max-width: 38rem;
+        justify-self: end;
+    }
+
+    [data-template='syifa-care'] .hero__media {
+        width: 100%;
+        max-height: min(32rem, 58vh);
+        justify-self: start;
+        aspect-ratio: 4 / 3;
+    }
+
+    /* Dental: precise horizontal composition with compact clinical information. */
+    [data-template='syifa-dental'] .hero__layout {
+        min-height: 0;
+        grid-template-columns: minmax(27rem, 0.84fr) minmax(0, 1.16fr);
+        gap: clamp(3rem, 5vw, 5.5rem);
+    }
+
+    [data-template='syifa-dental'] .hero__content {
+        width: 100%;
+        max-width: 37rem;
+        gap: clamp(1rem, 1.8vh, 1.4rem);
+        justify-self: end;
+        padding-block: 1rem;
+    }
+
+    [data-template='syifa-dental'] .hero__content h1 {
+        max-width: 11ch;
+        font-size: clamp(3.05rem, 3.55vw, 3.9rem);
+        line-height: 0.98;
+        letter-spacing: -0.052em;
+    }
+
+    [data-template='syifa-dental'] .hero__lead {
+        max-width: 42ch;
+        font-size: clamp(1rem, 1.15vw, 1.1rem);
+        line-height: 1.55;
+    }
+
+    [data-template='syifa-dental'] .hero__media {
+        width: 100%;
+        max-height: min(34rem, 60vh);
+        justify-self: start;
+        aspect-ratio: 16 / 11;
+    }
+
+    [data-template='syifa-dental'] .hero__trust {
+        gap: 0;
+        margin-top: 0;
+        border-top: 0.0625rem solid var(--border-default);
+        padding-top: 0.75rem;
+    }
+
+    [data-template='syifa-dental'] .hero__trust li {
+        min-height: 2.25rem;
+        padding-block: 0.45rem;
+        font-size: 0.82rem;
+        line-height: 1.35;
+    }
+
+    /* Aesthetic: editorial copy balanced against a restrained portrait arch. */
+    [data-template='syifa-aesthetic'] .hero__layout {
+        min-height: 0;
+        grid-template-columns: minmax(34rem, 1.08fr) minmax(24rem, 0.72fr);
+        gap: clamp(4rem, 7vw, 8rem);
+    }
+
+    [data-template='syifa-aesthetic'] .hero__content {
+        width: 100%;
+        max-width: 48rem;
+        gap: clamp(1rem, 2vh, 1.5rem);
+        justify-self: end;
+    }
+
+    [data-template='syifa-aesthetic'] .hero__content h1 {
+        max-width: 15ch;
+        font-size: clamp(3.25rem, 4vw, 4.6rem);
+        line-height: 1.02;
+    }
+
+    [data-template='syifa-aesthetic'] .hero__lead {
+        max-width: 55ch;
+        font-size: clamp(1rem, 1.15vw, 1.12rem);
+        line-height: 1.6;
+    }
+
+    [data-template='syifa-aesthetic'] .hero__media {
+        width: 100%;
+        max-width: 32rem;
+        max-height: min(31rem, 56vh);
+        justify-self: start;
+        aspect-ratio: 4 / 5;
+    }
+
+    [data-template='syifa-aesthetic'] .hero__trust {
+        max-width: 48rem;
+        margin-top: 0;
+    }
+
+    /* Specialist: authoritative grid with complete contact strip visible. */
+    [data-template='syifa-specialist'] .hero__layout {
+        min-height: 0;
+        grid-template-columns: minmax(27rem, 0.88fr) minmax(0, 1.12fr);
+        gap: clamp(3rem, 5vw, 5.5rem);
+    }
+
+    [data-template='syifa-specialist'] .hero__content {
+        width: 100%;
+        max-width: 38rem;
+        gap: clamp(0.9rem, 1.65vh, 1.25rem);
+        justify-self: end;
+        padding-block: 0.75rem;
+    }
+
+    [data-template='syifa-specialist'] .hero__content h1 {
+        max-width: 10.5ch;
+        font-size: clamp(3rem, 3.5vw, 3.85rem);
+        line-height: 0.98;
+        letter-spacing: -0.052em;
+    }
+
+    [data-template='syifa-specialist'] .hero__lead {
+        max-width: 41ch;
+        font-size: clamp(1rem, 1.1vw, 1.08rem);
+        line-height: 1.52;
+    }
+
+    [data-template='syifa-specialist'] .hero__media {
+        width: 100%;
+        max-height: min(34rem, 60vh);
+        justify-self: start;
+        aspect-ratio: 16 / 11;
+    }
+
+    [data-template='syifa-specialist'] .hero__trust {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0;
+        margin-top: 0;
+        border-top: 0.0625rem solid var(--border-default);
+        padding-top: 0.65rem;
+    }
+
+    [data-template='syifa-specialist'] .hero__trust li {
+        min-width: 0;
+        min-height: 2.15rem;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+        line-height: 1.35;
+    }
+
+    [data-template='syifa-specialist'] .hero__trust li + li {
+        margin: 0;
+    }
+
+    [data-template='syifa-specialist'] .hero__trust li:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (min-width: 64rem) and (max-height: 50rem) {
+    [data-template='syifa-care'] .hero__layout,
+    [data-template='syifa-dental'] .hero__layout,
+    [data-template='syifa-aesthetic'] .hero__layout,
+    [data-template='syifa-specialist'] .hero__layout {
+        gap: clamp(2rem, 4vw, 4rem);
+    }
+
+    [data-template='syifa-dental'] .hero__content h1,
+    [data-template='syifa-specialist'] .hero__content h1 {
+        font-size: clamp(2.6rem, 3.15vw, 3.3rem);
+    }
+
+    [data-template='syifa-aesthetic'] .hero__content h1 {
+        font-size: clamp(2.85rem, 3.5vw, 3.75rem);
+    }
+
+    [data-template='syifa-care'] .hero__media,
+    [data-template='syifa-dental'] .hero__media,
+    [data-template='syifa-aesthetic'] .hero__media,
+    [data-template='syifa-specialist'] .hero__media {
+        max-height: 27rem;
+    }
+}
+
+/* Final mobile control reset must remain after every template override. */
+@media (max-width: 47.999rem) {
+    [data-template] .hero__actions .button,
+    [data-template='syifa-dental'] .hero__actions .button,
+    [data-template='syifa-specialist'] .hero__actions .button {
+        width: fit-content;
+        min-width: min(100%, 11.5rem);
+        min-height: 3rem;
+        flex: 0 1 auto;
+        padding: 0.7rem 1.15rem;
+        border-radius: 0.8rem;
+        font-size: clamp(0.9rem, 3.8vw, 1rem);
+        line-height: 1.25;
+    }
+
+    [data-template] .hero__trust li,
+    [data-template='syifa-essential'] .hero__trust li,
+    [data-template='syifa-care'] .hero__trust li,
+    [data-template='syifa-dental'] .hero__trust li,
+    [data-template='syifa-aesthetic'] .hero__trust li,
+    [data-template='syifa-specialist'] .hero__trust li {
+        width: 100%;
+        min-height: 0;
+        margin: 0;
+        padding: 0.7rem 0;
+        border: 0;
+        border-top: 0.0625rem solid var(--border-subtle);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    [data-template] .hero__trust,
+    [data-template='syifa-essential'] .hero__trust,
+    [data-template='syifa-care'] .hero__trust,
+    [data-template='syifa-dental'] .hero__trust,
+    [data-template='syifa-aesthetic'] .hero__trust,
+    [data-template='syifa-specialist'] .hero__trust {
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+}
+
+@media (max-width: 29.999rem) {
+    [data-template] .hero__actions .button,
+    [data-template='syifa-dental'] .hero__actions .button,
+    [data-template='syifa-specialist'] .hero__actions .button {
+        width: fit-content;
+        min-width: min(100%, 11.5rem);
+        flex: 0 1 auto;
+    }
+}
+
+/* Dental mobile visual lock — intentionally last in the cascade. */
+@media (max-width: 47.999rem) {
+    [data-template='syifa-dental'] .hero,
+    .public-site--draft-preview[data-template='syifa-dental'] .hero {
+        padding-block: 1rem 3rem;
+    }
+
+    [data-template='syifa-dental'] .hero__layout {
+        gap: 0.9rem;
+    }
+
+    [data-template='syifa-dental'] .hero__content {
+        gap: 0.78rem;
+        padding: 0.85rem 0.15rem 0.95rem;
+    }
+
+    [data-template='syifa-dental'] .hero__content .eyebrow {
+        width: fit-content;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.74rem;
+        letter-spacing: 0.13em;
+    }
+
+    [data-template='syifa-dental'] .hero__content h1 {
+        max-width: 15ch;
+        font-size: clamp(2.2rem, 8.75vw, 2.85rem);
+        line-height: 1.015;
+        letter-spacing: -0.048em;
+        text-wrap: balance;
+    }
+
+    [data-template='syifa-dental'] .hero__lead {
+        max-width: 40ch;
+        font-size: clamp(0.92rem, 3.8vw, 1rem);
+        line-height: 1.55;
+    }
+
+    [data-template='syifa-dental'] .hero__actions .button {
+        min-width: 10.75rem;
+        min-height: 2.9rem;
+        padding: 0.68rem 1rem;
+        border-radius: 0.7rem;
+        font-size: 0.93rem;
+    }
+
+    [data-template='syifa-dental'] .hero__trust li {
+        padding-block: 0.62rem;
+        font-size: 0.82rem;
+        line-height: 1.4;
+    }
+
+    [data-template='syifa-dental'] .hero__media {
+        aspect-ratio: 16 / 10;
+        border-radius: 0.85rem;
+    }
+}
+
+@media (max-width: 23.999rem) {
+    [data-template='syifa-dental'] .hero__content h1 {
+        max-width: 14ch;
+        font-size: clamp(2rem, 10vw, 2.35rem);
+    }
+}
+
+/* Mobile hero typography lock — balanced headlines and comfortable supporting copy. */
+@media (max-width: 47.999rem) {
+    [data-template] .hero__content {
+        row-gap: clamp(0.72rem, 3vw, 0.95rem);
+    }
+
+    [data-template] .hero__content .eyebrow {
+        max-width: 100%;
+        margin: 0;
+        line-height: 1.25;
+        text-wrap: balance;
+    }
+
+    [data-template] .hero__content h1 {
+        margin: 0;
+        line-height: 1.035;
+        letter-spacing: -0.045em;
+        text-wrap: balance;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: none;
+    }
+
+    [data-template] .hero__lead {
+        max-width: 38ch;
+        margin: 0;
+        font-size: clamp(0.94rem, 3.85vw, 1rem);
+        line-height: 1.56;
+        letter-spacing: -0.008em;
+        text-wrap: pretty;
+        overflow-wrap: break-word;
+    }
+
+    [data-template='syifa-essential'] .hero__content h1 {
+        max-width: 14ch;
+        font-size: clamp(2.15rem, 9vw, 2.85rem);
+        line-height: 1.02;
+    }
+
+    [data-template='syifa-care'] .hero__content h1 {
+        max-width: 14ch;
+        font-size: clamp(2.1rem, 8.8vw, 2.8rem);
+        line-height: 1.025;
+    }
+
+    [data-template='syifa-dental'] .hero__content h1 {
+        max-width: 15ch;
+        font-size: clamp(2.15rem, 8.4vw, 2.75rem);
+        line-height: 1.015;
+        letter-spacing: -0.048em;
+    }
+
+    [data-template='syifa-aesthetic'] .hero__content h1 {
+        max-width: 15ch;
+        font-size: clamp(2.3rem, 9.25vw, 3rem);
+        line-height: 1.045;
+        letter-spacing: -0.032em;
+    }
+
+    [data-template='syifa-aesthetic'] .hero__lead {
+        max-width: 40ch;
+        line-height: 1.6;
+    }
+
+    [data-template='syifa-specialist'] .hero__content h1 {
+        max-width: 14ch;
+        font-size: clamp(2.1rem, 8.6vw, 2.8rem);
+        line-height: 1.02;
+    }
+}
+
+@media (max-width: 23.999rem) {
+    [data-template='syifa-essential'] .hero__content h1,
+    [data-template='syifa-care'] .hero__content h1,
+    [data-template='syifa-dental'] .hero__content h1,
+    [data-template='syifa-specialist'] .hero__content h1 {
+        max-width: 15ch;
+        font-size: clamp(1.95rem, 9.8vw, 2.3rem);
+    }
+
+    [data-template='syifa-aesthetic'] .hero__content h1 {
+        max-width: 14ch;
+        font-size: clamp(2.1rem, 10.25vw, 2.55rem);
+    }
+
+    [data-template] .hero__lead {
+        font-size: 0.92rem;
+        line-height: 1.52;
+    }
+}
+
+/* Final mobile contact lock: no divider below the phone number. */
+@media (max-width: 47.999rem) {
+    [data-template] .hero__trust,
+    [data-template='syifa-essential'] .hero__trust,
+    [data-template='syifa-care'] .hero__trust,
+    [data-template='syifa-dental'] .hero__trust,
+    [data-template='syifa-aesthetic'] .hero__trust,
+    [data-template='syifa-specialist'] .hero__trust {
+        border: 0 !important;
+        outline: 0;
+        box-shadow: none;
+    }
+
+    [data-template] .hero__trust li,
+    [data-template='syifa-essential'] .hero__trust li,
+    [data-template='syifa-care'] .hero__trust li,
+    [data-template='syifa-dental'] .hero__trust li,
+    [data-template='syifa-aesthetic'] .hero__trust li,
+    [data-template='syifa-specialist'] .hero__trust li,
+    [data-template] .hero__trust li + li,
+    [data-template='syifa-care'] .hero__trust li + li,
+    [data-template='syifa-specialist'] .hero__trust li + li {
+        border: 0;
+        border-top: 0;
+    }
+
+    [data-template] .hero__trust li + li {
+        padding-top: 0.45rem;
+    }
+
+    [data-template] .hero__trust li:nth-child(n),
+    [data-template='syifa-essential'] .hero__trust li:nth-child(n),
+    [data-template='syifa-care'] .hero__trust li:nth-child(n),
+    [data-template='syifa-dental'] .hero__trust li:nth-child(n),
+    [data-template='syifa-aesthetic'] .hero__trust li:nth-child(n),
+    [data-template='syifa-specialist'] .hero__trust li:nth-child(n) {
+        border: 0 !important;
+        outline: 0;
+        box-shadow: none;
+    }
+
+    [data-template] .hero__trust li::before,
+    [data-template] .hero__trust li::after {
+        display: none !important;
+        content: none !important;
     }
 }

@@ -57,7 +57,7 @@ The dedicated public bundle introduces no framework hydration or UI library. Pro
 - no blocking inline application script;
 - no animation library or third-party runtime.
 
-> **2026-08-08 update:** the figures above are frozen as historical evidence from Essential's own Reference Lock and are not re-measured here. The stylesheet is now shared across all five official templates (Essential plus four locked/implemented variants) and has grown accordingly — current measurement: **123 kB raw / 15.9 kB gzip**, still within the 30 KB gzip budget with headroom. This is now enforced automatically by `tests/Architecture/SyifaEssentialPresentationArchitectureTest.php::test_production_css_bundle_stays_within_the_governed_performance_budget`, which previously did not exist — the budget claim in `17_FIVE_TEMPLATE_IMPLEMENTATION_V1.md`'s "Verification" section was asserted manually until this date.
+> **2026-08-08 update:** the figures above are frozen as historical evidence from Essential's own Reference Lock and are not re-measured here. The stylesheet is now shared across all five official templates (Essential plus four locked/implemented variants) and has grown accordingly. The shared responsive system is governed by a **36 KB gzip ceiling**, enforced automatically by `tests/Architecture/SyifaEssentialPresentationArchitectureTest.php::test_production_css_bundle_stays_within_the_governed_performance_budget`; the ceiling includes the complete desktop, tablet and mobile art direction for all five personalities.
 
 These are lab build measurements, not field data. No real LCP, INP, CLS, browser-based accessibility audit, or field performance measurement has been conducted — see Known limitations below.
 

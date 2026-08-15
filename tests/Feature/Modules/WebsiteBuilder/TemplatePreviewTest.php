@@ -40,7 +40,8 @@ final class TemplatePreviewTest extends TestCase
         $response->assertOk()
             ->assertSee($expectedClinicName)
             ->assertSee("data-template=\"{$expectedDataTemplate}\"", false)
-            ->assertSee('Template design preview by SYIFA.my')
+            ->assertDontSee('Template design preview by SYIFA.my')
+            ->assertSee("images/template-previews/{$slug}-hero.webp", false)
             ->assertSee('noindex,nofollow,noarchive', false);
     }
 

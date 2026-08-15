@@ -1,5 +1,8 @@
+@props(['section', 'document', 'previewImageUrl' => null])
+
 @php
     $imageUrl = $section->heroImageAssetId === null ? null : ($document->assetUrls[$section->heroImageAssetId] ?? null);
+    $imageSrc = $previewImageUrl ?? $imageUrl?->value;
     $imageDimensions = $section->heroImageAssetId === null ? [null, null] : ($document->assetDimensions[$section->heroImageAssetId] ?? [null, null]);
     $navigation = collect($document->navigation);
     $legacyRoutes = [
@@ -28,7 +31,7 @@
     $address = $document->website->footer->address;
     $todayHours = $document->todayHoursLabel;
     $templateId = $document->website->website->templateId;
-    $showTemplateVisual = $imageUrl !== null || $templateId !== 'SYIFA_ESSENTIAL';
+    $showTemplateVisual = $imageSrc !== null || $templateId !== 'SYIFA_ESSENTIAL';
 @endphp
 <section class="hero" id="home" aria-labelledby="hero-title">
     <div class="public-container hero__layout {{ $showTemplateVisual ? '' : 'hero__layout--text' }}">
@@ -51,9 +54,9 @@
             @endif
         </div>
         @if ($showTemplateVisual)
-            <div class="hero__media {{ $imageUrl === null ? 'hero__media--fallback' : '' }}">
-                @if ($imageUrl !== null)
-                    <x-public.responsive-image :url="$imageUrl->value" alt="" :width="$imageDimensions[0]" :height="$imageDimensions[1]" :priority="true" class="hero__image" />
+            <div class="hero__media {{ $imageSrc === null ? 'hero__media--fallback' : '' }}">
+                @if ($imageSrc !== null)
+                    <x-public.responsive-image :url="$imageSrc" alt="" :width="$imageDimensions[0]" :height="$imageDimensions[1]" :priority="true" class="hero__image" />
                 @else
                     <span class="hero__media-symbol" aria-hidden="true"><x-public.icon name="medical" /></span>
                 @endif

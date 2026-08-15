@@ -1,22 +1,41 @@
 <script setup>
-import { computed } from 'vue';
-import AppBadge from './AppBadge.vue';
+import { computed, ref } from 'vue';
+import AppButton from './AppButton.vue';
 import SectionHeader from './SectionHeader.vue';
 
 const props = defineProps({
     copy: { type: Object, required: true },
-    previewUrls: { type: Array, required: true },
+    registerUrl: { type: String, required: true },
 });
 
-const liveTemplates = computed(() =>
-    props.copy.items
-        .map((item, index) => ({ ...item, previewUrl: props.previewUrls[index] }))
-        .filter((item) => Boolean(item.previewUrl)),
-);
+const activeIndex = ref(0);
+const heroImages = [
+    '/images/template-previews/syifa-essential-hero.webp',
+    '/images/template-previews/syifa-care-hero.webp',
+    '/images/template-previews/syifa-dental-hero.webp',
+    '/images/template-previews/syifa-aesthetic-hero.webp',
+    '/images/template-previews/syifa-specialist-hero.webp',
+];
+const themes = [
+    { primary: '#0f766e', soft: '#e8f4f2', ink: '#123b38' },
+    { primary: '#15803d', soft: '#edf7ee', ink: '#173d25' },
+    { primary: '#0369a1', soft: '#eaf4fa', ink: '#123b54' },
+    { primary: '#9d174d', soft: '#f9edf2', ink: '#4d1d30' },
+    { primary: '#1e3a8a', soft: '#edf1fa', ink: '#172554' },
+];
+
+const activeTemplate = computed(() => props.copy.items[activeIndex.value] ?? null);
+const activeTheme = computed(() => themes[activeIndex.value]);
+const activeImage = computed(() => heroImages[activeIndex.value]);
+const previewStyle = computed(() => ({
+    '--preview-primary': activeTheme.value.primary,
+    '--preview-soft': activeTheme.value.soft,
+    '--preview-ink': activeTheme.value.ink,
+}));
 </script>
 
 <template>
-    <section id="templates" class="anchor-section overflow-hidden bg-slate-50/70 py-20 sm:py-28">
+    <section id="templates" class="anchor-section overflow-hidden bg-slate-50 py-20 sm:py-28">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
             <SectionHeader
                 :eyebrow="copy.eyebrow"
@@ -25,73 +44,99 @@ const liveTemplates = computed(() =>
                 align="center"
             />
 
-            <div data-reveal class="reveal mt-7 flex flex-wrap items-center justify-center gap-3">
-                <AppBadge>{{ liveTemplates.length }} {{ copy.livePreviews }}</AppBadge>
-                <span class="text-sm font-semibold text-slate-500">{{ copy.managedNote }}</span>
+            <div
+                class="mt-10 flex snap-x gap-2 overflow-x-auto pb-2 sm:mt-12 sm:grid sm:grid-cols-5 sm:overflow-visible"
+                role="tablist"
+                :aria-label="copy.templateSelector"
+            >
+                <button
+                    v-for="(item, index) in copy.items"
+                    :key="item.name"
+                    type="button"
+                    role="tab"
+                    :aria-selected="activeIndex === index"
+                    class="min-h-12 shrink-0 snap-start rounded-xl border px-5 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 sm:px-3"
+                    :class="
+                        activeIndex === index
+                            ? 'border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/15'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:text-emerald-800'
+                    "
+                    @click="activeIndex = index"
+                >
+                    {{ item.name }}
+                </button>
             </div>
 
-            <div class="mt-12 grid gap-7 lg:grid-cols-2">
-                <article
-                    v-for="item in liveTemplates"
-                    :key="item.name"
-                    data-reveal
-                    class="reveal flex min-h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg shadow-slate-900/5"
-                >
+            <div
+                v-if="activeTemplate"
+                data-reveal
+                class="reveal mt-5 overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_32px_90px_-46px_rgba(15,23,42,0.42)] sm:mt-7"
+                :style="previewStyle"
+            >
+                <div class="flex h-11 items-center border-b border-slate-200 bg-slate-50 px-4">
+                    <div class="flex gap-1.5" aria-hidden="true">
+                        <span class="size-2.5 rounded-full bg-red-300" />
+                        <span class="size-2.5 rounded-full bg-amber-300" />
+                        <span class="size-2.5 rounded-full bg-emerald-300" />
+                    </div>
                     <div
-                        class="flex items-center gap-1.5 border-b border-slate-200 bg-slate-100/90 px-3 py-2.5"
+                        class="mx-auto -translate-x-5 rounded-md bg-white px-5 py-1 text-[10px] font-semibold tracking-wide text-slate-400 shadow-sm ring-1 ring-slate-200"
                     >
-                        <span class="size-2 rounded-full bg-red-300" />
-                        <span class="size-2 rounded-full bg-amber-300" />
-                        <span class="size-2 rounded-full bg-emerald-300" />
-                        <span
-                            class="ml-2 flex-1 truncate rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] text-slate-400"
-                            >klinik-anda.syifa.my</span
-                        >
-                        <span
-                            class="ml-1 rounded-full bg-emerald-100 px-2 py-1 text-[9px] font-black tracking-wider text-emerald-800 uppercase"
-                            >{{ copy.previewReady }}</span
-                        >
+                        {{ activeTemplate.demoDomain }}
                     </div>
+                </div>
 
-                    <div class="relative aspect-[16/10] overflow-hidden bg-white">
-                        <iframe
-                            :src="item.previewUrl"
-                            :title="`${copy.livePreviewTitle}: ${item.name}`"
-                            loading="lazy"
-                            tabindex="-1"
-                            aria-hidden="true"
-                            class="pointer-events-none absolute inset-0 h-[720px] w-full border-0"
-                        />
-                        <div
-                            class="pointer-events-none absolute inset-0 ring-1 ring-inset ring-slate-900/5"
-                        />
+                <div class="demo-nav">
+                    <strong>{{ activeTemplate.demoClinic }}</strong>
+                    <div class="demo-nav__links" aria-hidden="true">
+                        <span>About</span><span>Services</span><span>Doctors</span>
                     </div>
+                    <span class="demo-nav__button">{{ activeTemplate.demoCta }}</span>
+                </div>
 
-                    <div class="flex flex-1 flex-col border-t border-slate-100 p-5 sm:p-6">
-                        <h3 class="text-xl font-bold text-slate-950">{{ item.name }}</h3>
-                        <p class="mt-2 flex-1 text-sm leading-6 text-slate-600">
-                            {{ item.tagline }}
-                        </p>
-                        <div
-                            class="mt-5 flex items-center justify-between border-t border-slate-100 pt-4"
-                        >
-                            <span
-                                class="text-xs font-bold tracking-[0.12em] text-slate-400 uppercase"
-                                >{{ copy.managedTemplate }}</span
-                            >
-                            <span
-                                class="inline-flex min-h-9 items-center rounded-xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800"
-                                >{{ copy.livePreviewLabel }}</span
-                            >
+                <div class="demo-hero">
+                    <div class="demo-hero__copy">
+                        <p>{{ activeTemplate.demoEyebrow }}</p>
+                        <h3>{{ activeTemplate.demoHeadline }}</h3>
+                        <div class="demo-hero__body">{{ activeTemplate.demoBody }}</div>
+                        <div class="demo-hero__actions">
+                            <span>{{ activeTemplate.demoCta }}</span>
+                            <small>{{ activeTemplate.demoSecondary }}</small>
+                        </div>
+                        <div class="demo-hero__trust">
+                            <span>✓ {{ copy.clinicReady }}</span>
+                            <span>✓ {{ copy.mobileReady }}</span>
                         </div>
                     </div>
-                </article>
+                    <div class="demo-hero__media">
+                        <img
+                            :src="activeImage"
+                            :alt="activeTemplate.demoImageAlt"
+                            width="1586"
+                            height="992"
+                        />
+                    </div>
+                </div>
             </div>
 
-            <p
-                data-reveal
-                class="reveal mx-auto mt-10 max-w-2xl text-center text-sm leading-6 text-slate-500"
-            >
+            <div class="mt-7 grid items-center gap-5 md:grid-cols-[1fr_auto]">
+                <div>
+                    <p class="text-xs font-black tracking-[0.14em] text-emerald-700 uppercase">
+                        {{ copy.bestFor }}
+                    </p>
+                    <p class="mt-2 text-base font-bold text-slate-900">
+                        {{ activeTemplate.bestFor }}
+                    </p>
+                    <p class="mt-1 text-sm leading-6 text-slate-500">
+                        {{ activeTemplate.tagline }}
+                    </p>
+                </div>
+                <AppButton :href="registerUrl" variant="primary" size="lg">
+                    {{ copy.chooseTemplate }}
+                </AppButton>
+            </div>
+
+            <p class="mx-auto mt-8 max-w-3xl text-center text-sm leading-6 text-slate-500">
                 {{ copy.selectionNote }}
             </p>
         </div>
@@ -101,5 +146,126 @@ const liveTemplates = computed(() =>
 <style scoped>
 .anchor-section {
     scroll-margin-top: 5.5rem;
+}
+.demo-nav {
+    display: flex;
+    min-height: 4.5rem;
+    align-items: center;
+    gap: 2rem;
+    padding: 1rem clamp(1.25rem, 3vw, 2.5rem);
+    color: var(--preview-ink);
+}
+.demo-nav strong {
+    margin-right: auto;
+    font-size: clamp(1rem, 2vw, 1.35rem);
+}
+.demo-nav__links {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+.demo-nav__button,
+.demo-hero__actions > span {
+    border-radius: 999px;
+    background: var(--preview-primary);
+    color: #fff;
+    font-weight: 800;
+}
+.demo-nav__button {
+    padding: 0.65rem 1rem;
+    font-size: 0.72rem;
+}
+.demo-hero {
+    display: grid;
+    min-height: 30rem;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    background: var(--preview-soft);
+}
+.demo-hero__copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(2rem, 5vw, 5rem);
+}
+.demo-hero__copy > p {
+    color: var(--preview-primary);
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+.demo-hero__copy h3 {
+    max-width: 12ch;
+    margin-top: 1rem;
+    color: var(--preview-ink);
+    font-size: clamp(2.25rem, 4.2vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: -0.045em;
+    line-height: 0.98;
+}
+.demo-hero__body {
+    max-width: 34rem;
+    margin-top: 1.4rem;
+    color: #52606d;
+    font-size: clamp(0.95rem, 1.3vw, 1.15rem);
+    line-height: 1.7;
+}
+.demo-hero__actions {
+    display: flex;
+    align-items: center;
+    gap: 1.15rem;
+    margin-top: 1.8rem;
+}
+.demo-hero__actions > span {
+    padding: 0.85rem 1.25rem;
+    font-size: 0.8rem;
+}
+.demo-hero__actions small {
+    color: var(--preview-ink);
+    font-weight: 800;
+}
+.demo-hero__trust {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 2rem;
+    color: #64748b;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+.demo-hero__media {
+    min-height: 30rem;
+    overflow: hidden;
+}
+.demo-hero__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+@media (max-width: 47.999rem) {
+    .demo-nav {
+        min-height: 3.75rem;
+    }
+    .demo-nav__links {
+        display: none;
+    }
+    .demo-hero {
+        min-height: 0;
+        grid-template-columns: 1fr;
+    }
+    .demo-hero__copy {
+        padding: 2rem 1.5rem 2.25rem;
+    }
+    .demo-hero__copy h3 {
+        font-size: clamp(2.15rem, 11vw, 3.5rem);
+    }
+    .demo-hero__media {
+        min-height: 18rem;
+        order: -1;
+    }
+    .demo-nav__button {
+        display: none;
+    }
 }
 </style>

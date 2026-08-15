@@ -63,6 +63,15 @@ final class PublicWebsiteDeliveryContractTest extends TestCase
         );
     }
 
+    public function test_private_lan_ipv4_addresses_support_http_device_previewing(): void
+    {
+        foreach (['10.0.0.8:8000', '172.16.4.20:8000', '172.31.255.10:8000', '192.168.0.107:8000'] as $host) {
+            $context = new PublicSiteContext('http', $host, '/templates/preview/syifa-dental');
+
+            self::assertSame('http://'.$host, $context->origin());
+        }
+    }
+
     #[DataProvider('invalidContexts')]
     public function test_context_rejects_host_scheme_and_path_attacks(string $scheme, string $host, string $path): void
     {

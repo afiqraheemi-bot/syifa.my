@@ -61,7 +61,7 @@ final readonly class TemplatePreviewRenderModelFactory
             'Klinik Keluarga Ihsan',
             'Penjagaan yang anda boleh percaya, setiap hari',
             '#0F766E',
-            '#134E4A',
+            '#E8F4F2',
             new HeroSectionRenderModel(
                 'Penjagaan kesihatan keluarga yang boleh dipercayai',
                 'Pemeriksaan, rawatan dan nasihat perubatan untuk setiap peringkat umur, dengan temu janji yang mudah dan masa menunggu yang singkat.',
@@ -117,7 +117,7 @@ final readonly class TemplatePreviewRenderModelFactory
             'Klinik Ceria',
             'Rangkaian penjagaan kesihatan komuniti anda',
             '#15803D',
-            '#14532D',
+            '#EDF7EE',
             new HeroSectionRenderModel(
                 'Penjagaan mesra untuk seisi keluarga anda',
                 'Daripada bayi hingga datuk nenek — Klinik Ceria menyediakan penjagaan kesihatan yang hangat, sabar dan mudah difahami untuk setiap generasi dalam keluarga anda.',
@@ -174,7 +174,7 @@ final readonly class TemplatePreviewRenderModelFactory
             'Klinik Pergigian Senyum',
             'Senyuman sihat, keyakinan tinggi',
             '#0369A1',
-            '#0C4A6E',
+            '#EAF4FA',
             new HeroSectionRenderModel(
                 'Rawatan pergigian yang tepat dan selesa',
                 'Daripada pemeriksaan rutin hingga rawatan pergigian kompleks, pasukan pergigian kami menggabungkan ketepatan klinikal dengan penjagaan yang lembut untuk setiap pesakit.',
@@ -234,7 +234,7 @@ final readonly class TemplatePreviewRenderModelFactory
             'Klinik Estetika Aura',
             'Keyakinan bermula dari penjagaan yang tepat',
             '#9D174D',
-            '#500724',
+            '#F9EDF2',
             new HeroSectionRenderModel(
                 'Rawatan estetik yang halus dan berkesan',
                 'Rundingan peribadi dan rawatan estetik yang dipandu pakar, direka untuk membantu anda kelihatan dan berasa yakin dengan diri sendiri.',
@@ -289,7 +289,7 @@ final readonly class TemplatePreviewRenderModelFactory
             'Klinik Pakar Utama',
             'Kepakaran yang anda boleh percaya',
             '#1E3A8A',
-            '#172554',
+            '#EDF1FA',
             new HeroSectionRenderModel(
                 'Rujukan pakar untuk penjagaan kesihatan yang kompleks',
                 'Klinik Pakar Utama menghimpunkan pakar berpengalaman dalam pelbagai bidang perubatan untuk memberi diagnosis dan rawatan yang tepat bagi keadaan kesihatan yang memerlukan perhatian khusus.',
@@ -383,7 +383,7 @@ final readonly class TemplatePreviewRenderModelFactory
             ),
             new HeaderRenderModel($clinicName, $tagline, null),
             new FooterRenderModel($clinicName, $contactEmail, $contactPhone, $address, [], $businessHours, $whatsAppNumber, null, null),
-            [$hero, $about, $services, $doctors, $gallery, $testimonials, $faq, new ContactSectionRenderModel($contactEmail, $contactPhone, $address, [], $businessHours, $whatsAppNumber, null, null), $bookingCta],
+            [$hero, $about, $services, $doctors, $testimonials, $faq, new ContactSectionRenderModel($contactEmail, $contactPhone, $address, [], $businessHours, $whatsAppNumber, null, null), $bookingCta],
             [],
             new PublicationMetadataRenderModel('preview', 1, new DateTimeImmutable),
         );

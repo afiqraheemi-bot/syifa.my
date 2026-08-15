@@ -7,8 +7,6 @@ namespace App\Modules\WebsiteBuilder\Application\WebsitePreview;
 use App\Modules\WebsiteBuilder\Application\Delivery\BrandTokenResolver;
 use App\Modules\WebsiteBuilder\Application\Delivery\ContactActionFactory;
 use App\Modules\WebsiteBuilder\Application\Delivery\NavigationFactory;
-use App\Modules\WebsiteBuilder\Application\Delivery\PublicAssetPurpose;
-use App\Modules\WebsiteBuilder\Application\Delivery\PublicAssetUrlResolverInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicRoute;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicRoutePolicy;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContext;
@@ -19,8 +17,6 @@ use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRend
 
 final readonly class DraftPreviewDocumentFactory
 {
-    public function __construct(private PublicAssetUrlResolverInterface $assets) {}
-
     public function make(
         PublicWebsiteRenderModel $model,
         PublicSiteContext $context,
@@ -29,9 +25,11 @@ final readonly class DraftPreviewDocumentFactory
         $assetUrls = [];
         $assetDimensions = [];
         foreach ($model->assets as $asset) {
-            $assetUrls[$asset->assetId] = $this->assets->resolve(
-                $asset->assetId,
-                PublicAssetPurpose::Content,
+            // Draft previews must use the origin of the active request. A
+            // fixed local asset origin such as `localhost` points back to the
+            // viewing device when the preview is opened from a phone.
+            $assetUrls[$asset->assetId] = new PublicUrl(
+                $context->origin().'/assets/'.rawurlencode($asset->assetId).'?purpose=content',
             );
             $assetDimensions[$asset->assetId] = [$asset->width, $asset->height];
         }

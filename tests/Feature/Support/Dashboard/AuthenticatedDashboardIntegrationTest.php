@@ -1839,8 +1839,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertHeader('Cache-Control', 'no-store, private')
             ->assertSee('Draft Preview')
             ->assertSee('Trusted healthcare')
-            ->assertSee('WhatsApp clinic')
-            ->assertSee('whatsapp-float--pill', false)
+            ->assertDontSee('WhatsApp clinic')
+            ->assertSee('whatsapp-float--circle', false)
             ->assertSee('https://wa.me/60123456789', false)
             ->assertSee(route('dashboard.website.booking-preview'), false);
 

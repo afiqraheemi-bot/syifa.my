@@ -36,6 +36,7 @@ final readonly class ProvisionWebsiteFoundationService implements ProvisionWebsi
             $tenantId = new TenantId($command->tenantId);
             $clinicId = new ClinicId($command->clinicId);
             $websiteId = new WebsiteId($command->websiteId);
+            $templateId = TemplateId::fromStored($command->templateId);
 
             $clinic = $this->clinics->findByTenantId($tenantId);
             if ($clinic === null) {
@@ -58,12 +59,12 @@ final readonly class ProvisionWebsiteFoundationService implements ProvisionWebsi
                 $this->websites->save(Website::create(
                     $websiteId,
                     $tenantId,
-                    TemplateId::fromStored($command->templateId),
+                    $templateId,
                     new WebsiteBranding(
                         $command->clinicName,
                         null,
-                        '#0F766E',
-                        '#F97316',
+                        $this->defaultBrandColors($templateId)[0],
+                        $this->defaultBrandColors($templateId)[1],
                         null,
                         null,
                         $command->clinicEmail,
@@ -86,5 +87,17 @@ final readonly class ProvisionWebsiteFoundationService implements ProvisionWebsi
                 $command->websiteId,
             );
         });
+    }
+
+    /** @return array{string, string} */
+    private function defaultBrandColors(TemplateId $templateId): array
+    {
+        return match ($templateId) {
+            TemplateId::SyifaEssential => ['#0F766E', '#E8F4F2'],
+            TemplateId::SyifaCare => ['#15803D', '#EDF7EE'],
+            TemplateId::SyifaDental => ['#0369A1', '#EAF4FA'],
+            TemplateId::SyifaAesthetic => ['#9D174D', '#F9EDF2'],
+            TemplateId::SyifaSpecialist => ['#1E3A8A', '#EDF1FA'],
+        };
     }
 }

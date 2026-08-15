@@ -10,7 +10,7 @@
     <style>:root{--brand-primary:{{ $document->brandTokens->primary }};--brand-primary-hover:{{ $document->brandTokens->primaryHover }};--brand-primary-active:{{ $document->brandTokens->primaryActive }};--brand-on-primary:{{ $document->brandTokens->onPrimary }};--brand-secondary:{{ $document->brandTokens->secondary }};--brand-on-secondary:{{ $document->brandTokens->onSecondary }};}</style>
 </head>
 <body
-    class="public-site"
+    class="public-site public-site--draft-preview"
     data-template="{{ strtolower(str_replace('_', '-', $document->website->website->templateId)) }}"
 >
     <div

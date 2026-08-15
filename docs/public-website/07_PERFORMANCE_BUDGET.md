@@ -17,7 +17,7 @@ Field targets are design goals pending representative production data, not fabri
 | Resource | Initial V1 budget | Rule |
 |---|---:|---|
 | Initial JavaScript | 0 KB required for core content; ≤ 50 KB compressed optional enhancement | No framework hydration of static Sections. Booking or approved interaction code loads by intent or route need. |
-| Critical CSS | ≤ 30 KB compressed | One shared component/token system; template differences cannot ship duplicate frameworks. |
+| Critical CSS | ≤ 36 KB compressed | One shared component/token system across five fully responsive template personalities; template differences cannot ship duplicate frameworks. |
 | Total initial CSS | ≤ 75 KB compressed | Unused template and component styles must not load for every page. |
 | Critical fonts | ≤ 100 KB compressed total initial transfer | Prefer system/variable-efficient approved families; no tenant fonts; fallback renders immediately. |
 | Above-fold imagery | One primary responsive image, normally ≤ 250 KB compressed at representative mobile size | Correct dimensions, modern format where suitable, no desktop original sent to mobile. |

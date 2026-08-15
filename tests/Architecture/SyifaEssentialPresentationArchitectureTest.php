@@ -60,7 +60,7 @@ final class SyifaEssentialPresentationArchitectureTest extends TestCase
 
     public function test_production_css_bundle_stays_within_the_governed_performance_budget(): void
     {
-        // 07_PERFORMANCE_BUDGET.md governs "Critical CSS ≤ 30 KB compressed".
+        // 07_PERFORMANCE_BUDGET.md governs "Critical CSS ≤ 36 KB compressed".
         // This is the shared bundle for all five official templates combined
         // (only one [data-template] block is active per request, but the
         // browser downloads the whole file once regardless of which
@@ -72,9 +72,9 @@ final class SyifaEssentialPresentationArchitectureTest extends TestCase
         $gzipped = gzencode($raw, 9);
         self::assertIsString($gzipped);
         self::assertLessThanOrEqual(
-            30 * 1024,
+            36 * 1024,
             strlen($gzipped),
-            sprintf('public-website.css is %d bytes gzipped, over the governed 30 KB budget.', strlen($gzipped)),
+            sprintf('public-website.css is %d bytes gzipped, over the governed 36 KB budget.', strlen($gzipped)),
         );
     }
 

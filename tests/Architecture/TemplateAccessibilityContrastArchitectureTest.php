@@ -28,11 +28,11 @@ final class TemplateAccessibilityContrastArchitectureTest extends TestCase
     public static function templates(): array
     {
         return [
-            'Essential' => ['surfacePrimary' => '#fffdf9', 'textMuted' => '#687570', 'borderStrong' => '#749183', 'surfaceFooter' => '#0e251f', 'brandPrimary' => '#176b50', 'accentInverse' => '#c9e9dc'],
-            'Care' => ['surfacePrimary' => '#ffffff', 'textMuted' => '#66766b', 'borderStrong' => '#719684', 'surfaceFooter' => '#0b2a1f', 'brandPrimary' => '#0b2a1f', 'accentInverse' => '#bef264'],
-            'Dental' => ['surfacePrimary' => '#ffffff', 'textMuted' => '#607a83', 'borderStrong' => '#7599a6', 'surfaceFooter' => '#092630', 'brandPrimary' => '#0f6e96', 'accentInverse' => '#c8edf5'],
-            'Aesthetic' => ['surfacePrimary' => '#fdfbf8', 'textMuted' => '#7d716a', 'borderStrong' => '#9d887a', 'surfaceFooter' => '#211c19', 'brandPrimary' => '#302824', 'accentInverse' => '#ead9ce'],
-            'Specialist' => ['surfacePrimary' => '#fbfcfd', 'textMuted' => '#607181', 'borderStrong' => '#71879a', 'surfaceFooter' => '#111e2a', 'brandPrimary' => '#1d2c3b', 'accentInverse' => '#d1e2ef'],
+            'Essential' => ['surfacePrimary' => '#fbfefd', 'textMuted' => '#58706d', 'borderStrong' => '#6f918d', 'surfaceFooter' => '#0b2f2c', 'brandPrimary' => '#0f766e', 'accentInverse' => '#bce7df'],
+            'Care' => ['surfacePrimary' => '#fbfefb', 'textMuted' => '#5b705f', 'borderStrong' => '#75917a', 'surfaceFooter' => '#102d1a', 'brandPrimary' => '#15803d', 'accentInverse' => '#c7efcf'],
+            'Dental' => ['surfacePrimary' => '#fbfdff', 'textMuted' => '#587181', 'borderStrong' => '#6e91a5', 'surfaceFooter' => '#0b2d41', 'brandPrimary' => '#0369a1', 'accentInverse' => '#bfe6f5'],
+            'Aesthetic' => ['surfacePrimary' => '#fffafb', 'textMuted' => '#725a64', 'borderStrong' => '#a86b83', 'surfaceFooter' => '#3a1023', 'brandPrimary' => '#9d174d', 'accentInverse' => '#f8c8da'],
+            'Specialist' => ['surfacePrimary' => '#fbfcff', 'textMuted' => '#5e687f', 'borderStrong' => '#7181a8', 'surfaceFooter' => '#111a3f', 'brandPrimary' => '#1e3a8a', 'accentInverse' => '#c7d2fe'],
         ];
     }
 
