@@ -19,7 +19,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $post->meta_title }}</title>
     <meta name="description" content="{{ $post->meta_description }}">
-    <meta name="robots" content="{{ ($isPreview ?? false) ? 'noindex,nofollow,noarchive' : $post->robots_directive }}">
+    <meta name="robots" content="{{ ($isPreview ?? false) ? 'noindex,nofollow,noarchive' : (($indexingEnabled ?? true) ? $post->robots_directive : 'noindex,nofollow') }}">
     <link rel="canonical" href="{{ $canonical }}">
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="{{ $website->clinic_name }}">

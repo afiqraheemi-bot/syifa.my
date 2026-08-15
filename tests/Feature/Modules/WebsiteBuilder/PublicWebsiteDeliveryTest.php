@@ -11,6 +11,7 @@ use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteDocumentFactory
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteRenderModelProviderInterface;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\HeroSectionRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRenderModel;
+use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\SeoRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\ServiceItemRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\ServicesSectionRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\PublicWebsiteRenderProjector;
@@ -324,6 +325,58 @@ final class PublicWebsiteDeliveryTest extends TestCase
         $this->get('https://clinic.example/')
             ->assertOk()
             ->assertSee('--brand-primary:#176B50;--brand-primary-hover:#10543F;--brand-primary-active:#0C4434;--brand-on-primary:#F9FCFA;', false);
+    }
+
+    public function test_a_configured_canonical_url_is_used_instead_of_the_current_request_url(): void
+    {
+        $model = $this->renderModel('Klinik Syifa');
+        $seo = new SeoRenderModel(
+            $model->seo->metaTitle,
+            $model->seo->metaDescription,
+            $model->seo->metaKeywords,
+            'https://www.klinik-syifa.my/',
+            $model->seo->robotsDirective,
+            $model->seo->openGraphTitle,
+            $model->seo->openGraphDescription,
+            $model->seo->openGraphImageAssetId,
+            $model->seo->indexingEnabled,
+        );
+        $this->bindWebsite(new PublicWebsiteRenderModel($model->website, $model->branding, $seo, $model->header, $model->footer, $model->sections, $model->assets, $model->publication));
+
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertSee('<link rel="canonical" href="https://www.klinik-syifa.my/">', false)
+            ->assertSee('<meta property="og:url" content="https://www.klinik-syifa.my/">', false);
+    }
+
+    public function test_disabling_indexing_forces_noindex_regardless_of_the_configured_robots_directive(): void
+    {
+        // "Indexing enabled" is presented to the Clinic Owner as a single
+        // promise — "Allow this website to be listed on Google" — so turning
+        // it off must be authoritative even if the separate robots directive
+        // field was left at "index,follow" (its default).
+        $model = $this->renderModel('Klinik Syifa');
+        $seo = new SeoRenderModel(
+            $model->seo->metaTitle,
+            $model->seo->metaDescription,
+            $model->seo->metaKeywords,
+            $model->seo->canonicalUrl,
+            'index,follow',
+            $model->seo->openGraphTitle,
+            $model->seo->openGraphDescription,
+            $model->seo->openGraphImageAssetId,
+            false,
+        );
+        $this->bindWebsite(new PublicWebsiteRenderModel($model->website, $model->branding, $seo, $model->header, $model->footer, $model->sections, $model->assets, $model->publication));
+
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertSee('<meta name="robots" content="noindex,nofollow">', false);
+
+        $this->get('https://clinic.example/robots.txt')
+            ->assertOk()
+            ->assertSee('Disallow: /', false)
+            ->assertDontSee('Sitemap:', false);
     }
 
     private static function assertDontSeeBookingDuplicatedInside(string $navigationHtml): void

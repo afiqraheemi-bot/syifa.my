@@ -26,15 +26,21 @@ final readonly class PublicWebsiteSeoController
 
     public function robots(Request $request): Response
     {
-        $this->document($request);
+        $document = $this->document($request);
 
-        return response(implode("\n", [
-            'User-agent: *',
-            'Allow: /',
-            'Disallow: /booking',
-            'Sitemap: '.$request->getSchemeAndHttpHost().'/sitemap.xml',
-            '',
-        ]), 200, [
+        $lines = $document->website->seo->indexingEnabled
+            ? [
+                'User-agent: *',
+                'Allow: /',
+                'Disallow: /booking',
+                'Sitemap: '.$request->getSchemeAndHttpHost().'/sitemap.xml',
+            ]
+            : [
+                'User-agent: *',
+                'Disallow: /',
+            ];
+
+        return response(implode("\n", [...$lines, '']), 200, [
             'Content-Type' => 'text/plain; charset=UTF-8',
             'Cache-Control' => 'public, max-age=3600',
         ]);

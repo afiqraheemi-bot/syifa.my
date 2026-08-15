@@ -4,7 +4,7 @@
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Health Blog | {{ $website->clinic_name }}</title>
     <meta name="description" content="Latest health articles from {{ $website->clinic_name }}.">
-    <meta name="robots" content="{{ ($isPreview ?? false) ? 'noindex,nofollow,noarchive' : 'index,follow' }}"><link rel="canonical" href="{{ $context->url('/blog')->value }}">
+    <meta name="robots" content="{{ ($isPreview ?? false) ? 'noindex,nofollow,noarchive' : (($indexingEnabled ?? true) ? 'index,follow' : 'noindex,nofollow') }}"><link rel="canonical" href="{{ $context->url('/blog')->value }}">
     <meta property="og:type" content="website"><meta property="og:title" content="Health Blog | {{ $website->clinic_name }}">
     <meta property="og:url" content="{{ $context->url('/blog')->value }}">
     @unless(app()->environment('testing')) @vite(['resources/css/public-website.css']) @endunless

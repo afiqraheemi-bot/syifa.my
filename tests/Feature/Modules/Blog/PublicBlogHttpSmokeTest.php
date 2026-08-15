@@ -66,9 +66,26 @@ final class PublicBlogHttpSmokeTest extends TestCase
         self::assertSame(1, DB::table('blog_post_publications')->count());
     }
 
+    public function test_disabling_site_wide_indexing_forces_noindex_on_blog_pages_too(): void
+    {
+        // The Clinic Owner's single "allow this website to be listed on
+        // Google" switch must be authoritative across the whole public
+        // surface, including Blog — not just the main website pages.
+        DB::table('website_seo_configurations')->where('website_id', self::WEBSITE)->update(['indexing_enabled' => false]);
+
+        $this->get('https://clinic.test/blog')
+            ->assertOk()
+            ->assertSee('<meta name="robots" content="noindex,nofollow">', false);
+
+        $this->get('https://clinic.test/blog/panduan-kesihatan')
+            ->assertOk()
+            ->assertSee('<meta name="robots" content="noindex,nofollow">', false);
+    }
+
     private function fixtures(): void
     {
         DB::table('websites')->insert(['id' => self::WEBSITE, 'tenant_id' => self::TENANT, 'clinic_name' => 'Klinik Aman', 'template_id' => 'SYIFA_CARE', 'lifecycle' => 'published']);
+        DB::table('website_seo_configurations')->insert(['website_id' => self::WEBSITE, 'indexing_enabled' => true]);
         $snapshot = ['slug' => 'panduan-kesihatan', 'title' => 'Panduan Kesihatan', 'excerpt' => 'Ringkasan.', 'body_html' => '<p>Kandungan diterbitkan.</p>', 'category' => 'Kesihatan', 'author_name' => 'Dr. Aminah', 'published_at' => '2026-08-15T02:00:00Z', 'last_changed_at' => '2026-08-15T03:00:00Z', 'meta_title' => 'Panduan Kesihatan', 'meta_description' => 'Panduan kesihatan klinik.', 'canonical_url' => null, 'robots_directive' => 'index,follow', 'open_graph_title' => 'Panduan Kesihatan', 'open_graph_description' => 'Panduan kesihatan klinik.', 'featured_image_asset_id' => null, 'featured_image_alt_text' => null];
         DB::table('blog_posts')->insert(['id' => self::POST, 'tenant_id' => self::TENANT, 'website_id' => self::WEBSITE, 'slug' => 'panduan-kesihatan', 'title' => 'Panduan Kesihatan', 'excerpt' => 'Ringkasan.', 'category' => 'Kesihatan', 'author_name' => 'Dr. Aminah', 'featured_image_asset_id' => null, 'status' => 'published']);
         DB::table('blog_post_publications')->insert(['id' => '00000000-0000-4000-8000-000000000031', 'blog_post_id' => self::POST, 'website_id' => self::WEBSITE, 'snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR), 'published_at' => '2026-08-15 02:00:00', 'withdrawn_at' => null]);
@@ -77,6 +94,7 @@ final class PublicBlogHttpSmokeTest extends TestCase
     private function schema(): void
     {
         Schema::create('websites', fn (Blueprint $t) => [$t->uuid('id')->primary(), $t->uuid('tenant_id'), $t->string('clinic_name'), $t->string('template_id'), $t->string('lifecycle')]);
+        Schema::create('website_seo_configurations', fn (Blueprint $t) => [$t->uuid('website_id')->primary(), $t->boolean('indexing_enabled')]);
         Schema::create('blog_posts', fn (Blueprint $t) => [$t->uuid('id')->primary(), $t->uuid('tenant_id'), $t->uuid('website_id'), $t->string('slug'), $t->string('title'), $t->text('excerpt'), $t->string('category'), $t->string('author_name'), $t->uuid('featured_image_asset_id')->nullable(), $t->string('featured_image_alt_text')->nullable(), $t->string('status')]);
         Schema::create('blog_post_publications', fn (Blueprint $t) => [$t->uuid('id')->primary(), $t->uuid('blog_post_id'), $t->uuid('website_id'), $t->json('snapshot'), $t->timestamp('published_at'), $t->timestamp('withdrawn_at')->nullable()]);
     }

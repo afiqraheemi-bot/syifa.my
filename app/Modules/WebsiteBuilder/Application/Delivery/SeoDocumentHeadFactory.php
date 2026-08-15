@@ -29,12 +29,20 @@ final readonly class SeoDocumentHeadFactory
             $structured['address'] = $model->footer->address;
         }
 
+        $canonicalUrl = $model->seo->canonicalUrl === null ? $currentUrl : new PublicUrl($model->seo->canonicalUrl);
+        // "Indexing enabled" is presented to the Clinic Owner as a single
+        // master switch ("Allow this website to be listed on Google"), so it
+        // must override the separate robots directive field rather than only
+        // affect the sitemap — otherwise turning it off gives a false sense
+        // of privacy while the page still asserts "index,follow" itself.
+        $robots = $model->seo->indexingEnabled ? $model->seo->robotsDirective : 'noindex,nofollow';
+
         return new SeoDocumentHead(
             $model->seo->metaTitle,
             $model->seo->metaDescription,
-            $model->seo->robotsDirective,
-            $currentUrl,
-            $currentUrl,
+            $robots,
+            $canonicalUrl,
+            $canonicalUrl,
             $model->seo->openGraphTitle,
             $model->seo->openGraphDescription,
             $structured,

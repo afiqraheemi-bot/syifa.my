@@ -19,20 +19,20 @@ final readonly class PublicBlogController
 
     public function index(Request $request): View
     {
-        [$context, $website] = $this->site($request);
+        [$context, $website, $indexingEnabled] = $this->site($request);
         $posts = $this->query((string) $website->id)->orderByDesc('publication.published_at')->paginate(9);
 
-        return view('public-website.blog.index', compact('context', 'website', 'posts'));
+        return view('public-website.blog.index', compact('context', 'website', 'posts', 'indexingEnabled'));
     }
 
     public function show(Request $request, string $slug): View
     {
-        [$context, $website] = $this->site($request);
+        [$context, $website, $indexingEnabled] = $this->site($request);
         $row = $this->query((string) $website->id)->where('post.slug', $slug)->first();
         abort_if($row === null, 404);
         $post = json_decode((string) $row->snapshot, false, 512, JSON_THROW_ON_ERROR);
 
-        return view('public-website.blog.show', compact('context', 'website', 'post'));
+        return view('public-website.blog.show', compact('context', 'website', 'post', 'indexingEnabled'));
     }
 
     private function query(string $websiteId): Builder
@@ -42,7 +42,7 @@ final readonly class PublicBlogController
             ->select('publication.snapshot', 'publication.published_at', 'post.slug', 'post.title', 'post.excerpt', 'post.category', 'post.author_name', 'post.featured_image_asset_id', 'post.featured_image_alt_text');
     }
 
-    /** @return array{PublicSiteContext, stdClass} */
+    /** @return array{PublicSiteContext, stdClass, bool} */
     private function site(Request $request): array
     {
         $context = $this->contexts->forHost($request->getHost());
@@ -50,7 +50,10 @@ final readonly class PublicBlogController
         abort_unless($this->authorization->entitled($context->tenantId), 404);
         $website = $this->connection->table('websites')->where('id', $context->websiteId)->where('lifecycle', 'published')->first();
         abort_if($website === null, 404);
+        $indexingEnabled = (bool) $this->connection->table('website_seo_configurations')
+            ->where('website_id', $context->websiteId)
+            ->value('indexing_enabled');
 
-        return [$context, $website];
+        return [$context, $website, $indexingEnabled];
     }
 }
