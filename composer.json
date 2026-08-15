@@ -34,6 +34,8 @@
     },
     "scripts": {
         "analyse": "phpstan analyse --memory-limit=1G",
+        "dev:install": "launchctl bootstrap gui/$(id -u) scripts/com.syifa.devserver.plist || launchctl kickstart -k gui/$(id -u)/com.syifa.devserver",
+        "dev:server": "bash scripts/dev-server.sh",
         "format": "pint",
         "format:check": "pint --test",
         "test": [

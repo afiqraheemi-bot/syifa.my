@@ -24,6 +24,7 @@ defineProps({
     carePreviewUrl: { type: String, required: true },
     specialistPreviewUrl: { type: String, required: true },
     aestheticPreviewUrl: { type: String, required: true },
+    aafiyahShowcaseUrl: { type: String, required: true },
     packages: { type: Array, required: true },
     packagePreview: { type: Boolean, default: false },
 });
@@ -849,7 +850,11 @@ const structuredData = computed(() =>
             <SolutionSection :copy="t.solution" />
             <HowItWorksSection :copy="t.how" />
             <WhySyifaSection :copy="t.why" />
-            <TemplatesSection :copy="t.templates" :register-url="clinicRegistrationUrl" />
+            <TemplatesSection
+                :copy="t.templates"
+                :register-url="clinicRegistrationUrl"
+                :showcase-url="aafiyahShowcaseUrl"
+            />
             <TestimonialSection :copy="t.testimonial" />
             <PricingSection
                 :packages="packages"

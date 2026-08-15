@@ -33,9 +33,9 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', revealHashTarget)
         class="group scroll-mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
     >
         <summary
-            class="cursor-pointer list-none p-5 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-inset sm:p-6"
+            class="cursor-pointer list-none p-4 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-inset sm:p-6"
         >
-            <div class="flex items-start justify-between gap-4">
+            <div class="flex items-start justify-between gap-3 sm:gap-4">
                 <div class="min-w-0">
                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
                         {{ eyebrow }}
@@ -53,7 +53,7 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', revealHashTarget)
                 </span>
             </div>
         </summary>
-        <div class="border-t border-slate-200 p-5 sm:p-6">
+        <div class="min-w-0 border-t border-slate-200 p-4 sm:p-6">
             <slot />
         </div>
     </details>

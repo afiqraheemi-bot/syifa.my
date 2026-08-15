@@ -30,7 +30,7 @@ const navigation = createDashboardNavigation(props.navigation);
         <form
             :action="onboardingQueue.search.action"
             method="get"
-            class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[minmax(0,1fr)_minmax(12rem,auto)_auto] sm:items-end"
+            class="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[minmax(0,1fr)_minmax(12rem,auto)_auto] sm:items-end"
         >
             <label class="text-sm font-semibold text-slate-700">
                 Search assigned jobs
@@ -61,7 +61,7 @@ const navigation = createDashboardNavigation(props.navigation);
             </label>
             <button
                 type="submit"
-                class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                class="min-h-11 w-full rounded-xl bg-slate-950 px-5 py-2 font-bold text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 sm:w-auto"
             >
                 Apply
             </button>
@@ -72,10 +72,10 @@ const navigation = createDashboardNavigation(props.navigation);
                 <article
                     v-for="job in onboardingQueue.items"
                     :key="job.id"
-                    class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+                    class="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
                 >
                     <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div>
+                        <div class="min-w-0">
                             <p class="text-xs font-bold uppercase tracking-wide text-slate-500">
                                 Assigned clinic
                             </p>
@@ -155,7 +155,7 @@ const navigation = createDashboardNavigation(props.navigation);
                     </p>
                     <a
                         :href="job.detailHref"
-                        class="mt-5 inline-flex min-h-11 items-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                        class="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 sm:w-auto"
                     >
                         View job
                     </a>

@@ -21,7 +21,7 @@
             'SYIFA_AESTHETIC' => asset('images/template-previews/syifa-aesthetic-hero.webp'),
             'SYIFA_SPECIALIST' => asset('images/template-previews/syifa-specialist-hero.webp'),
         ];
-        $previewHeroImage = $previewHeroImages[$document->website->website->templateId] ?? null;
+        $previewHeroImage = $previewHeroImageOverride ?? ($previewHeroImages[$document->website->website->templateId] ?? null);
     @endphp
     <x-public.skip-link />
     <x-public.navbar :document="$document" :blog-enabled="false" blog-url="#" />

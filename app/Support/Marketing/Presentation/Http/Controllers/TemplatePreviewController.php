@@ -33,6 +33,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 final readonly class TemplatePreviewController
 {
     private const array SLUGS = [
+        'klinik-aafiyah' => TemplateId::SyifaSpecialist,
         'syifa-essential' => TemplateId::SyifaEssential,
         'syifa-care' => TemplateId::SyifaCare,
         'syifa-dental' => TemplateId::SyifaDental,
@@ -53,12 +54,17 @@ final readonly class TemplatePreviewController
         }
 
         $context = new PublicSiteContext($request->getScheme(), $request->getHost(), '/templates/preview/'.$slug);
-        $model = $this->renderModels->make($templateId);
+        $model = $slug === 'klinik-aafiyah'
+            ? $this->renderModels->makeKlinikAafiyah()
+            : $this->renderModels->make($templateId);
         $document = $this->documents->make($model, $context);
 
         return view('public-website.template-preview', [
             'document' => $document,
             'homeUrl' => route('root', [], false),
+            'previewHeroImageOverride' => $slug === 'klinik-aafiyah'
+                ? asset('images/marketing/klinik-aafiyah-hero.jpg')
+                : null,
         ]);
     }
 }

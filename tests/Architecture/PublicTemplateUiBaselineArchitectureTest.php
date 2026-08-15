@@ -64,6 +64,33 @@ final class PublicTemplateUiBaselineArchitectureTest extends TestCase
         }
     }
 
+    public function test_desktop_heroes_keep_a_centred_layout_and_readable_typography(): void
+    {
+        $css = $this->stylesheet();
+
+        self::assertMatchesRegularExpression(
+            "/@media \(min-width: 64rem\) and \(min-height: 50\.001rem\) \{.*?\[data-template\] \.hero \{[^}]*align-items: center;[^}]*justify-content: center;.*?\[data-template\] \.hero__layout \{[^}]*margin-block: auto;/s",
+            $css,
+        );
+        self::assertMatchesRegularExpression(
+            "/Final desktop hero typography lock:.*?@media \(min-width: 64rem\) \{.*?\[data-template\] \.hero__content h1 \{[^}]*text-wrap: balance;[^}]*word-break: normal;.*?\[data-template\] \.hero__lead \{[^}]*max-width: 52ch;[^}]*line-height: 1\.62;/s",
+            $css,
+        );
+
+        foreach (self::governedTemplates() as [$template]) {
+            self::assertStringContainsString(
+                "[data-template='{$template}'] .hero__content h1",
+                $css,
+            );
+        }
+
+        self::assertStringNotContainsString(
+            'width: min(calc(100% - 4rem), 96rem)',
+            $css,
+            'Hero layouts must use the shared content-container token.',
+        );
+    }
+
     public function test_optional_content_enhancements_remain_outside_the_critical_script(): void
     {
         $root = dirname(__DIR__, 2);

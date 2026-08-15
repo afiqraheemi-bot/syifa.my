@@ -54,6 +54,37 @@ final readonly class TemplatePreviewRenderModelFactory
         };
     }
 
+    public function makeKlinikAafiyah(): PublicWebsiteRenderModel
+    {
+        return $this->assemble(
+            TemplateId::SyifaSpecialist,
+            'Klinik Aafiyah',
+            'Rawatan kesihatan dipercayai untuk anda dan keluarga',
+            '#15803D',
+            '#EDF7EE',
+            new HeroSectionRenderModel(
+                'Rawatan Kesihatan Dipercayai untuk Anda dan Keluarga',
+                'Dapatkan pemeriksaan, rawatan dan nasihat kesihatan daripada pasukan Klinik Aafiyah dalam suasana yang selesa, mesra dan profesional.',
+                'Book Appointment',
+                'booking',
+                null,
+                null,
+                null,
+            ),
+            new AboutSectionRenderModel('Care built around your family', 'Klinik Aafiyah provides clear, professional and friendly healthcare for patients and families in Kulim.', null),
+            new ServicesSectionRenderModel([]),
+            new DoctorsSectionRenderModel([]),
+            new GallerySectionRenderModel([]),
+            new TestimonialsSectionRenderModel([]),
+            new FaqSectionRenderModel([]),
+            new BookingCtaSectionRenderModel('Book your appointment', 'Choose a convenient time to visit Klinik Aafiyah.', 'Book Appointment'),
+            'hello@klinikaafiyah.my',
+            '0134079388',
+            '1877, Persiaran Utama 3/20, Kulim Utama Fasa 2, 09000 Kulim, Kedah',
+            '60134079388',
+        );
+    }
+
     private function essential(): PublicWebsiteRenderModel
     {
         return $this->assemble(

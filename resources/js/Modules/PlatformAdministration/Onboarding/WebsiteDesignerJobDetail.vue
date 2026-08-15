@@ -1285,10 +1285,10 @@ function completionEvidence(task) {
     >
         <section
             id="workflow"
-            class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+            class="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
         >
             <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
+                <div class="min-w-0">
                     <p class="text-xs font-bold uppercase tracking-wide text-slate-500">
                         Assigned onboarding job
                     </p>
@@ -1394,7 +1394,7 @@ function completionEvidence(task) {
                         </div>
                         <a
                             :href="checkpoint.href"
-                            class="min-w-0 flex-1 rounded-xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+                        class="min-w-0 flex-1 rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2 sm:p-4"
                             :class="
                                 checkpoint.state === 'complete'
                                     ? 'border-emerald-200 bg-emerald-50'
@@ -1427,7 +1427,7 @@ function completionEvidence(task) {
                     </li>
                 </ol>
 
-                <aside class="rounded-2xl bg-emerald-950 p-5 text-white">
+                <aside class="rounded-2xl bg-emerald-950 p-4 text-white sm:p-5">
                     <p class="text-xs font-bold uppercase tracking-wider text-emerald-300">
                         Focus now
                     </p>
@@ -1435,7 +1435,7 @@ function completionEvidence(task) {
                     <p class="mt-2 text-sm leading-6 text-emerald-100">{{ currentFocus.detail }}</p>
                     <a
                         :href="currentFocus.href"
-                        class="mt-4 inline-flex min-h-11 items-center rounded-xl bg-white px-4 font-bold text-emerald-950"
+                        class="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-white px-4 text-center font-bold text-emerald-950 sm:w-auto"
                     >
                         {{ currentFocus.label }}
                     </a>
@@ -1482,7 +1482,7 @@ function completionEvidence(task) {
                 </div>
                 <a
                     href="#website-review"
-                    class="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-800 focus:ring-offset-2"
+                class="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-800 focus:ring-offset-2 sm:w-auto"
                 >
                     Review and publish
                 </a>
@@ -1564,7 +1564,7 @@ function completionEvidence(task) {
                 </div>
                 <a
                     :href="launchReadinessFocus.href"
-                    class="mt-4 inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-slate-900 px-4 font-semibold text-white sm:mt-0"
+                    class="mt-4 inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-lg bg-slate-900 px-4 text-center font-semibold text-white sm:mt-0 sm:w-auto"
                 >
                     {{ launchReadinessFocus.label }}
                 </a>
@@ -1842,12 +1842,12 @@ function completionEvidence(task) {
                 </div>
                 <form
                     v-if="websiteSetup.canReserveAddress"
-                    class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"
+                    class="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end"
                     @submit.prevent="reserveWebsiteAddress"
                 >
                     <label class="flex-1 text-sm font-semibold text-slate-800">
                         SYIFA.my subdomain
-                        <span class="mt-1 flex rounded-lg border border-slate-300 bg-white">
+                        <span class="mt-1 flex min-w-0 flex-col overflow-hidden rounded-lg border border-slate-300 bg-white min-[430px]:flex-row">
                             <input
                                 v-model.trim="addressForm.subdomain"
                                 required
@@ -1855,10 +1855,10 @@ function completionEvidence(task) {
                                 maxlength="63"
                                 pattern="[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?"
                                 autocomplete="off"
-                                class="min-h-11 min-w-0 flex-1 rounded-l-lg px-3 text-slate-950 outline-none focus:ring-2 focus:ring-emerald-600"
+                                class="min-h-11 min-w-0 flex-1 px-3 text-slate-950 outline-none focus:ring-2 focus:ring-emerald-600"
                             />
                             <span
-                                class="flex items-center border-l border-slate-300 px-3 text-slate-500"
+                                class="flex min-h-10 items-center border-t border-slate-300 px-3 text-sm text-slate-500 min-[430px]:border-l min-[430px]:border-t-0"
                             >
                                 .{{ websiteSetup.baseDomain }}
                             </span>
@@ -1867,7 +1867,7 @@ function completionEvidence(task) {
                     <button
                         type="submit"
                         :disabled="addressSaving"
-                        class="min-h-11 rounded-lg bg-emerald-700 px-5 py-3 font-semibold text-white transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                        class="min-h-11 w-full rounded-lg bg-emerald-700 px-5 py-3 font-semibold text-white transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                     >
                         {{ addressSaving ? 'Saving address…' : 'Reserve address' }}
                     </button>

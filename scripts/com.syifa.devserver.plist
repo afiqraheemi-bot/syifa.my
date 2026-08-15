@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.syifa.devserver</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/afiqrahim/SYIFA.my/scripts/dev-server.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/afiqrahim/SYIFA.my</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>SYIFA_DEV_HOST</key>
+        <string>0.0.0.0</string>
+        <key>SYIFA_DEV_PORT</key>
+        <string>8000</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>2</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/afiqrahim/SYIFA.my/storage/logs/dev-server.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/afiqrahim/SYIFA.my/storage/logs/dev-server-error.log</string>
+</dict>
+</plist>
