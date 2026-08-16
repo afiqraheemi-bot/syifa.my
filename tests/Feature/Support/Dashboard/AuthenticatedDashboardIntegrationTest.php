@@ -126,6 +126,11 @@ use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicBookingDateOverrideR
 use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteDraftRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiCapabilityUsageData;
+use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiEngineUsageData;
+use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiTenantUsageData;
+use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiUsageReadInterface;
+use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiUsageSummaryData;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\WebsitePublicationTransactionInterface;
 use App\Modules\WebsiteBuilder\Domain\Clinic;
@@ -302,6 +307,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->app->instance(CancelAutoRenewInterface::class, $operations);
         $this->bookingOperations = new DashboardRecordedBookingOperations;
         $this->app->instance(ClinicOwnerBookingOperationsInterface::class, $this->bookingOperations);
+        $this->app->instance(SyifaAiUsageReadInterface::class, new DashboardFixedSyifaAiUsageRead);
     }
 
     #[DataProvider('authenticatedActors')]
@@ -364,7 +370,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         } else {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 10)
+                    ->has('navigation', 11)
                     ->where('navigation.1.key', 'registrations')
                     ->where('navigation.2.key', 'tenants'),
             );
@@ -430,16 +436,17 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.1.available', true)
                     ->where('quickActions.2.href', route('dashboard.commercial'))
                     ->where('quickActions.2.available', true)
-                    ->has('navigation', 10)
+                    ->has('navigation', 11)
                     ->where('navigation.1.href', route('dashboard.registrations'))
                     ->where('navigation.2.href', route('dashboard.tenants'))
                     ->where('navigation.3.href', route('dashboard.onboarding-management'))
                     ->where('navigation.4.href', route('dashboard.billing'))
                     ->where('navigation.5.href', route('dashboard.commercial'))
                     ->where('navigation.6.href', route('dashboard.payment-providers'))
-                    ->where('navigation.7.href', route('dashboard.notifications'))
-                    ->where('navigation.8.href', route('dashboard.audit'))
-                    ->where('navigation.9.href', route('dashboard.reports'))
+                    ->where('navigation.7.href', route('dashboard.syifa-ai-usage'))
+                    ->where('navigation.8.href', route('dashboard.notifications'))
+                    ->where('navigation.9.href', route('dashboard.audit'))
+                    ->where('navigation.10.href', route('dashboard.reports'))
                     ->has('recentActivity', 1),
             );
     }
@@ -459,10 +466,10 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('contextLabel', 'Super Admin workspace')
                     ->where('providerEndpoints.index', route('payment-providers.index'))
                     ->where('providerEndpoints.health', route('payment-providers.health'))
-                    ->has('navigation', 8)
+                    ->has('navigation', 9)
                     ->where('navigation.6.key', 'payment-providers')
                     ->where('navigation.6.current', true)
-                    ->where('navigation.7.key', 'audit'),
+                    ->where('navigation.8.key', 'audit'),
             );
     }
 
@@ -483,9 +490,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('filters.outcome', 'succeeded')
                     ->where('filters.actorType', 'system')
                     ->where('audit.entries.0.action', 'website.published')
-                    ->has('navigation', 8)
-                    ->where('navigation.7.key', 'audit')
-                    ->where('navigation.7.current', true),
+                    ->has('navigation', 9)
+                    ->where('navigation.8.key', 'audit')
+                    ->where('navigation.8.current', true),
             );
 
         $this->get('/dashboard/audit?tenant_id=not-a-uuid')
@@ -832,6 +839,41 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->getJson('/dashboard/billing')->assertForbidden();
         $this->getJson('/dashboard/billing/subscriptions/11111111-1111-4111-8111-111111111111')->assertForbidden();
         $this->postJson('/dashboard/billing/subscriptions/11111111-1111-4111-8111-111111111111/auto-renew/enable')->assertForbidden();
+    }
+
+    public function test_super_admin_can_view_the_syifa_ai_usage_overview(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
+        );
+
+        $this->get('/dashboard/syifa-ai-usage')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->component('PlatformAdministration/SyifaAiUsage/SuperAdminSyifaAiUsageOverview', false)
+                    ->where('syifaAiUsage.summary.0.value', '42')
+                    ->where('syifaAiUsage.summary.1.value', '3')
+                    ->where('syifaAiUsage.byCapability.0.label', 'Content assistant')
+                    ->where('syifaAiUsage.byEngine.0.model', 'gpt-5.6-luna')
+                    ->where('syifaAiUsage.topTenants.0.clinicName', 'Klinik Ihsan'),
+            );
+    }
+
+    public function test_clinic_owner_and_website_designer_cannot_access_syifa_ai_usage_overview(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', 'tenant-1'),
+        );
+        $this->getJson('/dashboard/syifa-ai-usage')->assertForbidden();
+
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+        );
+        $this->getJson('/dashboard/syifa-ai-usage')->assertForbidden();
     }
 
     public function test_super_admin_can_view_read_only_subscription_detail(): void
@@ -3621,6 +3663,29 @@ final readonly class DashboardFixedBillingOverviewRead implements BillingOvervie
                 120000, 'MYR', '2026-01-01', '2026-12-31', 'active',
             ),
         ];
+    }
+}
+
+final readonly class DashboardFixedSyifaAiUsageRead implements SyifaAiUsageReadInterface
+{
+    public function summary(string $asOfDate): SyifaAiUsageSummaryData
+    {
+        return new SyifaAiUsageSummaryData(42, 3, 120000, 45000, 5);
+    }
+
+    public function byCapability(string $asOfDate): array
+    {
+        return [new SyifaAiCapabilityUsageData('content_assistant', 30, 100000)];
+    }
+
+    public function byEngine(string $asOfDate): array
+    {
+        return [new SyifaAiEngineUsageData('gpt-5.6-luna', 42, 165000)];
+    }
+
+    public function topTenants(string $asOfDate, int $limit): array
+    {
+        return [new SyifaAiTenantUsageData('tenant-1', 'Klinik Ihsan', 20, 75000)];
     }
 }
 

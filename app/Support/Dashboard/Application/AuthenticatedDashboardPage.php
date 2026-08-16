@@ -107,6 +107,12 @@ final readonly class AuthenticatedDashboardPage
                 false,
             ))->toArray();
             $props['navigation'][] = (new DashboardNavigationItem(
+                'syifa-ai-usage',
+                'SYIFA AI Usage',
+                route('dashboard.syifa-ai-usage'),
+                false,
+            ))->toArray();
+            $props['navigation'][] = (new DashboardNavigationItem(
                 'notifications',
                 'Notifications',
                 route('dashboard.notifications'),

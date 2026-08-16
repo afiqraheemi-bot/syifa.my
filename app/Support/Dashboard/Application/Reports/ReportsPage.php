@@ -102,6 +102,7 @@ final readonly class ReportsPage
             $items[] = (new DashboardNavigationItem('billing', 'Billing', route('dashboard.billing'), false))->toArray();
             $items[] = (new DashboardNavigationItem('commercial', 'Commercial', route('dashboard.commercial'), false))->toArray();
             $items[] = (new DashboardNavigationItem('payment-providers', 'Payment Providers', route('dashboard.payment-providers'), false))->toArray();
+            $items[] = (new DashboardNavigationItem('syifa-ai-usage', 'SYIFA AI Usage', route('dashboard.syifa-ai-usage'), false))->toArray();
             $items[] = (new DashboardNavigationItem('notifications', 'Notifications', route('dashboard.notifications'), false))->toArray();
             $items[] = (new DashboardNavigationItem('audit', 'Audit Activity', route('dashboard.audit'), false))->toArray();
         }

@@ -55,6 +55,7 @@ final readonly class SuperAdminRegistrationReviewPage
                 (new DashboardNavigationItem('billing', 'Billing', route('dashboard.billing'), false))->toArray(),
                 (new DashboardNavigationItem('commercial', 'Commercial', route('dashboard.commercial'), false))->toArray(),
                 (new DashboardNavigationItem('payment-providers', 'Payment Providers', route('dashboard.payment-providers'), false))->toArray(),
+                (new DashboardNavigationItem('syifa-ai-usage', 'SYIFA AI Usage', route('dashboard.syifa-ai-usage'), false))->toArray(),
                 (new DashboardNavigationItem('audit', 'Audit Activity', route('dashboard.audit'), false))->toArray(),
             ],
             'breadcrumbs' => [

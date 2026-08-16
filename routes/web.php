@@ -65,6 +65,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminPaymentProvide
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminRegistrationReviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionDetailController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSubscriptionOperationController;
+use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminSyifaAiUsageOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\SuperAdminTenantOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerBlogPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\WebsiteDesignerBookingPreviewController;
@@ -270,6 +271,9 @@ Route::get('/dashboard/billing', SuperAdminBillingOverviewController::class)
 Route::get('/dashboard/payment-providers', SuperAdminPaymentProviderController::class)
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.payment-providers');
+Route::get('/dashboard/syifa-ai-usage', SuperAdminSyifaAiUsageOverviewController::class)
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.syifa-ai-usage');
 Route::prefix('/dashboard/commercial')
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.commercial')

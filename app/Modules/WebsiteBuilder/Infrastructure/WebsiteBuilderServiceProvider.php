@@ -49,6 +49,7 @@ use App\Modules\WebsiteBuilder\Contracts\Repositories\ClinicRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteDraftRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiProviderInterface;
+use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiUsageReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiUsageRepositoryInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\ClinicTransactionInterface;
 use App\Modules\WebsiteBuilder\Contracts\Transactions\WebsitePublicationTransactionInterface;
@@ -83,6 +84,7 @@ use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteReadAdapter
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteSeoSummaryReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\Queries\PostgresWebsiteTenantResolver;
 use App\Modules\WebsiteBuilder\Infrastructure\SyifaAi\OpenAiSyifaAiProvider;
+use App\Modules\WebsiteBuilder\Infrastructure\SyifaAi\PostgresSyifaAiUsageReadAdapter;
 use App\Modules\WebsiteBuilder\Infrastructure\SyifaAi\PostgresSyifaAiUsageRepository;
 use App\Modules\WebsiteBuilder\Infrastructure\Transactions\PostgresClinicTransaction;
 use App\Modules\WebsiteBuilder\Infrastructure\Transactions\PostgresWebsitePublicationTransaction;
@@ -246,6 +248,12 @@ final class WebsiteBuilderServiceProvider extends ServiceProvider
         $this->app->singleton(
             SyifaAiUsageRepositoryInterface::class,
             static fn (Application $application): PostgresSyifaAiUsageRepository => new PostgresSyifaAiUsageRepository(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->singleton(
+            SyifaAiUsageReadInterface::class,
+            static fn (Application $application): PostgresSyifaAiUsageReadAdapter => new PostgresSyifaAiUsageReadAdapter(
                 $application->make('db')->connection(),
             ),
         );
