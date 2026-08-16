@@ -25,12 +25,13 @@ final readonly class PlatformSessionController
     ): JsonResponse {
         /** @var array{email: string, password: string} $credentials */
         $credentials = $request->safe()->only(['email', 'password']);
+        $mfaEnabled = (bool) config('platform_administration.mfa.enabled', false);
         $principal = $sessions->authenticate(
             $credentials['email'],
             $credentials['password'],
             new DateTimeImmutable,
             $request->boolean('remember'),
-            false,
+            ! $mfaEnabled,
         );
 
         if (! $principal instanceof PlatformPrincipal) {
@@ -41,6 +42,19 @@ final readonly class PlatformSessionController
                 401,
                 'The supplied credentials could not be authenticated.',
             );
+        }
+
+        if (! $mfaEnabled) {
+            return response()->json([
+                'data' => [
+                    'authenticated' => true,
+                    'principal' => [
+                        'platform_identity_id' => $principal->platformIdentityId,
+                        'role' => $principal->role,
+                        'name' => $principal->name,
+                    ],
+                ],
+            ], 201);
         }
 
         $challenge = $mfa->begin(

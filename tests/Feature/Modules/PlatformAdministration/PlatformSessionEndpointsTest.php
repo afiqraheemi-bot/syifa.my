@@ -48,6 +48,7 @@ final class PlatformSessionEndpointsTest extends TestCase
     {
         parent::setUp();
         config()->set('session.driver', 'array');
+        config()->set('platform_administration.mfa.enabled', true);
         if (! Schema::hasTable('platform_workforce_credentials')) {
             Schema::create('platform_workforce_credentials', function (Blueprint $table): void {
                 $table->uuid('platform_identity_id')->primary();
@@ -171,6 +172,24 @@ final class PlatformSessionEndpointsTest extends TestCase
             ->assertHeader('Content-Type', 'application/problem+json')
             ->assertJsonPath('type', 'session_invalid');
 
+    }
+
+    public function test_platform_login_establishes_session_without_authenticator_when_mfa_is_disabled(): void
+    {
+        config()->set('platform_administration.mfa.enabled', false);
+
+        $this->postJson('https://clinic.app.syifa.my/api/v1/platform/sessions', [
+            'email' => 'designer@example.test',
+            'password' => 'correct horse battery staple',
+        ])->assertCreated()
+            ->assertJsonPath('data.authenticated', true)
+            ->assertJsonPath('data.principal.platform_identity_id', self::IDENTITY_ID)
+            ->assertJsonPath('data.principal.role', 'website_designer');
+
+        $this->getJson('https://clinic.app.syifa.my/api/v1/platform/sessions/current')
+            ->assertOk()
+            ->assertJsonPath('data.authenticated', true)
+            ->assertJsonPath('data.principal.platform_identity_id', self::IDENTITY_ID);
     }
 
     public function test_invalid_password_and_locked_account_fail_closed(): void

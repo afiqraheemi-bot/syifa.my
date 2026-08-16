@@ -40,6 +40,7 @@ final readonly class RootEntryController
             'platformForgotPasswordUrl' => route('platform.password.forgot'),
             'platformSessionUrl' => url('/api/v1/platform/sessions'),
             'platformMfaUrl' => route('platform-sessions.mfa'),
+            'platformMfaEnabled' => (bool) config('platform_administration.mfa.enabled', false),
             'dashboardUrl' => url('/dashboard'),
             'clinicRegistrationUrl' => route('clinic-registration.browser', [], false),
             'clinicRegistrationLoginUrl' => route('clinic-registration.access.login'),

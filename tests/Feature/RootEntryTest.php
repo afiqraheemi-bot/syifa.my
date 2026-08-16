@@ -96,6 +96,7 @@ final class RootEntryTest extends TestCase
                     ->where('platformForgotPasswordUrl', route('platform.password.forgot'))
                     ->where('platformSessionUrl', url('/api/v1/platform/sessions'))
                     ->where('platformMfaUrl', route('platform-sessions.mfa'))
+                    ->where('platformMfaEnabled', false)
                     ->where('dashboardUrl', url('/dashboard'))
                     ->where('clinicRegistrationUrl', route('clinic-registration.browser', [], false))
                     ->where('clinicRegistrationLoginUrl', route('clinic-registration.access.login')),

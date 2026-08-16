@@ -12,6 +12,7 @@ const props = defineProps({
     platformForgotPasswordUrl: { type: String, required: true },
     platformSessionUrl: { type: String, required: true },
     platformMfaUrl: { type: String, required: true },
+    platformMfaEnabled: { type: Boolean, required: true },
     dashboardUrl: { type: String, required: true },
     clinicRegistrationUrl: { type: String, required: true },
     clinicRegistrationLoginUrl: { type: String, required: true },
@@ -61,7 +62,7 @@ async function submit() {
         return;
     }
 
-    if (result.status === 202 && result.body?.data?.state) {
+    if (props.platformMfaEnabled && result.status === 202 && result.body?.data?.state) {
         mfaState.value = result.body.data.state;
         mfaSetupKey.value = result.body.data.setup_key ?? '';
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');

@@ -7,6 +7,9 @@ return [
         'idle_minutes' => (int) env('PLATFORM_SESSION_LIFETIME', 120),
         'absolute_lifetime_minutes' => (int) env('PLATFORM_AUTH_SESSION_ABSOLUTE_LIFETIME', 720),
     ],
+    'mfa' => [
+        'enabled' => (bool) env('PLATFORM_MFA_ENABLED', false),
+    ],
     'local_demo_mfa' => [
         'enabled' => env('APP_ENV') === 'local',
         'code' => '123456',
