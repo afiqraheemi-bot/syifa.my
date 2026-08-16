@@ -6,11 +6,12 @@ import SectionHeader from './SectionHeader.vue';
 const props = defineProps({
     copy: { type: Object, required: true },
     registerUrl: { type: String, required: true },
-    showcaseUrl: { type: String, required: true },
+    previewUrls: { type: Array, required: true },
 });
 
 const activeIndex = ref(0);
 const activeTemplate = computed(() => props.copy.items[activeIndex.value] ?? null);
+const activePreviewUrl = computed(() => props.previewUrls[activeIndex.value] ?? null);
 const previewViewport = ref(null);
 const previewScale = ref(1);
 let previewObserver;
@@ -70,7 +71,9 @@ onBeforeUnmount(() => previewObserver?.disconnect());
                 <div class="real-site-showcase">
                     <div class="browser-chrome">
                         <div class="browser-dots" aria-hidden="true"><span /><span /><span /></div>
-                        <div class="browser-address">klinikaafiyah.syifa.my</div>
+                        <div class="browser-address">
+                            {{ activeTemplate.demoDomain ?? 'klinikaafiyah.syifa.my' }}
+                        </div>
                         <span class="real-preview-label">{{ copy.desktop }}</span>
                     </div>
                     <div
@@ -79,8 +82,10 @@ onBeforeUnmount(() => previewObserver?.disconnect());
                         :style="{ height: `${900 * previewScale}px` }"
                     >
                         <iframe
-                            :src="showcaseUrl"
-                            title="Paparan desktop sebenar website Klinik Aafiyah"
+                            v-if="activePreviewUrl"
+                            :key="activePreviewUrl"
+                            :src="activePreviewUrl"
+                            :title="`Paparan desktop sebenar ${activeTemplate.name}`"
                             tabindex="-1"
                             loading="lazy"
                             :style="{ transform: `scale(${previewScale})` }"

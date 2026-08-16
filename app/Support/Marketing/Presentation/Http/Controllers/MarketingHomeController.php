@@ -80,7 +80,6 @@ final readonly class MarketingHomeController
             'carePreviewUrl' => route('templates.preview', ['slug' => 'syifa-care'], false),
             'specialistPreviewUrl' => route('templates.preview', ['slug' => 'syifa-specialist'], false),
             'aestheticPreviewUrl' => route('templates.preview', ['slug' => 'syifa-aesthetic'], false),
-            'aafiyahShowcaseUrl' => route('templates.preview', ['slug' => 'klinik-aafiyah'], false),
             'packages' => $packages,
             'packagePreview' => ! $registrationEnabled,
         ]);

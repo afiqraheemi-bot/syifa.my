@@ -24,7 +24,6 @@ defineProps({
     carePreviewUrl: { type: String, required: true },
     specialistPreviewUrl: { type: String, required: true },
     aestheticPreviewUrl: { type: String, required: true },
-    aafiyahShowcaseUrl: { type: String, required: true },
     packages: { type: Array, required: true },
     packagePreview: { type: Boolean, default: false },
 });
@@ -853,7 +852,13 @@ const structuredData = computed(() =>
             <TemplatesSection
                 :copy="t.templates"
                 :register-url="clinicRegistrationUrl"
-                :showcase-url="aafiyahShowcaseUrl"
+                :preview-urls="[
+                    essentialPreviewUrl,
+                    carePreviewUrl,
+                    templatePreviewUrl,
+                    aestheticPreviewUrl,
+                    specialistPreviewUrl,
+                ]"
             />
             <TestimonialSection :copy="t.testimonial" />
             <PricingSection

@@ -309,13 +309,8 @@
         align-items: center;
     }
     [data-template='syifa-dental'] .hero__media::before {
-        position: absolute;
-        inset: var(--space-4);
-        z-index: 1;
-        border: 0.0625rem solid rgb(255 255 255 / 58%);
-        border-radius: calc(var(--radius-large) * 1.05);
-        content: '';
-        pointer-events: none;
+        display: none;
+        content: none;
     }
     [data-template='syifa-dental'] .service-card {
         overflow: hidden;
@@ -2216,7 +2211,8 @@
     [data-template='syifa-dental'] .testimonial-card,
     [data-template='syifa-dental'] .gallery-item {
         border: 0.0625rem solid var(--border-default);
-        box-shadow: none;
+        border-radius: 1.25rem 0.4rem 1.25rem 0.4rem;
+        box-shadow: 0 1.25rem 3.5rem rgb(3 105 161 / 7%);
     }
     [data-template='syifa-dental'] .gallery-item {
         background: var(--surface-primary);
@@ -5721,14 +5717,6 @@
         font-size: clamp(3rem, 6.5vw, 5.75rem);
         line-height: 0.96;
     }
-    [data-template='syifa-dental'] .hero__media {
-        min-height: 39rem;
-        border-radius: 2rem 0.75rem 2rem 0.75rem;
-        box-shadow: 0 2.25rem 6rem rgb(3 105 161 / 14%);
-    }
-    [data-template='syifa-dental'] .hero__media::before {
-        border-radius: 1.4rem 0.45rem 1.4rem 0.45rem;
-    }
     [data-template='syifa-dental'] .section-heading .eyebrow {
         display: flex;
         align-items: center;
@@ -6655,7 +6643,7 @@
     }
 
     [data-template='syifa-dental'] .gallery-item {
-        border-radius: 0.35rem;
+        border-radius: 1.25rem 0.4rem 1.25rem 0.4rem;
     }
 
     [data-template='syifa-dental'] .faq-item summary {
@@ -8158,6 +8146,7 @@
     }
 
     [data-template='syifa-dental'] .hero__actions .button {
+        width: 100%;
         min-width: 10.75rem;
         min-height: 2.9rem;
         padding: 0.68rem 1rem;
@@ -8178,8 +8167,9 @@
     }
 
     [data-template='syifa-dental'] .hero__media {
+        min-height: 0;
         aspect-ratio: 16 / 10;
-        border-radius: 0.85rem;
+        border-radius: 1rem 0.35rem 1rem 0.35rem;
     }
 }
 
@@ -9475,36 +9465,12 @@
         width: min(calc(100% - 4rem), var(--container-content));
         min-height: 0;
         max-height: none;
-        grid-template-columns: minmax(32rem, 1fr) minmax(26rem, 0.82fr);
-        gap: clamp(3.5rem, 5.5vw, 6.5rem);
         align-items: center;
     }
 
     [data-template='syifa-specialist'] .hero__content {
         width: 100%;
-        max-width: 47rem;
-        gap: clamp(0.85rem, 1.45vh, 1.2rem);
-        justify-self: end;
         padding-block: 0;
-    }
-
-    [data-template='syifa-specialist'] .hero__content .eyebrow {
-        font-size: 0.76rem;
-        letter-spacing: 0.18em;
-    }
-
-    [data-template='syifa-specialist'] .hero__content h1 {
-        max-width: 17ch;
-        font-size: clamp(3.15rem, 3.65vw, 4.2rem);
-        line-height: 1.015;
-        letter-spacing: -0.045em;
-        text-wrap: balance;
-    }
-
-    [data-template='syifa-specialist'] .hero__lead {
-        max-width: 50ch;
-        font-size: clamp(1rem, 1.05vw, 1.12rem);
-        line-height: 1.58;
     }
 
     [data-template='syifa-specialist'] .hero__actions {
@@ -9512,15 +9478,9 @@
     }
 
     [data-template='syifa-specialist'] .hero__media {
-        width: min(100%, 34rem);
-        height: clamp(29rem, 48vh, 34rem);
         min-height: 0;
-        max-height: 34rem;
-        justify-self: start;
         align-self: center;
         aspect-ratio: 4 / 3;
-        border-radius: 0.85rem;
-        box-shadow: 1rem 1rem 0 color-mix(in srgb, var(--brand-primary) 9%, white);
     }
 
     [data-template='syifa-specialist'] .hero__trust {
@@ -9711,14 +9671,6 @@
         border-radius: 3rem 3rem 1rem 3rem;
     }
 
-    /* Dental remains precise and architectural. */
-    [data-template='syifa-dental'] .hero__content {
-        padding-block: 0;
-    }
-
-    [data-template='syifa-dental'] .hero__media {
-        border-radius: 1.25rem 0.5rem 1.25rem 0.5rem;
-    }
 }
 
 @media (min-width: 64rem) and (max-height: 50rem) {
@@ -9895,28 +9847,118 @@
 }
 
 @media (min-width: 64rem) {
+    [data-template='syifa-dental'] .hero,
+    .public-site--draft-preview[data-template='syifa-dental'] .hero {
+        min-height: calc(100svh - var(--header-height) - 3rem);
+        padding-block: 0;
+    }
+
+    [data-template='syifa-dental'] .hero__layout {
+        width: 100%;
+        min-height: calc(100svh - var(--header-height) - 3rem);
+        max-width: none;
+        grid-template-columns: minmax(0, 1fr) minmax(34rem, 54vw);
+        gap: clamp(2.5rem, 3.75vw, 4.5rem);
+        align-content: center;
+        align-items: center;
+        padding-left: max(2rem, calc((100vw - var(--container-content)) / 2));
+    }
+
+    [data-template='syifa-dental'] .hero__content {
+        gap: clamp(0.78rem, 1.2vh, 1rem);
+        justify-self: end;
+        align-self: center;
+    }
+
+    [data-template='syifa-dental'] .hero__content h1 {
+        max-width: 18ch;
+        font-size: clamp(2.75rem, 3vw, 3.5rem);
+        line-height: 1.01;
+        letter-spacing: -0.048em;
+        text-wrap: balance;
+    }
+
+    [data-template='syifa-dental'] .hero__actions .button {
+        min-height: 3.1rem;
+        padding: 0.72rem 1.4rem;
+    }
+
+    [data-template='syifa-dental'] .hero__trust {
+        margin-top: 0.2rem;
+        padding-top: 0.8rem;
+        border-top-color: color-mix(in srgb, var(--brand-primary) 22%, transparent);
+    }
+
+    [data-template='syifa-dental'] .hero__media {
+        width: 100%;
+        height: clamp(30rem, 52vh, 34rem);
+        min-height: 0;
+        max-height: 34rem;
+        align-self: center;
+        justify-self: stretch;
+        overflow: hidden;
+        border: 0;
+        border-radius: 1.75rem 0 0 1.75rem;
+        background: var(--surface-emphasis);
+        box-shadow: -1.25rem 0 3.75rem rgb(3 105 161 / 8%);
+        transform: translateY(-1.5rem);
+    }
+
+    [data-template='syifa-dental'] .hero__image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 48% center;
+        filter: saturate(0.94) contrast(0.98) brightness(1.015);
+    }
+
+}
+
+@media (min-width: 64rem) and (max-height: 50rem) {
+    [data-template='syifa-dental'] .hero__media {
+        height: min(27rem, 56vh);
+        transform: translateY(-1rem);
+    }
+}
+
+@media (min-width: 64rem) and (max-width: 74.999rem) {
+    [data-template='syifa-dental'] .hero__layout {
+        grid-template-columns: minmax(0, 1fr) minmax(27rem, 48vw);
+        gap: clamp(1.75rem, 3vw, 2.5rem);
+    }
+
+    [data-template='syifa-dental'] .hero__content h1 {
+        max-width: 18ch;
+        font-size: clamp(2.65rem, 4.25vw, 3.2rem);
+    }
+}
+
+@media (min-width: 64rem) {
     [data-template='syifa-specialist'] .hero__layout {
-        grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
-        gap: clamp(2.75rem, 4.5vw, 4.75rem);
+        grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+        gap: clamp(3rem, 5vw, 5.25rem);
     }
 
     [data-template='syifa-specialist'] .hero__content {
-        max-width: 39rem;
+        max-width: 41rem;
         gap: clamp(0.8rem, 1.2vw, 1.1rem);
         justify-self: end;
+        border-left: 0.25rem solid var(--brand-primary);
+        padding-left: clamp(1.25rem, 2vw, 2rem);
     }
 
     [data-template='syifa-specialist'] .hero__content .eyebrow {
         padding: 0.42rem 0.85rem;
+        border-radius: 0.3rem;
         font-size: 0.72rem;
         letter-spacing: 0.16em;
     }
 
     [data-template='syifa-specialist'] .hero__content h1 {
-        max-width: 15ch;
-        font-size: clamp(2.85rem, 3.25vw, 3.75rem);
-        line-height: 1.015;
-        letter-spacing: -0.047em;
+        max-width: 18ch;
+        font-size: clamp(2.85rem, 3.2vw, 3.65rem);
+        line-height: 0.99;
+        letter-spacing: -0.052em;
     }
 
     [data-template='syifa-specialist'] .hero__lead {
@@ -9931,19 +9973,27 @@
         min-height: 3rem;
         flex: 0 0 auto;
         padding: 0.72rem 1.35rem;
+        border-radius: 0.45rem;
         font-size: 0.95rem;
     }
 
     [data-template='syifa-specialist'] .hero__media {
-        width: min(100%, 33rem);
-        height: clamp(27rem, 45vh, 31rem);
-        max-height: 31rem;
+        width: min(100%, 38rem);
+        height: clamp(29rem, 48vh, 33rem);
+        max-height: 33rem;
         justify-self: start;
+        border-radius: 0.5rem 3rem 0.5rem 3rem;
+        box-shadow: 1.25rem 1.25rem 0 color-mix(in srgb, var(--brand-primary) 8%, white);
+    }
+
+    [data-template='syifa-specialist'] .hero__media::after {
+        display: none;
+        content: none;
     }
 
     [data-template='syifa-specialist'] .hero__trust {
         display: grid;
-        max-width: 39rem;
+        max-width: 41rem;
         grid-template-columns: max-content minmax(0, 1fr);
         gap: 0.75rem 1.25rem;
         align-items: center;
@@ -9979,6 +10029,7 @@
         border-radius: 0;
         background: transparent;
     }
+
 }
 
 @media (min-width: 64rem) and (max-width: 74.999rem) {

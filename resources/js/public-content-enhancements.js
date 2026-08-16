@@ -56,3 +56,24 @@ document.querySelectorAll('[data-blog-share]').forEach((share) => {
         }, 2500);
     });
 });
+
+if (window.matchMedia('(min-width: 64rem) and (prefers-reduced-motion: no-preference)').matches) {
+    const specialistHero = document.querySelector("[data-template='syifa-specialist'] .hero");
+    const content = specialistHero?.querySelector('.hero__content');
+    const media = specialistHero?.querySelector('.hero__media');
+
+    [...(content?.children ?? []), media].filter(Boolean).forEach((element, index) => {
+        element.animate(
+            [
+                { opacity: 0, transform: 'translateY(12px)' },
+                { opacity: 1, transform: 'translateY(0)' },
+            ],
+            {
+                duration: 600,
+                delay: Math.min(index * 70, 210),
+                easing: 'cubic-bezier(0.2, 0, 0, 1)',
+                fill: 'backwards',
+            },
+        );
+    });
+}
