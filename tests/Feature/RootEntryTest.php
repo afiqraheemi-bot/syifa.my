@@ -129,7 +129,7 @@ final class RootEntryTest extends TestCase
 
     public function test_clinic_admin_host_receives_the_same_actor_neutral_login_experience(): void
     {
-        $this->get('https://clinic.app.syifa.my/')
+        $this->get('https://clinic.app.syifa.my/login')
             ->assertOk()
             ->assertInertia(
                 static fn ($page) => $page

@@ -93,8 +93,12 @@ use Illuminate\Support\Facades\Route;
 // "Another route has already been assigned name [root]". The first host owns the
 // name and therefore URL generation; the rest match without one.
 foreach (RootEntryController::tenantAdminBaseDomains() as $index => $tenantAdminBaseDomain) {
+    // `/login`, not `/`: with `syifa.my` among the admin base domains this
+    // pattern matches every tenant subdomain, and `/` there belongs to that
+    // tenant's public Website. Claiming a path instead of the host root lets one
+    // hostname serve the patient-facing site and its staff login side by side.
     $tenantAdminLogin = Route::domain('{tenantAdminLabel}.'.$tenantAdminBaseDomain)
-        ->get('/', RootEntryController::class)
+        ->get('/login', RootEntryController::class)
         ->where('tenantAdminLabel', '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?');
 
     if ($index === 0) {
