@@ -1,5 +1,9 @@
 <script setup>
-import { createDashboardNavigation, DashboardEmptyState, DashboardShell } from '../../../Shared/Dashboard/index.js';
+import {
+    createDashboardNavigation,
+    DashboardEmptyState,
+    DashboardShell,
+} from '../../../Shared/Dashboard/index.js';
 
 const props = defineProps({
     navigation: { type: Array, required: true },
@@ -29,7 +33,10 @@ function usageBarClass(percentOfLimit) {
         :identity-name="identityName"
         :context-label="contextLabel"
     >
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="SYIFA AI usage summary">
+        <section
+            class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+            aria-label="SYIFA AI usage summary"
+        >
             <article
                 v-for="item in syifaAiUsage.summary"
                 :key="item.key"
@@ -42,15 +49,23 @@ function usageBarClass(percentOfLimit) {
 
         <div class="grid gap-6 xl:grid-cols-2">
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">This month</p>
+                <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                    This month
+                </p>
                 <h2 class="mt-2 text-lg font-bold text-slate-950">Usage by capability</h2>
                 <div v-if="syifaAiUsage.byCapability.length" class="mt-4 space-y-3">
-                    <div v-for="row in syifaAiUsage.byCapability" :key="row.capability" class="flex items-center justify-between gap-3">
+                    <div
+                        v-for="row in syifaAiUsage.byCapability"
+                        :key="row.capability"
+                        class="flex items-center justify-between gap-3"
+                    >
                         <div>
                             <p class="font-semibold text-slate-900">{{ row.label }}</p>
                             <p class="text-xs text-slate-500">{{ row.requests }} request(s)</p>
                         </div>
-                        <p class="font-mono text-sm font-bold text-slate-900">{{ row.tokensLabel }} tokens</p>
+                        <p class="font-mono text-sm font-bold text-slate-900">
+                            {{ row.tokensLabel }} tokens
+                        </p>
                     </div>
                 </div>
                 <DashboardEmptyState
@@ -61,15 +76,23 @@ function usageBarClass(percentOfLimit) {
             </section>
 
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">This month</p>
+                <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                    This month
+                </p>
                 <h2 class="mt-2 text-lg font-bold text-slate-950">Usage by model</h2>
                 <div v-if="syifaAiUsage.byEngine.length" class="mt-4 space-y-3">
-                    <div v-for="row in syifaAiUsage.byEngine" :key="row.model" class="flex items-center justify-between gap-3">
+                    <div
+                        v-for="row in syifaAiUsage.byEngine"
+                        :key="row.model"
+                        class="flex items-center justify-between gap-3"
+                    >
                         <div>
                             <p class="font-mono font-semibold text-slate-900">{{ row.model }}</p>
                             <p class="text-xs text-slate-500">{{ row.requests }} request(s)</p>
                         </div>
-                        <p class="font-mono text-sm font-bold text-slate-900">{{ row.tokensLabel }} tokens</p>
+                        <p class="font-mono text-sm font-bold text-slate-900">
+                            {{ row.tokensLabel }} tokens
+                        </p>
                     </div>
                 </div>
                 <DashboardEmptyState
@@ -83,11 +106,16 @@ function usageBarClass(percentOfLimit) {
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Cost exposure</p>
-                    <h2 class="mt-2 text-lg font-bold text-slate-950">Top tenants by token usage</h2>
+                    <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                        Cost exposure
+                    </p>
+                    <h2 class="mt-2 text-lg font-bold text-slate-950">
+                        Top tenants by token usage
+                    </h2>
                 </div>
                 <p class="max-w-xl text-sm text-slate-600">
-                    Each tenant's monthly cap is {{ syifaAiUsage.monthlyTenantLimit.toLocaleString() }} tokens.
+                    Each tenant's monthly cap is
+                    {{ syifaAiUsage.monthlyTenantLimit.toLocaleString() }} tokens.
                 </p>
             </div>
             <div v-if="syifaAiUsage.topTenants.length" class="mt-4 overflow-x-auto">
@@ -117,7 +145,9 @@ function usageBarClass(percentOfLimit) {
                                             :style="{ width: tenant.percentOfLimit + '%' }"
                                         />
                                     </div>
-                                    <span class="text-xs font-bold text-slate-700">{{ tenant.percentOfLimit }}%</span>
+                                    <span class="text-xs font-bold text-slate-700"
+                                        >{{ tenant.percentOfLimit }}%</span
+                                    >
                                 </div>
                             </td>
                         </tr>
