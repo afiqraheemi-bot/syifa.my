@@ -88,15 +88,28 @@ use Illuminate\Support\Facades\Route;
 // the configured app host and the common local-development aliases match
 // here; every other host falls through to the tenant Website route below,
 // unchanged.
-foreach (RootEntryController::tenantAdminBaseDomains() as $tenantAdminBaseDomain) {
-    Route::domain('{tenantAdminLabel}.'.$tenantAdminBaseDomain)
+// Each host below gets its own registration, but a route name may only be
+// claimed once: naming every one of them makes `route:cache` fail outright with
+// "Another route has already been assigned name [root]". The first host owns the
+// name and therefore URL generation; the rest match without one.
+foreach (RootEntryController::tenantAdminBaseDomains() as $index => $tenantAdminBaseDomain) {
+    $tenantAdminLogin = Route::domain('{tenantAdminLabel}.'.$tenantAdminBaseDomain)
         ->get('/', RootEntryController::class)
-        ->where('tenantAdminLabel', '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?')
-        ->name('clinic-owner.login');
+        ->where('tenantAdminLabel', '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?');
+
+    if ($index === 0) {
+        $tenantAdminLogin->name('clinic-owner.login');
+    }
 }
-foreach (RootEntryController::appEntryHosts() as $appEntryHost) {
-    Route::domain($appEntryHost)->get('/', MarketingHomeController::class)->name('root');
-    Route::domain($appEntryHost)->get('/login', RootEntryController::class)->name('login');
+foreach (RootEntryController::appEntryHosts() as $index => $appEntryHost) {
+    $marketingHome = Route::domain($appEntryHost)->get('/', MarketingHomeController::class);
+    $loginEntry = Route::domain($appEntryHost)->get('/login', RootEntryController::class);
+
+    if ($index === 0) {
+        $marketingHome->name('root');
+        $loginEntry->name('login');
+    }
+
     Route::domain($appEntryHost)->get('/robots.txt', [MarketingSeoController::class, 'robots']);
     Route::domain($appEntryHost)->get('/sitemap.xml', [MarketingSeoController::class, 'sitemap']);
 }
