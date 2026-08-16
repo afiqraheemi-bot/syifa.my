@@ -6511,7 +6511,9 @@
     [data-template] .about__image,
     [data-template] .doctor-card__image,
     [data-template] .gallery-item__image {
-        transition: transform 650ms var(--ease-standard), filter 350ms var(--ease-standard);
+        transition:
+            transform 650ms var(--ease-standard),
+            filter 350ms var(--ease-standard);
     }
 
     [data-template] .about__media:hover .about__image,
@@ -6524,7 +6526,10 @@
     [data-template] .doctor-card,
     [data-template] .testimonial-card,
     [data-template] .gallery-item {
-        transition: transform 240ms var(--ease-standard), border-color 240ms var(--ease-standard), box-shadow 240ms var(--ease-standard);
+        transition:
+            transform 240ms var(--ease-standard),
+            border-color 240ms var(--ease-standard),
+            box-shadow 240ms var(--ease-standard);
     }
 
     [data-template] .service-card:hover,
@@ -6577,7 +6582,11 @@
     /* Care: welcoming, tactile surfaces with gentle stagger and softer imagery. */
     [data-template='syifa-care'] .public-section--subtle {
         background:
-            radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--brand-secondary) 58%, transparent), transparent 24rem),
+            radial-gradient(
+                circle at 92% 8%,
+                color-mix(in srgb, var(--brand-secondary) 58%, transparent),
+                transparent 24rem
+            ),
             var(--surface-subtle);
     }
 
@@ -6614,7 +6623,11 @@
     /* Dental: crisp technical grid, measured alignment and precision accents. */
     [data-template='syifa-dental'] .public-section {
         position: relative;
-        background-image: linear-gradient(90deg, color-mix(in srgb, var(--brand-primary) 5%, transparent) 0.0625rem, transparent 0.0625rem);
+        background-image: linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--brand-primary) 5%, transparent) 0.0625rem,
+            transparent 0.0625rem
+        );
         background-size: min(8vw, 7rem) 100%;
     }
 
@@ -7147,7 +7160,8 @@
             scroll-margin-top: calc(var(--header-height) + 1rem);
         }
 
-        [data-template] :where(.button, .menu-toggle, .contact-action, .footer-contact, .gallery-item__button) {
+        [data-template]
+            :where(.button, .menu-toggle, .contact-action, .footer-contact, .gallery-item__button) {
             min-height: 3rem;
         }
 
@@ -7526,7 +7540,16 @@
         text-underline-offset: 0.16em;
     }
 
-    [data-template] :where(.hero__content, .section-heading, .about__content, .doctor-card__content, .service-card, .testimonial-card, .booking-panel) {
+    [data-template]
+        :where(
+            .hero__content,
+            .section-heading,
+            .about__content,
+            .doctor-card__content,
+            .service-card,
+            .testimonial-card,
+            .booking-panel
+        ) {
         min-width: 0;
     }
 
@@ -7593,7 +7616,9 @@
         border-radius: 50%;
         background: var(--surface-emphasis);
         color: var(--brand-primary);
-        transition: transform 220ms var(--ease-standard), background-color 220ms var(--ease-standard);
+        transition:
+            transform 220ms var(--ease-standard),
+            background-color 220ms var(--ease-standard);
     }
 
     [data-template] .faq-item[open] summary > span:last-child {
@@ -7606,7 +7631,10 @@
 
     [data-template] .contact-action,
     [data-template] .footer-contact {
-        transition: background-color 220ms var(--ease-standard), border-color 220ms var(--ease-standard), transform 220ms var(--ease-standard);
+        transition:
+            background-color 220ms var(--ease-standard),
+            border-color 220ms var(--ease-standard),
+            transform 220ms var(--ease-standard);
     }
 
     [data-template] .contact-action:hover,
@@ -7738,7 +7766,8 @@
     }
 
     @media (prefers-contrast: more) {
-        [data-template] :where(.service-card, .doctor-card, .testimonial-card, .gallery-item, .faq-item) {
+        [data-template]
+            :where(.service-card, .doctor-card, .testimonial-card, .gallery-item, .faq-item) {
             border-color: currentColor;
         }
 
@@ -9639,7 +9668,6 @@
         line-height: 1.4;
     }
 
-    /* Essential keeps its unified clinical card. */
     [data-template='syifa-essential'] .hero__layout {
         grid-template-columns: minmax(32rem, 1fr) minmax(26rem, 0.9fr);
         gap: 0;
@@ -9665,7 +9693,6 @@
         object-position: 52%;
     }
 
-    /* Care keeps its welcoming paired-card silhouette. */
     [data-template='syifa-care'] .hero__content {
         max-width: 44rem;
         margin-right: -2rem;
@@ -9676,7 +9703,6 @@
         width: min(100%, 35rem);
         border-radius: 3rem 3rem 1rem 3rem;
     }
-
 }
 
 @media (min-width: 64rem) and (max-height: 50rem) {
@@ -9724,12 +9750,7 @@
                 color-mix(in srgb, var(--brand-secondary) 76%, transparent),
                 transparent 74%
             ),
-            linear-gradient(
-                118deg,
-                transparent 28%,
-                rgb(255 255 255 / 34%) 48%,
-                transparent 68%
-            );
+            linear-gradient(118deg, transparent 28%, rgb(255 255 255 / 34%) 48%, transparent 68%);
         content: '';
         pointer-events: none;
     }
@@ -9917,7 +9938,6 @@
         object-position: 48% center;
         filter: saturate(0.94) contrast(0.98) brightness(1.015);
     }
-
 }
 
 @media (min-width: 64rem) and (max-height: 50rem) {
@@ -10040,7 +10060,6 @@
         border-radius: 0;
         background: transparent;
     }
-
 }
 
 @media (min-width: 64rem) and (max-width: 74.999rem) {
@@ -10076,12 +10095,7 @@
                 color-mix(in srgb, var(--accent-warm) 16%, transparent),
                 transparent 74%
             ),
-            linear-gradient(
-                120deg,
-                transparent 30%,
-                rgb(255 255 255 / 34%) 49%,
-                transparent 67%
-            );
+            linear-gradient(120deg, transparent 30%, rgb(255 255 255 / 34%) 49%, transparent 67%);
         content: '';
     }
 }

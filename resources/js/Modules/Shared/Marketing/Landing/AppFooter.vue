@@ -20,7 +20,13 @@ const year = new Date().getFullYear();
                         href="#top"
                         class="inline-flex items-center rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
                     >
-                        <img :src="'/images/marketing/syifa-logo.webp'" alt="SYIFA.my" class="h-9 w-auto" width="1836" height="857" />
+                        <img
+                            :src="'/images/marketing/syifa-logo.webp'"
+                            alt="SYIFA.my"
+                            class="h-9 w-auto"
+                            width="1836"
+                            height="857"
+                        />
                     </a>
                     <p class="mt-3 max-w-sm text-sm leading-6 text-slate-600">{{ copy.blurb }}</p>
                 </div>

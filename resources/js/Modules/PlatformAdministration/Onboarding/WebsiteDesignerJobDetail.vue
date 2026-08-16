@@ -1394,7 +1394,7 @@ function completionEvidence(task) {
                         </div>
                         <a
                             :href="checkpoint.href"
-                        class="min-w-0 flex-1 rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2 sm:p-4"
+                            class="min-w-0 flex-1 rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2 sm:p-4"
                             :class="
                                 checkpoint.state === 'complete'
                                     ? 'border-emerald-200 bg-emerald-50'
@@ -1482,7 +1482,7 @@ function completionEvidence(task) {
                 </div>
                 <a
                     href="#website-review"
-                class="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-800 focus:ring-offset-2 sm:w-auto"
+                    class="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-800 focus:ring-offset-2 sm:w-auto"
                 >
                     Review and publish
                 </a>
@@ -1847,7 +1847,9 @@ function completionEvidence(task) {
                 >
                     <label class="flex-1 text-sm font-semibold text-slate-800">
                         SYIFA.my subdomain
-                        <span class="mt-1 flex min-w-0 flex-col overflow-hidden rounded-lg border border-slate-300 bg-white min-[430px]:flex-row">
+                        <span
+                            class="mt-1 flex min-w-0 flex-col overflow-hidden rounded-lg border border-slate-300 bg-white min-[430px]:flex-row"
+                        >
                             <input
                                 v-model.trim="addressForm.subdomain"
                                 required
