@@ -18,7 +18,7 @@ Clinic Owner), a published clinic Website, a booking, an active subscription
 against a real commercial catalogue, and an assigned onboarding job — so a
 new developer can explore every dashboard without creating any data by hand.
 
-Optional demo data is seeded explicitly by `database/seeders/DemoSeeder.php`, which refuses
+All demo data is seeded by `database/seeders/DemoSeeder.php`, which refuses
 to run outside `APP_ENV=local` (see docs/19_DATABASE_STRATEGY.md's Seed
 Philosophy — this data is disposable and must never be treated as production
 reference data). It is separate from, and does not touch, the existing
@@ -58,10 +58,10 @@ npm run build
 php artisan serve
 ```
 
-`migrate --seed` runs every migration and seeds only production reference data.
-Run `php artisan db:seed --class=DemoSeeder` explicitly when disposable local
-demo data is required. The demo seeder is idempotent, so explicitly re-running
-it does not duplicate its records.
+`migrate --seed` runs every migration and then `DemoSeeder`. The seeder is
+idempotent — re-running `php artisan db:seed` (or `migrate --seed` again)
+does not duplicate any of the demo records; it detects each one already
+exists and skips it.
 
 Open `http://127.0.0.1:8000/` (or `http://localhost:8000/`) in a browser —
 you'll land on the login page. Pick the "Klinik" / "Pereka" / "Admin" tab and
