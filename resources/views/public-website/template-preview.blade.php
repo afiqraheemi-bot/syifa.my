@@ -6,7 +6,7 @@
     <title>Template Preview · {{ $document->head->title }}</title>
     <meta name="description" content="{{ $document->head->description }}">
     <meta name="robots" content="noindex,nofollow,noarchive">
-    @unless (app()->environment('testing')) @vite(['resources/css/public-website.css', 'resources/js/public-website.js']) @endunless
+    @unless (app()->environment('testing')) @vite(['resources/css/public-website.css', 'resources/js/public-website.js', 'resources/js/public-content-enhancements.js', 'resources/js/blog-slider.js']) @endunless
     <style>:root{--brand-primary:{{ $document->brandTokens->primary }};--brand-primary-hover:{{ $document->brandTokens->primaryHover }};--brand-primary-active:{{ $document->brandTokens->primaryActive }};--brand-on-primary:{{ $document->brandTokens->onPrimary }};--brand-secondary:{{ $document->brandTokens->secondary }};--brand-on-secondary:{{ $document->brandTokens->onSecondary }};}</style>
 </head>
 <body
@@ -24,7 +24,7 @@
         $previewHeroImage = $previewHeroImageOverride ?? ($previewHeroImages[$document->website->website->templateId] ?? null);
     @endphp
     <x-public.skip-link />
-    <x-public.navbar :document="$document" :blog-enabled="false" blog-url="#" />
+    <x-public.navbar :document="$document" :blog-enabled="true" blog-url="#blog" />
 
     @php
         $contactSection = null;
@@ -68,6 +68,7 @@
                     @break
             @endswitch
         @endforeach
+        <x-public.blog-slider :articles="$latestBlogPosts" />
     </main>
 
     <x-public.footer :document="$document" :contact-section="$contactSection" />

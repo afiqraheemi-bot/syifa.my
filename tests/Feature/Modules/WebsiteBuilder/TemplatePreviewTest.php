@@ -42,6 +42,9 @@ final class TemplatePreviewTest extends TestCase
             ->assertSee("data-template=\"{$expectedDataTemplate}\"", false)
             ->assertDontSee('Template design preview by SYIFA.my')
             ->assertSee("images/template-previews/{$slug}-hero.webp", false)
+            ->assertSee('href="#blog"', false)
+            ->assertSee('Latest health articles')
+            ->assertSee('Kenapa pemeriksaan kesihatan berkala penting?')
             ->assertSee('noindex,nofollow,noarchive', false);
     }
 

@@ -62,6 +62,35 @@ final readonly class TemplatePreviewController
         return view('public-website.template-preview', [
             'document' => $document,
             'homeUrl' => route('root', [], false),
+            'latestBlogPosts' => collect([
+                (object) [
+                    'slug' => 'pemeriksaan-kesihatan-berkala',
+                    'title' => 'Kenapa pemeriksaan kesihatan berkala penting?',
+                    'excerpt' => 'Kenali pemeriksaan asas yang membantu mengesan risiko kesihatan lebih awal.',
+                    'category' => 'Kesihatan',
+                    'featured_image_asset_id' => null,
+                    'featured_image_alt_text' => '',
+                    'url' => '#blog',
+                ],
+                (object) [
+                    'slug' => 'persediaan-sebelum-temu-janji',
+                    'title' => 'Persediaan ringkas sebelum temu janji klinik',
+                    'excerpt' => 'Senarai mudah supaya konsultasi bersama doktor lebih jelas dan bermanfaat.',
+                    'category' => 'Panduan Pesakit',
+                    'featured_image_asset_id' => null,
+                    'featured_image_alt_text' => '',
+                    'url' => '#blog',
+                ],
+                (object) [
+                    'slug' => 'rutin-sihat-seisi-keluarga',
+                    'title' => 'Rutin sihat yang praktikal untuk seisi keluarga',
+                    'excerpt' => 'Langkah kecil yang boleh diamalkan setiap hari untuk menjaga kesihatan bersama.',
+                    'category' => 'Gaya Hidup',
+                    'featured_image_asset_id' => null,
+                    'featured_image_alt_text' => '',
+                    'url' => '#blog',
+                ],
+            ]),
             'previewHeroImageOverride' => $slug === 'klinik-aafiyah'
                 ? asset('images/marketing/klinik-aafiyah-hero.jpg')
                 : null,
