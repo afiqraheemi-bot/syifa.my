@@ -105,7 +105,7 @@ final class BookingServiceProvider extends ServiceProvider
                 $application->make(BookingTransactionInterface::class),
                 $application->make(ServiceSetupAuditInterface::class),
                 $application->make(SubscriptionEntitlementLookupInterface::class),
-                (string) config('acquisition_offer.capabilities.service_setup', 'service_setup'),
+                (string) config('acquisition_offer.capabilities.service_setup', 'booking.manage'),
             ),
         );
         $this->app->singleton(BookingFormConfigurationPersistenceMapper::class);

@@ -1934,6 +1934,43 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->get(route('dashboard.website.booking-preview'))->assertForbidden();
     }
 
+    public function test_booking_preview_success_shows_only_confirmation_and_booking_status(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                DashboardLaunchReadinessRead::TENANT_ID,
+                identityId: '00000000-0000-4000-8000-000000000040',
+            ),
+        );
+
+        $this->withSession([
+            'booking_preview_success' => [
+                'reference' => 'BOOK-PREVIEW-001',
+                'status' => 'submitted',
+                'patient_name' => 'Aisyah Ahmad',
+                'service_name' => 'General Consultation',
+                'appointment_date' => '2026-08-20',
+                'appointment_time' => '10:30',
+                'submitted_at' => '2026-08-19T10:00:00+08:00',
+            ],
+        ])->get(route('dashboard.website.booking-preview'))
+            ->assertOk()
+            ->assertSee('Booking received')
+            ->assertSee('BOOK-PREVIEW-001')
+            ->assertSee('Received — pending clinic confirmation')
+            ->assertSee('Aisyah Ahmad')
+            ->assertSee('General Consultation')
+            ->assertSee('20 Aug 2026')
+            ->assertSee('10:30 AM')
+            ->assertDontSee('Check available times')
+            ->assertDontSee('Patient name')
+            ->assertDontSee('Submit booking')
+            ->assertDontSee('data-booking-form', false);
+    }
+
     public function test_clinic_owner_draft_save_preserves_submitted_hero_and_other_sections(): void
     {
         $this->app->instance(WebsiteReadInterface::class, new class implements WebsiteReadInterface
@@ -2312,6 +2349,32 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         }
     }
 
+    public function test_clinic_owner_receives_a_clear_validation_error_when_server_rejects_image_size(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+
+        $oversized = new UploadedFile(
+            __FILE__,
+            'oversized-clinic-image.png',
+            'image/png',
+            UPLOAD_ERR_INI_SIZE,
+            true,
+        );
+
+        $this->postJson(route('clinic-owner.website-assets.store'), ['image' => $oversized])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'The image exceeds the server upload limit. Choose an image no larger than 8 MB.')
+            ->assertJsonPath('errors.image.0', 'The image exceeds the server upload limit. Choose an image no larger than 8 MB.');
+    }
+
     public function test_website_designer_updates_the_assigned_booking_form_configuration(): void
     {
         $this->app->instance(
@@ -2437,10 +2500,10 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->patch('/dashboard/onboarding/'.$jobId, [
             'workspace' => 'clinic_contact',
             'version' => 1,
-            'operational_phone' => '+60387654321',
+            'operational_phone' => '03-8765 4321',
             'operational_email' => 'operations@aisyah.test',
             'postal_address' => 'Petaling Jaya, Selangor',
-            'whatsapp_number' => '+60198765432',
+            'whatsapp_number' => '60198765432',
             'latitude' => 3.1073,
             'longitude' => 101.6067,
         ])->assertRedirect();
@@ -2949,7 +3012,11 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 static fn (AssertableInertia $page): AssertableInertia => $page
                     ->component('TenantManagement/Booking/ClinicOwnerBookingOverview', false)
                     ->where('bookingList.items.0.reference', 'BOOK-001')
+                    ->where('bookingList.items.0.patientName', 'Patient Name')
+                    ->where('bookingList.items.0.serviceName', 'Consultation')
+                    ->where('bookingList.items.0.statusLabel', 'Awaiting confirmation')
                     ->where('bookingList.search.value', 'BOOK')
+                    ->where('bookingList.search.placeholder', 'Search patient or booking reference')
                     ->where('bookingList.filters.status.value', 'submitted')
                     ->where('bookingList.filters.source.value', 'WEBSITE')
                     ->where('bookingList.pagination.perPage', 10)

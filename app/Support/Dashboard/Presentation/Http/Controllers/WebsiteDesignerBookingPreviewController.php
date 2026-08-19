@@ -12,6 +12,7 @@ use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicAvailabilityState;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingAvailabilityException;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingBusinessRuleException;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingInfrastructureException;
+use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingServiceOption;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingValidationException;
 use App\Modules\WebsiteBuilder\Presentation\Http\BookingSubmissionTokenStore;
 use App\Support\Authorization\Application\AuthorizationContext;
@@ -150,7 +151,27 @@ final readonly class WebsiteDesignerBookingPreviewController
 
         return redirect()->route('dashboard.onboarding.booking-preview', $jobId)->with(
             'booking_preview_success',
-            sprintf('Booking %s has been received.', $success->reference),
+            [
+                'reference' => $success->reference,
+                'status' => $success->status,
+                'patient_name' => $validated['patient_name'],
+                'service_name' => $this->serviceName($configuration->services, $serviceId),
+                'appointment_date' => $validated['appointment_date'],
+                'appointment_time' => $validated['appointment_time'],
+                'submitted_at' => $success->submittedAt->format(DATE_ATOM),
+            ],
         );
+    }
+
+    /** @param list<PublicBookingServiceOption> $services */
+    private function serviceName(array $services, string $serviceId): ?string
+    {
+        foreach ($services as $service) {
+            if ($service->id === $serviceId) {
+                return $service->name;
+            }
+        }
+
+        return null;
     }
 }

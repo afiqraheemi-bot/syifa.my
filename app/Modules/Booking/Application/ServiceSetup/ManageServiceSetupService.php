@@ -26,7 +26,7 @@ final readonly class ManageServiceSetupService
         private BookingTransactionInterface $transaction,
         private ServiceSetupAuditInterface $audit,
         private SubscriptionEntitlementLookupInterface $entitlements,
-        private string $capabilityKey = 'service_setup',
+        private string $capabilityKey = 'booking.manage',
     ) {}
 
     /** @return list<ServiceSetupData> */

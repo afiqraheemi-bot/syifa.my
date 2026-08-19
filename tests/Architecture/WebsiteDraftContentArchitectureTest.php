@@ -208,6 +208,31 @@ final class WebsiteDraftContentArchitectureTest extends TestCase
         self::assertStringNotContainsString('publishFaq', $component);
     }
 
+    public function test_clinic_owner_repeatable_content_uses_resilient_ids_and_visible_testimonials(): void
+    {
+        $component = $this->source(
+            'resources/js/Modules/TenantManagement/Website/ClinicOwnerDraftSections.vue',
+        );
+
+        self::assertStringContainsString('function createDraftItemId()', $component);
+        self::assertStringContainsString("typeof globalThis.crypto?.randomUUID === 'function'", $component);
+        self::assertStringContainsString('globalThis.crypto.getRandomValues(bytes)', $component);
+        self::assertStringContainsString('id: createDraftItemId()', $component);
+        self::assertStringContainsString('featured: true', $component);
+        self::assertStringContainsString('Display this testimonial on the Website', $component);
+    }
+
+    public function test_website_image_crop_uses_webp_for_normal_photos_and_png_only_for_transparency(): void
+    {
+        $component = $this->source('resources/js/Shared/Website/WebsiteImageUpload.vue');
+
+        self::assertStringContainsString(
+            "removePlainBackground.value ? 'image/png' : 'image/webp'",
+            $component,
+        );
+        self::assertStringContainsString("outputType === 'image/png' ? undefined : 0.9", $component);
+    }
+
     public function test_booking_cta_editor_uses_only_existing_content_fields(): void
     {
         $component = $this->source(
@@ -245,6 +270,13 @@ final class WebsiteDraftContentArchitectureTest extends TestCase
         );
         self::assertStringContainsString('in:ready_for_review', $controller);
         self::assertStringContainsString("workspace: 'ready_for_review'", $component);
+        self::assertStringContainsString('version: form.version', $component);
+        self::assertStringContainsString('draft_version: draft.value.version', $component);
+        self::assertStringContainsString('website_version: form.version', $component);
+        self::assertStringNotContainsString(
+            'draft_version: props.websiteDraft.draft.version',
+            $component,
+        );
         self::assertStringContainsString('window.confirm(', $component);
     }
 

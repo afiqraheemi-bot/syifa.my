@@ -43,6 +43,18 @@ final class ClinicContactProfileTest extends TestCase
         self::assertNull($profile->whatsAppNumber);
     }
 
+    public function test_common_malaysian_phone_formats_are_normalized_to_e164(): void
+    {
+        self::assertSame(
+            '+60134079388',
+            (new ClinicContactProfile(operationalPhone: '013-407 9388'))->operationalPhone,
+        );
+        self::assertSame(
+            '+60134079388',
+            (new ClinicContactProfile(whatsAppNumber: '60134079388'))->whatsAppNumber,
+        );
+    }
+
     #[DataProvider('invalidProfiles')]
     public function test_invalid_profile_values_are_rejected(callable $factory): void
     {

@@ -244,9 +244,26 @@ function toggleService(serviceId) {
     else services.value.items.push({ service_id: serviceId, display_order: 1, is_featured: false });
     services.value.items.forEach((item, position) => (item.display_order = position + 1));
 }
+function createDraftItemId() {
+    if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
+
+    const bytes = new Uint8Array(16);
+    if (typeof globalThis.crypto?.getRandomValues === 'function') {
+        globalThis.crypto.getRandomValues(bytes);
+    } else {
+        for (let index = 0; index < bytes.length; index += 1) {
+            bytes[index] = Math.floor(Math.random() * 256);
+        }
+    }
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const value = [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
+
 function addDoctor() {
     doctors.value.profiles.push({
-        id: crypto.randomUUID(),
+        id: createDraftItemId(),
         name: '',
         professional_title: '',
         visible: true,
@@ -255,7 +272,7 @@ function addDoctor() {
 }
 function addGalleryImage() {
     gallery.value.images.push({
-        id: crypto.randomUUID(),
+        id: createDraftItemId(),
         asset_id: '',
         alt_text: '',
         caption: '',
@@ -264,14 +281,14 @@ function addGalleryImage() {
 }
 function addTestimonial() {
     testimonials.value.testimonials.push({
-        id: crypto.randomUUID(),
+        id: createDraftItemId(),
         quote: '',
         author_name: '',
-        featured: false,
+        featured: true,
     });
 }
 function addFaq() {
-    faq.value.entries.push({ id: crypto.randomUUID(), question: '', answer: '' });
+    faq.value.entries.push({ id: createDraftItemId(), question: '', answer: '' });
 }
 
 function applySyifaAiSuggestion(suggestion) {
@@ -632,6 +649,14 @@ defineExpose({ save });
                             :class="inputClass"
                             placeholder="Patient name"
                         />
+                        <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                            <input
+                                v-model="item.featured"
+                                type="checkbox"
+                                class="size-4 rounded border-slate-300"
+                            />
+                            Display this testimonial on the Website
+                        </label>
                         <button
                             type="button"
                             class="text-left text-sm font-bold text-red-700"

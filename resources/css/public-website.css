@@ -4846,6 +4846,11 @@
     text-decoration-thickness: 0.1em;
     text-underline-offset: 0.2em;
 }
+
+.blog-card :is(h2, h3) a {
+    text-decoration: none;
+}
+
 .blog-card-category {
     display: inline-flex;
     margin: 0;

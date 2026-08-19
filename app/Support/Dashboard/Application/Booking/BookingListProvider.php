@@ -56,7 +56,7 @@ final readonly class BookingListProvider
             'search' => [
                 'action' => route('dashboard.bookings'),
                 'value' => $criteria->search,
-                'placeholder' => 'Search booking reference',
+                'placeholder' => 'Search patient or booking reference',
             ],
             'filters' => [
                 'status' => ['value' => $criteria->status, 'options' => BookingOverviewCriteria::statusOptions()],
@@ -73,10 +73,12 @@ final readonly class BookingListProvider
             'detailHref' => route('dashboard.bookings.show', ['bookingId' => $booking->id]),
             'reference' => $booking->reference,
             'serviceId' => $booking->serviceId,
+            'serviceName' => $booking->serviceName,
+            'patientName' => $booking->patientName,
             'source' => $booking->source,
             'sourceLabel' => $this->sourceLabel($booking->source),
             'status' => $booking->status,
-            'statusLabel' => ucfirst($booking->status),
+            'statusLabel' => $this->statusLabel($booking->status),
             'appointmentDate' => $booking->localDate,
             'appointmentStart' => $booking->localStart,
             'appointmentEnd' => $booking->localEnd,
@@ -92,6 +94,17 @@ final readonly class BookingListProvider
             'WHATSAPP' => 'WhatsApp',
             'WALK_IN' => 'Walk-in',
             default => ucfirst(strtolower($source)),
+        };
+    }
+
+    private function statusLabel(string $status): string
+    {
+        return match ($status) {
+            'submitted' => 'Awaiting confirmation',
+            'confirmed' => 'Confirmed',
+            'cancelled' => 'Cancelled',
+            'completed' => 'Completed',
+            default => ucfirst($status),
         };
     }
 }

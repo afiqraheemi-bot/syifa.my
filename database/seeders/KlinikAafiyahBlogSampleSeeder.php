@@ -24,7 +24,7 @@ final class KlinikAafiyahBlogSampleSeeder extends Seeder
                 'asset_id' => 'a5c31a37-7944-4c90-8c63-56df14df71e2',
                 'post_id' => '522349b1-a7ed-4c42-9395-6b48fd900522',
                 'publication_id' => 'aa48ea4c-e3cc-4fc8-ae58-680162543e13',
-                'source' => 'generated/blog/klinik-aafiyah-pemeriksaan-tekanan-darah.png',
+                'source' => 'klinik-aafiyah-pemeriksaan-tekanan-darah.png',
                 'published_at' => '2026-08-15 13:10:00+08',
                 'slug' => 'tekanan-darah-tinggi-tanda-dan-pemeriksaan',
                 'title' => 'Tekanan Darah Tinggi: Tanda yang Jangan Diabaikan',
@@ -39,7 +39,7 @@ final class KlinikAafiyahBlogSampleSeeder extends Seeder
                 'asset_id' => 'c4792b84-0cd6-482a-9068-d77cc332db44',
                 'post_id' => 'bd5d05bf-f4f7-42dc-a1b7-405ee01c38ad',
                 'publication_id' => '559de28c-0a6f-4383-af09-a9f9fb8e1168',
-                'source' => 'generated/blog/klinik-aafiyah-sarapan-sihat-keluarga.png',
+                'source' => 'klinik-aafiyah-sarapan-sihat-keluarga.png',
                 'published_at' => '2026-08-15 13:05:00+08',
                 'slug' => 'idea-sarapan-sihat-untuk-keluarga',
                 'title' => 'Sarapan Sihat untuk Tenaga Seisi Keluarga',
@@ -62,7 +62,7 @@ final class KlinikAafiyahBlogSampleSeeder extends Seeder
     /** @param array<string, mixed> $sample */
     private function seedSample(array $sample): void
     {
-        $sourcePath = storage_path('app/'.$sample['source']);
+        $sourcePath = base_path('database/seeders/assets/blog/'.$sample['source']);
         $contents = @file_get_contents($sourcePath);
         if (! is_string($contents)) {
             throw new RuntimeException('Sample blog image is missing: '.$sourcePath);

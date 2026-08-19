@@ -13,6 +13,27 @@ const processingAction = ref(null);
 const successMessage = ref('');
 const errorMessage = ref('');
 
+const formatAppointmentDate = (value) => {
+    if (!value) return '';
+
+    const date = new Date(`${value}T00:00:00`);
+    return new Intl.DateTimeFormat('en-MY', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    }).format(date);
+};
+
+const shortReference = (reference) => reference.replace(/^BOOK-/, '').slice(-8);
+
+const statusClasses = (status) => {
+    if (status === 'confirmed') return 'bg-emerald-100 text-emerald-800';
+    if (status === 'cancelled') return 'bg-red-100 text-red-800';
+    if (status === 'completed') return 'bg-blue-100 text-blue-800';
+
+    return 'bg-amber-100 text-amber-800';
+};
+
 const submitAction = (event, booking, action) => {
     event.preventDefault();
 
@@ -85,20 +106,17 @@ const submitAction = (event, booking, action) => {
             aria-label="Bookings table"
             tabindex="0"
         >
-            <p class="sr-only">
-                Scroll horizontally to review all booking information and actions.
-            </p>
-            <table class="min-w-[64rem] divide-y divide-slate-200">
+            <p class="sr-only">Scroll horizontally to review all bookings.</p>
+            <table class="min-w-[52rem] divide-y divide-slate-200">
                 <thead class="bg-slate-50">
                     <tr>
                         <th
                             v-for="label in [
-                                'Reference',
+                                'Patient',
                                 'Appointment',
                                 'Service',
-                                'Source',
                                 'Status',
-                                'Actions',
+                                'Detail',
                             ]"
                             :key="label"
                             scope="col"
@@ -110,37 +128,51 @@ const submitAction = (event, booking, action) => {
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     <tr v-for="booking in items" :key="booking.id">
-                        <td class="whitespace-nowrap px-5 py-4 font-semibold text-slate-950">
-                            {{ booking.reference }}
+                        <td class="px-5 py-4">
+                            <p class="font-bold text-slate-950">
+                                {{ booking.patientName || 'Patient name unavailable' }}
+                            </p>
+                            <p
+                                class="mt-1 text-xs font-medium text-slate-500"
+                                :title="booking.reference"
+                            >
+                                Ref #{{ shortReference(booking.reference) }}
+                            </p>
+                        </td>
+                        <td class="whitespace-nowrap px-5 py-4">
+                            <p class="font-semibold text-slate-900">
+                                {{ formatAppointmentDate(booking.appointmentDate) }}
+                            </p>
+                            <p class="mt-1 text-sm text-slate-600">
+                                {{ booking.appointmentStart }}–{{ booking.appointmentEnd }}
+                            </p>
                         </td>
                         <td class="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
-                            {{ booking.appointmentDate }} · {{ booking.appointmentStart }}–{{
-                                booking.appointmentEnd
-                            }}
-                        </td>
-                        <td class="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
-                            {{ booking.serviceId || 'Not selected' }}
-                        </td>
-                        <td class="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
-                            {{ booking.sourceLabel }}
+                            {{ booking.serviceName || 'General appointment' }}
                         </td>
                         <td class="whitespace-nowrap px-5 py-4">
                             <span
-                                class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700"
+                                :class="[
+                                    'rounded-full px-3 py-1 text-xs font-bold',
+                                    statusClasses(booking.status),
+                                ]"
                             >
                                 {{ booking.statusLabel }}
                             </span>
                         </td>
                         <td class="px-5 py-4">
-                            <div class="flex min-w-56 flex-wrap gap-2">
+                            <div class="flex flex-wrap gap-2">
                                 <a
                                     v-if="booking.detailHref"
                                     :href="booking.detailHref"
-                                    class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                                    class="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg border border-slate-300 px-4 py-2 text-xs font-bold text-slate-800 hover:border-emerald-600 hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
                                 >
-                                    View
+                                    Booking details
                                 </a>
-                                <template v-for="action in booking.actions" :key="action.key">
+                                <template
+                                    v-for="action in returnToDetail ? booking.actions : []"
+                                    :key="action.key"
+                                >
                                     <form
                                         v-if="!action.requiresSchedule"
                                         :action="action.href"
@@ -219,7 +251,7 @@ const submitAction = (event, booking, action) => {
                                     </details>
                                 </template>
                                 <span
-                                    v-if="booking.actions.length === 0"
+                                    v-if="returnToDetail && booking.actions.length === 0"
                                     class="text-xs text-slate-500"
                                 >
                                     No actions available

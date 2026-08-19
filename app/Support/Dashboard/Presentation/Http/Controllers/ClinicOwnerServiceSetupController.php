@@ -110,8 +110,8 @@ final readonly class ClinicOwnerServiceSetupController
             $operation();
         } catch (ServiceSetupNotFoundException) {
             abort(404);
-        } catch (ServiceSetupEntitlementDeniedException) {
-            abort(403);
+        } catch (ServiceSetupEntitlementDeniedException $exception) {
+            return back()->withErrors(['service' => $exception->getMessage()]);
         } catch (StaleServiceWriteException) {
             return back()->withErrors(['service' => 'This service changed while you were editing. Reload and try again.']);
         } catch (InvalidServiceValueException $exception) {

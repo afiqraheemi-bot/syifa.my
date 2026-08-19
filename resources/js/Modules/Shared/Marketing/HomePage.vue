@@ -1,5 +1,4 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppFooter from './Landing/AppFooter.vue';
 import AppNavbar from './Landing/AppNavbar.vue';
@@ -750,76 +749,9 @@ const copy = {
 };
 
 const t = computed(() => copy[lang.value]);
-const structuredData = computed(() =>
-    JSON.stringify([
-        {
-            '@context': 'https://schema.org',
-            '@type': 'Organization',
-            '@id': 'https://syifa.my/#organization',
-            name: 'SYIFA.my',
-            url: 'https://syifa.my/',
-            contactPoint: {
-                '@type': 'ContactPoint',
-                telephone: '+60134079388',
-                contactType: 'sales',
-                availableLanguage: ['ms', 'en'],
-            },
-        },
-        {
-            '@context': 'https://schema.org',
-            '@type': 'WebSite',
-            '@id': 'https://syifa.my/#website',
-            url: 'https://syifa.my/',
-            name: 'SYIFA.my',
-            inLanguage: lang.value === 'en' ? 'en-MY' : 'ms-MY',
-            publisher: { '@id': 'https://syifa.my/#organization' },
-        },
-        {
-            '@context': 'https://schema.org',
-            '@type': 'SoftwareApplication',
-            name: 'SYIFA.my',
-            applicationCategory: 'BusinessApplication',
-            operatingSystem: 'Web',
-            description: t.value.seo.description,
-            url: 'https://syifa.my/',
-            provider: { '@id': 'https://syifa.my/#organization' },
-        },
-        {
-            '@context': 'https://schema.org',
-            '@type': 'FAQPage',
-            mainEntity: t.value.faq.items.map((item) => ({
-                '@type': 'Question',
-                name: item.question,
-                acceptedAnswer: { '@type': 'Answer', text: item.answer },
-            })),
-        },
-    ]).replaceAll('<', '\\u003c'),
-);
 </script>
 
 <template>
-    <Head>
-        <title>{{ t.seo.title }}</title>
-        <meta name="description" :content="t.seo.description" />
-        <link rel="canonical" href="https://syifa.my/" />
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <meta
-            name="robots"
-            content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"
-        />
-        <meta name="theme-color" content="#047857" />
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="SYIFA.my" />
-        <meta property="og:locale" :content="lang === 'en' ? 'en_MY' : 'ms_MY'" />
-        <meta property="og:title" :content="t.seo.title" />
-        <meta property="og:description" :content="t.seo.description" />
-        <meta property="og:url" content="https://syifa.my/" />
-        <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" :content="t.seo.title" />
-        <meta name="twitter:description" :content="t.seo.description" />
-        <component :is="'script'" type="application/ld+json">{{ structuredData }}</component>
-    </Head>
-
     <div class="reveal-root min-h-screen bg-white">
         <div
             v-if="packagePreview"

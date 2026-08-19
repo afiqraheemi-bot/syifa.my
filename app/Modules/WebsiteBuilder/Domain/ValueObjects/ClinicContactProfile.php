@@ -86,8 +86,13 @@ final readonly class ClinicContactProfile
             throw new InvalidClinicContactProfileException($label.' contains forbidden content.');
         }
         $normalized = preg_replace('/[\s().-]+/', '', trim($value));
+        if (is_string($normalized) && preg_match('/^0[1-9][0-9]{7,10}$/', $normalized) === 1) {
+            $normalized = '+60'.substr($normalized, 1);
+        } elseif (is_string($normalized) && preg_match('/^60[1-9][0-9]{7,10}$/', $normalized) === 1) {
+            $normalized = '+'.$normalized;
+        }
         if (! is_string($normalized) || preg_match('/^\+[1-9][0-9]{7,14}$/', $normalized) !== 1) {
-            throw new InvalidClinicContactProfileException($label.' must be an E.164-compatible number.');
+            throw new InvalidClinicContactProfileException($label.' must use a valid phone format, for example 0134079388 or +60134079388.');
         }
 
         return $normalized;

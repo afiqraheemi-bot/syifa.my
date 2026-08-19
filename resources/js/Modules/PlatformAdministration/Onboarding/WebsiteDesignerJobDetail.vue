@@ -1027,8 +1027,8 @@ async function submitForReview() {
             },
             body: JSON.stringify({
                 workspace: 'ready_for_review',
-                version: props.websiteSetup.configuration.version,
-                draft_version: props.websiteDraft.draft.version,
+                version: form.version,
+                draft_version: draft.value.version,
                 job_version: props.job.version,
             }),
         });
@@ -1109,7 +1109,7 @@ async function publishWebsite() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                website_version: props.websiteSetup.configuration.version,
+                website_version: form.version,
                 draft_version: draft.value.version,
             }),
         });
@@ -3037,8 +3037,11 @@ function completionEvidence(task) {
                             :class="inputClass"
                             type="tel"
                             maxlength="40"
-                            placeholder="+60312345678"
+                            placeholder="0134079388 or +60134079388"
                         />
+                        <span class="mt-1 block text-xs font-normal text-slate-500">
+                            Malaysian local and +60 formats are accepted.
+                        </span>
                     </label>
                     <label class="text-sm font-semibold text-slate-800">
                         Operational email
@@ -3056,8 +3059,11 @@ function completionEvidence(task) {
                             :class="inputClass"
                             type="tel"
                             maxlength="40"
-                            placeholder="+60123456789"
+                            placeholder="0134079388 or +60134079388"
                         />
+                        <span class="mt-1 block text-xs font-normal text-slate-500">
+                            Enter digits only; links such as wa.me are not accepted.
+                        </span>
                     </label>
                     <label class="text-sm font-semibold text-slate-800 md:col-span-2">
                         Postal address

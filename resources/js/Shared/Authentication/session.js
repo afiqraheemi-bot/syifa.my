@@ -2,38 +2,80 @@ function csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 }
 
-function cookieValue(name) {
-    const prefix = `${encodeURIComponent(name)}=`;
-    const cookie = document.cookie
-        .split('; ')
-        .find((entry) => entry.startsWith(prefix))
-        ?.slice(prefix.length);
-
-    return cookie ? decodeURIComponent(cookie) : '';
-}
-
 function csrfHeaders() {
-    const xsrfToken = cookieValue('XSRF-TOKEN');
-
-    return xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : { 'X-CSRF-TOKEN': csrfToken() };
+    return { 'X-CSRF-TOKEN': csrfToken() };
 }
 
-function requestHeaders(headers = {}) {
+function sameOriginUrl(url) {
+    if (typeof window === 'undefined') return url;
+
+    try {
+        const parsed = new URL(url, window.location.origin);
+
+        // All calls through this helper are application routes. Keeping their
+        // path while using the active browser origin prevents an APP_URL
+        // www/non-www mismatch from dropping the authenticated session cookie.
+        return `${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+        return url;
+    }
+}
+
+function requestHeaders(headers = {}, csrfTokenOverride = '') {
     const result = new Headers(headers);
     if (!result.has('Accept')) result.set('Accept', 'application/json');
     result.delete('X-CSRF-TOKEN');
     result.delete('X-XSRF-TOKEN');
-    for (const [name, value] of Object.entries(csrfHeaders())) result.set(name, value);
+    const csrf = csrfTokenOverride ? { 'X-CSRF-TOKEN': csrfTokenOverride } : csrfHeaders();
+    for (const [name, value] of Object.entries(csrf)) result.set(name, value);
 
     return result;
 }
 
-export async function browserHttpRequest(url, options = {}) {
-    const response = await fetch(url, {
+async function refreshCsrfToken() {
+    if (typeof window === 'undefined' || typeof DOMParser === 'undefined') return '';
+
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { Accept: 'text/html' },
+        });
+        if (!response.ok) return '';
+
+        const html = await response.text();
+        const documentFromServer = new DOMParser().parseFromString(html, 'text/html');
+        const freshToken = documentFromServer
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute('content');
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        if (!freshToken || !csrfMeta) return '';
+
+        csrfMeta.setAttribute('content', freshToken);
+        return freshToken;
+    } catch {
+        return '';
+    }
+}
+
+async function performBrowserRequest(url, options, csrfTokenOverride = '') {
+    const token = csrfTokenOverride || csrfToken();
+    if (options.body instanceof FormData && token) options.body.set('_token', token);
+
+    return fetch(sameOriginUrl(url), {
         credentials: 'same-origin',
         ...options,
-        headers: requestHeaders(options.headers),
+        headers: requestHeaders(options.headers, csrfTokenOverride),
     });
+}
+
+export async function browserHttpRequest(url, options = {}) {
+    let response = await performBrowserRequest(url, options);
+    if (response.status === 419) {
+        const freshToken = await refreshCsrfToken();
+        if (freshToken) response = await performBrowserRequest(url, options, freshToken);
+    }
     const contentType = response.headers.get('content-type') ?? '';
 
     return {

@@ -32,7 +32,7 @@
                         data-gallery-alt="{{ $displayAlt }}"
                         data-gallery-caption="{{ $image->caption ?? '' }}"
                     >
-                        <x-public.responsive-image :url="$imageUrl->value" :alt="$image->decorative ? '' : ($image->altText ?? '')" :width="$imageDimensions[0]" :height="$imageDimensions[1]" class="gallery-item__image" />
+                        <x-public.responsive-image :url="$imageUrl->value" :alt="$image->decorative ? '' : ($image->altText ?? '')" :width="$imageDimensions[0]" :height="$imageDimensions[1]" :priority="$loop->index < 4" class="gallery-item__image" />
                         <span class="gallery-item__view" aria-hidden="true">View</span>
                     </button>
                     @if ($image->caption !== null)<figcaption>{{ $image->caption }}</figcaption>@endif

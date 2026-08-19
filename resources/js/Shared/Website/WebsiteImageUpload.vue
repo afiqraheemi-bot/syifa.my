@@ -252,7 +252,9 @@ async function confirmCrop() {
             output.height,
         );
     if (removePlainBackground.value) applyPlainBackgroundRemoval(output);
-    const outputType = removePlainBackground.value ? 'image/png' : source.type;
+    // Normalise ordinary photos to WebP so large phone images remain well below
+    // the upload limit after cropping. PNG is reserved for transparency.
+    const outputType = removePlainBackground.value ? 'image/png' : 'image/webp';
     const blob = await new Promise((resolve) =>
         output.toBlob(resolve, outputType, outputType === 'image/png' ? undefined : 0.9),
     );

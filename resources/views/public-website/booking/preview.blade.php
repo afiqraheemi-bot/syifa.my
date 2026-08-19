@@ -1,18 +1,52 @@
 <x-public.booking.layout title="Book an Appointment" :theme="$theme">
+    @php($bookingSuccess = session('booking_preview_success'))
+
     <div class="booking-step-header">
         <p class="booking-progress">Booking Preview</p>
-        <h1>Book an appointment</h1>
-        <p>This protected form uses the clinic's real services, operating hours and available capacity.</p>
+        @if (is_array($bookingSuccess))
+            <h1>Booking received</h1>
+            <p>Your appointment request has been sent to the clinic.</p>
+        @else
+            <h1>Book an appointment</h1>
+            <p>This protected form uses the clinic's real services, operating hours and available capacity.</p>
+        @endif
     </div>
 
-    @if (session('booking_preview_success'))
-        <div class="booking-option" role="status">
-            <strong>Booking successful</strong>
-            <p>{{ session('booking_preview_success') }}</p>
+    @if (is_array($bookingSuccess))
+        <div class="booking-success-card" role="status">
+            <p>Booking reference</p>
+            <p class="booking-success-reference">{{ $bookingSuccess['reference'] }}</p>
+            <p><strong>Status:</strong> {{ $bookingSuccess['status'] === 'submitted' ? 'Received — pending clinic confirmation' : ucfirst($bookingSuccess['status']) }}</p>
         </div>
-    @endif
 
-    <form method="GET" action="{{ $submitUrl }}" class="booking-fieldset">
+        <dl class="booking-review-list">
+            <div class="booking-review-row">
+                <dt>Patient</dt>
+                <dd>{{ $bookingSuccess['patient_name'] }}</dd>
+            </div>
+            @if ($bookingSuccess['service_name'] !== null)
+                <div class="booking-review-row">
+                    <dt>Service</dt>
+                    <dd>{{ $bookingSuccess['service_name'] }}</dd>
+                </div>
+            @endif
+            <div class="booking-review-row">
+                <dt>Appointment date</dt>
+                <dd>{{ \Carbon\CarbonImmutable::createFromFormat('Y-m-d', $bookingSuccess['appointment_date'])->format('d M Y') }}</dd>
+            </div>
+            <div class="booking-review-row">
+                <dt>Appointment time</dt>
+                <dd>{{ \Carbon\CarbonImmutable::createFromFormat('H:i', $bookingSuccess['appointment_time'])->format('g:i A') }}</dd>
+            </div>
+        </dl>
+
+        <p>The clinic will contact the patient if there are any changes to this appointment.</p>
+
+        <div class="booking-form-actions booking-form-actions--success">
+            <a class="button button--primary" href="{{ $backUrl }}">Return to Website preview</a>
+        </div>
+    @else
+        <form method="GET" action="{{ $submitUrl }}" class="booking-fieldset">
         @if ($configuration->serviceSelectionEnabled)
             <fieldset>
                 <legend class="booking-label">Choose a service</legend>
@@ -45,9 +79,9 @@
             >
         </div>
         <button class="button button--secondary" type="submit">Check available times</button>
-    </form>
+        </form>
 
-    <form method="POST" action="{{ $submitUrl }}" class="booking-fieldset" data-booking-form>
+        <form method="POST" action="{{ $submitUrl }}" class="booking-fieldset" data-booking-form>
         @csrf
         <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
         <input type="hidden" name="appointment_date" value="{{ $selectedDate }}">
@@ -106,6 +140,7 @@
             <a class="button button--secondary" href="{{ $backUrl }}">Return to Website preview</a>
             <button class="button button--primary" type="submit" @disabled($selectedDate === null || $slots === []) data-submit-booking>Submit booking</button>
         </div>
-    </form>
+        </form>
+    @endif
 
 </x-public.booking.layout>

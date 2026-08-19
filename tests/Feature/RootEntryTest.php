@@ -39,6 +39,11 @@ final class RootEntryTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
+            ->assertSee('<title>SYIFA.my — Website &amp; Sistem Tempahan Klinik</title>', false)
+            ->assertSee('<link rel="canonical" href="https://syifa.my/">', false)
+            ->assertSee('<meta property="og:image" content="https://syifa.my/images/marketing/syifa-og.jpg">', false)
+            ->assertSee('<meta name="twitter:card" content="summary_large_image">', false)
+            ->assertSee('application/ld+json', false)
             ->assertInertia(
                 static fn ($page) => $page
                     ->component('Shared/Marketing/HomePage', false)
@@ -53,16 +58,18 @@ final class RootEntryTest extends TestCase
 
     public function test_marketing_host_exposes_crawler_discovery_files(): void
     {
+        $appUrl = rtrim((string) config('app.url'), '/');
+
         $this->get('/robots.txt')
             ->assertOk()
             ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
             ->assertSee('Disallow: /dashboard', false)
-            ->assertSee('Sitemap: http://localhost/sitemap.xml', false);
+            ->assertSee('Sitemap: '.$appUrl.'/sitemap.xml', false);
 
         $this->get('/sitemap.xml')
             ->assertOk()
             ->assertHeader('Content-Type', 'application/xml; charset=UTF-8')
-            ->assertSee('<loc>http://localhost/</loc>', false)
+            ->assertSee('<loc>'.$appUrl.'/</loc>', false)
             ->assertDontSee('/dashboard', false);
     }
 
@@ -88,6 +95,7 @@ final class RootEntryTest extends TestCase
     {
         $this->get('/login')
             ->assertOk()
+            ->assertSee('<meta name="robots" content="noindex,nofollow,noarchive">', false)
             ->assertInertia(
                 static fn ($page) => $page
                     ->component('Shared/Authentication/LoginEntry', false)

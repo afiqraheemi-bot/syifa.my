@@ -141,11 +141,11 @@ final class ServiceSetupFixture implements BookingTransactionInterface, ServiceR
 
     public function hasCapability(string $tenantId, string $capabilityKey, string $effectiveDateTime): bool
     {
-        return $this->entitled && $capabilityKey === 'service_setup';
+        return $this->entitled && $capabilityKey === 'booking.manage';
     }
 
     public function getActiveCapabilityKeys(string $tenantId, string $effectiveDateTime): array
     {
-        return $this->entitled ? ['service_setup'] : [];
+        return $this->entitled ? ['booking.manage'] : [];
     }
 }

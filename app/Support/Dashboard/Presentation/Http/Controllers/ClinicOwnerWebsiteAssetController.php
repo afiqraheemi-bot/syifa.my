@@ -35,6 +35,14 @@ final readonly class ClinicOwnerWebsiteAssetController
         );
         $website = $websites->read($context->tenantId, $authorization)->toArray();
 
+        $incoming = $request->file('image');
+        if ($incoming instanceof UploadedFile && in_array($incoming->getError(), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+            return response()->json([
+                'message' => 'The image exceeds the server upload limit. Choose an image no larger than 8 MB.',
+                'errors' => ['image' => ['The image exceeds the server upload limit. Choose an image no larger than 8 MB.']],
+            ], 422);
+        }
+
         $input = $request->validate([
             'image' => ['required', 'file', 'max:8192', 'mimetypes:image/jpeg,image/png,image/webp'],
         ]);

@@ -13,7 +13,7 @@ return [
 
     'capabilities' => [
         'custom_domain' => env('ACQUISITION_OFFER_CUSTOM_DOMAIN_CAPABILITY_KEY', 'custom_domain'),
-        'service_setup' => env('ACQUISITION_OFFER_SERVICE_SETUP_CAPABILITY_KEY', 'service_setup'),
+        'service_setup' => env('ACQUISITION_OFFER_SERVICE_SETUP_CAPABILITY_KEY', 'booking.manage'),
     ],
 
     'trusted_consumers' => [
