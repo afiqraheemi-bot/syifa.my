@@ -26,7 +26,10 @@ final readonly class PostgresSubscriptionEntitlementLookup implements Subscripti
         }
         $row = $this->connection->table('subscriptions')
             ->where('tenant_id', $tenantId)
-            ->where('status', 'active')
+            // Keep the persistence lookup aligned with Subscription::hasCapability:
+            // renewal-due, cancelled-with-time-remaining and reactivated terms
+            // retain their effective capabilities until the billing period ends.
+            ->whereIn('status', ['active', 'renewal_due', 'cancelled', 'reactivated'])
             ->where('entitlement_status', 'effective')
             ->whereDate('starts_on', '<=', $at->format('Y-m-d'))
             ->whereDate('ends_on', '>=', $at->format('Y-m-d'))
