@@ -10,6 +10,7 @@ final readonly class ReleaseMetadata
 {
     public function __construct(
         private ConfigRepository $config,
+        private CheckoutCommit $checkoutCommit,
     ) {}
 
     /**
@@ -27,7 +28,7 @@ final readonly class ReleaseMetadata
     {
         return [
             'build_id' => $this->value('operations.release.build_id'),
-            'commit' => $this->value('operations.release.commit'),
+            'commit' => $this->commit(),
             'built_at' => $this->value('operations.release.built_at'),
         ];
     }
@@ -51,5 +52,18 @@ final readonly class ReleaseMetadata
         $value = $this->config->get($key, 'unknown');
 
         return is_string($value) && $value !== '' ? $value : 'unknown';
+    }
+
+    private function commit(): string
+    {
+        if ($this->config->get('operations.release.use_checkout_commit') === true) {
+            $commit = $this->checkoutCommit->resolve();
+
+            if ($commit !== null) {
+                return $commit;
+            }
+        }
+
+        return $this->value('operations.release.commit');
     }
 }

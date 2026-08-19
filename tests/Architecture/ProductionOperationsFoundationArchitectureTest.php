@@ -75,6 +75,7 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
         self::assertStringContainsString("needs.release-gate.outputs.deploy_enabled == 'true'", $workflow);
         self::assertStringContainsString('environment: production', $workflow);
         self::assertStringContainsString('remote_commit=$(printf', $workflow);
+        self::assertStringContainsString("sudo -n -l | grep -Fq '/usr/local/bin/syifa-deploy'", $workflow);
         self::assertStringContainsString('https://api.github.com/repos/${REPOSITORY}/git/ref/heads/main', $workflow);
         self::assertStringNotContainsString('x-access-token', $workflow);
         self::assertStringContainsString('Verify deployed commit', $workflow);
@@ -106,8 +107,9 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
 
         $readiness = $this->source($root.'/scripts/verify-production-release-readiness.sh');
         self::assertStringContainsString('SYIFA_EXPECTED_MAIN_SHA', $readiness);
-        self::assertStringContainsString("grep -q 'EXPECTED_COMMIT'", $readiness);
-        self::assertStringContainsString("grep -Eiq 'rollback|previous|restore'", $readiness);
+        self::assertStringContainsString('sudo -n -l', $readiness);
+        self::assertStringNotContainsString('bash -n "$deploy_command"', $readiness);
+        self::assertStringNotContainsString("grep -q 'EXPECTED_COMMIT'", $readiness);
         self::assertStringContainsString('syifa_restore_drill_release_', $readiness);
         self::assertStringContainsString('verify-backup-restore.sh', $readiness);
     }
