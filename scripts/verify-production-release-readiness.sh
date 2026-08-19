@@ -12,8 +12,8 @@ production_env="${SYIFA_PRODUCTION_ENV:-$production_dir/.env}"
 backup_dir="${SYIFA_BACKUP_DIR:-/var/backups/syifa}"
 deploy_command="${SYIFA_DEPLOY_COMMAND:-/usr/local/bin/syifa-deploy}"
 
-if [[ "$(id -u)" -ne 0 ]]; then
-    echo "Production readiness verification must run through sudo." >&2
+if [[ ! "$backup_dir" =~ /syifa_readiness_${drill_id}$ ]]; then
+    echo "SYIFA_BACKUP_DIR must end with the run-scoped syifa_readiness_<drill-id> directory." >&2
     exit 1
 fi
 
@@ -28,6 +28,14 @@ test -f "$production_env"
 test -x "$deploy_command"
 test -x "$checkout/scripts/backup-database.sh"
 test -x "$checkout/scripts/verify-backup-restore.sh"
+
+mkdir -p "$backup_dir"
+chmod 700 "$backup_dir"
+cleanup_backup() {
+    find "$backup_dir" -maxdepth 1 -type f -name 'syifa_*.dump' -delete
+    rmdir "$backup_dir" 2>/dev/null || true
+}
+trap cleanup_backup EXIT
 
 tested_sha="$(git -C "$checkout" rev-parse HEAD)"
 if [[ "$tested_sha" != "$expected_sha" ]]; then
