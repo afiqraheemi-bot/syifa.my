@@ -8,14 +8,8 @@ checkout="${SYIFA_CHECKOUT:?SYIFA_CHECKOUT is required}"
 expected_sha="${SYIFA_EXPECTED_MAIN_SHA:?SYIFA_EXPECTED_MAIN_SHA is required}"
 drill_id="${SYIFA_DRILL_ID:?SYIFA_DRILL_ID is required}"
 production_dir="${SYIFA_PRODUCTION_DIR:-/var/www/syifa}"
-production_env="${SYIFA_PRODUCTION_ENV:-$production_dir/.env}"
-backup_dir="${SYIFA_BACKUP_DIR:-/var/backups/syifa}"
 deploy_command="${SYIFA_DEPLOY_COMMAND:-/usr/local/bin/syifa-deploy}"
-
-if [[ ! "$backup_dir" =~ /syifa_readiness_${drill_id}$ ]]; then
-    echo "SYIFA_BACKUP_DIR must end with the run-scoped syifa_readiness_<drill-id> directory." >&2
-    exit 1
-fi
+readiness_command="${SYIFA_READINESS_COMMAND:-/usr/local/bin/syifa-release-readiness}"
 
 if [[ ! "$drill_id" =~ ^[0-9]+$ ]]; then
     echo "SYIFA_DRILL_ID must contain digits only." >&2
@@ -29,13 +23,6 @@ require_directory() {
     fi
 }
 
-require_readable_file() {
-    if [[ ! -f "$2" || ! -r "$2" ]]; then
-        echo "Missing or unreadable required file: $1." >&2
-        exit 1
-    fi
-}
-
 require_executable_file() {
     if [[ ! -f "$2" || ! -x "$2" ]]; then
         echo "Missing or non-executable required file: $1." >&2
@@ -45,8 +32,7 @@ require_executable_file() {
 
 require_directory 'workflow checkout repository' "$checkout/.git"
 require_directory 'production repository' "$production_dir/.git"
-require_executable_file 'backup command' "$checkout/scripts/backup-database.sh"
-require_executable_file 'restore verifier' "$checkout/scripts/verify-backup-restore.sh"
+require_executable_file 'reviewed readiness helper source' "$checkout/scripts/production/syifa-release-readiness"
 
 if [[ ! -e "$deploy_command" ]]; then
     echo "Missing required file: production deploy command." >&2
@@ -60,13 +46,23 @@ fi
 
 echo "Root-protected production deploy command and narrow sudo delegation verified."
 
-mkdir -p "$backup_dir"
-chmod 700 "$backup_dir"
-cleanup_backup() {
-    find "$backup_dir" -maxdepth 1 -type f -name 'syifa_*.dump' -delete
-    rmdir "$backup_dir" 2>/dev/null || true
-}
-trap cleanup_backup EXIT
+if [[ ! -e "$readiness_command" ]]; then
+    echo "Missing installed root readiness helper: $readiness_command." >&2
+    exit 1
+fi
+
+if ! sudo -n -l 2>/dev/null | grep -Fq "$readiness_command"; then
+    echo "The runner has no non-interactive sudo rule for the root readiness helper." >&2
+    exit 1
+fi
+
+source_digest="$(sha256sum "$checkout/scripts/production/syifa-release-readiness" | cut -d ' ' -f 1)"
+installed_digest="$(sudo -n "$readiness_command" --digest)"
+if [[ "$source_digest" != "$installed_digest" ]]; then
+    echo 'Installed root readiness helper does not match the reviewed repository source.' >&2
+    exit 1
+fi
+echo "Reviewed root readiness helper and narrow sudo delegation verified."
 
 tested_sha="$(git -C "$checkout" rev-parse HEAD)"
 if [[ "$tested_sha" != "$expected_sha" ]]; then
@@ -78,50 +74,11 @@ deployed_sha="$(git -c safe.directory="$production_dir" -C "$production_dir" rev
 echo "Readiness drill source SHA: $tested_sha"
 echo "Currently deployed SHA: $deployed_sha"
 
-# The deploy helper is deliberately root-owned and unreadable to the runner.
-# Exact-SHA behavior is verified by the gated workflow before and after deploy;
-# its implementation must be reviewed during the one-time server installation.
-
-require_readable_file 'production environment' "$production_env"
-
-SYIFA_ENV_FILE="$production_env" \
-SYIFA_BACKUP_DIR="$backup_dir" \
-SYIFA_BACKUP_RETENTION_DAYS=14 \
-    "$checkout/scripts/backup-database.sh"
-
-shopt -s nullglob
-dumps=("$backup_dir"/syifa_*.dump)
-if (( ${#dumps[@]} == 0 )); then
-    echo "No production-format backup was created." >&2
-    exit 1
-fi
-latest_dump="$(ls -1t -- "${dumps[@]}" | head -n 1)"
-test -s "$latest_dump"
-echo "Fresh backup size: $(stat -c '%s' "$latest_dump") bytes"
-
-declare -A database_env=()
-while IFS='=' read -r key value; do
-    value="${value%$'\r'}"
-    if [[ "$value" =~ ^\"(.*)\"$ || "$value" =~ ^\'(.*)\'$ ]]; then
-        value="${BASH_REMATCH[1]}"
-    fi
-    database_env["$key"]="$value"
-done < <(grep -E '^DB_(HOST|PORT|USERNAME|PASSWORD|SSLMODE)=' "$production_env")
-
-db_user="${database_env[DB_USERNAME]:-}"
-if [[ -z "$db_user" ]]; then
-    echo "DB_USERNAME is missing from the production environment." >&2
-    exit 1
-fi
-
-SYIFA_ALLOW_RESTORE_DRILL=1 \
-DB_HOST="${database_env[DB_HOST]:-127.0.0.1}" \
-DB_PORT="${database_env[DB_PORT]:-5432}" \
-DB_USERNAME="$db_user" \
-DB_PASSWORD="${database_env[DB_PASSWORD]:-}" \
-DB_SSLMODE="${database_env[DB_SSLMODE]:-prefer}" \
-    "$checkout/scripts/verify-backup-restore.sh" \
-    "$latest_dump" "syifa_restore_drill_release_${drill_id}"
+# The helper reads production credentials as root, retains the protected dump,
+# restores only into its guarded disposable database, then removes that database.
+sudo -n "$readiness_command" \
+    --drill-id "$drill_id" \
+    --expected-deployed-sha "$deployed_sha"
 
 curl --fail --silent --show-error --max-time 15 https://syifa.my/operations/health >/dev/null
 curl --fail --silent --show-error --max-time 15 https://syifa.my/operations/release

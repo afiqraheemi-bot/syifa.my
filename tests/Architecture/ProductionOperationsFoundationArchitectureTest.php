@@ -110,8 +110,16 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
         self::assertStringContainsString('sudo -n -l', $readiness);
         self::assertStringNotContainsString('bash -n "$deploy_command"', $readiness);
         self::assertStringNotContainsString("grep -q 'EXPECTED_COMMIT'", $readiness);
-        self::assertStringContainsString('syifa_restore_drill_release_', $readiness);
-        self::assertStringContainsString('verify-backup-restore.sh', $readiness);
+        self::assertStringContainsString('syifa-release-readiness', $readiness);
+        self::assertStringContainsString('source_digest=', $readiness);
+        self::assertStringContainsString('--expected-deployed-sha', $readiness);
+
+        $rootHelper = $this->source($root.'/scripts/production/syifa-release-readiness');
+        self::assertStringContainsString('syifa_restore_drill_release_', $rootHelper);
+        self::assertStringContainsString('pg_dump', $rootHelper);
+        self::assertStringContainsString('pg_restore', $rootHelper);
+        self::assertStringContainsString('trap cleanup EXIT', $rootHelper);
+        self::assertStringNotContainsString('eval ', $rootHelper);
     }
 
     public function test_operations_foundation_has_no_business_or_module_dependency(): void
