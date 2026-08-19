@@ -39,10 +39,10 @@ jobs:
                   test -n "$SYIFA_GIT_TOKEN"
                   sudo --preserve-env=SYIFA_GIT_TOKEN /usr/local/bin/syifa-deploy
 
-            # Catalogue data is governed application state rather than demo
-            # content. Keep the production offers in sync after migrations so
-            # the public pricing page and registration flow cannot deploy with
-            # an empty or stale official catalogue.
-            - name: Synchronize and verify official catalogue
+            # The governed catalogue is synchronized by the deployment
+            # migration. Verify the client-visible contract after FPM has been
+            # reloaded: homepage and registration must expose identical IDs,
+            # currency and authoritative prices.
+            - name: Verify official production catalogue
               run: |
-                  sudo -u www-data -- php /var/www/syifa/artisan syifa:catalogue:sync --force
+                  php /var/www/syifa/scripts/verify-production-catalogue.php https://syifa.my
