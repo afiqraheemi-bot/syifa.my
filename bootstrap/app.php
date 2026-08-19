@@ -122,5 +122,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->job(new ProcessProvisioningWorkflowsJob, 'provisioning', 'redis')
             ->onOneServer()
             ->everyMinute();
+        // Full Postgres dump, low-traffic hour (18:00 UTC = 02:00 MYT).
+        // See scripts/backup-database.sh for retention and restore instructions.
+        $schedule->exec(base_path('scripts/backup-database.sh'))
+            ->onOneServer()
+            ->dailyAt('18:00')
+            ->withoutOverlapping(120);
     })
     ->create();
