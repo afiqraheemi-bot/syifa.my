@@ -22,6 +22,7 @@ use DateTimeImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -218,6 +219,34 @@ final readonly class SuperAdminRegistrationReviewController
         if (! $activated) {
             return response()->json([
                 'message' => 'Only an approved registration using the active Syifa Trial package can be activated here.',
+            ], 409);
+        }
+
+        $registration = DB::table('clinic_registrations')
+            ->where('id', $registrationId)
+            ->first(['status']);
+        if ($registration === null || (string) $registration->status !== 'provisioned') {
+            $workflow = DB::table('provisioning_workflows')
+                ->where('clinic_registration_id', $registrationId)
+                ->orderByDesc('created_at')
+                ->first(['status', 'current_step', 'safe_failure_label', 'next_attempt_at']);
+
+            $checkpoint = $workflow === null
+                ? 'workflow_not_created'
+                : sprintf(
+                    '%s (%s%s)',
+                    (string) $workflow->current_step,
+                    (string) $workflow->status,
+                    $workflow->safe_failure_label === null
+                        ? ''
+                        : ', '.(string) $workflow->safe_failure_label,
+                );
+
+            return response()->json([
+                'message' => sprintf(
+                    'Trial activation started but provisioning is not complete. Current checkpoint: %s. Wait 30 seconds, then use this action again.',
+                    $checkpoint,
+                ),
             ], 409);
         }
 
