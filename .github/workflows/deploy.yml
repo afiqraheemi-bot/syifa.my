@@ -35,4 +35,6 @@ jobs:
             - name: Run syifa-deploy
               env:
                   SYIFA_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: sudo /usr/local/bin/syifa-deploy
+              run: |
+                  test -n "$SYIFA_GIT_TOKEN"
+                  sudo --preserve-env=SYIFA_GIT_TOKEN /usr/local/bin/syifa-deploy
