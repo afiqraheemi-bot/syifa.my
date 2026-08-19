@@ -107,16 +107,18 @@ foreach (RootEntryController::tenantAdminBaseDomains() as $index => $tenantAdmin
     }
 }
 foreach (RootEntryController::appEntryHosts() as $index => $appEntryHost) {
-    $marketingHome = Route::domain($appEntryHost)->get('/', MarketingHomeController::class);
-    $loginEntry = Route::domain($appEntryHost)->get('/login', RootEntryController::class);
+    $appEntry = Route::domain($appEntryHost);
+
+    $marketingHome = $appEntry->get('/', MarketingHomeController::class);
+    $loginEntry = $appEntry->get('/login', RootEntryController::class);
 
     if ($index === 0) {
         $marketingHome->name('root');
         $loginEntry->name('login');
     }
 
-    Route::domain($appEntryHost)->get('/robots.txt', [MarketingSeoController::class, 'robots']);
-    Route::domain($appEntryHost)->get('/sitemap.xml', [MarketingSeoController::class, 'sitemap']);
+    $appEntry->get('/robots.txt', [MarketingSeoController::class, 'robots']);
+    $appEntry->get('/sitemap.xml', [MarketingSeoController::class, 'sitemap']);
 }
 Route::get('/', PublicWebsiteController::class)->name('public-website.home');
 Route::get('/blog', [PublicBlogController::class, 'index'])->middleware('throttle:public.default')->name('public-blog.index');
