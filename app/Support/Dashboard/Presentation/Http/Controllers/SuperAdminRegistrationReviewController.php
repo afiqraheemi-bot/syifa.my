@@ -68,7 +68,6 @@ final readonly class SuperAdminRegistrationReviewController
     public function decide(
         string $registrationId,
         Request $request,
-        DecideClinicRegistrationService $decisions,
     ): JsonResponse {
         $validated = $request->validate([
             'outcome' => ['required', 'in:approved,rejected,correction_requested'],
@@ -84,6 +83,11 @@ final readonly class SuperAdminRegistrationReviewController
         $context = $this->context($request);
 
         try {
+            // Resolve inside the failure boundary. Laravel normally resolves
+            // action parameters before invoking the controller, which meant a
+            // production binding or database dependency failure escaped this
+            // handler and reached the browser as an unhelpful "Server Error".
+            $decisions = app(DecideClinicRegistrationService::class);
             $version = $decisions->execute(new DecideClinicRegistrationCommand(
                 $registrationId,
                 (string) Str::uuid(),

@@ -39,6 +39,16 @@ jobs:
                   test -n "$SYIFA_GIT_TOKEN"
                   sudo --preserve-env=SYIFA_GIT_TOKEN /usr/local/bin/syifa-deploy
 
+            # Never report a green deployment when the server is still
+            # serving an older checkout. This catches stale fetches, failed
+            # resets and deployments that targeted the wrong directory.
+            - name: Verify deployed commit
+              env:
+                  EXPECTED_COMMIT: ${{ github.sha }}
+              run: |
+                  deployed_commit=$(sudo git -C /var/www/syifa rev-parse HEAD)
+                  test "$deployed_commit" = "$EXPECTED_COMMIT"
+
             # The governed catalogue is synchronized by the deployment
             # migration. Verify the client-visible contract after FPM has been
             # reloaded: homepage and registration must expose identical IDs,

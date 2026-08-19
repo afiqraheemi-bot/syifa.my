@@ -95,10 +95,15 @@ async function mutate(registration, action, url, method, body, confirmation = nu
         });
 
         if (!response.ok) {
+            const responseMessage =
+                typeof response.body?.message === 'string' &&
+                response.body.message.trim().toLowerCase() !== 'server error'
+                    ? response.body.message
+                    : null;
             error.value =
-                response.body?.message ??
+                responseMessage ??
                 Object.values(response.body?.errors ?? {}).flat()[0] ??
-                'The registration action could not be completed.';
+                'The server could not complete this registration action. Refresh once and try again; if it persists, check the production release and application log.';
             return false;
         }
 
