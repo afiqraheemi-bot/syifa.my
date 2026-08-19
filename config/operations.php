@@ -38,6 +38,9 @@ return [
         'build_id' => env('RELEASE_BUILD_ID', 'unknown'),
         'commit' => env('RELEASE_COMMIT', 'unknown'),
         'built_at' => env('RELEASE_BUILT_AT', 'unknown'),
+        // The production checkout is the deployment source of truth. This
+        // prevents a stale RELEASE_COMMIT value from misreporting the live SHA.
+        'use_checkout_commit' => env('RELEASE_USE_CHECKOUT_COMMIT', env('APP_ENV') === 'production'),
     ],
 
     'runtime_checks' => [

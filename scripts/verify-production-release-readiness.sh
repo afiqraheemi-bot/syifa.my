@@ -45,9 +45,20 @@ require_executable_file() {
 
 require_directory 'workflow checkout repository' "$checkout/.git"
 require_directory 'production repository' "$production_dir/.git"
-require_executable_file 'production deploy command' "$deploy_command"
 require_executable_file 'backup command' "$checkout/scripts/backup-database.sh"
 require_executable_file 'restore verifier' "$checkout/scripts/verify-backup-restore.sh"
+
+if [[ ! -e "$deploy_command" ]]; then
+    echo "Missing required file: production deploy command." >&2
+    exit 1
+fi
+
+if ! sudo -n -l 2>/dev/null | grep -Fq "$deploy_command"; then
+    echo "The runner has no non-interactive sudo rule for the production deploy command." >&2
+    exit 1
+fi
+
+echo "Root-protected production deploy command and narrow sudo delegation verified."
 
 mkdir -p "$backup_dir"
 chmod 700 "$backup_dir"
@@ -67,19 +78,9 @@ deployed_sha="$(git -c safe.directory="$production_dir" -C "$production_dir" rev
 echo "Readiness drill source SHA: $tested_sha"
 echo "Currently deployed SHA: $deployed_sha"
 
-if ! bash -n "$deploy_command"; then
-    echo "Production deploy command has invalid shell syntax." >&2
-    exit 1
-fi
-if ! grep -q 'EXPECTED_COMMIT' "$deploy_command"; then
-    echo "Production deploy command has no exact-SHA guard marker." >&2
-    exit 1
-fi
-if ! grep -Eiq 'rollback|previous|restore' "$deploy_command"; then
-    echo "Production deploy command has no rollback guard marker." >&2
-    exit 1
-fi
-echo "Deploy command syntax and exact-SHA/rollback guard markers verified."
+# The deploy helper is deliberately root-owned and unreadable to the runner.
+# Exact-SHA behavior is verified by the gated workflow before and after deploy;
+# its implementation must be reviewed during the one-time server installation.
 
 require_readable_file 'production environment' "$production_env"
 

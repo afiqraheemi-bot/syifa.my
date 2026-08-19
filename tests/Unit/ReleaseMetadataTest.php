@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Http\Operations\CheckoutCommit;
 use App\Http\Operations\ReleaseMetadata;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -46,5 +47,22 @@ final class ReleaseMetadataTest extends TestCase
             'commit' => 'unknown',
             'built_at' => 'unknown',
         ], $this->app->make(ReleaseMetadata::class)->build());
+    }
+
+    public function test_production_metadata_prefers_the_deployed_checkout_over_a_stale_environment_commit(): void
+    {
+        $checkoutCommit = $this->app->make(CheckoutCommit::class)->resolve();
+
+        self::assertNotNull($checkoutCommit);
+
+        Config::set('operations.release', [
+            'commit' => str_repeat('0', 40),
+            'use_checkout_commit' => true,
+        ]);
+
+        self::assertSame(
+            $checkoutCommit,
+            $this->app->make(ReleaseMetadata::class)->build()['commit'],
+        );
     }
 }

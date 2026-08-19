@@ -198,7 +198,8 @@ jobs:
               run: |
                   set -euo pipefail
                   test -d /var/www/syifa/.git
-                  test -x /usr/local/bin/syifa-deploy
+                  test -e /usr/local/bin/syifa-deploy
+                  sudo -n -l | grep -Fq '/usr/local/bin/syifa-deploy'
                   test -x /usr/bin/php8.5
                   command -v curl >/dev/null
                   command -v jq >/dev/null
