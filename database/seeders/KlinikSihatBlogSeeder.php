@@ -12,7 +12,9 @@ use RuntimeException;
 final class KlinikSihatBlogSeeder extends Seeder
 {
     private const TENANT_ID = '45c92d79-8324-4fcf-a440-109106e7f362';
+
     private const WEBSITE_ID = 'faa71700-94ec-5f19-a136-53c193e0d55e';
+
     private const AUTHOR_ID = '1dd5e517-608e-5a37-8b6d-e0de6e213735';
 
     public function run(): void
