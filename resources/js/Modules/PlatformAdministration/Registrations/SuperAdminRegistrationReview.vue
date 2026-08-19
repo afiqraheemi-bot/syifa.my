@@ -1,6 +1,6 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
-import { reactive, ref } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { browserHttpRequest } from '../../../Shared/Authentication/session.js';
 import {
     createDashboardNavigation,
@@ -31,6 +31,26 @@ const busy = ref(null);
 const error = ref('');
 const success = ref('');
 
+watch(
+    () => props.registrations,
+    (registrations) => {
+        for (const registration of registrations) {
+            editForms[registration.id] = {
+                clinicName: registration.clinicName ?? '',
+                clinicEmail: registration.clinicEmail ?? '',
+                clinicPhone: registration.clinicPhone ?? '',
+                clinicAddress: registration.clinicAddress ?? '',
+            };
+            decisionForms[registration.id] ??= {
+                outcome: 'approved',
+                reasonCategory: 'eligible_clinic',
+                correctionInstructions: '',
+            };
+        }
+    },
+    { immediate: true },
+);
+
 function decisionForm(registration) {
     decisionForms[registration.id] ??= {
         outcome: 'approved',
@@ -41,12 +61,6 @@ function decisionForm(registration) {
 }
 
 function editForm(registration) {
-    editForms[registration.id] ??= {
-        clinicName: registration.clinicName ?? '',
-        clinicEmail: registration.clinicEmail ?? '',
-        clinicPhone: registration.clinicPhone ?? '',
-        clinicAddress: registration.clinicAddress ?? '',
-    };
     return editForms[registration.id];
 }
 
@@ -334,13 +348,14 @@ async function archiveRegistration(registration) {
                         Edit registration details
                     </summary>
                     <form
+                        v-if="editForms[registration.id]"
                         class="grid gap-4 border-t border-slate-200 p-4 md:grid-cols-2"
                         @submit.prevent="updateRegistration(registration)"
                     >
                         <label class="grid gap-1 text-sm font-semibold text-slate-700">
                             Clinic name
                             <input
-                                v-model="editForm(registration).clinicName"
+                                v-model="editForms[registration.id].clinicName"
                                 required
                                 maxlength="200"
                                 class="min-h-11 rounded-xl border border-slate-300 px-3 font-normal"
@@ -349,7 +364,7 @@ async function archiveRegistration(registration) {
                         <label class="grid gap-1 text-sm font-semibold text-slate-700">
                             Clinic email
                             <input
-                                v-model="editForm(registration).clinicEmail"
+                                v-model="editForms[registration.id].clinicEmail"
                                 required
                                 type="email"
                                 maxlength="254"
@@ -359,7 +374,7 @@ async function archiveRegistration(registration) {
                         <label class="grid gap-1 text-sm font-semibold text-slate-700">
                             Clinic phone
                             <input
-                                v-model="editForm(registration).clinicPhone"
+                                v-model="editForms[registration.id].clinicPhone"
                                 required
                                 maxlength="40"
                                 class="min-h-11 rounded-xl border border-slate-300 px-3 font-normal"
@@ -370,7 +385,7 @@ async function archiveRegistration(registration) {
                         >
                             Clinic address
                             <textarea
-                                v-model="editForm(registration).clinicAddress"
+                                v-model="editForms[registration.id].clinicAddress"
                                 required
                                 maxlength="1000"
                                 class="min-h-24 rounded-xl border border-slate-300 p-3 font-normal"
