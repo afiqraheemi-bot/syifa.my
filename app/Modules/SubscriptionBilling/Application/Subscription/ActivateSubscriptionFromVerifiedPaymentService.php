@@ -167,6 +167,40 @@ final readonly class ActivateSubscriptionFromVerifiedPaymentService
         });
     }
 
+    /**
+     * Called once the queue has spent its own retry budget on this
+     * application (ActivateSubscriptionJob::failed()). Never called from
+     * inside execute() itself — there is no live claim token left to scope
+     * against once the queue gives up, so this transitions the row directly
+     * and only while it is still non-terminal, making it a safe no-op
+     * against a legitimate success (or an earlier exhaustion call) that
+     * already landed. The failure reason is intentionally a fixed, safe
+     * label — never the triggering exception's message — so nothing
+     * internal ever reaches an operator-facing or user-facing surface.
+     */
+    public function exhaust(string $applicationId, ?DateTimeImmutable $now = null): void
+    {
+        $now ??= new DateTimeImmutable;
+        $application = $this->applications->find($applicationId);
+        if ($application === null || $this->isTerminal($application->status)) {
+            return;
+        }
+
+        if ($this->applications->markExhausted($applicationId, 'activation_retries_exhausted', $now)) {
+            $this->reconciliations->open($applicationId, $application->paymentId, $application->tenantId, 'activation_retries_exhausted', $now);
+            $this->audit->record('subscription.activation.exhausted', $applicationId, $application->subscriptionId, $application->paymentId, $application->tenantId, SubscriptionActivationApplicationResultCode::Exhausted, $now);
+        }
+    }
+
+    private function isTerminal(SubscriptionActivationApplicationStatus $status): bool
+    {
+        return in_array($status, [
+            SubscriptionActivationApplicationStatus::Applied, SubscriptionActivationApplicationStatus::Ignored,
+            SubscriptionActivationApplicationStatus::ReconciliationRequired, SubscriptionActivationApplicationStatus::Quarantined,
+            SubscriptionActivationApplicationStatus::Exhausted,
+        ], true);
+    }
+
     private function terminal(SubscriptionActivationApplication $claim, SubscriptionActivationApplicationStatus $status, SubscriptionActivationApplicationResultCode $code, string $action, DateTimeImmutable $now): void
     {
         $this->finish($claim, $status, $code, $now);

@@ -128,6 +128,28 @@ final class RenewalCheckoutFoundationMigrationTest extends TestCase
         self::assertSame(2, $this->db()->table('subscription_renewal_outbox')->count());
     }
 
+    public function test_an_initial_acquisition_payment_is_ignored_as_renewal_missing_without_touching_any_subscription(): void
+    {
+        $subscriptionId = '99999999-9999-4999-8999-999999999999';
+        $paymentId = '88888888-8888-4888-8888-888888888888';
+        $this->db()->table('subscriptions')->insert(['id' => $subscriptionId, 'status' => 'active', 'version' => 1]);
+        // Deliberately no subscription_renewals row for this payment — this
+        // is what an initial-acquisition VerifiedPaymentSucceeded looks like
+        // to the renewal outcome store: a payment id it has never seen.
+        $this->db()->table('payments')->insert(['id' => $paymentId, 'status' => 'succeeded']);
+
+        $result = (new PostgresRenewalOutcomeStore($this->db()))->apply(new ApplyRenewalOutcomeCommand(
+            'aaaaaaaa-1111-4111-8111-111111111111', $paymentId, 'succeeded',
+            'correlation-initial-acquisition', new DateTimeImmutable('2026-12-02T00:00:00Z'),
+        ));
+
+        self::assertSame('renewal_missing', $result->code);
+        self::assertSame('active', $this->db()->table('subscriptions')->where('id', $subscriptionId)->value('status'));
+        self::assertSame(1, $this->db()->table('subscriptions')->count());
+        self::assertSame(0, $this->db()->table('subscription_timeline_entries')->count());
+        self::assertSame(0, $this->db()->table('subscription_renewal_outbox')->count());
+    }
+
     private function migration(): object
     {
         return require base_path('database/migrations/subscription_billing/2026_07_31_000001_create_renewal_checkout_foundation.php');

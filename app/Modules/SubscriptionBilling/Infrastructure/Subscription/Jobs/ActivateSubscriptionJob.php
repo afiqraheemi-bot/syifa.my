@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Throwable;
 
 final class ActivateSubscriptionJob implements ShouldQueue
 {
@@ -35,5 +36,15 @@ final class ActivateSubscriptionJob implements ShouldQueue
     public function handle(ActivateSubscriptionFromVerifiedPaymentService $service): void
     {
         $service->execute($this->applicationId);
+    }
+
+    /**
+     * Laravel calls this once every queue-level retry (the $tries above) is
+     * spent. The triggering exception is deliberately not forwarded beyond
+     * this point — exhaust() records only a fixed, safe failure label.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        app(ActivateSubscriptionFromVerifiedPaymentService::class)->exhaust($this->applicationId);
     }
 }
