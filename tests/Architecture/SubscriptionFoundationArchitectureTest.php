@@ -150,6 +150,7 @@ final class SubscriptionFoundationArchitectureTest extends TestCase
             $this->root().'/database/migrations/subscription_billing/2026_08_30_000001_create_initial_acquisition_checkout_sessions.php',
             $this->root().'/database/migrations/subscription_billing/2026_10_01_000001_sync_official_subscription_catalogue.php',
             $this->root().'/database/migrations/subscription_billing/2026_10_03_000001_repair_official_subscription_entitlements.php',
+            $this->root().'/database/migrations/subscription_billing/2026_10_05_000001_allow_exhausted_activation_result_code.php',
         ], glob($this->root().'/database/migrations/subscription_billing/*.php') ?: []);
         $routes = file_get_contents($this->root().'/routes/web.php');
         self::assertIsString($routes);

@@ -77,6 +77,20 @@ final readonly class PostgresSubscriptionActivationApplicationRepository impleme
             ]) === 1;
     }
 
+    public function markExhausted(string $applicationId, string $safeFailureLabel, DateTimeImmutable $now): bool
+    {
+        $timestamp = $this->timestamp($now);
+
+        return $this->connection->table('subscription_activation_applications')
+            ->where('id', $applicationId)
+            ->whereIn('status', ['pending', 'processing', 'retry_pending'])
+            ->update([
+                'status' => 'exhausted', 'result_code' => 'exhausted', 'safe_failure_label' => $safeFailureLabel,
+                'processing_claim_token' => null, 'processing_lease_expires_at' => null, 'next_attempt_at' => null,
+                'completed_at' => $timestamp, 'updated_at' => $timestamp,
+            ]) === 1;
+    }
+
     private function map(mixed $row): SubscriptionActivationApplication
     {
         if (! $row instanceof stdClass) {

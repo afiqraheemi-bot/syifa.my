@@ -21,6 +21,8 @@ final class PostgresSubscriptionActivationApplicationRepositoryTest extends Test
 
     private ?Migration $migration = null;
 
+    private ?Migration $resultCodeMigration = null;
+
     private ?PostgresSubscriptionActivationApplicationRepository $repository = null;
 
     protected function setUp(): void
@@ -39,11 +41,20 @@ final class PostgresSubscriptionActivationApplicationRepositoryTest extends Test
         self::assertInstanceOf(Migration::class, $migration);
         $this->migration = $migration;
         $migration->up();
+        $resultCodeMigration = require base_path('database/migrations/subscription_billing/2026_10_05_000001_allow_exhausted_activation_result_code.php');
+        self::assertInstanceOf(Migration::class, $resultCodeMigration);
+        $this->resultCodeMigration = $resultCodeMigration;
+        $resultCodeMigration->up();
         $this->repository = new PostgresSubscriptionActivationApplicationRepository(DB::connection(self::CONNECTION), new SubscriptionActivationApplicationPersistenceMapper);
     }
 
     protected function tearDown(): void
     {
+        // A row left with result_code='exhausted' would otherwise make the
+        // widen-result-code migration's down() fail its own re-narrowed
+        // CHECK constraint.
+        DB::connection(self::CONNECTION)->table('subscription_activation_applications')->delete();
+        $this->resultCodeMigration?->down();
         $this->migration?->down();
         DB::purge(self::CONNECTION);
         parent::tearDown();
@@ -137,6 +148,32 @@ final class PostgresSubscriptionActivationApplicationRepositoryTest extends Test
             }
             rmdir($workspace);
         }
+    }
+
+    public function test_mark_exhausted_transitions_a_non_terminal_application_and_records_a_safe_label(): void
+    {
+        $now = new DateTimeImmutable('2026-07-25T00:00:00Z');
+        $application = $this->repository()->register($this->uuid(1), $this->uuid(2), $this->uuid(3), $now);
+        $this->repository()->claim($application->id, $now, 120);
+
+        self::assertTrue($this->repository()->markExhausted($application->id, 'activation_retries_exhausted', $now->modify('+10 minutes')));
+
+        $reloaded = $this->repository()->find($application->id);
+        self::assertSame(SubscriptionActivationApplicationStatus::Exhausted, $reloaded?->status);
+        self::assertSame(SubscriptionActivationApplicationResultCode::Exhausted, $reloaded?->resultCode);
+        self::assertNull($reloaded?->claimToken);
+    }
+
+    public function test_mark_exhausted_is_a_safe_no_op_against_an_already_terminal_application(): void
+    {
+        $now = new DateTimeImmutable('2026-07-25T00:00:00Z');
+        $application = $this->repository()->register($this->uuid(1), $this->uuid(2), $this->uuid(3), $now);
+        $claim = $this->repository()->claim($application->id, $now, 120);
+        self::assertNotNull($claim);
+        self::assertTrue($this->repository()->complete($application->id, (string) $claim->claimToken, SubscriptionActivationApplicationStatus::Applied, SubscriptionActivationApplicationResultCode::Applied, $now));
+
+        self::assertFalse($this->repository()->markExhausted($application->id, 'activation_retries_exhausted', $now->modify('+10 minutes')));
+        self::assertSame(SubscriptionActivationApplicationStatus::Applied, $this->repository()->find($application->id)?->status);
     }
 
     private function repository(): PostgresSubscriptionActivationApplicationRepository

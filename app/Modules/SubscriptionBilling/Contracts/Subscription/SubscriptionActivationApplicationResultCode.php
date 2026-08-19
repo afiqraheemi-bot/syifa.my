@@ -14,4 +14,5 @@ enum SubscriptionActivationApplicationResultCode: string
     case TenantMismatch = 'tenant_mismatch';
     case CommercialOfferMismatch = 'commercial_offer_mismatch';
     case ObligationMismatch = 'obligation_mismatch';
+    case Exhausted = 'exhausted';
 }
