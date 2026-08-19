@@ -79,6 +79,7 @@ use App\Modules\SubscriptionBilling\Contracts\Subscription\ChangeSubscriptionPla
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationApplicationRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationAuditInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationEvidenceRepositoryInterface;
+use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationJobDispatcherInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationReconciliationCaseRepositoryInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionActivationTransactionInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionIntegrationOutboxRepositoryInterface;
@@ -131,6 +132,8 @@ use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\Post
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionIntegrationOutboxRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Persistence\Repositories\PostgresSubscriptionRepository;
 use App\Modules\SubscriptionBilling\Infrastructure\Subscription\ApplyRenewalPaymentOutcomeListener;
+use App\Modules\SubscriptionBilling\Infrastructure\Subscription\HandleVerifiedPaymentSucceededForSubscriptionActivation;
+use App\Modules\SubscriptionBilling\Infrastructure\Subscription\LaravelSubscriptionActivationJobDispatcher;
 use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresRenewalCheckoutCommandFactory;
 use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresRenewalCheckoutStore;
 use App\Modules\SubscriptionBilling\Infrastructure\Subscription\PostgresRenewalOutcomeStore;
@@ -267,6 +270,7 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(SubscriptionActivationApplicationRepositoryInterface::class, PostgresSubscriptionActivationApplicationRepository::class);
         $this->app->singleton(SubscriptionActivationReconciliationCaseRepositoryInterface::class, PostgresSubscriptionActivationReconciliationCaseRepository::class);
         $this->app->singleton(SubscriptionIntegrationOutboxRepositoryInterface::class, PostgresSubscriptionIntegrationOutboxRepository::class);
+        $this->app->singleton(SubscriptionActivationJobDispatcherInterface::class, LaravelSubscriptionActivationJobDispatcher::class);
         $this->app->singleton(PaymentAuditInterface::class, PaymentAuditAdapter::class);
         $this->app->singleton(PaymentApplicationRetryPolicy::class, static fn (): PaymentApplicationRetryPolicy => new PaymentApplicationRetryPolicy(
             (int) config('payment_providers.application.lease_seconds', 120),
@@ -546,5 +550,6 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(database_path('migrations/subscription_billing'));
         $this->loadRoutesFrom(__DIR__.'/routes/payment_providers.php');
         Event::listen(PaymentIntegrationOutboxEvent::class, ApplyRenewalPaymentOutcomeListener::class);
+        Event::listen(PaymentIntegrationOutboxEvent::class, HandleVerifiedPaymentSucceededForSubscriptionActivation::class);
     }
 }

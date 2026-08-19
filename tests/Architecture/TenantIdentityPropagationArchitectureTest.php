@@ -91,14 +91,25 @@ final class TenantIdentityPropagationArchitectureTest extends TestCase
         self::assertStringContainsString('public ?string $reservedTenantId', $registrationData);
     }
 
-    public function test_subscription_activation_and_outbox_persistence_remain_dormant_without_jobs(): void
+    public function test_subscription_activation_is_wired_on_verified_payment_succeeded(): void
     {
         self::assertDirectoryDoesNotExist($this->root().'/app/Modules/SubscriptionBilling/Domain/Aggregates/Subscription/Persistence');
         self::assertFileExists($this->root().'/app/Modules/SubscriptionBilling/Contracts/Subscription/SubscriptionActivationApplication.php');
-        self::assertFileDoesNotExist($this->root().'/app/Modules/SubscriptionBilling/Infrastructure/Subscription/ActivateSubscriptionJob.php');
+        self::assertFileExists($this->root().'/app/Modules/SubscriptionBilling/Infrastructure/Subscription/Jobs/ActivateSubscriptionJob.php');
+        self::assertFileExists($this->root().'/app/Modules/SubscriptionBilling/Infrastructure/Subscription/HandleVerifiedPaymentSucceededForSubscriptionActivation.php');
+
+        // Subscription outbox publishing is driven by the Provisioning module's existing,
+        // already-scheduled PublishSubscriptionProvisioningOutboxJob, not a dedicated
+        // SubscriptionBilling-owned job — so this file deliberately never exists.
         self::assertFileDoesNotExist($this->root().'/app/Modules/SubscriptionBilling/Infrastructure/Subscription/PublishSubscriptionOutboxJob.php');
 
         self::assertFileExists($this->root().'/database/migrations/subscription_billing/2026_07_29_000001_create_subscription_integration_outbox.php');
+
+        $provider = $this->source($this->root().'/app/Modules/SubscriptionBilling/Infrastructure/SubscriptionBillingServiceProvider.php');
+        self::assertStringContainsString(
+            'Event::listen(PaymentIntegrationOutboxEvent::class, HandleVerifiedPaymentSucceededForSubscriptionActivation::class);',
+            $provider,
+        );
     }
 
     public function test_new_migrations_are_additive_only_and_never_tighten_not_null_or_add_uniqueness(): void
