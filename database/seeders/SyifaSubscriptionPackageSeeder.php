@@ -36,9 +36,10 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Creates the governed SYIFA.my package catalogue used by local acceptance
- * environments. The Application layer remains authoritative and every lookup
- * makes this seeder safe to run repeatedly without duplicate catalogue rows.
+ * Creates the governed official SYIFA.my package catalogue. The Application
+ * layer remains authoritative and every lookup makes this seeder safe to run
+ * repeatedly in production without duplicate catalogue rows. Conflicting
+ * authoritative prices or unsupported lifecycle states fail closed.
  */
 final class SyifaSubscriptionPackageSeeder extends Seeder
 {
@@ -127,7 +128,7 @@ final class SyifaSubscriptionPackageSeeder extends Seeder
     ];
 
     /** @var list<array{code: string, name: string, description: string, billingOptionCode: string, amountMinor: int, capabilityReference: string, displayOrder: int}> */
-    private const array PACKAGES = [
+    public const array PACKAGES = [
         [
             'code' => 'syifa-trial',
             'name' => 'Syifa Trial',
@@ -159,10 +160,6 @@ final class SyifaSubscriptionPackageSeeder extends Seeder
 
     public function run(): void
     {
-        if (! app()->environment('local')) {
-            return;
-        }
-
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $occurredAt = $now->format('Y-m-d\TH:i:s\Z');
         $effectiveStart = $now->format('Y-m-d');
