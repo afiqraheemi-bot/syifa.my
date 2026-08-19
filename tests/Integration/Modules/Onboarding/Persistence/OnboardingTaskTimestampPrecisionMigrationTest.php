@@ -134,7 +134,11 @@ final class OnboardingTaskTimestampPrecisionMigrationTest extends TestCase
 
         self::assertNotNull($reloaded);
         $reloadedTask = $reloaded->tasks()[0];
-        self::assertSame($subSecondUpdatedAt->format('Y-m-d H:i:s.u'), $reloadedTask->updatedAt->format('Y-m-d H:i:s.u'));
+        // Compare by absolute instant (Unix seconds + microseconds), not a
+        // timezone-formatted string — the reloaded value round-trips through
+        // Postgres in the session's own timezone, which need not match the
+        // literal offset the original DateTimeImmutable was constructed with.
+        self::assertSame($subSecondUpdatedAt->format('U.u'), $reloadedTask->updatedAt->format('U.u'));
 
         // The exact race this migration closes: a transition landing 100ms
         // after the stored sub-second updatedAt, but still within the same
