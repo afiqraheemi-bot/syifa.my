@@ -42,7 +42,10 @@ return new class extends Migration
                 ->whereExists(function ($query) use ($planCode): void {
                     $query->selectRaw('1')
                         ->from('commercial_catalogue_plans as plan')
-                        ->whereColumn('plan.id', 'subscription.plan_id')
+                        // plans.id is uuid while subscriptions.plan_id is
+                        // varchar, so a plain whereColumn compares uuid to
+                        // character varying and Postgres rejects it outright.
+                        ->whereRaw('plan.id::text = subscription.plan_id')
                         ->where('plan.code', $planCode);
                 })
                 ->update([
