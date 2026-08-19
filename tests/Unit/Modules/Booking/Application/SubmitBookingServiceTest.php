@@ -42,6 +42,7 @@ use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceName;
 use App\Modules\Booking\Domain\ValueObjects\SortOrder;
 use App\Modules\Booking\Domain\ValueObjects\TenantId;
+use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -63,6 +64,12 @@ final class SubmitBookingServiceTest extends TestCase
         self::assertSame('public_visitor', $fixture->history[0]->actorType->value);
         self::assertSame('WEBSITE', $fixture->history[0]->payload['source']);
         self::assertSame(true, $fixture->history[0]->payload['consent_acknowledged']);
+        self::assertSame([[
+            'tenant_id' => $fixture->uuid(1),
+            'booking_id' => $fixture->uuid(10),
+            'reference' => $result->reference,
+            'email' => null,
+        ]], $fixture->notifications->bookingsReceived);
     }
 
     public function test_website_submission_without_consent_is_rejected_before_reservation(): void
@@ -90,6 +97,7 @@ final class SubmitBookingServiceTest extends TestCase
             self::assertSame('clinic_owner', $fixture->history[0]->actorType->value);
             self::assertSame($fixture->uuid(20), $fixture->history[0]->actorId);
             self::assertSame($source, $fixture->history[0]->payload['source']);
+            self::assertSame([], $fixture->notifications->bookingsReceived);
         }
     }
 
@@ -163,8 +171,11 @@ final class SubmitBookingFixture implements BookingClockInterface, BookingHistor
 
     public bool $serviceSelectionEnabled = true;
 
+    public RecordingTransactionalNotificationGateway $notifications;
+
     public function __construct()
     {
+        $this->notifications = new RecordingTransactionalNotificationGateway;
         $this->services = [Service::register(new ServiceId($this->uuid(4)), new TenantId($this->uuid(1)), new ServiceName('Consultation'), null, new SortOrder(1), $this->now())];
     }
 
@@ -175,7 +186,7 @@ final class SubmitBookingFixture implements BookingClockInterface, BookingHistor
 
     public function workflow(): CreateBookingWorkflow
     {
-        return new CreateBookingWorkflow(new FixtureConfigurationRepository($this), new FixtureServiceRepository($this), new FixtureBookingRepository($this), $this, $this, $this, $this, $this, new ClinicSlotGenerator, $this, $this, $this);
+        return new CreateBookingWorkflow(new FixtureConfigurationRepository($this), new FixtureServiceRepository($this), new FixtureBookingRepository($this), $this, $this, $this, $this, $this, new ClinicSlotGenerator, $this, $this, $this, $this->notifications);
     }
 
     public function command(): SubmitBookingCommand
@@ -256,6 +267,32 @@ final class SubmitBookingFixture implements BookingClockInterface, BookingHistor
     {
         return sprintf('00000000-0000-4000-8000-%012d', $suffix);
     }
+}
+
+final class RecordingTransactionalNotificationGateway implements TransactionalNotificationGatewayInterface
+{
+    /** @var list<array{tenant_id: string, booking_id: string, reference: string, email: ?string}> */
+    public array $bookingsReceived = [];
+
+    public function bookingReceived(string $tenantId, string $bookingId, string $bookingReference, ?string $patientEmail): void
+    {
+        $this->bookingsReceived[] = [
+            'tenant_id' => $tenantId,
+            'booking_id' => $bookingId,
+            'reference' => $bookingReference,
+            'email' => $patientEmail,
+        ];
+    }
+
+    public function bookingChanged(string $tenantId, string $bookingId, string $bookingReference, ?string $patientEmail, string $change): void {}
+
+    public function designerAssigned(string $tenantId, string $onboardingJobId, string $platformIdentityId): void {}
+
+    public function websitePublished(string $tenantId, string $websiteId): void {}
+
+    public function websiteReviewRequested(string $tenantId, string $onboardingJobId): void {}
+
+    public function subscriptionActivated(string $tenantId, string $subscriptionId, string $clinicRegistrationId): void {}
 }
 
 final readonly class FixtureConfigurationRepository implements BookingFormConfigurationRepositoryInterface

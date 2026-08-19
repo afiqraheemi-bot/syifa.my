@@ -14,6 +14,10 @@ const props = defineProps({
     filters: { type: Object, required: true },
     summary: { type: Object, required: true },
     role: { type: String, required: true },
+    clinicName: { type: String, default: null },
+    indexUrl: { type: String, required: true },
+    createUrl: { type: String, required: true },
+    showUpgrade: Boolean,
 });
 const navigation = createDashboardNavigation(props.navigation);
 const filters = reactive({
@@ -22,7 +26,7 @@ const filters = reactive({
     category: props.filters.category ?? '',
 });
 function applyFilters() {
-    router.get('/dashboard/blog', filters, { preserveState: true, replace: true });
+    router.get(props.indexUrl, filters, { preserveState: true, replace: true });
 }
 const labels = {
     draft: 'Draf',
@@ -48,12 +52,16 @@ const labels = {
                     <p class="font-bold text-emerald-700">Website klinik</p>
                     <h1 class="text-3xl font-black">Blog</h1>
                     <p class="mt-2 text-slate-600">
-                        Urus artikel kesihatan, penerbitan dan metadata SEO.
+                        {{
+                            clinicName
+                                ? `Urus artikel untuk ${clinicName} sahaja dalam assignment ini.`
+                                : 'Urus artikel kesihatan, penerbitan dan metadata SEO.'
+                        }}
                     </p>
                 </div>
                 <a
                     v-if="entitled && ['clinic_owner', 'website_designer'].includes(role)"
-                    href="/dashboard/blog/create"
+                    :href="createUrl"
                     class="rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white"
                     >Artikel baharu</a
                 >
@@ -62,12 +70,19 @@ const labels = {
                 v-if="!entitled"
                 class="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5"
             >
-                <h2 class="font-black">Blog tersedia dengan Syifa Pro</h2>
+                <h2 class="font-black">Blog tidak tersedia untuk klinik ini</h2>
                 <p class="mt-1">
-                    Naik taraf untuk menerbitkan artikel dengan metadata, halaman artikel dan
-                    sitemap yang diurus secara tersusun.
+                    <template v-if="showUpgrade">
+                        Naik taraf ke Syifa Pro untuk menerbitkan artikel dengan metadata, halaman
+                        artikel dan sitemap yang diurus secara tersusun.
+                    </template>
+                    <template v-else>
+                        Pakej klinik yang ditugaskan tidak mempunyai Blog. Website Designer tidak
+                        boleh mengubah langganan klinik.
+                    </template>
                 </p>
                 <a
+                    v-if="showUpgrade"
                     href="/dashboard/subscription"
                     class="mt-3 inline-block font-bold text-emerald-800"
                     >Lihat pilihan naik taraf</a
@@ -120,7 +135,7 @@ const labels = {
                         <tr v-for="post in posts.data" :key="post.id" class="border-b">
                             <td class="p-4">
                                 <a
-                                    :href="`/dashboard/blog/${post.id}`"
+                                    :href="`${indexUrl}/${post.id}`"
                                     class="font-bold text-emerald-800"
                                     >{{ post.title }}</a
                                 >

@@ -84,6 +84,7 @@ use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PlanOfferingData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PricingHistoryData;
 use App\Modules\SubscriptionBilling\Contracts\CommercialCatalogue\PricingHistoryReadInterface;
+use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementLookupInterface;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\AutoRenewCommand;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\AutoRenewOperationResult;
 use App\Modules\SubscriptionBilling\Contracts\Renewal\CancelAutoRenewInterface;
@@ -105,6 +106,7 @@ use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewSummaryD
 use App\Modules\WebsiteBuilder\Application\ClinicBooking\ClinicBookingDateOverrideData;
 use App\Modules\WebsiteBuilder\Contracts\Assets\WebsiteAssetBinaryStorageInterface;
 use App\Modules\WebsiteBuilder\Contracts\CustomDomain\CustomDomainRepositoryInterface;
+use App\Modules\WebsiteBuilder\Contracts\CustomDomain\DomainControlVerifierInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfiguration;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingFormConfigurationReaderInterface;
 use App\Modules\WebsiteBuilder\Contracts\Delivery\PublicBookingServiceOption;
@@ -181,13 +183,16 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
 
     private DashboardWebsitePublicAddressRepository $websiteAddresses;
 
+    private DashboardEmptyCustomDomainRepository $customDomains;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->app->instance(ClinicSummaryReadInterface::class, new DashboardFixedClinicSummary);
         $this->app->instance(SubscriptionSummaryReadInterface::class, new DashboardFixedSubscriptionSummary);
         $this->app->instance(WebsiteReadInterface::class, new DashboardFixedWebsiteRead);
-        $this->app->instance(CustomDomainRepositoryInterface::class, new DashboardEmptyCustomDomainRepository);
+        $this->customDomains = new DashboardEmptyCustomDomainRepository;
+        $this->app->instance(CustomDomainRepositoryInterface::class, $this->customDomains);
         $this->app->instance(WebsitePublishedSnapshotReadInterface::class, new DashboardFixedWebsiteSnapshot);
         $this->app->instance(WebsiteSeoSummaryReadInterface::class, new DashboardFixedSeoSummary);
         $this->websiteRepository = new DashboardFixedWebsiteRepository;
@@ -363,9 +368,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         } elseif ($role === 'website_designer') {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 4)
+                    ->has('navigation', 3)
                     ->where('navigation.1.key', 'onboarding')
-                    ->where('navigation.2.key', 'blog'),
+                    ->where('navigation.2.key', 'reports'),
             );
         } else {
             $response->assertInertia(
@@ -409,7 +414,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.2.href', route('dashboard.onboarding', ['status' => 'in_review']))
                     ->has('recentAssignments', 1)
                     ->where('recentAssignments.0.description', 'Website setup')
-                    ->has('navigation', 4),
+                    ->has('navigation', 3),
             );
     }
 
@@ -1327,10 +1332,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('pageTitle', 'Onboarding queue')
                     ->where('navigation.1.key', 'onboarding')
                     ->where('navigation.1.current', true)
-                    ->where('navigation.2.key', 'blog')
+                    ->where('navigation.2.key', 'reports')
                     ->where('navigation.2.current', false)
-                    ->where('navigation.3.key', 'reports')
-                    ->has('navigation', 4)
+                    ->has('navigation', 3)
                     ->where('onboardingQueue.search.value', 'job')
                     ->where('onboardingQueue.statusFilter.value', 'in_progress')
                     ->where('onboardingQueue.items.0.id', 'job-1')
@@ -1338,6 +1342,17 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('onboardingQueue.items.0.publishReadiness', 'Not current')
                     ->where('onboardingQueue.pagination.perPage', 10),
             );
+    }
+
+    public function test_website_designer_cannot_open_the_unscoped_global_blog_workspace(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::PlatformIdentity, 'website_designer'),
+        );
+
+        $this->get('/dashboard/blog')->assertForbidden();
+        $this->get('/dashboard/blog/create')->assertForbidden();
     }
 
     public function test_clinic_owner_and_super_admin_cannot_access_the_designer_queue(): void
@@ -1432,9 +1447,8 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('job.id', $jobId)
                     ->where('navigation.1.key', 'onboarding')
                     ->where('navigation.1.current', true)
-                    ->where('navigation.2.key', 'blog')
-                    ->where('navigation.3.key', 'reports')
-                    ->has('navigation', 4)
+                    ->where('navigation.2.key', 'reports')
+                    ->has('navigation', 3)
                     ->where('job.status', 'in_progress')
                     ->where('job.progress.value', 50)
                     ->has('job.stages', 4)
@@ -1458,6 +1472,10 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where(
                         'websiteSetup.previewUrl',
                         route('dashboard.onboarding.preview', $jobId),
+                    )
+                    ->where(
+                        'websiteSetup.blogUrl',
+                        route('dashboard.onboarding.blog', $jobId),
                     )
                     ->where('websiteSetup.configuration.lifecycle', 'draft')
                     ->where('websiteSetup.canSubmitForReview', true)
@@ -2952,6 +2970,47 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 identityId: '00000000-0000-4000-8000-000000000010',
             ),
         );
+        $this->app->instance(DomainControlVerifierInterface::class, new class implements DomainControlVerifierInterface
+        {
+            public function hasTxtProof(string $hostname, string $proof): bool
+            {
+                return $hostname === 'www.klinik-aisyah.my' && str_starts_with($proof, 'syifa-verification=');
+            }
+
+            public function isRoutedToPlatform(string $hostname): bool
+            {
+                return $hostname === 'www.klinik-aisyah.my';
+            }
+        });
+        $this->app->instance(SubscriptionEntitlementLookupInterface::class, new class implements SubscriptionEntitlementLookupInterface
+        {
+            public function hasCapability(string $tenantId, string $capabilityKey, string $effectiveDateTime): bool
+            {
+                return $tenantId === '00000000-0000-4000-8000-000000000002'
+                    && $capabilityKey === 'custom_domain';
+            }
+
+            public function getActiveCapabilityKeys(string $tenantId, string $effectiveDateTime): array
+            {
+                return ['custom_domain'];
+            }
+        });
+        $this->app->instance(WebsiteReadInterface::class, new class implements WebsiteReadInterface
+        {
+            public function summary(string $trustedTenantId): ?WebsiteSummaryData
+            {
+                return new WebsiteSummaryData('00000000-0000-4000-8000-000000000001', $trustedTenantId, 'Klinik Aisyah', 'syifa-essential', 'published');
+            }
+
+            public function detail(string $trustedTenantId): ?WebsiteDetailData
+            {
+                return new WebsiteDetailData(
+                    '00000000-0000-4000-8000-000000000001', $trustedTenantId, 'syifa-essential', 'published',
+                    'Klinik Aisyah', null, '#112233', '#445566', null, null,
+                    'hello@aisyah.test', '+60123456789', 'Kuala Lumpur', [],
+                );
+            }
+        });
 
         $this->get('/dashboard/onboarding/'.$jobId.'/custom-domain')
             ->assertOk()
@@ -2969,7 +3028,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
 
         $this->post('/dashboard/onboarding/'.$jobId.'/custom-domain', [
             'hostname' => 'www.klinik-aisyah.my',
-        ])->assertRedirect();
+        ])->assertRedirect()->assertSessionHasNoErrors();
         $this->get('/dashboard/onboarding/'.$jobId.'/custom-domain')
             ->assertOk()
             ->assertInertia(
@@ -2980,6 +3039,29 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('domain.verificationValue', static fn (mixed $value): bool => is_string($value)
                         && str_starts_with($value, 'syifa-verification=')),
             );
+
+        $domain = $this->customDomains->currentForWebsite(
+            '00000000-0000-4000-8000-000000000002',
+            '00000000-0000-4000-8000-000000000001',
+        );
+        self::assertNotNull($domain);
+        $this->post('/dashboard/onboarding/'.$jobId.'/custom-domain/verify', [
+            'domain_id' => $domain->id,
+            'version' => 1,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        self::assertSame('verified', $domain->status()->value);
+
+        $this->post('/dashboard/onboarding/'.$jobId.'/custom-domain/activate', [
+            'domain_id' => $domain->id,
+            'version' => 2,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        self::assertSame('active', $domain->status()->value);
+
+        $this->post('/dashboard/onboarding/'.$jobId.'/custom-domain/detach', [
+            'domain_id' => $domain->id,
+            'version' => 3,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        self::assertSame('detached', $domain->status()->value);
 
         $this->app->instance(
             AuthorizationService::class,

@@ -13,6 +13,7 @@ use App\Modules\Notification\Contracts\NotificationReadInterface;
 use App\Modules\Notification\Contracts\NotificationRepositoryInterface;
 use App\Modules\Notification\Contracts\NotificationTemplateReadInterface;
 use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
+use App\Modules\Notification\Infrastructure\Delivery\BookingWhatsAppDispatcher;
 use App\Modules\Notification\Infrastructure\Delivery\LaravelNotificationDeliveryDispatcher;
 use App\Modules\Notification\Infrastructure\Integration\ClinicRegistrationNotificationListener;
 use App\Modules\Notification\Infrastructure\Integration\PaymentNotificationListener;
@@ -38,6 +39,7 @@ final class NotificationServiceProvider extends ServiceProvider
             static fn (Application $app): TransactionalNotificationGateway => new TransactionalNotificationGateway(
                 $app->make('db')->connection(),
                 $app->make(PrepareNotificationService::class),
+                $app->make(BookingWhatsAppDispatcher::class),
                 $app->make(LoggerInterface::class),
             ),
         );

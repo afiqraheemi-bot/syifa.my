@@ -46,6 +46,12 @@ final readonly class BlogPostService
     {
         $post = $this->post($id);
         $this->authorization->authorize($actor, (string) $post->tenant_id, (string) $post->website_id);
+        if ($actor->role === 'super_admin') {
+            abort(403, 'Super Admin tidak dibenarkan mengubah kandungan editorial artikel.');
+        }
+        if ($actor->role === 'website_designer' && ! in_array((string) $post->status, ['draft', 'correction_required'], true)) {
+            abort(403, 'Website Designer hanya boleh mengubah draf atau artikel yang diminta pembetulan.');
+        }
         $this->assertFeaturedImageOwnership($input['featured_image_asset_id'] ?? null, $post->tenant_id, $post->website_id);
         $values = array_merge($this->content($input), ['last_changed_at' => now(), 'updated_at' => now(), 'version' => $expectedVersion + 1]);
         $changed = $this->connection->table('blog_posts')->where('id', $id)->where('version', $expectedVersion)->update($values);
@@ -59,6 +65,9 @@ final readonly class BlogPostService
     {
         $post = $this->post($id);
         $this->authorization->authorize($actor, (string) $post->tenant_id, (string) $post->website_id);
+        if ($actor->role === 'website_designer' && $action !== 'submit_review') {
+            abort(403, 'Website Designer hanya dibenarkan menghantar draf untuk semakan Clinic Owner.');
+        }
         if ($actor->role === 'super_admin' && $action !== 'archive') {
             abort(403, 'Super Admin hanya dibenarkan menjalankan tindakan pentadbiran archive pada artikel.');
         }

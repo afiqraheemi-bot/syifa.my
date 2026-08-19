@@ -6,6 +6,7 @@ namespace App\Support\Dashboard\Application\Booking;
 
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormServiceData;
+use App\Modules\Notification\Application\BookingWhatsAppSettingsService;
 use App\Modules\WebsiteBuilder\Application\ClinicBooking\ManageClinicBookingDateOverridesService;
 use App\Modules\WebsiteBuilder\Application\ClinicBooking\ManageClinicBookingScheduleService;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
@@ -23,6 +24,7 @@ final readonly class ClinicOwnerBookingOverviewPage
         private PublicBookingFormReaderInterface $bookingForm,
         private ManageClinicBookingScheduleService $bookingSchedule,
         private ManageClinicBookingDateOverridesService $dateOverrides,
+        private BookingWhatsAppSettingsService $whatsAppSettings,
     ) {}
 
     /** @param array<string, mixed> $query */
@@ -53,6 +55,7 @@ final readonly class ClinicOwnerBookingOverviewPage
                 actorTenantId: $context->tenantId,
             ),
         );
+        $whatsAppSettings = $this->whatsAppSettings->read($context->tenantId);
 
         return new DashboardPageView('TenantManagement/Booking/ClinicOwnerBookingOverview', [
             'navigation' => ClinicOwnerDashboardNavigation::items('bookings'),
@@ -74,6 +77,11 @@ final readonly class ClinicOwnerBookingOverviewPage
                 'dateOverrideStoreUrl' => route('dashboard.bookings.date-overrides.store'),
                 'dateOverrideDeleteUrlTemplate' => route('dashboard.bookings.date-overrides.destroy', ['localDate' => '__DATE__']),
                 'dateOverrides' => array_map(static fn ($override): array => $override->toArray(), $dateOverrides),
+            ],
+            'whatsAppSettings' => [
+                ...$whatsAppSettings,
+                'provider_configured' => $this->whatsAppSettings->providerConfigured(),
+                'updateUrl' => route('dashboard.bookings.whatsapp-settings.update'),
             ],
             'manualBooking' => [
                 'storeUrl' => route('dashboard.bookings.store'),

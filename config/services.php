@@ -37,4 +37,12 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'graph_version' => env('WHATSAPP_GRAPH_VERSION', 'v23.0'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'access_token' => env('WHATSAPP_ACCESS_TOKEN'),
+        'booking_template' => env('WHATSAPP_BOOKING_TEMPLATE', 'booking_received_clinic'),
+        'template_language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'ms'),
+    ],
+
 ];

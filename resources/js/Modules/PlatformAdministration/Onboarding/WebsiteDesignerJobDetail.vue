@@ -1487,7 +1487,7 @@ function completionEvidence(task) {
                     Review and publish
                 </a>
             </div>
-            <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                 <a
                     href="#website-setup"
                     class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 transition hover:border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700"
@@ -1511,6 +1511,12 @@ function completionEvidence(task) {
                     class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 transition hover:border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700"
                 >
                     View checkpoints
+                </a>
+                <a
+                    :href="websiteSetup.blogUrl"
+                    class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 transition hover:border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                >
+                    Clinic Blog
                 </a>
             </div>
         </nav>

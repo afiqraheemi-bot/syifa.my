@@ -73,7 +73,7 @@ final class BlogPostWorkflowTest extends TestCase
         }
     }
 
-    public function test_designer_requires_an_active_assignment_for_the_exact_website(): void
+    public function test_designer_can_prepare_and_submit_only_for_the_exact_active_assignment(): void
     {
         $this->entitlements->allow($this->uuid(1));
         $designer = new AuthorizationContext('platform_identity', $this->uuid(91), null, 'website_designer', 'Pereka', 'workforce', []);
@@ -81,10 +81,27 @@ final class BlogPostWorkflowTest extends TestCase
         $this->connection->table('website_designer_assignments')->insert(['id' => $this->uuid(82), 'onboarding_job_id' => $this->uuid(81), 'tenant_id' => $this->uuid(1), 'platform_identity_id' => $this->uuid(91), 'assignment_status' => 'active']);
 
         $id = $this->service->create($designer, $this->uuid(1), $this->uuid(11), $this->content());
-        self::assertNotSame('', $id);
+        $this->service->update($designer, $id, 1, $this->content(['title' => 'Draf oleh pereka']));
+        $this->service->transition($designer, $id, 2, 'submit_review');
+        self::assertSame('in_review', $this->connection->table('blog_posts')->where('id', $id)->value('status'));
+
         try {
-            $this->service->create($designer, $this->uuid(2), $this->uuid(22), $this->content(['slug' => 'tenant-lain']));
-            self::fail('Unassigned Website should be denied.');
+            $this->service->create($designer, $this->uuid(2), $this->uuid(22), $this->content(['slug' => 'website-lain']));
+            self::fail('An unassigned Website must be denied.');
+        } catch (HttpException $exception) {
+            self::assertSame(403, $exception->getStatusCode());
+        }
+
+        try {
+            $this->service->transition($designer, $id, 3, 'publish');
+            self::fail('Website Designer must not publish.');
+        } catch (HttpException $exception) {
+            self::assertSame(403, $exception->getStatusCode());
+        }
+
+        try {
+            $this->service->update($designer, $id, 3, $this->content(['title' => 'Edit semasa review']));
+            self::fail('Website Designer must not edit while Clinic Owner is reviewing.');
         } catch (HttpException $exception) {
             self::assertSame(403, $exception->getStatusCode());
         }
@@ -153,6 +170,20 @@ final class BlogPostWorkflowTest extends TestCase
         self::assertStringContainsString('Artikel dikemas kini', (string) $this->connection->table('blog_post_publications')->whereNull('withdrawn_at')->value('snapshot'));
     }
 
+    public function test_clinic_owner_can_request_correction_and_schedule_publication(): void
+    {
+        $this->entitlements->allow($this->uuid(1));
+        $owner = $this->owner($this->uuid(1));
+        $id = $this->service->create($owner, $this->uuid(1), $this->uuid(11), $this->content());
+        $this->service->transition($owner, $id, 1, 'submit_review');
+        $this->service->transition($owner, $id, 2, 'correction');
+        self::assertSame('correction_required', $this->connection->table('blog_posts')->where('id', $id)->value('status'));
+
+        $this->service->transition($owner, $id, 3, 'schedule', now()->addDay()->toIso8601String());
+        self::assertSame('scheduled', $this->connection->table('blog_posts')->where('id', $id)->value('status'));
+        self::assertNotNull($this->connection->table('blog_posts')->where('id', $id)->value('scheduled_at'));
+    }
+
     public function test_downgrade_keeps_posts_but_blocks_further_publication(): void
     {
         $this->entitlements->allow($this->uuid(1));
@@ -190,6 +221,12 @@ final class BlogPostWorkflowTest extends TestCase
         $id = $this->service->create($owner, $this->uuid(1), $this->uuid(11), $this->content());
         $admin = new AuthorizationContext('platform_identity', $this->uuid(92), null, 'super_admin', 'Admin', 'workforce', []);
 
+        try {
+            $this->service->update($admin, $id, 1, $this->content(['title' => 'Pentadbir mengubah kandungan']));
+            self::fail('Super Admin must not edit editorial content.');
+        } catch (HttpException $exception) {
+            self::assertSame(403, $exception->getStatusCode());
+        }
         try {
             $this->service->transition($admin, $id, 1, 'publish');
             self::fail('Super Admin must not publish editorial content.');
@@ -233,12 +270,16 @@ final class BlogPostWorkflowTest extends TestCase
 
     private function website(string $tenantId, string $websiteId): void
     {
-        $this->connection->table('websites')->insert(['id' => $websiteId, 'tenant_id' => $tenantId]);
+        $this->connection->table('websites')->insert([
+            'id' => $websiteId,
+            'tenant_id' => $tenantId,
+            'clinic_name' => 'Klinik '.(int) substr($tenantId, -1),
+        ]);
     }
 
     private function schema(): void
     {
-        Schema::create('websites', fn (Blueprint $t) => [$t->uuid('id')->primary(), $t->uuid('tenant_id')->unique()]);
+        Schema::create('websites', fn (Blueprint $t) => [$t->uuid('id')->primary(), $t->uuid('tenant_id')->unique(), $t->string('clinic_name')]);
         Schema::create('website_assets', fn (Blueprint $t) => [$t->uuid('id')->primary(), $t->uuid('tenant_id'), $t->uuid('website_id'), $t->string('status'), $t->string('mime_type'), $t->unsignedBigInteger('file_size_bytes'), $t->unsignedInteger('width')->nullable(), $t->unsignedInteger('height')->nullable()]);
         Schema::create('onboarding_jobs', fn (Blueprint $t) => [$t->uuid('id')->primary(), $t->uuid('tenant_id'), $t->uuid('website_id')]);
         Schema::create('website_designer_assignments', fn (Blueprint $t) => [$t->uuid('id')->primary(), $t->uuid('onboarding_job_id'), $t->uuid('tenant_id'), $t->uuid('platform_identity_id'), $t->string('assignment_status')]);

@@ -15,6 +15,12 @@ const props = defineProps({
     websites: { type: Array, default: () => [] },
     mediaUploadUrl: { type: String, default: null },
     assetUrlTemplate: { type: String, required: true },
+    clinicName: { type: String, default: null },
+    indexUrl: { type: String, required: true },
+    storeUrl: { type: String, required: true },
+    updateUrl: { type: String, default: null },
+    transitionUrl: { type: String, default: null },
+    canEdit: { type: Boolean, default: true },
 });
 const navigation = createDashboardNavigation(props.navigation);
 const bodyEditor = ref(null);
@@ -68,20 +74,28 @@ const transitionOptions = computed(() => {
             ? []
             : [{ action: 'archive', label: 'Arkibkan', destructive: true }];
     }
+    if (props.role === 'website_designer') {
+        return ['draft', 'correction_required'].includes(props.post.status)
+            ? [{ action: 'submit_review', label: 'Hantar kepada Clinic Owner untuk semakan' }]
+            : [];
+    }
 
     const options = {
         draft: [
             { action: 'submit_review', label: 'Hantar semakan' },
+            { action: 'schedule', label: 'Jadualkan penerbitan' },
             { action: 'publish', label: 'Terbitkan' },
             { action: 'archive', label: 'Arkibkan', destructive: true },
         ],
         correction_required: [
             { action: 'submit_review', label: 'Hantar semula untuk semakan' },
+            { action: 'schedule', label: 'Jadualkan penerbitan' },
             { action: 'publish', label: 'Terbitkan' },
             { action: 'archive', label: 'Arkibkan', destructive: true },
         ],
         in_review: [
             { action: 'correction', label: 'Minta pembetulan' },
+            { action: 'schedule', label: 'Jadualkan penerbitan' },
             { action: 'publish', label: 'Terbitkan' },
             { action: 'archive', label: 'Arkibkan', destructive: true },
         ],
@@ -113,6 +127,7 @@ function slugify() {
             .replace(/^-|-$/g, '');
 }
 function save() {
+    if (!props.canEdit) return;
     syncBody();
     if (!bodyEditor.value?.innerText.trim()) {
         bodyError.value = 'Tulis isi artikel sebelum menyimpan.';
@@ -121,7 +136,7 @@ function save() {
     }
 
     slugify();
-    editing.value ? form.patch(`/dashboard/blog/${props.post.id}`) : form.post('/dashboard/blog');
+    editing.value ? form.patch(props.updateUrl) : form.post(props.storeUrl);
 }
 function syncBody() {
     form.body = bodyEditor.value?.innerHTML ?? '';
@@ -144,7 +159,7 @@ onMounted(() => {
 function transition(action) {
     transitionForm.action = action;
     transitionForm.version = props.post.version;
-    transitionForm.post(`/dashboard/blog/${props.post.id}/transition`, {
+    transitionForm.post(props.transitionUrl, {
         preserveScroll: true,
     });
 }
@@ -166,15 +181,18 @@ function transition(action) {
                 <section class="rounded-2xl bg-white p-5 shadow-sm sm:p-7">
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                            <a href="/dashboard/blog" class="text-sm font-bold text-emerald-800"
+                            <a :href="indexUrl" class="text-sm font-bold text-emerald-800"
                                 >← Kembali ke Blog</a
                             >
                             <h1 class="mt-3 text-2xl font-black sm:text-3xl">
                                 {{ editing ? 'Edit artikel' : 'Tulis artikel baharu' }}
                             </h1>
                             <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                                Fokus pada maklumat yang berguna untuk pesakit. Tetapan carian akan
-                                dijana secara automatik.
+                                {{
+                                    clinicName
+                                        ? `Artikel ini khusus untuk ${clinicName} dalam assignment semasa.`
+                                        : 'Fokus pada maklumat yang berguna untuk pesakit. Tetapan carian akan dijana secara automatik.'
+                                }}
                             </p>
                         </div>
                         <p
@@ -193,21 +211,6 @@ function transition(action) {
                         </p>
                         <h2 class="mt-1 text-xl font-black">Maklumat artikel</h2>
                     </div>
-                    <label v-if="!editing && role === 'website_designer'" class="block font-bold"
-                        >Klinik<select
-                            v-model="form.website_id"
-                            required
-                            class="mt-2 w-full rounded-xl border border-slate-300 p-3"
-                        >
-                            <option
-                                v-for="website in websites"
-                                :key="website.id"
-                                :value="website.id"
-                            >
-                                {{ website.clinic_name }}
-                            </option>
-                        </select></label
-                    >
                     <label class="block font-bold"
                         >Apa tajuk artikel ini?<input
                             v-model="form.title"
@@ -409,7 +412,7 @@ function transition(action) {
                         :output-width="1200"
                         :output-width-options="[600, 1200, 1800, 2400]"
                         :max-bytes="5 * 1024 * 1024"
-                        :disabled="form.processing"
+                        :disabled="form.processing || !canEdit"
                     />
                     <p v-else class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
                         Pilih klinik dengan assignment aktif sebelum memuat naik imej.
@@ -494,11 +497,37 @@ function transition(action) {
                     </details>
                 </section>
                 <button
+                    v-if="canEdit"
                     class="w-full rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white"
                     :disabled="form.processing"
                 >
                     {{ editing ? 'Simpan perubahan' : 'Simpan draf' }}
                 </button>
+                <p
+                    v-else
+                    class="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-950"
+                >
+                    Artikel telah dihantar untuk semakan. Clinic Owner akan meminta pembetulan atau
+                    menerbitkannya.
+                </p>
+                <label
+                    v-if="
+                        role === 'clinic_owner' &&
+                        editing &&
+                        ['draft', 'in_review', 'correction_required'].includes(post.status)
+                    "
+                    class="block rounded-xl border border-slate-200 p-3 text-sm font-bold"
+                >
+                    Tarikh dan masa penerbitan
+                    <input
+                        v-model="transitionForm.scheduled_at"
+                        type="datetime-local"
+                        class="mt-2 w-full rounded-lg border border-slate-300 p-2"
+                    />
+                    <small class="mt-1 block font-normal text-slate-500"
+                        >Isi sebelum menekan “Jadualkan penerbitan”.</small
+                    >
+                </label>
                 <div v-if="transitionOptions.length" class="grid gap-2">
                     <button
                         v-for="option in transitionOptions"
@@ -520,11 +549,11 @@ function transition(action) {
                     Tiada tindakan status tersedia untuk artikel ini.
                 </p>
                 <p
-                    v-if="transitionForm.errors.action"
+                    v-if="transitionForm.errors.action || transitionForm.errors.scheduled_at"
                     role="alert"
                     class="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-800"
                 >
-                    {{ transitionForm.errors.action }}
+                    {{ transitionForm.errors.action || transitionForm.errors.scheduled_at }}
                 </p>
                 <p
                     v-if="Object.keys(form.errors).length"

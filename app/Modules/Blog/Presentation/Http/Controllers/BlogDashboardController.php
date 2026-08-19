@@ -26,14 +26,27 @@ final readonly class BlogDashboardController
     public function index(Request $request): Response
     {
         $actor = $this->actor($request);
+        abort_if($actor->role === 'website_designer', 403);
+
+        return $this->renderIndex($request, $actor);
+    }
+
+    public function designerIndex(Request $request, string $jobId): Response
+    {
+        $actor = $this->actor($request);
+
+        return $this->renderIndex($request, $actor, $this->assignedJob($actor, $jobId));
+    }
+
+    private function renderIndex(Request $request, AuthorizationContext $actor, ?stdClass $job = null): Response
+    {
         $query = $this->connection->table('blog_posts as post')->join('websites as website', 'website.id', '=', 'post.website_id');
         if ($actor->role === 'clinic_owner') {
             abort_if($actor->tenantId === null, 403);
             $query->where('post.tenant_id', $actor->tenantId);
-        } elseif ($actor->role === 'website_designer') {
-            $query->join('onboarding_jobs as job', 'job.website_id', '=', 'post.website_id')
-                ->join('website_designer_assignments as assignment', 'assignment.onboarding_job_id', '=', 'job.id')
-                ->where('assignment.platform_identity_id', $actor->identityId)->where('assignment.assignment_status', 'active');
+        } elseif ($job !== null) {
+            $query->where('post.tenant_id', (string) $job->tenant_id)
+                ->where('post.website_id', (string) $job->website_id);
         }
         if ($search = trim((string) $request->query('search'))) {
             $query->where(fn ($q) => $q->where('post.title', 'ilike', "%{$search}%")->orWhere('post.excerpt', 'ilike', "%{$search}%"));
@@ -45,74 +58,100 @@ final readonly class BlogDashboardController
             $query->where('post.category', $category);
         }
         $posts = $query->select('post.*', 'website.clinic_name')->orderByDesc('post.last_changed_at')->paginate(15)->withQueryString();
-        $tenantId = $actor->tenantId;
+        $tenantId = $job === null ? $actor->tenantId : (string) $job->tenant_id;
         $entitled = $actor->role === 'super_admin' || ($tenantId !== null && $this->authorization->entitled($tenantId));
-        if ($actor->role === 'website_designer') {
-            $assignedTenants = $this->connection->table('website_designer_assignments')->where('platform_identity_id', $actor->identityId)
-                ->where('assignment_status', 'active')->distinct()->pluck('tenant_id');
-            $entitled = $assignedTenants->contains(fn (mixed $id): bool => $this->authorization->entitled((string) $id));
-        }
+        $urls = $this->urls($job);
 
         return Inertia::render('Blog/BlogIndex', [
-            ...$this->shell($actor, false),
+            ...$this->shell($actor, false, $job),
             'posts' => $posts,
             'entitled' => $entitled,
             'filters' => $request->only(['search', 'status', 'category']),
             'summary' => collect($posts->items())->countBy('status'),
             'role' => $actor->role,
+            'clinicName' => $job?->clinic_name,
+            'indexUrl' => $urls['index'],
+            'createUrl' => $urls['create'],
+            'showUpgrade' => $actor->role === 'clinic_owner' && ! $entitled,
         ]);
     }
 
     public function editor(Request $request, ?string $postId = null): Response
     {
         $actor = $this->actor($request);
+        abort_if($actor->role === 'website_designer', 403);
+
+        return $this->renderEditor($actor, $postId);
+    }
+
+    public function designerEditor(Request $request, string $jobId, ?string $postId = null): Response
+    {
+        $actor = $this->actor($request);
+
+        return $this->renderEditor($actor, $postId, $this->assignedJob($actor, $jobId));
+    }
+
+    private function renderEditor(AuthorizationContext $actor, ?string $postId, ?stdClass $job = null): Response
+    {
         $post = $postId === null ? null : $this->connection->table('blog_posts')->where('id', $postId)->first();
+        if ($job !== null && $post !== null) {
+            $this->assertPostBelongsToJob($post, $job);
+        }
         if ($post !== null) {
             $this->authorization->authorize($actor, (string) $post->tenant_id, (string) $post->website_id);
+        } elseif ($job !== null) {
+            abort_unless($this->authorization->entitled((string) $job->tenant_id), 403, 'Blog memerlukan entitlement Syifa Pro yang aktif.');
+        } elseif ($actor->role === 'clinic_owner') {
+            abort_if($actor->tenantId === null || ! $this->authorization->entitled($actor->tenantId), 403, 'Blog memerlukan entitlement Syifa Pro yang aktif.');
         }
 
-        $websites = [];
-        if ($post === null && $actor->role === 'website_designer') {
-            $websites = $this->connection->table('websites as website')
-                ->join('onboarding_jobs as job', 'job.website_id', '=', 'website.id')
-                ->join('website_designer_assignments as assignment', 'assignment.onboarding_job_id', '=', 'job.id')
-                ->where('assignment.platform_identity_id', $actor->identityId)
-                ->where('assignment.assignment_status', 'active')
-                ->get(['website.id', 'website.tenant_id', 'website.clinic_name', 'job.id as onboarding_job_id'])
-                ->map(static fn (object $website): array => [
-                    'id' => (string) $website->id,
-                    'tenant_id' => (string) $website->tenant_id,
-                    'clinic_name' => (string) $website->clinic_name,
-                    'upload_url' => route('website-designer.website-assets.store', (string) $website->onboarding_job_id),
-                ])
-                ->values()
-                ->all();
-        }
-
+        $websites = $job === null ? [] : [[
+            'id' => (string) $job->website_id,
+            'tenant_id' => (string) $job->tenant_id,
+            'clinic_name' => (string) $job->clinic_name,
+            'upload_url' => route('website-designer.website-assets.store', (string) $job->id),
+        ]];
         $mediaUploadUrl = $actor->role === 'clinic_owner'
             ? route('clinic-owner.website-assets.store')
-            : $this->designerUploadUrl($actor, $post);
+            : ($job === null ? null : route('website-designer.website-assets.store', (string) $job->id));
+        $urls = $this->urls($job, $postId);
 
         return Inertia::render('Blog/BlogEditor', [
-            ...$this->shell($actor, true),
+            ...$this->shell($actor, true, $job),
             'post' => $post,
             'role' => $actor->role,
             'websites' => $websites,
             'mediaUploadUrl' => $mediaUploadUrl,
             'assetUrlTemplate' => route('public-website.assets.show', '__ASSET_ID__'),
+            'clinicName' => $job?->clinic_name,
+            'indexUrl' => $urls['index'],
+            'storeUrl' => $urls['store'],
+            'updateUrl' => $urls['update'],
+            'transitionUrl' => $urls['transition'],
+            'canEdit' => $actor->role === 'clinic_owner'
+                || ($actor->role === 'website_designer' && ($post === null || in_array((string) $post->status, ['draft', 'correction_required'], true))),
         ]);
     }
 
     public function store(Request $request, BlogPostService $service): RedirectResponse
     {
         $actor = $this->actor($request);
-        $website = $actor->role === 'website_designer'
-            ? $this->connection->table('websites')->where('id', (string) $request->input('website_id'))->first(['id', 'tenant_id'])
-            : $this->connection->table('websites')->where('tenant_id', $actor->tenantId)->first(['id', 'tenant_id']);
+        abort_if($actor->role === 'website_designer', 403);
+        $website = $this->connection->table('websites')->where('tenant_id', $actor->tenantId)->first(['id', 'tenant_id']);
         abort_if($website === null, 404);
         $id = $service->create($actor, (string) $website->tenant_id, (string) $website->id, $this->validate($request));
 
         return redirect()->route('dashboard.blog.edit', $id)->with('success', 'Draf artikel disimpan.');
+    }
+
+    public function designerStore(Request $request, string $jobId, BlogPostService $service): RedirectResponse
+    {
+        $actor = $this->actor($request);
+        $job = $this->assignedJob($actor, $jobId);
+        $id = $service->create($actor, (string) $job->tenant_id, (string) $job->website_id, $this->validate($request));
+
+        return redirect()->route('dashboard.onboarding.blog.edit', ['jobId' => $jobId, 'postId' => $id])
+            ->with('success', 'Draf artikel disimpan.');
     }
 
     public function update(Request $request, string $postId, BlogPostService $service): RedirectResponse
@@ -123,12 +162,37 @@ final readonly class BlogDashboardController
         return back()->with('success', 'Artikel dikemas kini.');
     }
 
+    public function designerUpdate(Request $request, string $jobId, string $postId, BlogPostService $service): RedirectResponse
+    {
+        $actor = $this->actor($request);
+        $job = $this->assignedJob($actor, $jobId);
+        $this->assertPostBelongsToJob($this->post($postId), $job);
+        $data = $this->validate($request);
+        $service->update($actor, $postId, (int) $request->validate(['version' => ['required', 'integer', 'min:1']])['version'], $data);
+
+        return back()->with('success', 'Artikel dikemas kini.');
+    }
+
     public function transition(Request $request, string $postId, BlogPostService $service): RedirectResponse
     {
         $data = $request->validate(['version' => ['required', 'integer', 'min:1'], 'action' => ['required', Rule::in(['submit_review', 'correction', 'publish', 'schedule', 'archive'])], 'scheduled_at' => ['nullable', 'date']]);
         $service->transition($this->actor($request), $postId, (int) $data['version'], (string) $data['action'], $data['scheduled_at'] ?? null);
 
         return back()->with('success', 'Status artikel dikemas kini.');
+    }
+
+    public function designerTransition(Request $request, string $jobId, string $postId, BlogPostService $service): RedirectResponse
+    {
+        $actor = $this->actor($request);
+        $job = $this->assignedJob($actor, $jobId);
+        $this->assertPostBelongsToJob($this->post($postId), $job);
+        $data = $request->validate([
+            'version' => ['required', 'integer', 'min:1'],
+            'action' => ['required', Rule::in(['submit_review'])],
+        ]);
+        $service->transition($actor, $postId, (int) $data['version'], (string) $data['action']);
+
+        return back()->with('success', 'Draf dihantar kepada Clinic Owner untuk semakan.');
     }
 
     /** @return array<string, mixed> */
@@ -165,18 +229,24 @@ final readonly class BlogDashboardController
     }
 
     /** @return array<string, mixed> */
-    private function shell(AuthorizationContext $actor, bool $editor): array
+    private function shell(AuthorizationContext $actor, bool $editor, ?stdClass $job = null): array
     {
         $navigation = match ($actor->role) {
             'clinic_owner' => ClinicOwnerDashboardNavigation::items('blog'),
-            'website_designer' => WebsiteDesignerDashboardNavigation::items('blog'),
+            'website_designer' => WebsiteDesignerDashboardNavigation::items('onboarding'),
             'super_admin' => $this->superAdminNavigation(),
             default => [],
         };
 
-        $breadcrumbs = [
-            ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
-            ['key' => 'blog', 'label' => 'Blog', 'href' => $editor ? route('dashboard.blog') : null],
+        $breadcrumbs = [['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')]];
+        if ($job !== null) {
+            $breadcrumbs[] = ['key' => 'onboarding', 'label' => 'Onboarding', 'href' => route('dashboard.onboarding')];
+            $breadcrumbs[] = ['key' => 'job', 'label' => (string) $job->clinic_name, 'href' => route('dashboard.onboarding.show', (string) $job->id)];
+        }
+        $breadcrumbs[] = [
+            'key' => 'blog',
+            'label' => 'Blog',
+            'href' => $editor ? $this->urls($job)['index'] : null,
         ];
         if ($editor) {
             $breadcrumbs[] = ['key' => 'editor', 'label' => 'Editor artikel'];
@@ -227,19 +297,60 @@ final readonly class BlogDashboardController
         ));
     }
 
-    private function designerUploadUrl(AuthorizationContext $actor, ?stdClass $post): ?string
+    /** @return array{index: string, create: string, store: string, update: ?string, transition: ?string} */
+    private function urls(?stdClass $job = null, ?string $postId = null): array
     {
-        if ($actor->role !== 'website_designer' || $post === null) {
-            return null;
+        if ($job !== null) {
+            $parameters = ['jobId' => (string) $job->id];
+
+            return [
+                'index' => route('dashboard.onboarding.blog', $parameters),
+                'create' => route('dashboard.onboarding.blog.create', $parameters),
+                'store' => route('dashboard.onboarding.blog.store', $parameters),
+                'update' => $postId === null ? null : route('dashboard.onboarding.blog.update', [...$parameters, 'postId' => $postId]),
+                'transition' => $postId === null ? null : route('dashboard.onboarding.blog.transition', [...$parameters, 'postId' => $postId]),
+            ];
         }
 
-        $jobId = $this->connection->table('onboarding_jobs as job')
-            ->join('website_designer_assignments as assignment', 'assignment.onboarding_job_id', '=', 'job.id')
-            ->where('job.website_id', (string) $post->website_id)
+        return [
+            'index' => route('dashboard.blog'),
+            'create' => route('dashboard.blog.create'),
+            'store' => route('dashboard.blog.store'),
+            'update' => $postId === null ? null : route('dashboard.blog.update', $postId),
+            'transition' => $postId === null ? null : route('dashboard.blog.transition', $postId),
+        ];
+    }
+
+    private function assignedJob(AuthorizationContext $actor, string $jobId): stdClass
+    {
+        $job = $this->connection->table('onboarding_jobs as job')
+            ->join('website_designer_assignments as assignment', function ($join): void {
+                $join->on('assignment.onboarding_job_id', '=', 'job.id')->on('assignment.tenant_id', '=', 'job.tenant_id');
+            })
+            ->join('websites as website', 'website.id', '=', 'job.website_id')
+            ->where('job.id', $jobId)
             ->where('assignment.platform_identity_id', $actor->identityId)
             ->where('assignment.assignment_status', 'active')
-            ->value('job.id');
+            ->first(['job.id', 'job.tenant_id', 'job.website_id', 'website.clinic_name']);
+        abort_if($job === null, 404);
 
-        return is_string($jobId) ? route('website-designer.website-assets.store', $jobId) : null;
+        return $job;
+    }
+
+    private function post(string $postId): stdClass
+    {
+        $post = $this->connection->table('blog_posts')->where('id', $postId)->first();
+        abort_if($post === null, 404);
+
+        return $post;
+    }
+
+    private function assertPostBelongsToJob(stdClass $post, stdClass $job): void
+    {
+        abort_unless(
+            hash_equals((string) $job->tenant_id, (string) $post->tenant_id)
+            && hash_equals((string) $job->website_id, (string) $post->website_id),
+            404,
+        );
     }
 }

@@ -166,6 +166,10 @@ final readonly class WebsiteDesignerJobDetailPage
                     'dashboard.onboarding.preview',
                     (string) $job->data['id'],
                 ),
+                'blogUrl' => route(
+                    'dashboard.onboarding.blog',
+                    (string) $job->data['id'],
+                ),
                 'publishUrl' => route(
                     'dashboard.onboarding.publish',
                     (string) $job->data['id'],

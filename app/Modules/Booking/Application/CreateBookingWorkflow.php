@@ -81,12 +81,14 @@ final readonly class CreateBookingWorkflow
             return new BookingSubmissionResult($booking->id->value, $booking->reference->value, $booking->status()->value, $booking->createdAt);
         });
 
-        $this->notifications?->bookingReceived(
-            $command->tenantId,
-            $result->bookingId,
-            $result->reference,
-            $command->email,
-        );
+        if ($command->source === BookingSource::Website) {
+            $this->notifications?->bookingReceived(
+                $command->tenantId,
+                $result->bookingId,
+                $result->reference,
+                $command->email,
+            );
+        }
 
         return $result;
     }

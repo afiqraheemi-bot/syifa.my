@@ -38,6 +38,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDetail
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingScheduleController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingWhatsAppSettingsController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBusinessHoursController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerContactSettingsController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerDraftPreviewController;
@@ -144,17 +145,17 @@ Route::get('/dashboard', AuthenticatedDashboardController::class)
     ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
     ->name('dashboard');
 Route::get('/dashboard/blog', [BlogDashboardController::class, 'index'])
-    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')->name('dashboard.blog');
+    ->middleware('authorize.context:authenticated,clinic_owner,super_admin')->name('dashboard.blog');
 Route::get('/dashboard/blog/create', [BlogDashboardController::class, 'editor'])
-    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')->name('dashboard.blog.create');
+    ->middleware('authorize.context:authenticated,clinic_owner,super_admin')->name('dashboard.blog.create');
 Route::post('/dashboard/blog', [BlogDashboardController::class, 'store'])
-    ->middleware('authorize.context:authenticated,clinic_owner,website_designer')->name('dashboard.blog.store');
+    ->middleware('authorize.context:authenticated,clinic_owner')->name('dashboard.blog.store');
 Route::get('/dashboard/blog/{postId}', [BlogDashboardController::class, 'editor'])->whereUuid('postId')
-    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')->name('dashboard.blog.edit');
+    ->middleware('authorize.context:authenticated,clinic_owner,super_admin')->name('dashboard.blog.edit');
 Route::patch('/dashboard/blog/{postId}', [BlogDashboardController::class, 'update'])->whereUuid('postId')
-    ->middleware('authorize.context:authenticated,clinic_owner,website_designer')->name('dashboard.blog.update');
+    ->middleware('authorize.context:authenticated,clinic_owner')->name('dashboard.blog.update');
 Route::post('/dashboard/blog/{postId}/transition', [BlogDashboardController::class, 'transition'])->whereUuid('postId')
-    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')->name('dashboard.blog.transition');
+    ->middleware('authorize.context:authenticated,clinic_owner,super_admin')->name('dashboard.blog.transition');
 Route::get('/api/v1/onboarding-jobs/{jobId}/launch-readiness', LaunchReadinessController::class)
     ->whereUuid('jobId')
     ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
@@ -166,6 +167,24 @@ Route::match(['get', 'patch'], '/dashboard/onboarding/{jobId}', WebsiteDesignerJ
     ->whereUuid('jobId')
     ->middleware('authorize.context:platform_identity,website_designer')
     ->name('dashboard.onboarding.show');
+Route::get('/dashboard/onboarding/{jobId}/blog', [BlogDashboardController::class, 'designerIndex'])
+    ->whereUuid('jobId')->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.blog');
+Route::get('/dashboard/onboarding/{jobId}/blog/create', [BlogDashboardController::class, 'designerEditor'])
+    ->whereUuid('jobId')->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.blog.create');
+Route::post('/dashboard/onboarding/{jobId}/blog', [BlogDashboardController::class, 'designerStore'])
+    ->whereUuid('jobId')->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.blog.store');
+Route::get('/dashboard/onboarding/{jobId}/blog/{postId}', [BlogDashboardController::class, 'designerEditor'])
+    ->whereUuid(['jobId', 'postId'])->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.blog.edit');
+Route::patch('/dashboard/onboarding/{jobId}/blog/{postId}', [BlogDashboardController::class, 'designerUpdate'])
+    ->whereUuid(['jobId', 'postId'])->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.blog.update');
+Route::post('/dashboard/onboarding/{jobId}/blog/{postId}/transition', [BlogDashboardController::class, 'designerTransition'])
+    ->whereUuid(['jobId', 'postId'])->middleware('authorize.context:platform_identity,website_designer')
+    ->name('dashboard.onboarding.blog.transition');
 Route::patch('/dashboard/onboarding/{jobId}/tasks/{taskId}', OnboardingTaskController::class)
     ->whereUuid(['jobId', 'taskId'])
     ->middleware('authorize.context:platform_identity,website_designer')
@@ -459,6 +478,9 @@ Route::get('/dashboard/bookings', ClinicOwnerBookingOverviewController::class)
 Route::patch('/dashboard/bookings/schedule', ClinicOwnerBookingScheduleController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.bookings.schedule.update');
+Route::patch('/dashboard/bookings/whatsapp-settings', ClinicOwnerBookingWhatsAppSettingsController::class)
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.bookings.whatsapp-settings.update');
 Route::patch('/dashboard/bookings/business-hours', ClinicOwnerBusinessHoursController::class)
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.bookings.business-hours.update');

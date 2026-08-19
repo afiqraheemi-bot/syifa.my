@@ -9,6 +9,7 @@ import {
     createDashboardNavigation,
     DashboardShell,
 } from '../../../Shared/Dashboard/index.js';
+import BookingWhatsAppSettingsPanel from './BookingWhatsAppSettingsPanel.vue';
 
 const props = defineProps({
     navigation: { type: Array, required: true },
@@ -23,6 +24,7 @@ const props = defineProps({
     csrfToken: { type: String, required: true },
     manualBooking: { type: Object, required: true },
     bookingSchedule: { type: Object, required: true },
+    whatsAppSettings: { type: Object, required: true },
 });
 
 const navigation = createDashboardNavigation(props.navigation);
@@ -518,6 +520,8 @@ const deleteDateOverride = (override) => {
                         normal operating hours.
                     </p>
                 </div>
+
+                <BookingWhatsAppSettingsPanel :settings="whatsAppSettings" />
 
                 <form class="mt-6 space-y-6" novalidate @submit.prevent="saveBookingSchedule">
                     <div

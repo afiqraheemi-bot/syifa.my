@@ -7,6 +7,7 @@ namespace App\Modules\Notification\Infrastructure\Integration;
 use App\Modules\Notification\Application\Commands\PrepareNotificationCommand;
 use App\Modules\Notification\Application\PrepareNotificationService;
 use App\Modules\Notification\Contracts\TransactionalNotificationGatewayInterface;
+use App\Modules\Notification\Infrastructure\Delivery\BookingWhatsAppDispatcher;
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Psr\Log\LoggerInterface;
@@ -17,6 +18,7 @@ final readonly class TransactionalNotificationGateway implements TransactionalNo
     public function __construct(
         private ConnectionInterface $connection,
         private PrepareNotificationService $notifications,
+        private BookingWhatsAppDispatcher $whatsApp,
         private LoggerInterface $logger,
     ) {}
 
@@ -27,6 +29,7 @@ final readonly class TransactionalNotificationGateway implements TransactionalNo
         ?string $patientEmail,
     ): void {
         try {
+            $this->whatsApp->dispatch($tenantId, $bookingId);
             $owner = $this->connection->table('clinic_owner_authorities')
                 ->where('tenant_id', $tenantId)
                 ->where('authority_status', 'active')
