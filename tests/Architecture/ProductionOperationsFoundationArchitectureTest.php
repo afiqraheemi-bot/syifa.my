@@ -63,6 +63,41 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
         }
     }
 
+    public function test_production_deployment_is_gated_by_the_complete_ci_pipeline(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $workflow = $this->source($root.'/.github/workflows/ci.yml');
+
+        self::assertFileDoesNotExist($root.'/.github/workflows/deploy.yml');
+        self::assertStringContainsString('name: Production release gate', $workflow);
+        self::assertStringContainsString('test -f .github/RELEASE_FREEZE.md', $workflow);
+        self::assertStringContainsString('needs: [backend, frontend, release-gate]', $workflow);
+        self::assertStringContainsString("needs.release-gate.outputs.deploy_enabled == 'true'", $workflow);
+        self::assertStringContainsString('environment: production', $workflow);
+        self::assertStringContainsString('remote_commit=$(printf', $workflow);
+        self::assertStringContainsString('https://api.github.com/repos/${REPOSITORY}/git/ref/heads/main', $workflow);
+        self::assertStringNotContainsString('x-access-token', $workflow);
+        self::assertStringContainsString('Verify deployed commit', $workflow);
+        self::assertStringContainsString('Verify production health', $workflow);
+        self::assertStringContainsString('Verify official production catalogue', $workflow);
+    }
+
+    public function test_release_freeze_and_restore_drill_are_repository_governed(): void
+    {
+        $root = dirname(__DIR__, 2);
+
+        self::assertFileExists($root.'/.github/RELEASE_FREEZE.md');
+        self::assertFileExists($root.'/.github/CODEOWNERS');
+        self::assertFileExists($root.'/.github/pull_request_template.md');
+        self::assertFileExists($root.'/docs/operations-production-release-gate.md');
+
+        $restore = $this->source($root.'/scripts/verify-backup-restore.sh');
+        self::assertStringContainsString('SYIFA_ALLOW_RESTORE_DRILL', $restore);
+        self::assertStringContainsString('^syifa_restore_drill_', $restore);
+        self::assertStringContainsString('pg_restore', $restore);
+        self::assertStringContainsString('trap cleanup EXIT', $restore);
+    }
+
     public function test_operations_foundation_has_no_business_or_module_dependency(): void
     {
         foreach ($this->phpFilesIn(

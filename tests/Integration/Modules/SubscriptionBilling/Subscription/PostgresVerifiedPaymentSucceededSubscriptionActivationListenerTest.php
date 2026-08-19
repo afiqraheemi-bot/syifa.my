@@ -100,6 +100,23 @@ final class PostgresVerifiedPaymentSucceededSubscriptionActivationListenerTest e
         self::assertSame((string) $application->id, $dispatched[0]);
     }
 
+    public function test_duplicate_delivery_reuses_one_activation_application_and_safe_job_identity(): void
+    {
+        $paymentId = $this->uuid(1);
+        $tenantId = $this->uuid(2);
+        $this->connection()->table('payments')->insert(['id' => $paymentId, 'tenant_id' => $tenantId]);
+
+        $dispatched = [];
+        $listener = $this->listener($dispatched);
+        $event = $this->event($paymentId);
+        $listener->handle($event);
+        $listener->handle($event);
+
+        self::assertSame(1, $this->connection()->table('subscription_activation_applications')->count());
+        self::assertCount(2, $dispatched);
+        self::assertSame($dispatched[0], $dispatched[1]);
+    }
+
     public function test_skips_registration_for_a_renewal_payment(): void
     {
         $paymentId = $this->uuid(1);

@@ -1,0 +1,6 @@
+* @afiqraheemi-bot
+
+/.github/workflows/ @afiqraheemi-bot
+/database/migrations/ @afiqraheemi-bot
+/app/Modules/SubscriptionBilling/ @afiqraheemi-bot
+/app/Modules/PlatformAdministration/ @afiqraheemi-bot

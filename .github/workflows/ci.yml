@@ -1,9 +1,15 @@
 name: CI
 
+# Production is a stage of this pipeline, not an independent push workflow.
+# A failed backend or frontend check must make deployment unreachable.
+
 on:
     push:
         branches: [main]
     pull_request:
+
+permissions:
+    contents: read
 
 jobs:
     backend:
@@ -153,3 +159,87 @@ jobs:
 
             - name: Vite build
               run: npx vite build --mode production
+
+    release-gate:
+        name: Production release gate
+        needs: [backend, frontend]
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        outputs:
+            deploy_enabled: ${{ steps.freeze.outputs.deploy_enabled }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - id: freeze
+              name: Enforce release freeze
+              run: |
+                  set -euo pipefail
+                  if test -f .github/RELEASE_FREEZE.md; then
+                      echo "deploy_enabled=false" >> "$GITHUB_OUTPUT"
+                      echo "## Production release is frozen" >> "$GITHUB_STEP_SUMMARY"
+                      cat .github/RELEASE_FREEZE.md >> "$GITHUB_STEP_SUMMARY"
+                  else
+                      echo "deploy_enabled=true" >> "$GITHUB_OUTPUT"
+                  fi
+
+    deploy:
+        name: Deploy to syifa.my
+        needs: [backend, frontend, release-gate]
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.release-gate.outputs.deploy_enabled == 'true'
+        runs-on: [self-hosted, syifa]
+        timeout-minutes: 20
+        environment: production
+        concurrency:
+            group: syifa-production
+            cancel-in-progress: false
+
+        steps:
+            - name: Preflight production runner
+              run: |
+                  set -euo pipefail
+                  test -d /var/www/syifa/.git
+                  test -x /usr/local/bin/syifa-deploy
+                  test -x /usr/bin/php8.5
+                  command -v curl >/dev/null
+                  command -v jq >/dev/null
+                  test "$(git -c safe.directory=/var/www/syifa -C /var/www/syifa rev-parse --is-inside-work-tree)" = "true"
+
+            - name: Deploy tested commit
+              env:
+                  SYIFA_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  EXPECTED_COMMIT: ${{ github.sha }}
+                  REPOSITORY: ${{ github.repository }}
+              run: |
+                  set -euo pipefail
+                  test -n "$SYIFA_GIT_TOKEN"
+                  remote_commit=$(printf 'header = "Authorization: Bearer %s"\n' "$SYIFA_GIT_TOKEN" | \
+                      curl --fail --silent --show-error --config - \
+                      --header 'Accept: application/vnd.github+json' \
+                      "https://api.github.com/repos/${REPOSITORY}/git/ref/heads/main" | \
+                      jq --raw-output '.object.sha')
+                  test "$remote_commit" = "$EXPECTED_COMMIT"
+                  sudo --preserve-env=SYIFA_GIT_TOKEN,EXPECTED_COMMIT /usr/local/bin/syifa-deploy
+
+            - name: Verify deployed commit
+              env:
+                  EXPECTED_COMMIT: ${{ github.sha }}
+              run: |
+                  set -euo pipefail
+                  deployed_commit=$(git -c safe.directory=/var/www/syifa \
+                      -C /var/www/syifa rev-parse HEAD)
+                  test "$deployed_commit" = "$EXPECTED_COMMIT"
+
+            - name: Verify production health
+              run: |
+                  set -euo pipefail
+                  curl --fail --silent --show-error \
+                      --retry 5 --retry-all-errors --retry-delay 2 \
+                      --max-time 15 https://syifa.my/operations/health >/dev/null
+                  curl --fail --silent --show-error \
+                      --retry 5 --retry-all-errors --retry-delay 2 \
+                      --max-time 15 https://syifa.my/ >/dev/null
+
+            - name: Verify official production catalogue
+              run: |
+                  set -euo pipefail
+                  /usr/bin/php8.5 /var/www/syifa/scripts/verify-production-catalogue.php https://syifa.my

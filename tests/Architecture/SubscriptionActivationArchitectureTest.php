@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Architecture;
 
+use App\Modules\SubscriptionBilling\Infrastructure\Subscription\Jobs\ActivateSubscriptionJob;
 use PHPUnit\Framework\TestCase;
 
 final class SubscriptionActivationArchitectureTest extends TestCase
@@ -49,5 +50,15 @@ final class SubscriptionActivationArchitectureTest extends TestCase
         self::assertIsString($service);
         self::assertStringNotContainsString('Dispatcher', $service);
         self::assertStringNotContainsString('publish(', $service);
+    }
+
+    public function test_activation_job_retries_only_after_the_database_claim_lease_expires(): void
+    {
+        $job = new ActivateSubscriptionJob('00000000-0000-4000-8000-000000000001');
+
+        self::assertSame(5, $job->tries);
+        self::assertLessThan(120, $job->timeout);
+        self::assertSame([130, 300, 900, 1800], $job->backoff);
+        self::assertGreaterThan(120, $job->backoff[0]);
     }
 }
