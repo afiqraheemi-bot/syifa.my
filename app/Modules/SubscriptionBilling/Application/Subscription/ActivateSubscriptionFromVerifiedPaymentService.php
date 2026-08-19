@@ -181,15 +181,17 @@ final readonly class ActivateSubscriptionFromVerifiedPaymentService
     public function exhaust(string $applicationId, ?DateTimeImmutable $now = null): void
     {
         $now ??= new DateTimeImmutable;
-        $application = $this->applications->find($applicationId);
-        if ($application === null || $this->isTerminal($application->status)) {
-            return;
-        }
+        $this->transactions->run(function () use ($applicationId, $now): void {
+            $application = $this->applications->find($applicationId);
+            if ($application === null || $this->isTerminal($application->status)) {
+                return;
+            }
 
-        if ($this->applications->markExhausted($applicationId, 'activation_retries_exhausted', $now)) {
-            $this->reconciliations->open($applicationId, $application->paymentId, $application->tenantId, 'activation_retries_exhausted', $now);
-            $this->audit->record('subscription.activation.exhausted', $applicationId, $application->subscriptionId, $application->paymentId, $application->tenantId, SubscriptionActivationApplicationResultCode::Exhausted, $now);
-        }
+            if ($this->applications->markExhausted($applicationId, 'activation_retries_exhausted', $now)) {
+                $this->reconciliations->open($applicationId, $application->paymentId, $application->tenantId, 'activation_retries_exhausted', $now);
+                $this->audit->record('subscription.activation.exhausted', $applicationId, $application->subscriptionId, $application->paymentId, $application->tenantId, SubscriptionActivationApplicationResultCode::Exhausted, $now);
+            }
+        });
     }
 
     private function isTerminal(SubscriptionActivationApplicationStatus $status): bool

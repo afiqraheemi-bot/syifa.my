@@ -315,6 +315,24 @@ final class PostgresSubscriptionActivationTransactionTest extends TestCase
         self::assertSame(1, $this->connection()->table('subscription_activation_test_audits')->count());
     }
 
+    public function test_exhaust_rolls_back_status_reconciliation_and_audit_when_audit_recording_fails(): void
+    {
+        [$service, $applicationId] = $this->service(true);
+
+        try {
+            $service->exhaust($applicationId, $this->time()->modify('+10 minutes'));
+            self::fail('Expected audit failure.');
+        } catch (RuntimeException $exception) {
+            self::assertSame('forced audit failure', $exception->getMessage());
+        }
+
+        self::assertSame('pending', $this->connection()->table('subscription_activation_applications')->value('status'));
+        self::assertNull($this->connection()->table('subscription_activation_applications')->value('result_code'));
+        self::assertNull($this->connection()->table('subscription_activation_applications')->value('safe_failure_label'));
+        self::assertSame(0, $this->connection()->table('subscription_activation_reconciliation_cases')->count());
+        self::assertSame(0, $this->connection()->table('subscription_activation_test_audits')->count());
+    }
+
     /** @return array{ActivateSubscriptionFromVerifiedPaymentService,string} */
     private function service(bool $failAudit, ?string $offerTenantId = null, ?string $clinicTenantId = null): array
     {
