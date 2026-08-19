@@ -23,7 +23,7 @@ return new class extends Migration
         ];
         $activeCapabilities = DB::table('commercial_catalogue_capabilities')
             ->where('status', 'active')
-            ->pluck('capability_key')
+            ->pluck('key')
             ->map(static fn (mixed $key): string => (string) $key)
             ->all();
 
