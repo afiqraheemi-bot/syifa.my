@@ -81,7 +81,23 @@ final readonly class TenantLifecycleTimestamps
         );
     }
 
+    public function atOrAfterLatest(DateTimeImmutable $candidate): DateTimeImmutable
+    {
+        $latest = $this->latest();
+
+        return $candidate < $latest ? $latest->modify('+1 microsecond') : $candidate;
+    }
+
     private function assertChronological(DateTimeImmutable $occurredAt): void
+    {
+        if ($occurredAt < $this->latest()) {
+            throw new InvalidTenantLifecycleTransitionException(
+                'A Tenant lifecycle transition cannot occur before its previous transition.',
+            );
+        }
+    }
+
+    private function latest(): DateTimeImmutable
     {
         $latest = $this->provisionedAt;
 
@@ -97,10 +113,6 @@ final readonly class TenantLifecycleTimestamps
             }
         }
 
-        if ($occurredAt < $latest) {
-            throw new InvalidTenantLifecycleTransitionException(
-                'A Tenant lifecycle transition cannot occur before its previous transition.',
-            );
-        }
+        return $latest;
     }
 }

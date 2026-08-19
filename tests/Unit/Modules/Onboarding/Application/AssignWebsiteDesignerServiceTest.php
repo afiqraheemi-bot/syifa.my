@@ -186,6 +186,42 @@ final class AssignWebsiteDesignerServiceTest extends TestCase
         self::assertNotSame($previousAssignment->id->value, $assignmentId);
     }
 
+    public function test_it_clamps_an_out_of_order_occurred_at_instead_of_throwing(): void
+    {
+        // Reproduces a real incident: a Super Admin assigning a Website
+        // Designer immediately after approving a registration (the realistic
+        // fast-succession sequence a real admin follows) could pass an
+        // `occurredAt` that raced ahead of, or landed before, the timestamp
+        // provisioning had already recorded on the job — the domain
+        // correctly rejects any out-of-order lifecycle timestamp, but this
+        // service used to pass the command's raw `occurredAt` straight
+        // through instead of clamping it forward first, unlike every sibling
+        // service that mutates Onboarding Job lifecycle state.
+        $job = OnboardingJob::create(
+            new OnboardingJobId($this->uuid(1)),
+            new TenantId($this->uuid(2)),
+            new WebsiteId($this->uuid(3)),
+            new DateTimeImmutable('2026-09-01T00:05:00Z'),
+        );
+        $job->synchronizePersistenceVersion(1);
+        $service = new AssignWebsiteDesignerService(
+            new InMemoryAdminOnboardingJobRepository($job),
+            new FixedWebsiteDesignerEligibility(true),
+            new InMemoryOnboardingAuditRecorder,
+        );
+
+        $assignmentId = $service->execute(new AssignWebsiteDesignerCommand(
+            $job->id->value,
+            $this->uuid(4),
+            1,
+            $this->uuid(5),
+            $this->uuid(6),
+            new DateTimeImmutable('2026-09-01T00:00:00Z'),
+        ));
+
+        self::assertSame($assignmentId, $job->activeWebsiteDesignerAssignment()?->id->value);
+    }
+
     public function test_super_admin_completes_only_a_launch_ready_job_with_audited_version_change(): void
     {
         $job = OnboardingJob::create(

@@ -68,7 +68,7 @@ final readonly class EstablishClinicOwnerService
                 ),
                 $command->occurredAt,
             );
-            $tenant->activate($command->occurredAt);
+            $tenant->activate($tenant->lifecycleTimestamps()->atOrAfterLatest($command->occurredAt));
             $this->tenants->save($tenant);
             $this->recordAudit($command, $authorityId);
         } else {

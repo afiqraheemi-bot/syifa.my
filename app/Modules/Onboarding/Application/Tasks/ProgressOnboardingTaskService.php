@@ -39,6 +39,7 @@ final readonly class ProgressOnboardingTaskService
                     'The Onboarding Task does not belong to this Job.',
                 );
             $previousVersion = $job->version();
+            $occurredAt = $job->atOrAfterLatestTransition($command->occurredAt);
 
             if ($command->operation === 'waive') {
                 if ($command->actorRole !== 'super_admin') {
@@ -46,7 +47,7 @@ final readonly class ProgressOnboardingTaskService
                         'Only Super Admin may waive an Onboarding Task.',
                     );
                 }
-                $job->waiveTask($taskId, (string) $command->waiverReason, $command->occurredAt);
+                $job->waiveTask($taskId, (string) $command->waiverReason, $occurredAt);
             } else {
                 $responsibility = $this->responsibility($job, $command);
                 if ($task->responsibility !== $responsibility) {
@@ -60,7 +61,7 @@ final readonly class ProgressOnboardingTaskService
                     $this->status($command->operation),
                     $command->evidenceReference,
                     $command->note,
-                    $command->occurredAt,
+                    $occurredAt,
                 );
             }
 

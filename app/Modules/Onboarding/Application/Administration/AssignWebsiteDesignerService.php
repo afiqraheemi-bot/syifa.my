@@ -44,7 +44,7 @@ final readonly class AssignWebsiteDesignerService
         $job->assignWebsiteDesigner(
             new WebsiteDesignerAssignmentId($assignmentId),
             new PlatformIdentityId($command->platformIdentityId),
-            $command->occurredAt,
+            $job->atOrAfterLatestTransition($command->occurredAt),
         );
         $this->jobs->save($job);
         $this->audit->recordDesignerAssignment(

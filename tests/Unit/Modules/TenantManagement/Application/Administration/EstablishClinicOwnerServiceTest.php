@@ -46,6 +46,32 @@ final class EstablishClinicOwnerServiceTest extends TestCase
         self::assertSame(1, $repository->saveCalls);
     }
 
+    public function test_it_clamps_an_out_of_order_occurred_at_instead_of_throwing(): void
+    {
+        // Reproduces a real incident: establishing the Clinic Owner
+        // immediately after provisioning (the realistic fast-succession
+        // sequence a real admin follows) could pass an `activate()` timestamp
+        // that landed before the Tenant's own `provisionedAt` — the domain
+        // correctly rejects any out-of-order lifecycle timestamp, but this
+        // service used to pass the command's raw `occurredAt` straight
+        // through instead of clamping it forward first.
+        $tenant = Tenant::provision(new TenantId($this->uuid(1)), new DateTimeImmutable('2026-09-01T00:05:00Z'));
+        $repository = new InMemoryOwnerTenantRepository($tenant);
+        $service = new EstablishClinicOwnerService($repository, new RecordingOwnerAudit, new RecordingClinicOwnerSetupLinkIssuer);
+
+        $authorityId = $service->execute(new EstablishClinicOwnerCommand(
+            $tenant->id->value,
+            'Aisyah Rahman',
+            'owner@clinic.test',
+            $this->uuid(2),
+            $this->uuid(3),
+            new DateTimeImmutable('2026-09-01T00:00:00Z'),
+        ));
+
+        self::assertSame($authorityId, $tenant->activeClinicOwnerAuthority()?->id->value);
+        self::assertSame('active', $tenant->status()->value);
+    }
+
     private function uuid(int $suffix): string
     {
         return sprintf('00000000-0000-4000-8000-%012d', $suffix);
