@@ -674,6 +674,17 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             $this->authorization(ActorType::PlatformIdentity, 'super_admin'),
         );
 
+        $this->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('dashboardOperations.items.0.id', '00000000-0000-4000-8000-000000000701')
+                    ->where('dashboardOperations.items.0.clinic_name', 'Klinik Baharu')
+                    ->where('dashboardOperations.items.0.status', 'registration_submitted')
+                    ->where('dashboardOperations.heading', 'Pending platform actions')
+                    ->where('dashboardOperations.all_label', 'Review registrations'),
+            );
+
         $this->get('/dashboard/registrations')
             ->assertOk()
             ->assertInertia(

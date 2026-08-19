@@ -9,6 +9,7 @@ use App\Modules\ClinicRegistration\Contracts\Review\RegistrationReviewItemData;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Support\Facades\Schema;
 
 final readonly class PostgresClinicRegistrationReviewReadAdapter implements ClinicRegistrationReviewReadInterface
 {
@@ -22,6 +23,10 @@ final readonly class PostgresClinicRegistrationReviewReadAdapter implements Clin
         ?DateTimeImmutable $registeredBefore = null,
         string $scope = 'active',
     ): array {
+        if (! Schema::hasTable('clinic_registrations') || ! Schema::hasTable('clinic_registration_decisions')) {
+            return [];
+        }
+
         $normalizedSearch = $search === null ? '' : trim($search);
         $query = $this->connection->table('clinic_registrations as registrations')
             ->leftJoin('clinic_registration_decisions as decisions', function ($join): void {

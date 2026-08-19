@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewReadInterface;
 use App\Modules\Onboarding\Contracts\Administration\PendingOnboardingJobsReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\PendingWebsiteDesignerTasksReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
@@ -19,6 +20,7 @@ final class HandleInertiaRequests extends Middleware
     public function __construct(
         private readonly PendingOnboardingJobsReadInterface $onboarding,
         private readonly PendingWebsiteDesignerTasksReadInterface $designerTasks,
+        private readonly ClinicRegistrationReviewReadInterface $registrations,
     ) {}
 
     /**
@@ -62,19 +64,38 @@ final class HandleInertiaRequests extends Middleware
             return null;
         }
 
+        $registrations = $this->registrations->list('submitted', 100);
+        $items = array_map(static fn ($registration): array => [
+            'id' => $registration->id,
+            'clinic_name' => $registration->clinicName ?? $registration->clinicEmail ?? 'New clinic registration',
+            'status' => 'registration_submitted',
+            'updated_at' => $registration->submittedAt ?? $registration->createdAt,
+            'url' => route('dashboard.registrations', [
+                'search' => $registration->id,
+                'status' => 'submitted',
+            ]),
+        ], $registrations);
+        $items = [...$items, ...array_map(static fn (array $job): array => [
+            ...$job,
+            'url' => route('dashboard.onboarding-management').'#job-'.$job['id'],
+        ], $this->onboarding->recentPending(5))];
+        usort($items, static fn (array $left, array $right): int => strcmp(
+            $right['updated_at'],
+            $left['updated_at'],
+        ));
+
         return [
-            'pending_count' => $this->onboarding->countPending(),
-            'items' => array_map(static fn (array $job): array => [
-                ...$job,
-                'url' => route('dashboard.onboarding-management').'#job-'.$job['id'],
-            ], $this->onboarding->recentPending(5)),
-            'heading' => 'Pending onboarding jobs',
-            'description' => 'Choose a clinic to review its pending work.',
-            'singular_label' => 'onboarding job is waiting',
-            'plural_label' => 'onboarding jobs are waiting',
-            'empty_label' => 'Pending jobs are being refreshed.',
-            'all_label' => 'View all pending jobs',
-            'all_url' => route('dashboard.onboarding-management'),
+            'pending_count' => count($registrations) + $this->onboarding->countPending(),
+            'items' => array_slice($items, 0, 5),
+            'heading' => 'Pending platform actions',
+            'description' => 'Review new registrations and onboarding work.',
+            'singular_label' => 'platform action is waiting',
+            'plural_label' => 'platform actions are waiting',
+            'empty_label' => 'Pending actions are being refreshed.',
+            'all_label' => $registrations === [] ? 'View onboarding work' : 'Review registrations',
+            'all_url' => $registrations === []
+                ? route('dashboard.onboarding-management')
+                : route('dashboard.registrations', ['status' => 'submitted']),
         ];
     }
 
