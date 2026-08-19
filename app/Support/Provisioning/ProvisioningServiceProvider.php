@@ -20,7 +20,7 @@ use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionStoreInterf
 use App\Modules\WebsiteBuilder\Contracts\Publication\WebsitePublicationApprovalReadInterface;
 use App\Support\Provisioning\Application\ClinicRegistrationLoginService;
 use App\Support\Provisioning\Application\CompleteLocalDemoAcquisitionService;
-use App\Support\Provisioning\Application\LocalDemoSubscriptionEntitlementComputation;
+use App\Support\Provisioning\Application\ConfiguredSubscriptionEntitlementComputation;
 use App\Support\Provisioning\Application\ProvisioningWorkflowRepositoryInterface;
 use App\Support\Provisioning\Infrastructure\BookingServiceSetupPlatformAuditAdapter;
 use App\Support\Provisioning\Infrastructure\ClinicRegistrationPlatformAuditAdapter;
@@ -55,11 +55,9 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 (int) config('tenant_management.session.absolute_lifetime_minutes'),
             ),
         );
-        if ($this->app->environment(['local', 'testing'])) {
-            $this->app->when(ActivateSubscriptionFromVerifiedPaymentService::class)
-                ->needs(SubscriptionEntitlementComputationInterface::class)
-                ->give(LocalDemoSubscriptionEntitlementComputation::class);
-        }
+        $this->app->when(ActivateSubscriptionFromVerifiedPaymentService::class)
+            ->needs(SubscriptionEntitlementComputationInterface::class)
+            ->give(ConfiguredSubscriptionEntitlementComputation::class);
         $this->app->singleton(OnboardingAuditInterface::class, OnboardingPlatformAuditAdapter::class);
         $this->app->alias(OnboardingAuditInterface::class, WebsiteApprovalAuditInterface::class);
         $this->app->singleton(
