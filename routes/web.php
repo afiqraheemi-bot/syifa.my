@@ -270,6 +270,10 @@ Route::post('/dashboard/registrations/{registrationId}/decision', [SuperAdminReg
     ->whereUuid('registrationId')
     ->middleware('authorize.context:platform_identity,super_admin')
     ->name('dashboard.registrations.decision');
+Route::post('/dashboard/registrations/{registrationId}/activate-trial', [SuperAdminRegistrationReviewController::class, 'activateTrial'])
+    ->whereUuid('registrationId')
+    ->middleware('authorize.context:platform_identity,super_admin')
+    ->name('dashboard.registrations.activate-trial');
 Route::patch('/dashboard/registrations/{registrationId}', [SuperAdminRegistrationReviewController::class, 'update'])
     ->whereUuid('registrationId')
     ->middleware('authorize.context:platform_identity,super_admin')

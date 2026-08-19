@@ -20,6 +20,7 @@ const props = defineProps({
     indexUrl: { type: String, required: true },
     reviewUrlTemplate: { type: String, required: true },
     decisionUrlTemplate: { type: String, required: true },
+    activateTrialUrlTemplate: { type: String, required: true },
     updateUrlTemplate: { type: String, required: true },
     archiveUrlTemplate: { type: String, required: true },
 });
@@ -153,6 +154,21 @@ async function decide(registration) {
     );
     if (completed) {
         success.value = 'Registration decision recorded.';
+        refreshRegistrations();
+    }
+}
+
+async function activateTrial(registration) {
+    const completed = await mutate(
+        registration,
+        'activate-trial',
+        registrationUrl(props.activateTrialUrlTemplate, registration),
+        'POST',
+        {},
+        `Activate Syifa Trial and provision ${registration.clinicName} now?`,
+    );
+    if (completed) {
+        success.value = 'Trial activated. The clinic is now available in Tenants and Onboarding.';
         refreshRegistrations();
     }
 }
@@ -458,6 +474,29 @@ async function archiveRegistration(registration) {
                     <p v-if="registration.currentCorrectionInstructions" class="mt-2">
                         {{ registration.currentCorrectionInstructions }}
                     </p>
+                </div>
+
+                <div
+                    v-if="registration.status === 'approved'"
+                    class="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4"
+                >
+                    <p class="font-semibold text-amber-950">Provisioning is still pending</p>
+                    <p class="mt-1 text-sm leading-6 text-amber-900">
+                        If this clinic selected Syifa Trial, resume activation to create its tenant,
+                        subscription and onboarding job.
+                    </p>
+                    <button
+                        type="button"
+                        :disabled="busy !== null"
+                        class="mt-3 min-h-11 rounded-xl bg-emerald-700 px-5 font-semibold text-white disabled:opacity-50"
+                        @click="activateTrial(registration)"
+                    >
+                        {{
+                            busy === `activate-trial:${registration.id}`
+                                ? 'Activating…'
+                                : 'Activate Trial & create onboarding'
+                        }}
+                    </button>
                 </div>
 
                 <p

@@ -86,6 +86,7 @@ final readonly class SuperAdminRegistrationReviewPage
             'indexUrl' => route('dashboard.registrations'),
             'reviewUrlTemplate' => route('dashboard.registrations.review', ['registrationId' => '__REGISTRATION_ID__']),
             'decisionUrlTemplate' => route('dashboard.registrations.decision', ['registrationId' => '__REGISTRATION_ID__']),
+            'activateTrialUrlTemplate' => route('dashboard.registrations.activate-trial', ['registrationId' => '__REGISTRATION_ID__']),
             'updateUrlTemplate' => route('dashboard.registrations.update', ['registrationId' => '__REGISTRATION_ID__']),
             'archiveUrlTemplate' => route('dashboard.registrations.archive', ['registrationId' => '__REGISTRATION_ID__']),
         ]);

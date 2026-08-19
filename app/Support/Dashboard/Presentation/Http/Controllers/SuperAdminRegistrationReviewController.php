@@ -184,6 +184,48 @@ final readonly class SuperAdminRegistrationReviewController
         return response()->json(['version' => $version]);
     }
 
+    public function activateTrial(string $registrationId, Request $request): JsonResponse
+    {
+        $context = $this->context($request);
+
+        try {
+            $activated = app(ActivateApprovedFreeTrialService::class)->execute(
+                $registrationId,
+                $this->correlationId($request),
+            );
+        } catch (Throwable $exception) {
+            $reference = strtoupper(substr(str_replace('-', '', $this->correlationId($request)), 0, 8));
+
+            try {
+                Log::error('Approved free trial recovery failed.', [
+                    'registration_id' => $registrationId,
+                    'actor_id' => $context->identityId,
+                    'reference' => $reference,
+                    'exception' => $exception,
+                ]);
+            } catch (Throwable) {
+                // Preserve the safe operator response when logging is unavailable.
+            }
+
+            return response()->json([
+                'message' => sprintf(
+                    'Trial activation could not be completed. Reference %s.',
+                    $reference,
+                ),
+            ], 500);
+        }
+
+        if (! $activated) {
+            return response()->json([
+                'message' => 'Only an approved registration using the active Syifa Trial package can be activated here.',
+            ], 409);
+        }
+
+        return response()->json([
+            'message' => 'Trial activated and clinic provisioning completed.',
+        ]);
+    }
+
     public function archive(
         string $registrationId,
         Request $request,
