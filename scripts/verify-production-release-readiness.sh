@@ -45,7 +45,6 @@ require_executable_file() {
 
 require_directory 'workflow checkout repository' "$checkout/.git"
 require_directory 'production repository' "$production_dir/.git"
-require_readable_file 'production environment' "$production_env"
 require_executable_file 'production deploy command' "$deploy_command"
 require_executable_file 'backup command' "$checkout/scripts/backup-database.sh"
 require_executable_file 'restore verifier' "$checkout/scripts/verify-backup-restore.sh"
@@ -68,10 +67,21 @@ deployed_sha="$(git -c safe.directory="$production_dir" -C "$production_dir" rev
 echo "Readiness drill source SHA: $tested_sha"
 echo "Currently deployed SHA: $deployed_sha"
 
-bash -n "$deploy_command"
-grep -q 'EXPECTED_COMMIT' "$deploy_command"
-grep -Eiq 'rollback|previous|restore' "$deploy_command"
+if ! bash -n "$deploy_command"; then
+    echo "Production deploy command has invalid shell syntax." >&2
+    exit 1
+fi
+if ! grep -q 'EXPECTED_COMMIT' "$deploy_command"; then
+    echo "Production deploy command has no exact-SHA guard marker." >&2
+    exit 1
+fi
+if ! grep -Eiq 'rollback|previous|restore' "$deploy_command"; then
+    echo "Production deploy command has no rollback guard marker." >&2
+    exit 1
+fi
 echo "Deploy command syntax and exact-SHA/rollback guard markers verified."
+
+require_readable_file 'production environment' "$production_env"
 
 SYIFA_ENV_FILE="$production_env" \
 SYIFA_BACKUP_DIR="$backup_dir" \
