@@ -69,7 +69,6 @@ final readonly class SuperAdminRegistrationReviewController
         string $registrationId,
         Request $request,
         DecideClinicRegistrationService $decisions,
-        ActivateApprovedFreeTrialService $trials,
     ): JsonResponse {
         $validated = $request->validate([
             'outcome' => ['required', 'in:approved,rejected,correction_requested'],
@@ -133,7 +132,10 @@ final readonly class SuperAdminRegistrationReviewController
             // (not a misleading 500 for an action that actually went through)
             // and the failure must still be visible to an operator.
             try {
-                $trials->execute($registrationId, $this->correlationId($request));
+                app(ActivateApprovedFreeTrialService::class)->execute(
+                    $registrationId,
+                    $this->correlationId($request),
+                );
             } catch (Throwable $exception) {
                 Log::error('Free trial activation failed after Clinic Registration approval.', [
                     'registration_id' => $registrationId,
