@@ -1,0 +1,203 @@
+#!/usr/bin/env bash
+# Root-owned production backup/restore readiness helper.
+#
+# Install a reviewed copy at /usr/local/bin/syifa-release-readiness. The
+# GitHub runner may execute only that installed copy through passwordless sudo;
+# it never receives production credentials or permission to execute repository
+# scripts as root.
+
+set -euo pipefail
+
+PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+export PATH
+umask 077
+
+readonly production_dir='/var/www/syifa'
+readonly production_env="$production_dir/.env"
+readonly backup_dir='/var/backups/syifa'
+readonly lock_file='/run/lock/syifa-release-readiness.lock'
+
+usage() {
+    echo 'Usage: syifa-release-readiness --digest | --drill-id <digits> --expected-deployed-sha <40-hex-sha>' >&2
+}
+
+if [[ "${1:-}" == '--digest' && $# -eq 1 ]]; then
+    sha256sum "$0" | cut -d ' ' -f 1
+    exit 0
+fi
+
+if [[ "${1:-}" != '--drill-id' || "${3:-}" != '--expected-deployed-sha' || $# -ne 4 ]]; then
+    usage
+    exit 2
+fi
+
+readonly drill_id="$2"
+readonly expected_deployed_sha="$4"
+
+if [[ ! "$drill_id" =~ ^[0-9]+$ ]]; then
+    echo 'Drill ID must contain digits only.' >&2
+    exit 2
+fi
+
+if [[ ! "$expected_deployed_sha" =~ ^[a-f0-9]{40}$ ]]; then
+    echo 'Expected deployed SHA must be a full lowercase Git SHA.' >&2
+    exit 2
+fi
+
+for command in flock git pg_dump pg_restore createdb dropdb psql curl stat; do
+    command -v "$command" >/dev/null || {
+        echo "Missing required command: $command." >&2
+        exit 1
+    }
+done
+
+if [[ ! -r "$production_env" ]]; then
+    echo 'Production environment is unavailable to the root readiness helper.' >&2
+    exit 1
+fi
+
+exec 9>"$lock_file"
+if ! flock -n 9; then
+    echo 'Another production readiness drill is already running.' >&2
+    exit 1
+fi
+
+deployed_sha="$(git -c safe.directory="$production_dir" -C "$production_dir" rev-parse HEAD)"
+readonly deployed_sha
+if [[ "$deployed_sha" != "$expected_deployed_sha" ]]; then
+    echo 'Production checkout changed after the workflow preflight.' >&2
+    exit 1
+fi
+
+read_env() {
+    local key="$1"
+    local line
+    local value
+
+    line="$(grep -m 1 -E "^${key}=" "$production_env" || true)"
+    value="${line#*=}"
+
+    if [[ "$value" =~ ^\"(.*)\"$ || "$value" =~ ^\'(.*)\'$ ]]; then
+        value="${BASH_REMATCH[1]}"
+    fi
+
+    printf '%s' "$value"
+}
+
+db_host="$(read_env DB_HOST)"
+db_port="$(read_env DB_PORT)"
+db_name="$(read_env DB_DATABASE)"
+db_user="$(read_env DB_USERNAME)"
+db_password="$(read_env DB_PASSWORD)"
+db_sslmode="$(read_env DB_SSLMODE)"
+readonly db_host db_port db_name db_user db_password db_sslmode
+
+if [[ -z "$db_name" || -z "$db_user" ]]; then
+    echo 'Production DB_DATABASE or DB_USERNAME is missing.' >&2
+    exit 1
+fi
+
+if [[ "$db_name" == syifa_restore_drill_* ]]; then
+    echo 'Production database name must not use the disposable restore prefix.' >&2
+    exit 1
+fi
+
+export PGPASSWORD="$db_password"
+export PGSSLMODE="${db_sslmode:-prefer}"
+
+timestamp="$(date -u +%Y-%m-%dT%H%M%SZ)"
+readonly timestamp
+readonly dump_file="$backup_dir/syifa_${timestamp}_readiness_${drill_id}.dump"
+readonly restore_database="syifa_restore_drill_release_${drill_id}"
+started_at="$(date +%s)"
+readonly started_at
+backup_complete=0
+
+mkdir -p "$backup_dir"
+chmod 700 "$backup_dir"
+
+cleanup() {
+    if (( backup_complete == 0 )); then
+        rm -f "$dump_file"
+    fi
+
+    dropdb \
+        --if-exists \
+        --force \
+        --host="${db_host:-127.0.0.1}" \
+        --port="${db_port:-5432}" \
+        --username="$db_user" \
+        "$restore_database" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+pg_dump \
+    --host="${db_host:-127.0.0.1}" \
+    --port="${db_port:-5432}" \
+    --username="$db_user" \
+    --dbname="$db_name" \
+    --format=custom \
+    --no-owner \
+    --no-privileges \
+    --file="$dump_file"
+
+chmod 600 "$dump_file"
+if [[ ! -s "$dump_file" ]]; then
+    rm -f "$dump_file"
+    echo 'Production backup is empty.' >&2
+    exit 1
+fi
+backup_complete=1
+
+cleanup
+createdb \
+    --host="${db_host:-127.0.0.1}" \
+    --port="${db_port:-5432}" \
+    --username="$db_user" \
+    "$restore_database"
+
+pg_restore \
+    --host="${db_host:-127.0.0.1}" \
+    --port="${db_port:-5432}" \
+    --username="$db_user" \
+    --dbname="$restore_database" \
+    --no-owner \
+    --no-privileges \
+    --exit-on-error \
+    "$dump_file"
+
+table_count="$(psql \
+    --host="${db_host:-127.0.0.1}" \
+    --port="${db_port:-5432}" \
+    --username="$db_user" \
+    --dbname="$restore_database" \
+    --tuples-only \
+    --no-align \
+    --command="SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'")"
+readonly table_count
+
+if [[ ! "$table_count" =~ ^[0-9]+$ ]] || (( table_count < 1 )); then
+    echo 'Restore verification found no public tables.' >&2
+    exit 1
+fi
+
+curl --fail --silent --show-error --max-time 15 https://syifa.my/operations/health >/dev/null
+
+completed_at="$(date +%s)"
+dump_size="$(stat -c '%s' "$dump_file")"
+readonly completed_at dump_size
+readonly duration="$((completed_at - started_at))"
+
+find "$backup_dir" \
+    -maxdepth 1 \
+    -type f \
+    -name 'syifa_*_readiness_*.dump' \
+    -mtime +14 \
+    -delete
+
+echo "Production backup/restore drill passed."
+echo "Deployed SHA: $deployed_sha"
+echo "Backup UTC: $timestamp"
+echo "Backup bytes: $dump_size"
+echo "Restore duration seconds: $duration"
+echo "Restored public tables: $table_count"

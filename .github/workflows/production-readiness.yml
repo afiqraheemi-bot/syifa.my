@@ -24,7 +24,6 @@ jobs:
                   SYIFA_CHECKOUT: ${{ github.workspace }}
                   SYIFA_EXPECTED_MAIN_SHA: ${{ github.sha }}
                   SYIFA_DRILL_ID: ${{ github.run_id }}
-                  SYIFA_BACKUP_DIR: ${{ runner.temp }}/syifa_readiness_${{ github.run_id }}
               run: |
                   set -euo pipefail
                   "$SYIFA_CHECKOUT/scripts/verify-production-release-readiness.sh"

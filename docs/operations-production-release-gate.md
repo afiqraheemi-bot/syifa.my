@@ -37,6 +37,28 @@ scripts/verify-backup-restore.sh /secure/path/backup.dump syifa_restore_drill_YY
 
 The verifier replaces only a database with the guarded restore-drill prefix and removes it on exit. Production sign-off must record dump timestamp, dump size, restore duration, table count and selected business-record reconciliation without exposing patient data.
 
+The production runner must not be given read access to `/var/www/syifa/.env` and
+must never execute a repository checkout as root. A server administrator installs
+the reviewed helper and grants sudo for that exact executable only:
+
+```bash
+sudo install -o root -g root -m 0755 \
+  scripts/production/syifa-release-readiness \
+  /usr/local/bin/syifa-release-readiness
+
+echo 'ubuntu ALL=(root) NOPASSWD: /usr/local/bin/syifa-release-readiness' \
+  | sudo tee /etc/sudoers.d/syifa-release-readiness >/dev/null
+sudo chmod 0440 /etc/sudoers.d/syifa-release-readiness
+sudo visudo -cf /etc/sudoers.d/syifa-release-readiness
+```
+
+The sudoers entry is limited to `/usr/local/bin/syifa-release-readiness`. The
+helper validates every argument, uses a lock, writes dumps under the root-only
+backup directory, restores only to `syifa_restore_drill_release_*`, removes the
+temporary database on exit, and prints no credentials or patient records. The
+workflow rejects an installed helper whose SHA-256 differs from the reviewed
+source in the tested commit.
+
 ## GitHub repository settings
 
 Branch protection for `main` must require Pull Requests, require Backend and Frontend CI, require the branch to be current, dismiss stale approvals, require CODEOWNER review and include administrators. These settings live in GitHub and cannot be replaced by workflow YAML.
