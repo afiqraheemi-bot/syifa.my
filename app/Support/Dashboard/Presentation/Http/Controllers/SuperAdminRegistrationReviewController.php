@@ -222,32 +222,55 @@ final readonly class SuperAdminRegistrationReviewController
             ], 409);
         }
 
-        $registration = DB::table('clinic_registrations')
-            ->where('id', $registrationId)
-            ->first(['status']);
-        if ($registration === null || (string) $registration->status !== 'provisioned') {
-            $workflow = DB::table('provisioning_workflows')
-                ->where('clinic_registration_id', $registrationId)
-                ->orderByDesc('created_at')
-                ->first(['status', 'current_step', 'safe_failure_label', 'next_attempt_at']);
+        try {
+            $registration = DB::table('clinic_registrations')
+                ->where('id', $registrationId)
+                ->first(['status']);
+            if ($registration === null || (string) $registration->status !== 'provisioned') {
+                $workflow = DB::table('provisioning_workflows')
+                    ->where('clinic_registration_id', $registrationId)
+                    ->orderByDesc('created_at')
+                    ->first(['status', 'current_step', 'safe_failure_label', 'next_attempt_at']);
 
-            $checkpoint = $workflow === null
-                ? 'workflow_not_created'
-                : sprintf(
-                    '%s (%s%s)',
-                    (string) $workflow->current_step,
-                    (string) $workflow->status,
-                    $workflow->safe_failure_label === null
-                        ? ''
-                        : ', '.(string) $workflow->safe_failure_label,
-                );
+                $checkpoint = $workflow === null
+                    ? 'workflow_not_created'
+                    : sprintf(
+                        '%s (%s%s)',
+                        (string) $workflow->current_step,
+                        (string) $workflow->status,
+                        $workflow->safe_failure_label === null
+                            ? ''
+                            : ', '.(string) $workflow->safe_failure_label,
+                    );
+
+                return response()->json([
+                    'message' => sprintf(
+                        'Trial activation started but provisioning is not complete. Current checkpoint: %s. Wait 30 seconds, then use this action again.',
+                        $checkpoint,
+                    ),
+                ], 409);
+            }
+        } catch (Throwable $exception) {
+            $reference = strtoupper(substr(str_replace('-', '', $this->correlationId($request)), 0, 8));
+
+            try {
+                Log::error('Approved free trial verification failed.', [
+                    'registration_id' => $registrationId,
+                    'actor_id' => $context->identityId,
+                    'failure_code' => 'TRIAL_VERIFICATION_FAILED',
+                    'reference' => $reference,
+                    'exception' => $exception,
+                ]);
+            } catch (Throwable) {
+                // Preserve the safe operator response when logging is unavailable.
+            }
 
             return response()->json([
                 'message' => sprintf(
-                    'Trial activation started but provisioning is not complete. Current checkpoint: %s. Wait 30 seconds, then use this action again.',
-                    $checkpoint,
+                    'Trial provisioning verification failed. Error code TRIAL_VERIFICATION_FAILED, reference %s.',
+                    $reference,
                 ),
-            ], 409);
+            ], 500);
         }
 
         return response()->json([
