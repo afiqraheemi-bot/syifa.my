@@ -1,0 +1,29 @@
+name: Deploy
+
+# Every push to main deploys, regardless of CI. The runner lives on the
+# production host itself and dials out to GitHub, so no inbound SSH access or
+# runner IP allowlist is involved.
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+# Never run two deploys at once: syifa-deploy runs migrations and rewrites the
+# app directory. Queue instead of cancelling, so a deploy is not killed
+# part-way through a migration.
+concurrency:
+    group: syifa-deploy
+    cancel-in-progress: false
+
+jobs:
+    deploy:
+        name: Deploy to syifa.my
+        runs-on: [self-hosted, syifa]
+        timeout-minutes: 20
+
+        steps:
+            # No checkout: syifa-deploy does its own fetch and reset of
+            # /var/www/syifa, and reloads FPM afterwards. Checking out here
+            # would only duplicate the tree the runner never uses.
+            - name: Run syifa-deploy
+              run: sudo /usr/local/bin/syifa-deploy
