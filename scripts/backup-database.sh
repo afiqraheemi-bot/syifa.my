@@ -23,7 +23,7 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-env_file="$project_dir/.env"
+env_file="${SYIFA_ENV_FILE:-$project_dir/.env}"
 
 if [[ -f "$env_file" ]]; then
     # Only pull DB_* lines — never eval the whole .env (it may contain

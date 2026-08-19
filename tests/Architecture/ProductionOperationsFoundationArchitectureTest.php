@@ -96,6 +96,20 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
         self::assertStringContainsString('^syifa_restore_drill_', $restore);
         self::assertStringContainsString('pg_restore', $restore);
         self::assertStringContainsString('trap cleanup EXIT', $restore);
+
+        $readinessWorkflow = $this->source($root.'/.github/workflows/production-readiness.yml');
+        self::assertStringContainsString('workflow_dispatch:', $readinessWorkflow);
+        self::assertStringContainsString('runs-on: [self-hosted, syifa]', $readinessWorkflow);
+        self::assertStringContainsString('group: syifa-production', $readinessWorkflow);
+        self::assertStringContainsString('verify-production-release-readiness.sh', $readinessWorkflow);
+        self::assertStringNotContainsString('syifa-deploy\n', $readinessWorkflow);
+
+        $readiness = $this->source($root.'/scripts/verify-production-release-readiness.sh');
+        self::assertStringContainsString('SYIFA_EXPECTED_MAIN_SHA', $readiness);
+        self::assertStringContainsString("grep -q 'EXPECTED_COMMIT'", $readiness);
+        self::assertStringContainsString("grep -Eiq 'rollback|previous|restore'", $readiness);
+        self::assertStringContainsString('syifa_restore_drill_release_', $readiness);
+        self::assertStringContainsString('verify-backup-restore.sh', $readiness);
     }
 
     public function test_operations_foundation_has_no_business_or_module_dependency(): void

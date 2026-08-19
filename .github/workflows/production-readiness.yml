@@ -1,0 +1,30 @@
+name: Production readiness drill
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    verify:
+        name: Runner, rollback markers, backup and restore
+        runs-on: [self-hosted, syifa]
+        timeout-minutes: 20
+        environment: production
+        concurrency:
+            group: syifa-production
+            cancel-in-progress: false
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Verify production release readiness without deployment
+              env:
+                  SYIFA_CHECKOUT: ${{ github.workspace }}
+                  SYIFA_EXPECTED_MAIN_SHA: ${{ github.sha }}
+                  SYIFA_DRILL_ID: ${{ github.run_id }}
+              run: |
+                  set -euo pipefail
+                  sudo --preserve-env=SYIFA_CHECKOUT,SYIFA_EXPECTED_MAIN_SHA,SYIFA_DRILL_ID \
+                      "$SYIFA_CHECKOUT/scripts/verify-production-release-readiness.sh"
