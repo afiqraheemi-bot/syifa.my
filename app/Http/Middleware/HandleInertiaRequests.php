@@ -8,6 +8,7 @@ use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewRead
 use App\Modules\Onboarding\Contracts\Administration\PendingOnboardingJobsReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\PendingWebsiteDesignerTasksReadInterface;
 use App\Support\Authorization\Application\AuthorizationContext;
+use App\Support\Dashboard\Application\SuperAdminDashboardNavigation;
 use App\Support\Identity\ActorType;
 use App\Support\Identity\CurrentUserInterface;
 use Illuminate\Http\Request;
@@ -32,7 +33,19 @@ final class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'authentication' => fn (): array => $this->authenticationPresentation(),
             'dashboardOperations' => fn (): ?array => $this->dashboardOperations($request),
+            'globalDashboardNavigation' => fn (): ?array => $this->globalDashboardNavigation($request),
         ];
+    }
+
+    /** @return list<array{kind: string, key: string, label: string, href: string, icon: null, current: bool}>|null */
+    private function globalDashboardNavigation(Request $request): ?array
+    {
+        $context = $request->attributes->get(AuthorizationContext::class);
+        if (! $context instanceof AuthorizationContext || $context->role !== 'super_admin') {
+            return null;
+        }
+
+        return SuperAdminDashboardNavigation::items($request->route()?->getName());
     }
 
     /** @return array<string, mixed>|null */

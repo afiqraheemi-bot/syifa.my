@@ -691,6 +691,11 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 static fn (AssertableInertia $page): AssertableInertia => $page
                     ->component('PlatformAdministration/Registrations/SuperAdminRegistrationReview', false)
                     ->where('contextLabel', 'Super Admin workspace')
+                    ->has('globalDashboardNavigation', 11)
+                    ->where('globalDashboardNavigation.1.key', 'registrations')
+                    ->where('globalDashboardNavigation.1.current', true)
+                    ->where('globalDashboardNavigation.8.key', 'notifications')
+                    ->where('globalDashboardNavigation.10.key', 'reports')
                     ->has('registrations', 1)
                     ->where('registrations.0.clinicName', 'Klinik Baharu')
                     ->where('navigation.1.current', true),

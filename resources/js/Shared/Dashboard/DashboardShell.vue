@@ -7,7 +7,7 @@ import DashboardLogoutAction from './DashboardLogoutAction.vue';
 import DashboardSidebar from './DashboardSidebar.vue';
 import DashboardTopNavigation from './DashboardTopNavigation.vue';
 
-defineProps({
+const props = defineProps({
     navigation: {
         type: Array,
         default: () => [],
@@ -45,6 +45,9 @@ defineProps({
 const collapsed = ref(false);
 const mobileOpen = ref(false);
 const operations = computed(() => usePage().props.dashboardOperations ?? null);
+const shellNavigation = computed(
+    () => usePage().props.globalDashboardNavigation ?? props.navigation,
+);
 const pendingJobs = computed(() => Math.max(0, Number(operations.value?.pending_count) || 0));
 const recentPendingJobs = computed(() => operations.value?.items ?? []);
 const pendingJobsCount = computed(() =>
@@ -73,7 +76,7 @@ function statusLabel(status) {
         </a>
 
         <DashboardSidebar
-            :navigation="navigation"
+            :navigation="shellNavigation"
             :collapsed="collapsed"
             :mobile-open="mobileOpen"
             :product-name="productName"
