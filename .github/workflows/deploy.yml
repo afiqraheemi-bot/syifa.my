@@ -15,6 +15,9 @@ concurrency:
     group: syifa-deploy
     cancel-in-progress: false
 
+permissions:
+    contents: read
+
 jobs:
     deploy:
         name: Deploy to syifa.my
@@ -25,5 +28,11 @@ jobs:
             # No checkout: syifa-deploy does its own fetch and reset of
             # /var/www/syifa, and reloads FPM afterwards. Checking out here
             # would only duplicate the tree the runner never uses.
+            #
+            # The repo is private, so the deploy cannot fetch anonymously.
+            # This job token is scoped to this repo and expires with the job,
+            # which is why no long-lived credential sits on the server.
             - name: Run syifa-deploy
+              env:
+                  SYIFA_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: sudo /usr/local/bin/syifa-deploy
