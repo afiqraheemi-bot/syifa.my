@@ -19,6 +19,7 @@ use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\SuperAdmin\Registrations\SuperAdminRegistrationReviewPage;
 use App\Support\Provisioning\Application\ActivateApprovedFreeTrialService;
 use DateTimeImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -99,6 +100,30 @@ final readonly class SuperAdminRegistrationReviewController
             ));
         } catch (InvalidClinicRegistrationTransitionException|InvalidClinicRegistrationValueException|StaleClinicRegistrationWriteException $exception) {
             return response()->json(['message' => $exception->getMessage()], 409);
+        } catch (Throwable $exception) {
+            $reference = strtoupper(substr(str_replace('-', '', $this->correlationId($request)), 0, 8));
+            $failureCode = $exception instanceof QueryException
+                ? 'REGISTRATION_DATABASE_CONFLICT'
+                : 'REGISTRATION_DECISION_FAILED';
+
+            try {
+                Log::error('Clinic Registration decision failed.', [
+                    'registration_id' => $registrationId,
+                    'failure_code' => $failureCode,
+                    'reference' => $reference,
+                    'exception' => $exception,
+                ]);
+            } catch (Throwable) {
+                // Logging failure must not replace the safe operator response.
+            }
+
+            return response()->json([
+                'message' => sprintf(
+                    'The decision could not be recorded. Error code %s, reference %s.',
+                    $failureCode,
+                    $reference,
+                ),
+            ], 500);
         }
 
         if ((string) $validated['outcome'] === 'approved') {
