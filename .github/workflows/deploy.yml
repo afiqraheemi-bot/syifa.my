@@ -46,7 +46,12 @@ jobs:
               env:
                   EXPECTED_COMMIT: ${{ github.sha }}
               run: |
-                  deployed_commit=$(sudo git -C /var/www/syifa rev-parse HEAD)
+                  # No sudo: the runner user may only run syifa-deploy, so
+                  # `sudo git` prompts for a password and fails the job even
+                  # though the deploy itself succeeded. safe.directory is what
+                  # git actually needs here -- the checkout is www-data's.
+                  deployed_commit=$(git -c safe.directory=/var/www/syifa \
+                      -C /var/www/syifa rev-parse HEAD)
                   test "$deployed_commit" = "$EXPECTED_COMMIT"
 
             # The governed catalogue is synchronized by the deployment
@@ -55,4 +60,8 @@ jobs:
             # currency and authoritative prices.
             - name: Verify official production catalogue
               run: |
-                  php /var/www/syifa/scripts/verify-production-catalogue.php https://syifa.my
+                  # Pin the binary: the runner user's default `php` is 8.3,
+                  # while this app runs on 8.5. Harmless for this standalone
+                  # script today, but every cron and service on this shared box
+                  # names an absolute binary rather than trusting the default.
+                  /usr/bin/php8.5 /var/www/syifa/scripts/verify-production-catalogue.php https://syifa.my

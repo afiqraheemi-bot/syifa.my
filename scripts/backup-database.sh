@@ -6,6 +6,13 @@
 # environment, which takes precedence — useful for cron where .env parsing
 # is skipped by exporting the same variables in the crontab/systemd unit).
 #
+# Runs from the ROOT crontab, not the Laravel scheduler. The scheduler runs as
+# www-data, and /var/backups/syifa is deliberately root-only 0700 -- database
+# dumps must not be readable by the web user, since an application compromise
+# would otherwise hand over every patient record. As www-data this script exits
+# 1 at the chmod below, and the scheduler cron discards its output, so the
+# failure would be silent. Keep it in root cron; do not re-add $schedule->exec.
+#
 # Usage:
 #   scripts/backup-database.sh
 #
