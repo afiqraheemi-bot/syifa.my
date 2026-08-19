@@ -22,12 +22,33 @@ if [[ ! "$drill_id" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
-test -d "$checkout/.git"
-test -d "$production_dir/.git"
-test -f "$production_env"
-test -x "$deploy_command"
-test -x "$checkout/scripts/backup-database.sh"
-test -x "$checkout/scripts/verify-backup-restore.sh"
+require_directory() {
+    if [[ ! -d "$2" ]]; then
+        echo "Missing required directory: $1." >&2
+        exit 1
+    fi
+}
+
+require_readable_file() {
+    if [[ ! -f "$2" || ! -r "$2" ]]; then
+        echo "Missing or unreadable required file: $1." >&2
+        exit 1
+    fi
+}
+
+require_executable_file() {
+    if [[ ! -f "$2" || ! -x "$2" ]]; then
+        echo "Missing or non-executable required file: $1." >&2
+        exit 1
+    fi
+}
+
+require_directory 'workflow checkout repository' "$checkout/.git"
+require_directory 'production repository' "$production_dir/.git"
+require_readable_file 'production environment' "$production_env"
+require_executable_file 'production deploy command' "$deploy_command"
+require_executable_file 'backup command' "$checkout/scripts/backup-database.sh"
+require_executable_file 'restore verifier' "$checkout/scripts/verify-backup-restore.sh"
 
 mkdir -p "$backup_dir"
 chmod 700 "$backup_dir"
