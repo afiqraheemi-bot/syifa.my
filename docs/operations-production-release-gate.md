@@ -61,4 +61,15 @@ source in the tested commit.
 
 ## GitHub repository settings
 
-Branch protection for `main` must require Pull Requests, require Backend and Frontend CI, require the branch to be current, dismiss stale approvals, require CODEOWNER review and include administrators. These settings live in GitHub and cannot be replaced by workflow YAML.
+Branch protection for `main` requires Pull Requests, Backend and Frontend CI,
+an up-to-date branch, stale-review dismissal, conversation resolution, linear
+history and administrator enforcement. Force pushes and branch deletion are
+disabled. These settings live in GitHub and cannot be replaced by workflow
+YAML.
+
+`CODEOWNERS` currently records ownership and routes review requests, but a
+mandatory CODEOWNER approval is deliberately not enabled while the repository
+has only one authorized maintainer: GitHub does not permit an author to approve
+their own Pull Request, so enabling it now would deadlock every release. Before
+a second maintainer is granted write access, `require_code_owner_reviews` must
+be enabled and the independent reviewer must be added to `CODEOWNERS`.
