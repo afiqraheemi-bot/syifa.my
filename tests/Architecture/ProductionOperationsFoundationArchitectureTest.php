@@ -67,8 +67,14 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
     {
         $root = dirname(__DIR__, 2);
         $workflow = $this->source($root.'/.github/workflows/ci.yml');
+        $checkoutAction = 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1';
+        $setupNodeAction = 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020';
 
         self::assertFileDoesNotExist($root.'/.github/workflows/deploy.yml');
+        self::assertSame(3, substr_count($workflow, $checkoutAction));
+        self::assertSame(2, substr_count($workflow, $setupNodeAction));
+        self::assertStringNotContainsString('actions/checkout@v', $workflow);
+        self::assertStringNotContainsString('actions/setup-node@v', $workflow);
         self::assertStringContainsString('name: Production release gate', $workflow);
         self::assertStringContainsString('test -f .github/RELEASE_FREEZE.md', $workflow);
         self::assertStringContainsString('needs: [backend, frontend, release-gate]', $workflow);
@@ -99,6 +105,8 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
         self::assertStringContainsString('trap cleanup EXIT', $restore);
 
         $readinessWorkflow = $this->source($root.'/.github/workflows/production-readiness.yml');
+        self::assertStringContainsString('actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1', $readinessWorkflow);
+        self::assertStringNotContainsString('actions/checkout@v', $readinessWorkflow);
         self::assertStringContainsString('workflow_dispatch:', $readinessWorkflow);
         self::assertStringContainsString('runs-on: [self-hosted, syifa]', $readinessWorkflow);
         self::assertStringContainsString('group: syifa-production', $readinessWorkflow);
