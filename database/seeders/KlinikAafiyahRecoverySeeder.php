@@ -244,9 +244,13 @@ final class KlinikAafiyahRecoverySeeder extends Seeder
 
     private function restoreSubscription(): void
     {
+        $capabilities = $this->subscriptionCapabilities();
+
         if (DB::table('subscriptions')->where('tenant_id', self::TENANT)->exists()) {
             DB::table('subscriptions')->where('tenant_id', self::TENANT)->update([
-                'entitlement_capabilities' => json_encode(['demo.core', 'website.blog.manage'], JSON_THROW_ON_ERROR),
+                'entitlement_configuration_version' => 'package:syifa-pro',
+                'entitlement_status' => 'effective',
+                'entitlement_capabilities' => json_encode($capabilities, JSON_THROW_ON_ERROR),
             ]);
 
             return;
@@ -260,8 +264,32 @@ final class KlinikAafiyahRecoverySeeder extends Seeder
         $subscription = $this->mapRow((array) DB::table('subscriptions')->where('tenant_id', self::SOURCE_TENANT)->first());
         $subscription['starts_on'] = now()->subDay()->toDateString();
         $subscription['ends_on'] = now()->addYear()->toDateString();
-        $subscription['entitlement_capabilities'] = json_encode(['demo.core', 'website.blog.manage'], JSON_THROW_ON_ERROR);
+        $subscription['entitlement_configuration_version'] = 'package:syifa-pro';
+        $subscription['entitlement_status'] = 'effective';
+        $subscription['entitlement_capabilities'] = json_encode($capabilities, JSON_THROW_ON_ERROR);
         DB::table('subscriptions')->insert($subscription);
+    }
+
+    /** @return list<string> */
+    private function subscriptionCapabilities(): array
+    {
+        $configured = config('subscription_packages.capability_profiles.package:syifa-pro');
+        if (! is_array($configured) || $configured === []) {
+            throw new RuntimeException('The SYIFA Pro capability profile is unavailable.');
+        }
+
+        $capabilities = array_values(array_unique(array_map(
+            static fn (mixed $capability): string => is_string($capability) ? trim($capability) : '',
+            $configured,
+        )));
+        $capabilities = array_values(array_filter($capabilities, static fn (string $capability): bool => $capability !== ''));
+        sort($capabilities, SORT_STRING);
+
+        if (! in_array('booking.manage', $capabilities, true)) {
+            throw new RuntimeException('The SYIFA Pro capability profile does not include Service Setup.');
+        }
+
+        return $capabilities;
     }
 
     private function applyAafiyahContent(): void
