@@ -44,7 +44,7 @@ if [[ ! "$expected_deployed_sha" =~ ^[a-f0-9]{40}$ ]]; then
     exit 2
 fi
 
-for command in flock git pg_dump pg_restore createdb dropdb psql curl stat; do
+for command in flock git pg_dump pg_restore createdb dropdb psql curl stat runuser; do
     command -v "$command" >/dev/null || {
         echo "Missing required command: $command." >&2
         exit 1
@@ -102,6 +102,23 @@ if [[ "$db_name" == syifa_restore_drill_* ]]; then
     exit 1
 fi
 
+# The application role is intentionally not allowed to create databases. The
+# root-owned helper uses the local PostgreSQL administrator only to create and
+# remove the disposable drill database, assigning ownership to the application
+# role so the restore itself still runs with production-equivalent privileges.
+case "$db_host" in
+    127.0.0.1|localhost|::1|'') ;;
+    *)
+        echo 'The protected restore drill requires PostgreSQL on the local host.' >&2
+        exit 1
+        ;;
+esac
+
+if ! getent passwd postgres >/dev/null; then
+    echo 'The local PostgreSQL system account is unavailable.' >&2
+    exit 1
+fi
+
 export PGPASSWORD="$db_password"
 export PGSSLMODE="${db_sslmode:-prefer}"
 
@@ -121,12 +138,10 @@ cleanup() {
         rm -f "$dump_file"
     fi
 
-    dropdb \
+    runuser --user postgres -- dropdb \
         --if-exists \
         --force \
-        --host="${db_host:-127.0.0.1}" \
         --port="${db_port:-5432}" \
-        --username="$db_user" \
         "$restore_database" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -150,10 +165,9 @@ fi
 backup_complete=1
 
 cleanup
-createdb \
-    --host="${db_host:-127.0.0.1}" \
+runuser --user postgres -- createdb \
     --port="${db_port:-5432}" \
-    --username="$db_user" \
+    --owner="$db_user" \
     "$restore_database"
 
 pg_restore \

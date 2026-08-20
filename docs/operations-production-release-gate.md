@@ -59,6 +59,15 @@ temporary database on exit, and prints no credentials or patient records. The
 workflow rejects an installed helper whose SHA-256 differs from the reviewed
 source in the tested commit.
 
+The production application database role deliberately has no `CREATEDB`
+privilege. For a local PostgreSQL deployment, the root-owned helper uses the
+local `postgres` system account only to create and remove the guarded disposable
+database and assigns that database to the application role. Dump, restore and
+verification continue to run as the application role. The helper aborts when
+`DB_HOST` is not local; a remote database requires a separately reviewed,
+root-protected administrative restore credential rather than broadening the
+application role.
+
 ## GitHub repository settings
 
 Branch protection for `main` requires Pull Requests, Backend and Frontend CI,

@@ -126,6 +126,9 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
         self::assertStringContainsString('syifa_restore_drill_release_', $rootHelper);
         self::assertStringContainsString('pg_dump', $rootHelper);
         self::assertStringContainsString('pg_restore', $rootHelper);
+        self::assertStringContainsString('runuser --user postgres -- createdb', $rootHelper);
+        self::assertStringContainsString('--owner="$db_user"', $rootHelper);
+        self::assertStringContainsString('127.0.0.1|localhost|::1', $rootHelper);
         self::assertStringContainsString('trap cleanup EXIT', $rootHelper);
         self::assertStringNotContainsString('eval ', $rootHelper);
     }
