@@ -46,7 +46,7 @@
             <a class="button button--primary" href="{{ $backUrl }}">Return to Website preview</a>
         </div>
     @else
-        <form method="GET" action="{{ $submitUrl }}" class="booking-fieldset">
+        <form method="GET" action="{{ $submitUrl }}" class="booking-fieldset booking-preview-form">
         @if ($configuration->serviceSelectionEnabled)
             <fieldset>
                 <legend class="booking-label">Choose a service</legend>
@@ -81,13 +81,13 @@
         <button class="button button--secondary" type="submit">Check available times</button>
         </form>
 
-        <form method="POST" action="{{ $submitUrl }}" class="booking-fieldset" data-booking-form>
+        <form method="POST" action="{{ $submitUrl }}" class="booking-fieldset booking-preview-form" data-booking-form>
         @csrf
         <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
         <input type="hidden" name="appointment_date" value="{{ $selectedDate }}">
         <input type="hidden" name="service_id" value="{{ $selectedServiceId }}">
 
-        <fieldset>
+        <fieldset class="booking-preview-times">
             <legend class="booking-label">Available time</legend>
             @if ($selectedDate === null)
                 <p>Choose a date first to see available times.</p>
@@ -131,10 +131,13 @@
                 <textarea class="booking-input" id="notes" name="notes" maxlength="1000">{{ old('notes') }}</textarea>
             </div>
         @endif
-        <label class="booking-option">
-            <input type="checkbox" name="consent" value="1" required>
-            I agree that the clinic may contact me about this appointment.
-        </label>
+        <div class="booking-consent-card">
+            <label class="booking-consent">
+                <input class="booking-consent__input" type="checkbox" name="consent" value="1" required>
+                <span class="booking-consent__box" aria-hidden="true"></span>
+                <span>I agree that the clinic may contact me about this appointment.</span>
+            </label>
+        </div>
 
         <div class="booking-sticky-actions">
             <a class="button button--secondary" href="{{ $backUrl }}">Return to Website preview</a>
