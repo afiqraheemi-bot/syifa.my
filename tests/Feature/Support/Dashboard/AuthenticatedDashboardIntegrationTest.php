@@ -345,7 +345,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         if ($actorType === ActorType::ClinicOwner) {
             $response->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
-                    ->has('navigation', 9)
+                    ->has('navigation', 10)
                     ->where('navigation.3.key', 'services')
                     ->where('welcomeTitle', 'Selamat kembali, Authenticated User')
                     ->has('summaries', 4)
@@ -2760,7 +2760,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.0.key', 'edit')
                     ->where('quickActions.0.available', true)
                     ->where('quickActions.0.href', route('dashboard.website.content'))
-                    ->has('navigation', 9),
+                    ->has('navigation', 10),
             );
     }
 
@@ -2813,7 +2813,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('contactProfile.whatsapp_number', '+60123456789')
                     ->where('contactProfile.version', 1)
                     ->where('contactUpdateUrl', route('dashboard.website.contact.update'))
-                    ->has('navigation', 9),
+                    ->has('navigation', 10),
             );
     }
 
@@ -2970,7 +2970,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                         ->where('navigation.6.key', 'subscription')
                         ->where('navigation.7.key', 'notifications')
                         ->where('navigation.8.key', 'reports')
-                        ->has('navigation', 9),
+                        ->where('navigation.9.key', 'account')
+                        ->where('navigation.9.href', route('dashboard.account'))
+                        ->has('navigation', 10),
                 );
         }
     }
@@ -3127,7 +3129,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('bookingSchedule.updateUrl', route('dashboard.bookings.schedule.update'))
                     ->where('bookingSchedule.businessHoursUpdateUrl', route('dashboard.bookings.business-hours.update'))
                     ->where('bookingSchedule.timezone', 'Asia/Kuala_Lumpur')
-                    ->has('navigation', 9),
+                    ->has('navigation', 10),
             );
     }
 

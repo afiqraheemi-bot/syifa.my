@@ -32,6 +32,7 @@ use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\PublicWebsiteSeoCon
 use App\Modules\WebsiteBuilder\Presentation\Http\Controllers\SuccessController;
 use App\Support\Dashboard\Presentation\Http\Controllers\AuthenticatedDashboardController;
 use App\Support\Dashboard\Presentation\Http\Controllers\BillingDocumentController;
+use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerAccountController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBlogPreviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDateOverrideController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerBookingDetailController;
@@ -146,6 +147,15 @@ Route::get('/assets/{assetId}', PublicWebsiteAssetController::class)
 Route::get('/dashboard', AuthenticatedDashboardController::class)
     ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
     ->name('dashboard');
+Route::get('/dashboard/account', [ClinicOwnerAccountController::class, 'show'])
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.account');
+Route::patch('/dashboard/account/profile', [ClinicOwnerAccountController::class, 'updateProfile'])
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.account.profile.update');
+Route::put('/dashboard/account/password', [ClinicOwnerAccountController::class, 'updatePassword'])
+    ->middleware('authorize.context:clinic_owner,clinic_owner')
+    ->name('dashboard.account.password.update');
 Route::get('/dashboard/blog', [BlogDashboardController::class, 'index'])
     ->middleware('authorize.context:authenticated,clinic_owner,super_admin')->name('dashboard.blog');
 Route::get('/dashboard/blog/create', [BlogDashboardController::class, 'editor'])
