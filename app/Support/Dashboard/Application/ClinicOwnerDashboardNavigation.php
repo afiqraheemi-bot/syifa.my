@@ -26,6 +26,7 @@ final class ClinicOwnerDashboardNavigation
                 ['key' => 'subscription', 'label' => 'Subscription', 'route' => 'dashboard.subscription'],
                 ['key' => 'notifications', 'label' => 'Notifications', 'route' => 'dashboard.notifications'],
                 ['key' => 'reports', 'label' => 'Reports', 'route' => 'dashboard.reports'],
+                ['key' => 'account', 'label' => 'Account & Security', 'route' => 'dashboard.account'],
             ],
         );
     }

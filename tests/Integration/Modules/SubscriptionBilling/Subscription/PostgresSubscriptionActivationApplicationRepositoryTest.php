@@ -25,6 +25,8 @@ final class PostgresSubscriptionActivationApplicationRepositoryTest extends Test
 
     private ?PostgresSubscriptionActivationApplicationRepository $repository = null;
 
+    private bool $connectionConfigured = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -34,6 +36,7 @@ final class PostgresSubscriptionActivationApplicationRepositoryTest extends Test
         }
         config()->set('database.default', self::CONNECTION);
         config()->set('database.connections.'.self::CONNECTION, ['driver' => 'pgsql', 'url' => $dsn, 'charset' => 'utf8', 'prefix' => '', 'prefix_indexes' => true, 'search_path' => 'public', 'sslmode' => 'prefer']);
+        $this->connectionConfigured = true;
         DB::purge(self::CONNECTION);
         Schema::connection(self::CONNECTION)->dropIfExists('subscription_activation_reconciliation_cases');
         Schema::connection(self::CONNECTION)->dropIfExists('subscription_activation_applications');
@@ -50,6 +53,12 @@ final class PostgresSubscriptionActivationApplicationRepositoryTest extends Test
 
     protected function tearDown(): void
     {
+        if (! $this->connectionConfigured) {
+            parent::tearDown();
+
+            return;
+        }
+
         // A row left with result_code='exhausted' would otherwise make the
         // widen-result-code migration's down() fail its own re-narrowed
         // CHECK constraint.
