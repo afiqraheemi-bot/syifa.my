@@ -150,6 +150,10 @@ Route::get('/dashboard', AuthenticatedDashboardController::class)
 Route::get('/dashboard/account', [ClinicOwnerAccountController::class, 'show'])
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.account');
+Route::redirect('/account', '/dashboard/account', 302);
+Route::redirect('/account-security', '/dashboard/account', 302);
+Route::redirect('/account/security', '/dashboard/account', 302);
+Route::redirect('/dashboard/account-security', '/dashboard/account', 302);
 Route::patch('/dashboard/account/profile', [ClinicOwnerAccountController::class, 'updateProfile'])
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.account.profile.update');
