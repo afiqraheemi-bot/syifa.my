@@ -2977,6 +2977,13 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         }
     }
 
+    public function test_legacy_account_security_urls_redirect_to_the_canonical_dashboard_page(): void
+    {
+        foreach (['/account', '/account-security', '/account/security', '/dashboard/account-security'] as $uri) {
+            $this->get($uri)->assertRedirect('/dashboard/account');
+        }
+    }
+
     public function test_only_the_assigned_website_designer_can_open_the_custom_domain_add_on_workspace(): void
     {
         $jobId = '00000000-0000-4000-8000-000000000101';
