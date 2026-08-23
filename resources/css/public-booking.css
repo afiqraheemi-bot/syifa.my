@@ -12,16 +12,82 @@
     max-width: 100%;
 }
 
+.booking-flow *,
+.booking-flow *::before,
+.booking-flow *::after {
+    box-sizing: border-box;
+}
+
 .booking-flow fieldset {
+    min-inline-size: 0;
     margin: 0;
     padding: 0;
     border: 0;
 }
 
+.booking-flow .booking-input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.booking-flow .booking-preview-times > p {
+    margin: 0;
+    padding: var(--space-4);
+    border: 0.0625rem solid var(--border-subtle);
+    border-radius: var(--radius-medium);
+    background: var(--surface-subtle);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.booking-flow .booking-preview-times .booking-option-list {
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    margin-bottom: 0;
+}
+
+.booking-flow .booking-preview-times .booking-option {
+    display: flex;
+    min-height: 3.5rem;
+    justify-content: center;
+    padding: var(--space-3);
+    text-align: center;
+}
+
+.booking-flow .booking-sticky-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+}
+
 @media (max-width: 39.999rem) {
+    .booking-flow .booking-container {
+        width: min(100% - (var(--space-4) * 2), 62rem);
+    }
+
+    .booking-flow .booking-fieldset,
+    .booking-flow .booking-preview-form {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-4);
+    }
+
     .booking-flow .booking-input {
         min-width: 0;
+        inline-size: 100%;
         font-size: 1rem;
+    }
+
+    .booking-flow input[type='date'].booking-input {
+        min-height: 3.5rem;
+        appearance: none;
+    }
+
+    .booking-flow .booking-option-list,
+    .booking-flow .booking-preview-times .booking-option-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-2);
     }
 
     .booking-flow .booking-time-grid {
@@ -39,5 +105,31 @@
     .booking-flow .booking-form-actions .button {
         max-width: 100%;
         white-space: normal;
+    }
+
+    .booking-flow .booking-consent-card {
+        padding: var(--space-4);
+    }
+
+    .booking-flow .booking-consent {
+        gap: var(--space-3);
+        font-size: 0.9375rem;
+        font-weight: 650;
+    }
+
+    .booking-flow .booking-sticky-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .booking-flow .booking-sticky-actions .button {
+        width: 100%;
+        min-width: 0;
+        min-height: 3.25rem;
+        white-space: normal;
+    }
+
+    .booking-flow .booking-sticky-actions .button--primary {
+        order: -1;
     }
 }
