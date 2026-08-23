@@ -1,0 +1,43 @@
+.booking-flow {
+    min-width: 0;
+    overflow-x: clip;
+}
+
+.booking-flow .booking-card,
+.booking-flow form,
+.booking-flow fieldset,
+.booking-flow .booking-field,
+.booking-flow .booking-option__content {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.booking-flow fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+@media (max-width: 39.999rem) {
+    .booking-flow .booking-input {
+        min-width: 0;
+        font-size: 1rem;
+    }
+
+    .booking-flow .booking-time-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .booking-flow .booking-date-grid .booking-chip,
+    .booking-flow .booking-time-grid .booking-chip {
+        min-width: 0;
+        padding-inline: var(--space-2);
+        line-height: 1.25;
+        white-space: normal;
+    }
+
+    .booking-flow .booking-form-actions .button {
+        max-width: 100%;
+        white-space: normal;
+    }
+}
