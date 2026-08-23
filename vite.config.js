@@ -9,6 +9,7 @@ export default defineConfig({
             input: [
                 'resources/js/app.js',
                 'resources/css/public-website.css',
+                'resources/css/public-booking.css',
                 'resources/js/public-website.js',
                 'resources/js/public-content-enhancements.js',
                 'resources/js/blog-slider.js',
