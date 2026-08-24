@@ -17,6 +17,20 @@ use App\Modules\Booking\Domain\ValueObjects\ServiceId;
 use App\Modules\Booking\Domain\ValueObjects\ServiceName;
 use App\Modules\Booking\Domain\ValueObjects\SortOrder;
 use App\Modules\Booking\Domain\ValueObjects\TenantId as BookingTenantId;
+use App\Modules\SubscriptionBilling\Contracts\Repositories\SubscriptionRepositoryInterface;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\Subscription;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\BillingCycleId;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\BillingPeriod;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\CapabilityKey;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\ClinicRegistrationId;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\CommercialOfferId;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\Entitlement;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\EntitlementStatus;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\Money;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\PaymentId;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\PlanId;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\SubscriptionId;
+use App\Modules\SubscriptionBilling\Domain\Aggregates\Subscription\ValueObjects\TenantId as SubscriptionTenantId;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Repositories\TenantRepositoryInterface;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\Tenant;
 use App\Modules\TenantManagement\Domain\Aggregates\Tenant\ValueObjects\ClinicOwnerAuthorityId;
@@ -80,6 +94,16 @@ use RuntimeException;
 /** Creates the five public, managed template showcase clinics idempotently. */
 final class SetupTemplateShowcaseWebsitesCommand extends Command
 {
+    private const string SHOWCASE_PLAN_ID = 'a6e33ea4-08b4-4c41-aaeb-f43f38a4dce4';
+
+    private const string SHOWCASE_BILLING_CYCLE_ID = '10f123fc-e98d-4b92-8e3a-feed0d5caa62';
+
+    /** @var list<string> */
+    private const array SHOWCASE_CAPABILITIES = [
+        'booking.manage', 'booking.online', 'booking.schedule.manage', 'custom_domain', 'syifa_ai.assist',
+        'website.blog.manage', 'website.branding.manage', 'website.content.manage', 'website.managed', 'website.search_sharing.manage',
+    ];
+
     protected $signature = 'syifa:showcase-websites:setup
         {--password= : Shared password for the five showcase Clinic Owner accounts (minimum 15 characters)}
         {--confirm : Required acknowledgement before production data is created}';
@@ -102,6 +126,7 @@ final class SetupTemplateShowcaseWebsitesCommand extends Command
         WebsitePublicAddressRepositoryInterface $addresses,
         ServiceRepositoryInterface $services,
         BookingFormConfigurationRepositoryInterface $forms,
+        SubscriptionRepositoryInterface $subscriptions,
     ): int {
         $password = (string) $this->option('password');
         if (! $this->option('confirm')) {
@@ -121,6 +146,7 @@ final class SetupTemplateShowcaseWebsitesCommand extends Command
             $tenantId = $this->id($slug, 'tenant');
             $this->ensureClinic($clinics, $slug, $tenantId, $now);
             $this->ensureBooking($services, $forms, $slug, $tenantId, $site, $now);
+            $this->ensureSubscription($subscriptions, $slug, $tenantId, $now);
             $this->ensureWebsite($websites, $slug, $tenantId, $site, $now);
             $this->ensureAddress($addresses, $slug, $tenantId, $now);
             $this->components->info(sprintf('Ready: https://%s.syifa.my', $slug));
@@ -170,6 +196,32 @@ final class SetupTemplateShowcaseWebsitesCommand extends Command
         if ($forms->findByTenant($bookingTenant) === null) {
             $forms->save(BookingFormConfiguration::create($bookingTenant, true, false, true, false, true, new RequiredFields([BookingFormField::Service]), new FieldOrder([BookingFormField::Service, BookingFormField::PatientName, BookingFormField::Phone, BookingFormField::Email, BookingFormField::AppointmentDate, BookingFormField::AppointmentTime, BookingFormField::Notes]), new FieldLabels([]), $now));
         }
+    }
+
+    private function ensureSubscription(SubscriptionRepositoryInterface $subscriptions, string $slug, string $tenantId, DateTimeImmutable $now): void
+    {
+        $subscriptionTenant = new SubscriptionTenantId($tenantId);
+        if ($subscriptions->findByTenantId($subscriptionTenant) !== null) {
+            return;
+        }
+
+        $planId = new PlanId(self::SHOWCASE_PLAN_ID);
+        $billingCycleId = new BillingCycleId(self::SHOWCASE_BILLING_CYCLE_ID);
+        $subscription = Subscription::create(
+            new SubscriptionId($this->id($slug, 'subscription')),
+            $subscriptionTenant,
+            new ClinicRegistrationId($this->id($slug, 'registration')),
+            new PaymentId($this->id($slug, 'payment')),
+            new CommercialOfferId($this->id($slug, 'offer')),
+            $planId,
+            $billingCycleId,
+            new Money(0, 'MYR'),
+            new BillingPeriod($now->format('Y-m-d'), $now->modify('+5 years')->format('Y-m-d')),
+            new Entitlement($planId, $billingCycleId, 'showcase-template-v1', EntitlementStatus::Pending, array_map(static fn (string $capability): CapabilityKey => new CapabilityKey($capability), self::SHOWCASE_CAPABILITIES)),
+            $now,
+        );
+        $subscription->activate($now);
+        $subscriptions->save($subscription);
     }
 
     /** @param array{template: TemplateId, clinic: string, tagline: string, headline: string, about: string, service: string, service_description: string, doctor: string, title: string, address: string, color: string} $site */
