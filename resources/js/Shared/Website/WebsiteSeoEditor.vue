@@ -1,10 +1,13 @@
 <script setup>
 import { computed } from 'vue';
+import WebsiteImageUpload from './WebsiteImageUpload.vue';
 
 const props = defineProps({
     fallbackTitle: { type: String, default: '' },
     fallbackDescription: { type: String, default: '' },
     inputClass: { type: String, required: true },
+    uploadUrl: { type: String, required: true },
+    assetUrlTemplate: { type: String, required: true },
 });
 
 const seo = defineModel({ type: Object, required: true });
@@ -74,6 +77,26 @@ const searchDescription = computed(
                         :placeholder="fallbackDescription || 'Penerangan ringkas klinik'"
                     />
                 </label>
+            </div>
+        </details>
+
+        <details class="rounded-xl border border-slate-200 bg-white" open>
+            <summary class="cursor-pointer px-4 py-3 font-bold text-emerald-800">
+                Gambar untuk perkongsian (WhatsApp, Facebook)
+            </summary>
+            <div class="space-y-3 border-t border-slate-200 p-4">
+                <p class="text-sm leading-6 text-slate-600">
+                    Gambar ini dipaparkan bila pautan website dikongsi. Kosongkan untuk guna gambar
+                    hero halaman utama secara automatik.
+                </p>
+                <WebsiteImageUpload
+                    v-model="seo.open_graph_image"
+                    label="Gambar perkongsian"
+                    :upload-url="uploadUrl"
+                    :asset-url-template="assetUrlTemplate"
+                    :aspect-ratio="1200 / 630"
+                    :output-width="1200"
+                />
             </div>
         </details>
 

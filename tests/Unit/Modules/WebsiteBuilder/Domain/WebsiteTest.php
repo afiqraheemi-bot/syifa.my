@@ -6,8 +6,11 @@ namespace Tests\Unit\Modules\WebsiteBuilder\Domain;
 
 use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\SectionContent\ServicePresentationItem;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetAvailabilityEvidence;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetMimeType;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\PublicationId;
+use App\Modules\WebsiteBuilder\Domain\ValueObjects\RobotsDirective;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionDisplayOrder;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionType;
@@ -19,6 +22,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsiteLifecycle;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationEvidence;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\WebsitePublicationReadiness;
 use App\Modules\WebsiteBuilder\Domain\Website;
+use App\Modules\WebsiteBuilder\Domain\WebsiteAsset;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSection;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSectionCollection;
 use DateTimeImmutable;
@@ -226,6 +230,48 @@ final class WebsiteTest extends TestCase
     {
         $this->expectException(InvalidWebsiteValueException::class);
         new AssetId('not-a-uuid');
+    }
+
+    public function test_configure_seo_rejects_an_open_graph_image_that_is_not_a_registered_website_asset(): void
+    {
+        $website = $this->website();
+
+        $this->expectException(InvalidWebsiteValueException::class);
+        $website->configureSeo(
+            'Klinik Syifa',
+            'Trusted care',
+            null,
+            null,
+            RobotsDirective::IndexFollow,
+            'Klinik Syifa',
+            'Trusted care',
+            new AssetId($this->uuid(900)),
+            true,
+            $this->at('+1 hour'),
+        );
+    }
+
+    public function test_configure_seo_accepts_an_available_open_graph_image_belonging_to_the_website(): void
+    {
+        $website = $this->website();
+        $asset = WebsiteAsset::register(new AssetId($this->uuid(900)), $website->tenantId, 'tenant-2/assets/og.webp', AssetMimeType::Webp, 4096, 1200, 630, str_repeat('a', 64), $this->at());
+        $website->registerAsset($asset, $this->at());
+        $website->makeAssetAvailable($asset->id, new AssetAvailabilityEvidence(true, true), $this->at('+1 hour'));
+
+        $website->configureSeo(
+            'Klinik Syifa',
+            'Trusted care',
+            null,
+            null,
+            RobotsDirective::IndexFollow,
+            'Klinik Syifa',
+            'Trusted care',
+            $asset->id,
+            true,
+            $this->at('+2 hours'),
+        );
+
+        self::assertSame($asset->id->value, $website->seo()->openGraphImageReference()?->value);
     }
 
     #[DataProvider('templateProvider')]

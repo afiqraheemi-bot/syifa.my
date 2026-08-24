@@ -78,7 +78,6 @@ final readonly class ManageWebsiteContentService
             WhatsAppButtonStyle::fromStored($command->whatsAppButtonStyle),
         ), $at);
 
-        $currentSeo = $website->seo();
         $website->configureSeo(
             $command->metaTitle,
             $command->metaDescription,
@@ -87,7 +86,7 @@ final readonly class ManageWebsiteContentService
             RobotsDirective::from($command->robotsDirective),
             $command->openGraphTitle,
             $command->openGraphDescription,
-            $currentSeo->openGraphImageReference(),
+            $command->openGraphImageReference === null ? null : new AssetId($command->openGraphImageReference),
             $command->indexingEnabled,
             $at,
         );

@@ -287,6 +287,9 @@ final class PostgresWebsiteRepositoryTest extends TestCase
     public function test_seo_configuration_round_trips_with_explicit_columns(): void
     {
         $website = $this->website();
+        $ogImage = WebsiteAsset::register(new AssetId($this->uuid(700)), new TenantId($this->uuid(1)), 'tenant-1/assets/og-image.webp', AssetMimeType::Webp, 4096, 1200, 630, str_repeat('d', 64), $this->at());
+        $website->registerAsset($ogImage, $this->at());
+        $website->makeAssetAvailable($ogImage->id, new AssetAvailabilityEvidence(true, true), $this->at());
         $website->configureSeo('Klinik Syifa KL', 'Trusted primary care in Kuala Lumpur.', 'clinic, primary care', 'https://clinic.example/about', RobotsDirective::IndexNoFollow, 'Klinik Syifa', 'Book trusted care.', new AssetId($this->uuid(700)), false, $this->at('+1 hour'));
         $this->repository()->save($website);
 

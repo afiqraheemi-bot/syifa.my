@@ -2459,6 +2459,92 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         }
     }
 
+    /**
+     * The Open Graph image field has full domain/rendering support (added to
+     * close a real gap: link previews on WhatsApp/Facebook had no thumbnail
+     * for any clinic because this field was never reachable from any
+     * dashboard). Setting it should persist and round-trip; clearing it back
+     * to null must be honored too, so a clinic can return to the automatic
+     * hero/logo fallback instead of being stuck with a stale explicit choice.
+     */
+    public function test_clinic_owner_can_set_and_clear_an_explicit_open_graph_share_image(): void
+    {
+        $storage = new DashboardWebsiteAssetStorage;
+        $this->app->instance(WebsiteAssetBinaryStorageInterface::class, $storage);
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::ClinicOwner,
+                'clinic_owner',
+                '00000000-0000-4000-8000-000000000002',
+                '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $png = (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+
+        $uploaded = $this->postJson(route('clinic-owner.website-assets.store'), [
+            'image' => UploadedFile::fake()->createWithContent('share.png', $png),
+        ])->assertCreated();
+        $assetId = $uploaded->json('data.asset_id');
+        $version = $uploaded->json('data.website_version');
+
+        $payload = static fn (int $version, ?string $openGraphImage): array => [
+            'version' => $version,
+            'template_id' => 'SYIFA_CARE',
+            'branding' => [
+                'clinic_name' => 'Klinik Baharu',
+                'tagline' => 'Trusted care',
+                'primary_color' => '#aabbcc',
+                'secondary_color' => '#ddeeff',
+                'logo_reference' => null,
+                'logo_display_size' => 'large',
+                'whatsapp_button_style' => 'circle',
+                'contact_email' => 'hello@example.test',
+                'contact_phone' => '+60123456789',
+                'address' => 'Kuala Lumpur',
+                'social_links' => ['facebook' => 'https://facebook.com/klinik'],
+            ],
+            'seo' => [
+                'meta_title' => 'Klinik Baharu',
+                'meta_description' => 'Trusted family healthcare.',
+                'meta_keywords' => null,
+                'canonical_url' => 'https://clinic.example.test',
+                'robots_directive' => 'index,follow',
+                'open_graph_title' => 'Klinik Baharu',
+                'open_graph_description' => 'Trusted family healthcare.',
+                'open_graph_image' => $openGraphImage,
+                'indexing_enabled' => true,
+            ],
+            'sections' => [
+                'hero' => true, 'about' => true, 'services' => true, 'doctors' => true,
+                'testimonials' => true, 'gallery' => true, 'faq' => true, 'contact' => true, 'booking_cta' => true,
+            ],
+        ];
+
+        $this->patch('/dashboard/website/content', $payload($version, $assetId))
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $this->get('/dashboard/website/content')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('editableContent.seo.open_graph_image', $assetId)
+                    ->where('editableContent.version', $version + 1),
+            );
+
+        $this->patch('/dashboard/website/content', $payload($version + 1, null))
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $this->get('/dashboard/website/content')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('editableContent.seo.open_graph_image', null),
+            );
+    }
+
     public function test_clinic_owner_receives_a_clear_validation_error_when_server_rejects_image_size(): void
     {
         $this->app->instance(

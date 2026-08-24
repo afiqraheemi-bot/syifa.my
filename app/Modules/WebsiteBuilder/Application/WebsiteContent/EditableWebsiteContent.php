@@ -47,6 +47,7 @@ final readonly class EditableWebsiteContent
                 'robots_directive' => $seo->robotsDirective()->value,
                 'open_graph_title' => $seo->openGraphTitle(),
                 'open_graph_description' => $seo->openGraphDescription(),
+                'open_graph_image' => $seo->openGraphImageReference()?->value,
                 'indexing_enabled' => $seo->indexingEnabled(),
             ],
             'sections' => array_map(
