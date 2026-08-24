@@ -118,14 +118,11 @@ final readonly class WebsiteDesignerJobDetailPage
                 break;
             }
         }
-        $approvalCanBeRequested = ! in_array(
+        $canSubmitForReview = WebsiteReviewSubmissionEligibility::canSubmitForReview(
+            (string) $editableWebsite['lifecycle'],
             $approval['approvalStatus'] ?? null,
-            ['requested', 'resubmitted'],
-            true,
-        );
-        $canSubmitForReview = $approvalCanBeRequested && (
-            $editableWebsite['lifecycle'] === 'draft'
-            || ($editableWebsite['lifecycle'] === 'ready_for_review' && ! $currentApprovalSatisfied)
+            $currentApprovalSatisfied,
+            (string) $jobData['status'],
         );
 
         return new DashboardPageView('PlatformAdministration/Onboarding/WebsiteDesignerJobDetail', [
