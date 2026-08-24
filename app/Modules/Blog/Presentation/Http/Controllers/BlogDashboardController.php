@@ -198,6 +198,13 @@ final readonly class BlogDashboardController
     /** @return array<string, mixed> */
     private function validate(Request $request): array
     {
+        // The dashboard only offers a plain text field for canonical_url -
+        // typing "clinic.example/article" instead of
+        // "https://clinic.example/article" is a scheme omission, not an
+        // invalid URL, so it's corrected before the `url:https` rule below
+        // would otherwise reject it outright.
+        $request->merge(['canonical_url' => self::withHttpsScheme($request->input('canonical_url'))]);
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:200'], 'slug' => ['required', 'string', 'max:180', 'regex:/^[a-z0-9-]+$/'],
             'excerpt' => ['required', 'string', 'max:600'], 'body' => ['required', 'string', 'max:100000'],
@@ -213,11 +220,34 @@ final readonly class BlogDashboardController
         $excerpt = trim((string) $data['excerpt']);
         $data['meta_title'] = trim((string) ($data['meta_title'] ?? '')) ?: Str::limit($title, 60, '');
         $data['meta_description'] = trim((string) ($data['meta_description'] ?? '')) ?: Str::limit($excerpt, 160, '');
-        $data['open_graph_title'] = trim((string) ($data['open_graph_title'] ?? '')) ?: $data['meta_title'];
-        $data['open_graph_description'] = trim((string) ($data['open_graph_description'] ?? '')) ?: Str::limit($excerpt, 200, '');
+        // There is no dashboard field to set these independently, so they
+        // always mirror the meta title/derived excerpt rather than only
+        // defaulting once when empty - otherwise they freeze at whatever
+        // they were on creation and drift stale as the post is edited.
+        $data['open_graph_title'] = $data['meta_title'];
+        $data['open_graph_description'] = Str::limit($excerpt, 200, '');
         $data['robots_directive'] = $data['robots_directive'] ?? 'index,follow';
 
         return $data;
+    }
+
+    /**
+     * Only adds a scheme when one is entirely missing - an explicit
+     * "http://" is left alone (and still rejected by the `url:https` rule
+     * above) rather than silently upgraded, since there's no way to know
+     * the target actually serves that URL over TLS.
+     */
+    private static function withHttpsScheme(mixed $url): mixed
+    {
+        if (! is_string($url)) {
+            return $url;
+        }
+        $trimmed = trim($url);
+        if ($trimmed === '' || preg_match('#^https?://#i', $trimmed) === 1) {
+            return $trimmed;
+        }
+
+        return 'https://'.$trimmed;
     }
 
     private function actor(Request $request): AuthorizationContext

@@ -2263,6 +2263,82 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             );
     }
 
+    /**
+     * Regression: this flow validates through a plain Request rather than
+     * the FormRequest DI pipeline (see WebsiteDesignerJobDetailController),
+     * so the scheme-normalization has to be wired in explicitly here too -
+     * this guards against that wiring being dropped by only relying on the
+     * Clinic Owner path's coverage.
+     */
+    public function test_website_designer_can_save_a_canonical_url_without_typing_a_scheme(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $jobId = '00000000-0000-4000-8000-000000000101';
+
+        $this->patch('/dashboard/onboarding/'.$jobId, [
+            'workspace' => 'website_setup',
+            'version' => 1,
+            'template_id' => 'SYIFA_CARE',
+            'branding' => [
+                'clinic_name' => 'Klinik Designer',
+                'tagline' => 'Configured with care',
+                'primary_color' => '#aabbcc',
+                'secondary_color' => '#ddeeff',
+                'logo_reference' => null,
+                'logo_display_size' => 'large',
+                'whatsapp_button_style' => 'pill',
+                'contact_email' => 'designer@example.test',
+                'contact_phone' => '+60123456789',
+                'address' => 'Kuala Lumpur',
+                'social_links' => [
+                    'facebook' => 'facebook.com/klinik',
+                    'instagram' => null,
+                    'youtube' => null,
+                    'tiktok' => null,
+                    'linkedin' => null,
+                ],
+            ],
+            'seo' => [
+                'meta_title' => 'Klinik Designer SEO',
+                'meta_description' => 'Trusted healthcare configured by the assigned designer.',
+                'meta_keywords' => 'clinic, healthcare',
+                'canonical_url' => 'clinic.example.test',
+                'robots_directive' => 'index,nofollow',
+                'open_graph_title' => 'Klinik Designer',
+                'open_graph_description' => 'Trusted clinic information for social sharing.',
+                'indexing_enabled' => false,
+            ],
+            'sections' => [
+                'hero' => true,
+                'about' => false,
+                'services' => true,
+                'doctors' => true,
+                'testimonials' => true,
+                'gallery' => true,
+                'faq' => true,
+                'contact' => true,
+                'booking_cta' => true,
+            ],
+        ])
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $this->get('/dashboard/onboarding/'.$jobId)
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('websiteSetup.configuration.seo.canonical_url', 'https://clinic.example.test')
+                    ->where('websiteSetup.configuration.branding.social_links.facebook', 'https://facebook.com/klinik'),
+            );
+    }
+
     public function test_clinic_owner_can_open_service_setup_but_other_roles_are_forbidden(): void
     {
         $this->app->instance(
@@ -2881,6 +2957,71 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertOk()
             ->assertSee('whatsapp-float--circle', false)
             ->assertDontSee('WhatsApp clinic');
+    }
+
+    /**
+     * Regression: the dashboard's canonical URL and social link fields only
+     * ever offered a plain text box, so a clinic owner typing
+     * "clinic.example.test" or "facebook.com/klinik" (no scheme) used to be
+     * rejected outright by the `url:https` rule with no indication that
+     * simply adding "https://" would have worked. A missing scheme is now
+     * corrected automatically instead of rejected.
+     */
+    public function test_clinic_owner_can_save_a_canonical_url_and_social_link_without_typing_a_scheme(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000010'),
+        );
+
+        $this->patch('/dashboard/website/content', [
+            'version' => 1,
+            'template_id' => 'SYIFA_CARE',
+            'branding' => [
+                'clinic_name' => 'Klinik Baharu',
+                'tagline' => 'Trusted care',
+                'primary_color' => '#aabbcc',
+                'secondary_color' => '#ddeeff',
+                'logo_reference' => null,
+                'logo_display_size' => 'large',
+                'whatsapp_button_style' => 'circle',
+                'contact_email' => 'hello@example.test',
+                'contact_phone' => '+60123456789',
+                'address' => 'Kuala Lumpur',
+                'social_links' => ['facebook' => 'facebook.com/klinik'],
+            ],
+            'seo' => [
+                'meta_title' => 'Klinik Baharu',
+                'meta_description' => 'Trusted family healthcare.',
+                'meta_keywords' => null,
+                'canonical_url' => 'clinic.example.test',
+                'robots_directive' => 'index,follow',
+                'open_graph_title' => 'Klinik Baharu',
+                'open_graph_description' => 'Trusted family healthcare.',
+                'indexing_enabled' => true,
+            ],
+            'sections' => [
+                'hero' => true,
+                'about' => true,
+                'services' => true,
+                'doctors' => true,
+                'testimonials' => true,
+                'gallery' => true,
+                'faq' => true,
+                'contact' => true,
+                'booking_cta' => true,
+            ],
+        ])
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $this->get('/dashboard/website/content')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('editableContent.seo.canonical_url', 'https://clinic.example.test')
+                    ->where('editableContent.branding.social_links.facebook', 'https://facebook.com/klinik'),
+            );
     }
 
     public function test_clinic_owner_json_save_returns_authoritative_content_after_a_stale_write(): void

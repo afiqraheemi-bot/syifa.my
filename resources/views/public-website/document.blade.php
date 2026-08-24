@@ -1,6 +1,25 @@
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
+    @php
+        // og:image has no dashboard field to set explicitly today, so fall
+        // back to the clinic's own visuals rather than emitting no image at
+        // all - the hero photo makes the best share-card image; the logo is
+        // the next best thing when there is no hero section.
+        $ogImageAssetId = $document->website->seo->openGraphImageAssetId;
+        if ($ogImageAssetId === null) {
+            foreach ($document->website->sections as $ogFallbackSection) {
+                if ($ogFallbackSection->type() === 'HERO' && $ogFallbackSection->heroImageAssetId !== null) {
+                    $ogImageAssetId = $ogFallbackSection->heroImageAssetId;
+                    break;
+                }
+            }
+        }
+        if ($ogImageAssetId === null) {
+            $ogImageAssetId = $document->website->header->logoAssetId;
+        }
+        $ogImageUrl = $ogImageAssetId === null ? null : ($document->assetUrls[$ogImageAssetId] ?? null);
+    @endphp
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $document->head->title }}</title>
@@ -14,11 +33,11 @@
     <meta property="og:title" content="{{ $document->head->openGraphTitle }}">
     <meta property="og:description" content="{{ $document->head->openGraphDescription }}">
     <meta property="og:url" content="{{ $document->head->openGraphUrl->value }}">
-    @if ($document->website->seo->openGraphImageAssetId !== null && isset($document->assetUrls[$document->website->seo->openGraphImageAssetId]))
-        <meta property="og:image" content="{{ $document->assetUrls[$document->website->seo->openGraphImageAssetId]->value }}">
+    @if ($ogImageUrl !== null)
+        <meta property="og:image" content="{{ $ogImageUrl->value }}">
         <meta property="og:image:alt" content="{{ $document->website->branding->clinicName }}">
     @endif
-    <meta name="twitter:card" content="{{ $document->website->seo->openGraphImageAssetId !== null ? 'summary_large_image' : 'summary' }}">
+    <meta name="twitter:card" content="{{ $ogImageUrl !== null ? 'summary_large_image' : 'summary' }}">
     <meta name="twitter:title" content="{{ $document->head->openGraphTitle }}">
     <meta name="twitter:description" content="{{ $document->head->openGraphDescription }}">
     @if ($document->website->branding->faviconAssetId !== null && isset($document->assetUrls[$document->website->branding->faviconAssetId]))

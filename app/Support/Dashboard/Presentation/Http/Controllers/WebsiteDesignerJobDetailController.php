@@ -98,6 +98,7 @@ final readonly class WebsiteDesignerJobDetailController
         array $props,
         ManageWebsiteContentService $websiteContent,
     ): RedirectResponse {
+        UpdateClinicOwnerWebsiteContentRequest::normalizeUrlFields($request);
         $rules = (new UpdateClinicOwnerWebsiteContentRequest)->rules();
         $rules['template_id'] = ['required', Rule::enum(TemplateId::class)];
         /** @var array<string, mixed> $data */

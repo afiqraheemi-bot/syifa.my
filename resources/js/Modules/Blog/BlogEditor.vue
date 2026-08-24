@@ -478,8 +478,9 @@ function transition(action) {
                             <label class="mt-3 block text-xs font-bold"
                                 >Pautan asal (canonical)<input
                                     v-model="form.canonical_url"
-                                    type="url"
-                                    placeholder="Kosongkan jika tidak pasti"
+                                    type="text"
+                                    inputmode="url"
+                                    placeholder="Kosongkan jika tidak pasti, cth. klinikanda.syifa.my/blog/artikel"
                                     class="mt-2 w-full rounded-lg border border-slate-300 p-2" /></label
                             ><label class="mt-3 block text-xs font-bold"
                                 >Paparan enjin carian<select
