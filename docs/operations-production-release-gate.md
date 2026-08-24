@@ -2,7 +2,13 @@
 
 ## Current decision
 
-Production releases are frozen while subscription activation, exact-SHA deployment, rollback and backup restoration are verified. The repository-enforced marker is `.github/RELEASE_FREEZE.md`.
+**2026-08-24 — CTO-approved unfreeze.** The repository-enforced marker (`.github/RELEASE_FREEZE.md`) has been removed. This was an explicit CTO decision to restore production delivery after confirming real customer impact from the freeze itself: the Clinic Owner Account & Security page (`/dashboard/account` and its legacy redirects) did not exist at all on the deployed commit, and a paying clinic's public site was unreachable, both fixed on `main` but withheld by the freeze for 5 days. The following evidence items from the frozen-state checklist were **not yet complete** at the time of this decision and remain open follow-up work, tracked in issue #12:
+
+- Server-administrator DevOps evidence: exact-tested-SHA atomic deployment proof, retained-previous-release proof, and automatic failed-health rollback proof for `/usr/local/bin/syifa-deploy`.
+- A genuinely isolated staging environment (`staging.syifa.my` / `stage.syifa.my` currently route to production) and its smoke-journey evidence.
+- Recorded Backend/DevOps/QA/Product/CTO sign-offs.
+
+Subscription-activation reliability (duplicate/retry/exhaustion/tenant-isolation/rollback coverage), CI health, dependency audits, and production health/catalogue checks were already complete and are unaffected by this decision. Re-freezing (re-adding `.github/RELEASE_FREEZE.md`) remains available at any time if this decision needs to be reversed.
 
 ## Ownership
 

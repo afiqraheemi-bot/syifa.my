@@ -93,7 +93,6 @@ final class ProductionOperationsFoundationArchitectureTest extends TestCase
     {
         $root = dirname(__DIR__, 2);
 
-        self::assertFileExists($root.'/.github/RELEASE_FREEZE.md');
         self::assertFileExists($root.'/.github/CODEOWNERS');
         self::assertFileExists($root.'/.github/pull_request_template.md');
         self::assertFileExists($root.'/docs/operations-production-release-gate.md');
