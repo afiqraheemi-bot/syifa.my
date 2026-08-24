@@ -106,10 +106,19 @@ final readonly class WebsiteApproval
         int $draftVersion,
         PlatformIdentityId $requestedBy,
         DateTimeImmutable $at,
+        bool $jobPrecedesReview,
     ): self {
         $isUpdatedApprovedVersion = $this->status === WebsiteApprovalStatus::Approved
             && ($this->websiteVersion !== $websiteVersion || $this->draftVersion !== $draftVersion);
-        if ($this->status !== WebsiteApprovalStatus::CorrectionRequested && ! $isUpdatedApprovedVersion) {
+        // An Approved approval whose version still matches the Job usually
+        // means nothing needs resubmission - but an administrative reopen()
+        // can leave the Job itself behind this same untouched approval, and
+        // it must still be able to pass through review again.
+        $isApprovedButJobFellBehindReview = $this->status === WebsiteApprovalStatus::Approved
+            && $jobPrecedesReview;
+        if ($this->status !== WebsiteApprovalStatus::CorrectionRequested
+            && ! $isUpdatedApprovedVersion
+            && ! $isApprovedButJobFellBehindReview) {
             throw new InvalidOnboardingJobLifecycleTransitionException(
                 'Only a correction-requested or newly updated approved Website may be resubmitted.',
             );

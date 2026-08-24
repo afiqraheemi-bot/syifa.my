@@ -504,6 +504,22 @@ final class OnboardingJob
             );
         }
 
+        // Captured before start() advances Assigned -> InProgress: an
+        // Approved WebsiteApproval whose version still matches normally means
+        // nothing changed since approval. But an administrative reopen() can
+        // move the Job itself back behind that same untouched approval
+        // (Reopened -> Assigned via assignWebsiteDesigner()), and this Job
+        // then needs to pass through review again even though the Website
+        // content itself never changed. resubmit() has no visibility into
+        // the parent Job's status, so it's threaded through explicitly.
+        $jobPrecedesReview = in_array($this->status, [
+            OnboardingJobStatus::Assigned,
+            OnboardingJobStatus::InProgress,
+            OnboardingJobStatus::Blocked,
+            OnboardingJobStatus::CorrectionRequired,
+            OnboardingJobStatus::Reopened,
+        ], true);
+
         if ($this->status === OnboardingJobStatus::Assigned) {
             $this->start($occurredAt);
         }
@@ -525,6 +541,7 @@ final class OnboardingJob
                 $draftVersion,
                 $designerId,
                 $occurredAt,
+                $jobPrecedesReview,
             );
         }
 
