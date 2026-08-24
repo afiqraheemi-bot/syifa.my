@@ -110,8 +110,8 @@ final readonly class ClinicOwnerAccountController
         }
 
         $owner = ClinicOwnerAuthenticatable::query()
+            ->where('id', $context->identityId)
             ->where('tenant_id', $context->tenantId)
-            ->where('clinic_owner_identity_id', $context->identityId)
             ->where('authority_status', 'active')
             ->firstOrFail();
 
