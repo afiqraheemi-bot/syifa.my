@@ -2205,7 +2205,7 @@ function completionEvidence(task) {
                             v-model="heroForm.primary_cta_target"
                             :class="inputClass"
                             maxlength="2048"
-                            placeholder="/booking or https://"
+                            placeholder="/booking or example.com"
                             :disabled="heroSaving"
                         />
                     </label>
@@ -2224,7 +2224,7 @@ function completionEvidence(task) {
                             v-model="heroForm.secondary_cta_target"
                             :class="inputClass"
                             maxlength="2048"
-                            placeholder="/about or https://"
+                            placeholder="/about or example.com"
                             :disabled="heroSaving"
                         />
                     </label>
