@@ -310,6 +310,73 @@ final class OnboardingJobTest extends TestCase
         self::assertFalse($job->hasApprovedWebsiteVersions(3, 5));
     }
 
+    /**
+     * Production incident, 2026-08-24: an administrative reopen() of a Job
+     * closed before its Website was ever published leaves the prior approval
+     * Approved and pointing at the same, untouched Website version. Without
+     * this allowance, the Website Designer could never resubmit for review
+     * again unless they first made a pointless content edit just to bump the
+     * version number.
+     */
+    public function test_a_reopened_job_can_resubmit_an_approved_website_without_a_version_change(): void
+    {
+        $job = $this->jobWithAssignment();
+        $job->requestWebsiteApproval(
+            new WebsiteApprovalId($this->uuid(30)),
+            $this->platformIdentityId(20),
+            2,
+            4,
+            $this->time('10:02:00'),
+        );
+        $job->approveWebsite(new ClinicOwnerAuthorityId($this->uuid(40)), $this->time('10:03:00'));
+        self::assertSame(OnboardingJobStatus::ReadyForLaunch, $job->status());
+
+        $job->complete($this->time('10:04:00'));
+        $job->reopen($this->time('10:05:00'));
+        $job->assignWebsiteDesigner(
+            $this->assignmentId(11),
+            $this->platformIdentityId(20),
+            $this->time('10:06:00'),
+        );
+        self::assertSame(OnboardingJobStatus::Assigned, $job->status());
+        self::assertSame(WebsiteApprovalStatus::Approved, $job->websiteApproval()?->status);
+
+        $job->requestWebsiteApproval(
+            new WebsiteApprovalId($this->uuid(30)),
+            $this->platformIdentityId(20),
+            2,
+            4,
+            $this->time('10:07:00'),
+        );
+
+        self::assertSame(OnboardingJobStatus::InReview, $job->status());
+        self::assertSame(WebsiteApprovalStatus::Resubmitted, $job->websiteApproval()?->status);
+        self::assertFalse($job->hasApprovedWebsiteVersions(2, 4));
+    }
+
+    public function test_an_approved_website_with_no_version_change_still_rejects_resubmission_outside_a_reopen(): void
+    {
+        $job = $this->jobWithAssignment();
+        $job->requestWebsiteApproval(
+            new WebsiteApprovalId($this->uuid(30)),
+            $this->platformIdentityId(20),
+            2,
+            4,
+            $this->time('10:02:00'),
+        );
+        $job->approveWebsite(new ClinicOwnerAuthorityId($this->uuid(40)), $this->time('10:03:00'));
+        self::assertSame(OnboardingJobStatus::ReadyForLaunch, $job->status());
+
+        $this->expectException(InvalidOnboardingJobLifecycleTransitionException::class);
+        $job->requestWebsiteApproval(
+            new WebsiteApprovalId($this->uuid(30)),
+            $this->platformIdentityId(20),
+            2,
+            4,
+            $this->time('10:04:00'),
+        );
+    }
+
     private function jobWithAssignment(): OnboardingJob
     {
         $job = $this->job();
