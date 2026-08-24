@@ -6,6 +6,7 @@ namespace App\Support\Dashboard\Presentation\Http\Requests;
 
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -14,6 +15,58 @@ final class UpdateClinicOwnerWebsiteContentRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    /**
+     * The dashboard only ever offers a plain text field for these - typing
+     * "facebook.com/klinikanda" instead of "https://facebook.com/klinikanda"
+     * is a scheme omission, not an invalid URL, so it's corrected here
+     * before the `url:https` rule below would otherwise reject it outright.
+     */
+    protected function prepareForValidation(): void
+    {
+        self::normalizeUrlFields($this);
+    }
+
+    /**
+     * The Website Designer job flow validates against this same rule set
+     * through a plain Request (see WebsiteDesignerJobDetailController),
+     * which never triggers prepareForValidation() - so this normalization
+     * is also called explicitly from there.
+     */
+    public static function normalizeUrlFields(Request $request): void
+    {
+        $seo = is_array($request->input('seo')) ? $request->input('seo') : [];
+        $branding = is_array($request->input('branding')) ? $request->input('branding') : [];
+        $socialLinks = is_array($branding['social_links'] ?? null) ? $branding['social_links'] : [];
+
+        $request->merge([
+            'seo' => array_merge($seo, [
+                'canonical_url' => self::withHttpsScheme($seo['canonical_url'] ?? null),
+            ]),
+            'branding' => array_merge($branding, [
+                'social_links' => array_map(self::withHttpsScheme(...), $socialLinks),
+            ]),
+        ]);
+    }
+
+    /**
+     * Only adds a scheme when one is entirely missing - an explicit
+     * "http://" is left alone (and still rejected by the `url:https` rule
+     * below) rather than silently upgraded, since there's no way to know
+     * the target actually serves that URL over TLS.
+     */
+    public static function withHttpsScheme(mixed $url): mixed
+    {
+        if (! is_string($url)) {
+            return $url;
+        }
+        $trimmed = trim($url);
+        if ($trimmed === '' || preg_match('#^https?://#i', $trimmed) === 1) {
+            return $trimmed;
+        }
+
+        return 'https://'.$trimmed;
     }
 
     /** @return array<string, mixed> */
@@ -62,8 +115,13 @@ final class UpdateClinicOwnerWebsiteContentRequest extends FormRequest
 
         $seo['meta_title'] = trim((string) ($seo['meta_title'] ?? '')) ?: Str::limit($clinicName, 60, '');
         $seo['meta_description'] = trim((string) ($seo['meta_description'] ?? '')) ?: Str::limit($description, 160, '');
-        $seo['open_graph_title'] = trim((string) ($seo['open_graph_title'] ?? '')) ?: $seo['meta_title'];
-        $seo['open_graph_description'] = trim((string) ($seo['open_graph_description'] ?? '')) ?: $seo['meta_description'];
+        // There is no dashboard field to set these independently, so they
+        // always mirror the meta title/description rather than only
+        // defaulting once when empty - otherwise they freeze at whatever
+        // they were on creation and drift stale as the owner keeps editing
+        // the meta title/description.
+        $seo['open_graph_title'] = $seo['meta_title'];
+        $seo['open_graph_description'] = $seo['meta_description'];
         $seo['robots_directive'] = $seo['robots_directive'] ?? 'index,follow';
         $seo['indexing_enabled'] = $seo['indexing_enabled'] ?? true;
 

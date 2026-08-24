@@ -91,9 +91,9 @@ const searchDescription = computed(
                     <input
                         v-model="seo.canonical_url"
                         :class="inputClass"
-                        type="url"
+                        type="text"
                         inputmode="url"
-                        placeholder="Kosongkan jika tidak pasti"
+                        placeholder="Kosongkan jika tidak pasti, cth. klinikanda.syifa.my"
                     />
                 </label>
                 <label class="text-sm font-semibold text-slate-800">

@@ -9,6 +9,7 @@ use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContext;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContextFactoryInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteDocumentFactory;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteRenderModelProviderInterface;
+use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\HeaderRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\HeroSectionRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\SeoRenderModel;
@@ -378,6 +379,87 @@ final class PublicWebsiteDeliveryTest extends TestCase
             ->assertOk()
             ->assertSee('Disallow: /', false)
             ->assertDontSee('Sitemap:', false);
+    }
+
+    /**
+     * Regression: there is no dashboard field to set Open Graph title and
+     * description independently, so a stale value stored from before the
+     * meta title/description were last edited must never be shown - the
+     * page always reads the current meta title/description instead.
+     */
+    public function test_open_graph_title_and_description_always_use_the_current_meta_title_and_description(): void
+    {
+        $model = $this->renderModel('Klinik Syifa');
+        $seo = new SeoRenderModel(
+            'Klinik Syifa - Rawatan Keluarga',
+            'Rawatan klinik am dan pemeriksaan kesihatan keluarga.',
+            $model->seo->metaKeywords,
+            $model->seo->canonicalUrl,
+            $model->seo->robotsDirective,
+            'klinik syifa',
+            'klinik syifa',
+            $model->seo->openGraphImageAssetId,
+            $model->seo->indexingEnabled,
+        );
+        $this->bindWebsite(new PublicWebsiteRenderModel($model->website, $model->branding, $seo, $model->header, $model->footer, $model->sections, $model->assets, $model->publication));
+
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertSee('<meta property="og:title" content="Klinik Syifa - Rawatan Keluarga">', false)
+            ->assertSee('<meta property="og:description" content="Rawatan klinik am dan pemeriksaan kesihatan keluarga.">', false)
+            ->assertSee('<meta name="twitter:title" content="Klinik Syifa - Rawatan Keluarga">', false)
+            ->assertDontSee('content="klinik syifa"', false);
+    }
+
+    /**
+     * Regression: a clinic with no explicit Open Graph image, no hero photo,
+     * and no logo must not emit a broken/empty og:image tag - link previews
+     * should fall back to a plain summary card rather than a dead image.
+     */
+    public function test_a_website_without_any_available_image_omits_the_open_graph_image_tag(): void
+    {
+        $this->bindWebsite($this->renderModel('Klinik Syifa'));
+
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertDontSee('property="og:image"', false)
+            ->assertSee('<meta name="twitter:card" content="summary">', false);
+    }
+
+    /**
+     * Regression: og:image has no dedicated dashboard field, so the hero
+     * photo - the clinic's own best visual - is used as the share-card image
+     * instead of leaving link previews on WhatsApp/Facebook without a thumbnail.
+     */
+    public function test_a_website_with_a_hero_photo_uses_it_as_the_open_graph_image(): void
+    {
+        $model = $this->renderModel('Klinik Syifa');
+        $sections = $model->sections;
+        $hero = $sections[0];
+        self::assertInstanceOf(HeroSectionRenderModel::class, $hero);
+        $sections[0] = new HeroSectionRenderModel($hero->headline, $hero->subheadline, $hero->primaryCtaLabel, $hero->primaryCtaTarget, $hero->secondaryCtaLabel, $hero->secondaryCtaTarget, $this->uuid(9990));
+        $this->bindWebsite(new PublicWebsiteRenderModel($model->website, $model->branding, $model->seo, $model->header, $model->footer, $sections, $model->assets, $model->publication));
+
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertSee('<meta property="og:image" content="', false)
+            ->assertSee('<meta name="twitter:card" content="summary_large_image">', false);
+    }
+
+    /**
+     * Regression: with no hero photo either, the clinic's logo is still a
+     * better share-card image than none at all.
+     */
+    public function test_a_website_without_a_hero_photo_falls_back_to_its_logo_for_the_open_graph_image(): void
+    {
+        $model = $this->renderModel('Klinik Syifa');
+        $header = new HeaderRenderModel($model->header->clinicName, $model->header->tagline, $this->uuid(9990), $model->header->logoDisplaySize);
+        $this->bindWebsite(new PublicWebsiteRenderModel($model->website, $model->branding, $model->seo, $header, $model->footer, $model->sections, $model->assets, $model->publication));
+
+        $this->get('https://clinic.example/')
+            ->assertOk()
+            ->assertSee('<meta property="og:image" content="', false)
+            ->assertSee('<meta name="twitter:card" content="summary_large_image">', false);
     }
 
     private static function assertDontSeeBookingDuplicatedInside(string $navigationHtml): void

@@ -2063,9 +2063,9 @@ function completionEvidence(task) {
                                     <input
                                         v-model="form.branding.social_links[channel]"
                                         :class="inputClass"
-                                        type="url"
+                                        type="text"
                                         inputmode="url"
-                                        placeholder="https://"
+                                        :placeholder="`${channel}.com/klinikanda`"
                                     />
                                 </label>
                             </div>

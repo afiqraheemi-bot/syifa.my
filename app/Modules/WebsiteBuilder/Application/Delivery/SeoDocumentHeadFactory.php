@@ -37,14 +37,18 @@ final readonly class SeoDocumentHeadFactory
         // of privacy while the page still asserts "index,follow" itself.
         $robots = $model->seo->indexingEnabled ? $model->seo->robotsDirective : 'noindex,nofollow';
 
+        // There is no dashboard field to set Open Graph title/description
+        // independently from the main meta title/description - they always
+        // read from meta here so a clinic's share-card text can't drift
+        // stale relative to text the owner can actually see and edit.
         return new SeoDocumentHead(
             $model->seo->metaTitle,
             $model->seo->metaDescription,
             $robots,
             $canonicalUrl,
             $canonicalUrl,
-            $model->seo->openGraphTitle,
-            $model->seo->openGraphDescription,
+            $model->seo->metaTitle,
+            $model->seo->metaDescription,
             $structured,
         );
     }
