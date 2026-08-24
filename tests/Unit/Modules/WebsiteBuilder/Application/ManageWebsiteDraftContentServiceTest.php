@@ -126,6 +126,81 @@ final class ManageWebsiteDraftContentServiceTest extends TestCase
         ));
     }
 
+    /**
+     * Regression: the Hero CTA editor is a single plain text field with no
+     * way to add a scheme, so a bare domain like "example.com" used to be
+     * rejected outright by SectionContentRules::optionalTarget(), which only
+     * accepts a relative path or an absolute "https://..." destination. A
+     * missing scheme is now added automatically.
+     */
+    public function test_hero_cta_target_without_a_scheme_is_saved_as_an_absolute_https_url(): void
+    {
+        $repository = new InMemoryWebsiteDraftRepository($this->draft());
+        $codec = new WebsiteDraftSectionCodec;
+        $service = new ManageWebsiteDraftContentService(
+            $repository,
+            new WebsiteAuthorization,
+            $codec,
+            new FixedActiveServiceReferences,
+        );
+        $authorization = new WebsiteAuthorizationContext(
+            self::DESIGNER,
+            'website_designer',
+            assignedTenantId: self::TENANT,
+        );
+        $sections = $service->load(
+            new LoadDraftWebsiteContent($authorization, self::TENANT, self::WEBSITE),
+        )->toArray()['sections'];
+        $sections[0]['primary_cta_label'] = 'Book now';
+        $sections[0]['primary_cta_target'] = 'booking.klinikanda.example';
+
+        $saved = $service->save(new SaveDraftWebsiteContent(
+            $authorization,
+            self::TENANT,
+            self::WEBSITE,
+            1,
+            $sections,
+        ));
+
+        self::assertSame('https://booking.klinikanda.example', $saved->toArray()['sections'][0]['primary_cta_target']);
+    }
+
+    /**
+     * A relative in-site path must never be treated as a bare domain missing
+     * its scheme.
+     */
+    public function test_hero_cta_target_relative_path_is_left_unchanged(): void
+    {
+        $repository = new InMemoryWebsiteDraftRepository($this->draft());
+        $codec = new WebsiteDraftSectionCodec;
+        $service = new ManageWebsiteDraftContentService(
+            $repository,
+            new WebsiteAuthorization,
+            $codec,
+            new FixedActiveServiceReferences,
+        );
+        $authorization = new WebsiteAuthorizationContext(
+            self::DESIGNER,
+            'website_designer',
+            assignedTenantId: self::TENANT,
+        );
+        $sections = $service->load(
+            new LoadDraftWebsiteContent($authorization, self::TENANT, self::WEBSITE),
+        )->toArray()['sections'];
+        $sections[0]['primary_cta_label'] = 'Book now';
+        $sections[0]['primary_cta_target'] = '/booking';
+
+        $saved = $service->save(new SaveDraftWebsiteContent(
+            $authorization,
+            self::TENANT,
+            self::WEBSITE,
+            1,
+            $sections,
+        ));
+
+        self::assertSame('/booking', $saved->toArray()['sections'][0]['primary_cta_target']);
+    }
+
     public function test_about_update_preserves_other_sections_and_invalid_content_does_not_advance_version(): void
     {
         $repository = new InMemoryWebsiteDraftRepository($this->draft());

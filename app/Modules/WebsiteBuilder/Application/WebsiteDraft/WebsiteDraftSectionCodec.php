@@ -76,7 +76,7 @@ final class WebsiteDraftSectionCodec
             ?? throw new InvalidWebsiteValueException('Website Draft Section type is invalid.');
 
         return match ($type) {
-            SectionType::Hero => new HeroSectionContent($id, $this->nullable($data, 'headline'), $this->nullable($data, 'subheadline'), $this->nullable($data, 'primary_cta_label'), $this->nullable($data, 'primary_cta_target'), $this->nullable($data, 'secondary_cta_label'), $this->nullable($data, 'secondary_cta_target'), $this->asset($data, 'hero_image_asset_id')),
+            SectionType::Hero => new HeroSectionContent($id, $this->nullable($data, 'headline'), $this->nullable($data, 'subheadline'), $this->nullable($data, 'primary_cta_label'), $this->normalizeCtaTarget($this->nullable($data, 'primary_cta_target')), $this->nullable($data, 'secondary_cta_label'), $this->normalizeCtaTarget($this->nullable($data, 'secondary_cta_target')), $this->asset($data, 'hero_image_asset_id')),
             SectionType::About => new AboutSectionContent($id, $this->nullable($data, 'heading'), $this->nullable($data, 'description'), $this->asset($data, 'image_asset_id')),
             SectionType::Services => new ServicesSectionContent($id, array_map(fn (array $item): ServicePresentationItem => new ServicePresentationItem($this->string($item, 'service_id'), $this->integer($item, 'display_order'), $this->boolean($item, 'is_featured')), $this->list($data, 'items'))),
             SectionType::Doctors => new DoctorsSectionContent($id, array_map(fn (array $item): ManualDoctorProfile => new ManualDoctorProfile($this->string($item, 'id'), $this->string($item, 'name'), $this->nullable($item, 'professional_title'), $this->boolean($item, 'visible'), $this->asset($item, 'photo_asset_id')), $this->list($data, 'profiles'))),
@@ -86,6 +86,29 @@ final class WebsiteDraftSectionCodec
             SectionType::Contact => new ContactSectionContent($id),
             SectionType::BookingCta => new BookingCtaSectionContent($id, $this->nullable($data, 'heading'), $this->nullable($data, 'description'), $this->nullable($data, 'button_label')),
         };
+    }
+
+    /**
+     * A Hero CTA target is either a relative in-site path ("/about") or an
+     * absolute "https://..." destination (SectionContentRules::optionalTarget()),
+     * but the dashboard offers a single plain text field with no way to add
+     * a scheme - a bare external domain like "example.com" is corrected
+     * here rather than rejected as invalid. An explicit "http://" is left
+     * alone (and still rejected), since there's no way to know the target
+     * actually serves that URL over TLS.
+     */
+    private function normalizeCtaTarget(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        $trimmed = trim($value);
+        $isRelative = str_starts_with($trimmed, '/') && ! str_starts_with($trimmed, '//');
+        if ($trimmed === '' || $isRelative || preg_match('#^https?://#i', $trimmed) === 1) {
+            return $trimmed;
+        }
+
+        return 'https://'.$trimmed;
     }
 
     /** @param array<string, mixed> $data */

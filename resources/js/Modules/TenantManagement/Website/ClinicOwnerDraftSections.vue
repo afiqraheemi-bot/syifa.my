@@ -420,10 +420,10 @@ defineExpose({ save });
                                 <input
                                     v-model="hero.primary_cta_target"
                                     :class="inputClass"
-                                    type="url"
+                                    type="text"
                                     inputmode="url"
                                     maxlength="2048"
-                                    placeholder="https://example.com"
+                                    placeholder="example.com"
                                 />
                             </label>
                         </div>
@@ -478,10 +478,10 @@ defineExpose({ save });
                                 <input
                                     v-model="hero.secondary_cta_target"
                                     :class="inputClass"
-                                    type="url"
+                                    type="text"
                                     inputmode="url"
                                     maxlength="2048"
-                                    placeholder="https://example.com"
+                                    placeholder="example.com"
                                 />
                             </label>
                         </div>
