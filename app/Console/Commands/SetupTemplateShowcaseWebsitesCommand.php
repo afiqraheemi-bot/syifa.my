@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Modules\Blog\Application\BlogPostService;
 use App\Modules\Booking\Contracts\Repositories\BookingFormConfigurationRepositoryInterface;
 use App\Modules\Booking\Contracts\Repositories\ServiceRepositoryInterface;
 use App\Modules\Booking\Domain\BookingFormConfiguration;
@@ -85,8 +86,10 @@ use App\Modules\WebsiteBuilder\Domain\Website;
 use App\Modules\WebsiteBuilder\Domain\WebsiteAsset;
 use App\Modules\WebsiteBuilder\Domain\WebsitePublicationContent;
 use App\Modules\WebsiteBuilder\Domain\WebsiteSection;
+use App\Support\Authorization\Application\AuthorizationContext;
 use DateTimeImmutable;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -127,6 +130,7 @@ final class SetupTemplateShowcaseWebsitesCommand extends Command
         ServiceRepositoryInterface $services,
         BookingFormConfigurationRepositoryInterface $forms,
         SubscriptionRepositoryInterface $subscriptions,
+        BlogPostService $blogs,
     ): int {
         $password = (string) $this->option('password');
         if (! $this->option('confirm')) {
@@ -149,6 +153,7 @@ final class SetupTemplateShowcaseWebsitesCommand extends Command
             $this->ensureSubscription($subscriptions, $slug, $tenantId, $now);
             $this->ensureWebsite($websites, $slug, $tenantId, $site, $now);
             $this->ensureAddress($addresses, $slug, $tenantId, $now);
+            $this->ensureBlogs($blogs, $slug, $tenantId, $site);
             $this->components->info(sprintf('Ready: https://%s.syifa.my', $slug));
         }
 
@@ -227,26 +232,64 @@ final class SetupTemplateShowcaseWebsitesCommand extends Command
     /** @param array{template: TemplateId, clinic: string, tagline: string, headline: string, about: string, service: string, service_description: string, doctor: string, title: string, address: string, color: string} $site */
     private function ensureWebsite(WebsiteRepositoryInterface $websites, string $slug, string $tenantId, array $site, DateTimeImmutable $now): void
     {
-        if ($websites->findByTenant(new WebsiteTenantId($tenantId)) !== null) {
+        $websiteId = $this->id($slug, 'website');
+        $website = $websites->findByTenant(new WebsiteTenantId($tenantId));
+        if ($website === null) {
+            $website = Website::create(new WebsiteId($websiteId), new WebsiteTenantId($tenantId), $site['template'], new WebsiteBranding($site['clinic'], $site['tagline'], $site['color'], '#F5F7F6', null, null, 'hello@'.$slug.'.syifa.my', '+603 5555 '.str_pad((string) (1000 + array_search($slug, array_keys(self::SITES), true)), 4, '0', STR_PAD_LEFT), $site['address']), $this->sectionIds($slug), $now);
+            $website->readyForReview($now);
+        }
+        $assetId = new AssetId($this->id($slug, 'hero-image'));
+        if (! $this->hasAsset($website, $assetId)) {
+            $path = resource_path('showcase/images/'.$slug.'-hero.png');
+            $image = file_get_contents($path);
+            if ($image === false) {
+                throw new RuntimeException('Showcase hero image is unavailable.');
+            }
+            $key = 'showcase/'.$slug.'/hero.png';
+            if (! Storage::disk('local')->put($key, $image)) {
+                throw new RuntimeException('Unable to store showcase image.');
+            }
+            $asset = WebsiteAsset::register($assetId, new WebsiteTenantId($tenantId), $key, AssetMimeType::Png, strlen($image), 1536, 1024, hash('sha256', $image), $now);
+            $website->registerAsset($asset, $now);
+            $website->makeAssetAvailable($assetId, new AssetAvailabilityEvidence(true, true), $now);
+        } elseif ($website->lifecycle()->value === 'published') {
             return;
         }
-        $websiteId = $this->id($slug, 'website');
-        $website = Website::create(new WebsiteId($websiteId), new WebsiteTenantId($tenantId), $site['template'], new WebsiteBranding($site['clinic'], $site['tagline'], $site['color'], '#F5F7F6', null, null, 'hello@'.$slug.'.syifa.my', '+603 5555 '.str_pad((string) (1000 + array_search($slug, array_keys(self::SITES), true)), 4, '0', STR_PAD_LEFT), $site['address']), $this->sectionIds($slug), $now);
-        $assetId = new AssetId($this->id($slug, 'gallery-asset'));
-        $image = $this->image();
-        $key = 'showcase/'.$slug.'/clinic.png';
-        if (! Storage::disk('local')->put($key, $image)) {
-            throw new RuntimeException('Unable to store showcase image.');
-        }
-        $asset = WebsiteAsset::register($assetId, new WebsiteTenantId($tenantId), $key, AssetMimeType::Png, strlen($image), 1200, 800, hash('sha256', $image), $now);
-        $website->registerAsset($asset, $now);
-        $website->makeAssetAvailable($assetId, new AssetAvailabilityEvidence(true, true), $now);
         $serviceId = $this->id($slug, 'service');
         $website->configureServicesPresentation([new ServicePresentationItem($serviceId, 1, true)], [$serviceId], $now);
-        $website->readyForReview($now);
         $content = new WebsitePublicationContent($this->contents($website, $slug, $site, $assetId), array_fill_keys(array_map(fn (SectionId $id): string => $id->value, $this->sectionIds($slug)), true), [new ServicePublicationProjection($serviceId, $site['service'], $site['service_description'])], new PublishedContactProjection('hello@'.$slug.'.syifa.my', '+603 5555 1000', $site['address'], [], [new PublishedBusinessHour(1, '09:00', '17:00'), new PublishedBusinessHour(2, '09:00', '17:00'), new PublishedBusinessHour(3, '09:00', '17:00'), new PublishedBusinessHour(4, '09:00', '17:00'), new PublishedBusinessHour(5, '09:00', '17:00')], '+60123456789'));
-        $website->publish(new WebsitePublicationEvidence(true, true), new WebsitePublicationReadiness(true, true, true, true, true, true, hash('sha256', 'showcase-'.$slug)), $content, new PublicationId($this->id($slug, 'publication')), $this->id($slug, 'owner-authority'), $now);
+        $website->publish(new WebsitePublicationEvidence(true, true), new WebsitePublicationReadiness(true, true, true, true, true, true, hash('sha256', 'showcase-'.$slug)), $content, new PublicationId($this->id($slug, 'content-publication-v2')), $this->id($slug, 'owner-authority'), $now);
         $websites->save($website);
+    }
+
+    private function hasAsset(Website $website, AssetId $assetId): bool
+    {
+        foreach ($website->assets()->assets() as $asset) {
+            if ($asset->id->value === $assetId->value) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @param array{template: TemplateId, clinic: string, tagline: string, headline: string, about: string, service: string, service_description: string, doctor: string, title: string, address: string, color: string} $site */
+    private function ensureBlogs(BlogPostService $blogs, string $slug, string $tenantId, array $site): void
+    {
+        $actor = new AuthorizationContext('system', $this->id($slug, 'owner-identity'), $tenantId, 'clinic_owner', 'Pasukan '.$site['clinic'], 'clinic_owner', []);
+        $websiteId = $this->id($slug, 'website');
+        foreach ([
+            ['Panduan menjaga kesihatan harian dengan lebih konsisten', 'Langkah ringkas yang boleh membantu anda membina rutin kesihatan harian yang realistik.', 'Kesejahteraan'],
+            ['Bila masa yang sesuai untuk mendapatkan pemeriksaan kesihatan?', 'Kenali tanda dan situasi yang wajar dibincangkan bersama doktor.', 'Kesihatan'],
+            ['Apa yang perlu disediakan sebelum konsultasi klinik?', 'Datang dengan lebih yakin melalui persediaan yang mudah tetapi membantu.', 'Panduan Pesakit'],
+        ] as $index => [$title, $excerpt, $category]) {
+            $postSlug = $slug.'-artikel-'.($index + 1);
+            if (DB::table('blog_posts')->where('website_id', $websiteId)->where('slug', $postSlug)->exists()) {
+                continue;
+            }
+            $id = $blogs->create($actor, $tenantId, $websiteId, ['title' => $title, 'slug' => $postSlug, 'excerpt' => $excerpt, 'body' => '<p>'.$excerpt.'</p><p>Pasukan '.$site['clinic'].' sentiasa menggalakkan pesakit mendapatkan nasihat profesional yang sesuai dengan keadaan individu.</p>', 'featured_image_asset_id' => $this->id($slug, 'hero-image'), 'featured_image_alt_text' => $site['clinic'].' consultation', 'category' => $category, 'tags' => ['kesihatan', 'klinik'], 'meta_title' => $title, 'meta_description' => $excerpt, 'robots_directive' => 'index,follow', 'open_graph_title' => $title, 'open_graph_description' => $excerpt]);
+            $blogs->transition($actor, $id, 1, 'publish');
+        }
     }
 
     private function ensureAddress(WebsitePublicAddressRepositoryInterface $addresses, string $slug, string $tenantId, DateTimeImmutable $now): void
@@ -290,30 +333,5 @@ final class SetupTemplateShowcaseWebsitesCommand extends Command
         $hex[16] = dechex((hexdec($hex[16]) & 0x3) | 0x8);
 
         return sprintf('%s-%s-%s-%s-%s', substr($hex, 0, 8), substr($hex, 8, 4), substr($hex, 12, 4), substr($hex, 16, 4), substr($hex, 20));
-    }
-
-    private function image(): string
-    {
-        $canvas = imagecreatetruecolor(1200, 800);
-        if ($canvas === false) {
-            throw new RuntimeException('Unable to allocate showcase image.');
-        }
-        $base = imagecolorallocate($canvas, 15, 118, 110);
-        $accent = imagecolorallocate($canvas, 60, 160, 145);
-        if ($base === false || $accent === false) {
-            imagedestroy($canvas);
-            throw new RuntimeException('Unable to allocate showcase image colors.');
-        }
-        imagefill($canvas, 0, 0, $base);
-        imagefilledellipse($canvas, 1030, 120, 480, 480, $accent);
-        ob_start();
-        imagepng($canvas);
-        $image = ob_get_clean();
-        imagedestroy($canvas);
-        if ($image === '') {
-            throw new RuntimeException('Unable to encode showcase image.');
-        }
-
-        return $image;
     }
 }
