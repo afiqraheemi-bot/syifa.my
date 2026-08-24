@@ -211,6 +211,7 @@ final class Website
         DateTimeImmutable $at,
     ): void {
         $this->assertNotArchived();
+        $this->assertAssetAvailable($openGraphImageReference, AssetUsage::OpenGraphImage);
         $this->seo->configure($metaTitle, $metaDescription, $metaKeywords, $canonicalUrl, $robotsDirective, $openGraphTitle, $openGraphDescription, $openGraphImageReference, $indexingEnabled, $at);
         $this->updatedAt = $at;
     }

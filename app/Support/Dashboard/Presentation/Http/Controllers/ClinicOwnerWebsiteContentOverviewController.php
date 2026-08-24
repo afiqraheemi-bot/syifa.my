@@ -76,6 +76,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
                 logoReference: $this->optional($branding['logo_reference'] ?? null),
                 logoDisplaySize: (string) $branding['logo_display_size'],
                 whatsAppButtonStyle: (string) $branding['whatsapp_button_style'],
+                openGraphImageReference: $this->optional($seo['open_graph_image'] ?? null),
             ));
         } catch (StaleWebsiteWriteException) {
             if ($request->expectsJson()) {

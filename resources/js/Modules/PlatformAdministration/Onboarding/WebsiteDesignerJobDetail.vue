@@ -2103,6 +2103,8 @@ function completionEvidence(task) {
                             :fallback-title="form.branding.clinic_name"
                             :fallback-description="form.branding.tagline"
                             :input-class="inputClass"
+                            :upload-url="websiteDraft.assetUploadUrl"
+                            :asset-url-template="websiteDraft.assetUrlTemplate"
                         />
                     </div>
                 </details>

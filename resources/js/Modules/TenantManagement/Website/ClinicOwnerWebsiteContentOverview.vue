@@ -759,6 +759,8 @@ const editorThemeStyle = computed(() => websiteTemplateThemeStyle(form.template_
                         :fallback-title="form.branding.clinic_name"
                         :fallback-description="form.branding.tagline"
                         :input-class="inputClass"
+                        :upload-url="websiteDraft.mediaUploadUrl"
+                        :asset-url-template="websiteDraft.assetUrlTemplate"
                     />
                 </template>
             </ClinicOwnerDraftSections>
