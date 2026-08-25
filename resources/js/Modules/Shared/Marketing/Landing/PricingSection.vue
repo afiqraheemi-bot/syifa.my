@@ -26,7 +26,7 @@ const copy = computed(() =>
               empty: 'Package pricing will be available soon.',
               compareTitle: 'Basic or Pro?',
               compareBody:
-                  'Both cover the essentials. Clinic Blog publishing is available only with Pro.',
+                  'Both cover the essentials. All 5 templates and Clinic Blog publishing are available only with Pro.',
               basicLabel: 'Start with the essentials',
               basicSummary: 'Managed website + online booking',
               proLabel: 'Grow with more capability',
@@ -42,17 +42,20 @@ const copy = computed(() =>
                   'Managed clinic website',
                   'Online booking system',
                   'Content and branding management',
+                  '1 website template',
               ],
               proFeatures: [
                   'SYIFA AI Assistant',
                   'Your own custom domain',
                   'SEO-friendly clinic Blog with article metadata and sitemap',
                   'Managed website and online booking',
+                  'All 5 website templates',
               ],
               trialFeatures: [
                   'Explore the managed website',
                   'Test the online booking flow',
                   'No charge during the trial',
+                  '1 website template',
               ],
           }
         : {
@@ -69,7 +72,7 @@ const copy = computed(() =>
               empty: 'Harga pakej akan tersedia tidak lama lagi.',
               compareTitle: 'Basic atau Pro?',
               compareBody:
-                  'Kedua-duanya merangkumi keperluan utama. Blog klinik hanya tersedia dalam Pro.',
+                  'Kedua-duanya merangkumi keperluan utama. Semua 5 templat dan Blog klinik hanya tersedia dalam Pro.',
               basicLabel: 'Mulakan dengan keperluan utama',
               basicSummary: 'Website terurus + tempahan online',
               proLabel: 'Berkembang dengan lebih keupayaan',
@@ -86,17 +89,20 @@ const copy = computed(() =>
                   'Website klinik terurus',
                   'Sistem tempahan online',
                   'Pengurusan kandungan dan penjenamaan',
+                  '1 templat website',
               ],
               proFeatures: [
                   'SYIFA AI Assistant',
                   'Custom domain milik anda',
                   'Blog klinik mesra SEO dengan metadata artikel dan sitemap',
                   'Website terurus dan tempahan online',
+                  'Semua 5 templat website',
               ],
               trialFeatures: [
                   'Cuba website terurus',
                   'Uji aliran tempahan online',
                   'Tiada caj sepanjang percubaan',
+                  '1 templat website',
               ],
           },
 );

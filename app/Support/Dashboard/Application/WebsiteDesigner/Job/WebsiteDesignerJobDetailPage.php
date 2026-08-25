@@ -12,6 +12,7 @@ use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProf
 use App\Modules\WebsiteBuilder\Application\WebsiteAddress\WebsiteSubdomainPolicy;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
+use App\Modules\WebsiteBuilder\Application\WebsiteContent\WebsiteTemplateAvailabilityPolicy;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\LoadDraftWebsiteContent;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\ManageWebsiteDraftContentService;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
@@ -36,6 +37,7 @@ final readonly class WebsiteDesignerJobDetailPage
         private LaunchReadinessReadInterface $launchReadiness,
         private ClinicOwnerWebsiteApprovalReadInterface $websiteApprovals,
         private SyifaAiProviderInterface $syifaAi,
+        private WebsiteTemplateAvailabilityPolicy $templateAvailability,
     ) {}
 
     public function fromTrustedContext(mixed $context, string $jobId): ?DashboardPageView
@@ -118,6 +120,7 @@ final readonly class WebsiteDesignerJobDetailPage
                 break;
             }
         }
+        $availableTemplates = $this->templateAvailability->availableTemplates($tenantId, new \DateTimeImmutable);
         $canSubmitForReview = WebsiteReviewSubmissionEligibility::canSubmitForReview(
             (string) $editableWebsite['lifecycle'],
             $approval['approvalStatus'] ?? null,
@@ -153,6 +156,7 @@ final readonly class WebsiteDesignerJobDetailPage
                         TemplateId::SyifaAesthetic => 'Syifa Aesthetic',
                         TemplateId::SyifaSpecialist => 'Syifa Specialist',
                     },
+                    'locked' => ! in_array($template, $availableTemplates, true),
                 ], TemplateId::cases()),
                 'updateUrl' => route('dashboard.onboarding.show', (string) $job->data['id']),
                 'readyForReviewUrl' => route(

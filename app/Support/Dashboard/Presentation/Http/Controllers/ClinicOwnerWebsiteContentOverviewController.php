@@ -100,6 +100,12 @@ final readonly class ClinicOwnerWebsiteContentOverviewController
             }
 
             return back()->withErrors(['template_id' => $exception->getMessage()]);
+        } catch (InvalidWebsiteValueException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['detail' => $exception->getMessage()], 422);
+            }
+
+            return back()->withErrors(['template_id' => $exception->getMessage()]);
         }
 
         if ($request->expectsJson()) {
