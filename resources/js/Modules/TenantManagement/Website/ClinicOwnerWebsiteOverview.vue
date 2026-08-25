@@ -35,7 +35,16 @@ const props = defineProps({
 });
 
 const navigation = createDashboardNavigation(props.navigation);
-const quickActions = createDashboardQuickActions(props.quickActions);
+const quickActions = createDashboardQuickActions(props.quickActions).map((action) =>
+    action.key === 'edit'
+        ? {
+              ...action,
+              label: 'Urus kandungan',
+              description: 'Kemas kini maklumat dan kandungan website klinik.',
+          }
+        : action,
+);
+const primaryWebsiteAction = computed(() => quickActions.find((action) => action.key === 'edit'));
 const decision = ref('');
 const reason = ref('');
 const busy = ref(false);
@@ -139,9 +148,9 @@ async function decideWebsiteApproval(selectedDecision) {
         :identity-name="identityName"
         :context-label="contextLabel"
     >
-        <div class="grid gap-6 xl:grid-cols-3">
-            <div class="xl:col-span-2">
-                <WebsiteOverviewCard :status="websiteStatus" />
+        <div class="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+            <div>
+                <WebsiteOverviewCard :status="websiteStatus" :action="primaryWebsiteAction" />
             </div>
             <WebsiteHealthCard :status="publishStatus" />
         </div>

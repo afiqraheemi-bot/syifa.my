@@ -10,14 +10,22 @@ const incompleteSections = computed(() => props.sections.filter((section) => !se
 </script>
 
 <template>
-    <details class="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <details
+        :open="health.tone !== 'positive'"
+        :class="[
+            'group overflow-hidden rounded-[1.75rem] border shadow-sm',
+            health.tone === 'positive'
+                ? 'border-emerald-200 bg-emerald-50'
+                : 'border-amber-200 bg-amber-50',
+        ]"
+    >
         <summary
             class="cursor-pointer list-none p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 sm:p-6"
         >
             <div class="flex items-center justify-between gap-4">
                 <div class="min-w-0">
-                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-teal-800">
-                        {{ health.title }}
+                    <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-800">
+                        Kesihatan kandungan
                     </p>
                     <p class="mt-1 font-bold text-slate-950">{{ health.value }}</p>
                 </div>
@@ -30,7 +38,7 @@ const incompleteSections = computed(() => props.sections.filter((section) => !se
                                 : 'bg-amber-100 text-amber-900'
                         "
                     >
-                        {{ health.tone === 'positive' ? 'Ready' : 'Needs attention' }}
+                        {{ health.tone === 'positive' ? 'Sedia' : 'Perlu tindakan' }}
                     </span>
                     <span aria-hidden="true" class="text-slate-500 transition group-open:rotate-90">
                         ▶
@@ -50,7 +58,7 @@ const incompleteSections = computed(() => props.sections.filter((section) => !se
                 </span>
             </div>
             <p v-else class="mt-3 text-sm font-semibold text-emerald-700">
-                All enabled content sections have the required information.
+                Semua section aktif mempunyai maklumat yang diperlukan.
             </p>
         </div>
     </details>

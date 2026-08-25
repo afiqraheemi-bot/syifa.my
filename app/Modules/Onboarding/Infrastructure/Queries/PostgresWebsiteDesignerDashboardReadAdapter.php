@@ -180,7 +180,17 @@ final readonly class PostgresWebsiteDesignerDashboardReadAdapter implements Pend
             ->where('assignment.assignment_status', 'active');
 
         if ($status !== null) {
-            $query->where('job.status', $status);
+            $statusGroups = [
+                'website_setup' => ['assigned', 'in_progress', 'blocked', 'reopened'],
+                'review_attention' => ['in_review', 'correction_required'],
+                'needs_attention' => ['in_review', 'correction_required', 'ready_for_launch'],
+            ];
+
+            if (isset($statusGroups[$status])) {
+                $query->whereIn('job.status', $statusGroups[$status]);
+            } else {
+                $query->where('job.status', $status);
+            }
         }
         if ($search !== null) {
             $query->where(static function ($query) use ($search, $hasWebsites, $hasPublicHosts): void {

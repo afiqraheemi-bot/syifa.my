@@ -17,7 +17,7 @@ const formatAppointmentDate = (value) => {
     if (!value) return '';
 
     const date = new Date(`${value}T00:00:00`);
-    return new Intl.DateTimeFormat('en-MY', {
+    return new Intl.DateTimeFormat('ms-MY', {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
@@ -100,23 +100,77 @@ const submitAction = (event, booking, action) => {
         v-if="items.length > 0"
         class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
     >
+        <div v-if="!returnToDetail" class="divide-y divide-slate-100 md:hidden">
+            <article v-for="booking in items" :key="booking.id" class="p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="truncate font-black text-slate-950">
+                            {{ booking.patientName || 'Nama pesakit tidak tersedia' }}
+                        </p>
+                        <p class="mt-1 text-xs font-medium text-slate-500">
+                            Ref #{{ shortReference(booking.reference) }}
+                        </p>
+                    </div>
+                    <span
+                        :class="[
+                            'shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold',
+                            statusClasses(booking.status),
+                        ]"
+                        >{{ booking.statusLabel }}</span
+                    >
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm">
+                    <div>
+                        <p class="text-xs text-slate-500">Tarikh</p>
+                        <p class="mt-1 font-bold text-slate-900">
+                            {{ formatAppointmentDate(booking.appointmentDate) }}
+                        </p>
+                        <p class="text-xs text-slate-600">
+                            {{ booking.appointmentStart }}–{{ booking.appointmentEnd }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500">Servis</p>
+                        <p class="mt-1 font-bold text-slate-900">
+                            {{ booking.serviceName || 'Temu janji umum' }}
+                        </p>
+                    </div>
+                </div>
+                <a
+                    v-if="booking.detailHref"
+                    :href="booking.detailHref"
+                    class="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-800 px-4 text-sm font-bold text-white hover:bg-emerald-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                    >Lihat butiran tempahan</a
+                >
+            </article>
+        </div>
         <div
-            class="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600"
+            :class="[
+                'overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600',
+                !returnToDetail ? 'hidden md:block' : 'block',
+            ]"
             role="region"
-            aria-label="Bookings table"
+            aria-label="Jadual tempahan"
             tabindex="0"
         >
             <p class="sr-only">Scroll horizontally to review all bookings.</p>
-            <table class="min-w-[52rem] divide-y divide-slate-200">
+            <table class="w-full min-w-[64rem] table-fixed divide-y divide-slate-200">
+                <colgroup>
+                    <col class="w-[17%]" />
+                    <col class="w-[17%]" />
+                    <col class="w-[21%]" />
+                    <col class="w-[22%]" />
+                    <col class="w-[23%]" />
+                </colgroup>
                 <thead class="bg-slate-50">
                     <tr>
                         <th
                             v-for="label in [
-                                'Patient',
-                                'Appointment',
-                                'Service',
+                                'Pesakit',
+                                'Temu janji',
+                                'Servis',
                                 'Status',
-                                'Detail',
+                                'Butiran',
                             ]"
                             :key="label"
                             scope="col"
@@ -147,7 +201,7 @@ const submitAction = (event, booking, action) => {
                                 {{ booking.appointmentStart }}–{{ booking.appointmentEnd }}
                             </p>
                         </td>
-                        <td class="whitespace-nowrap px-5 py-4 text-sm text-slate-700">
+                        <td class="px-5 py-4 text-sm text-slate-700">
                             {{ booking.serviceName || 'General appointment' }}
                         </td>
                         <td class="whitespace-nowrap px-5 py-4">
@@ -160,14 +214,14 @@ const submitAction = (event, booking, action) => {
                                 {{ booking.statusLabel }}
                             </span>
                         </td>
-                        <td class="px-5 py-4">
+                        <td class="px-5 py-4 text-right">
                             <div class="flex flex-wrap gap-2">
                                 <a
                                     v-if="booking.detailHref"
                                     :href="booking.detailHref"
-                                    class="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg border border-slate-300 px-4 py-2 text-xs font-bold text-slate-800 hover:border-emerald-600 hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                                    class="ml-auto inline-flex min-h-11 items-center whitespace-nowrap rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-800 transition hover:border-emerald-700 hover:bg-emerald-50 hover:text-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
                                 >
-                                    Booking details
+                                    Butiran tempahan
                                 </a>
                                 <template
                                     v-for="action in returnToDetail ? booking.actions : []"
@@ -265,7 +319,7 @@ const submitAction = (event, booking, action) => {
     </div>
     <DashboardEmptyState
         v-else
-        title="No bookings found"
-        description="Bookings matching the current search and filters will appear here."
+        title="Tiada tempahan ditemui"
+        description="Tempahan yang sepadan dengan carian dan filter semasa akan dipaparkan di sini."
     />
 </template>

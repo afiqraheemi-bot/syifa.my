@@ -22,6 +22,10 @@ function usageBarClass(percentOfLimit) {
     if (percentOfLimit >= 70) return 'bg-amber-500';
     return 'bg-emerald-500';
 }
+
+function usageBarWidth(percentOfLimit) {
+    return `${Math.max(0, Math.min(100, Number(percentOfLimit) || 0))}%`;
+}
 </script>
 
 <template>
@@ -33,6 +37,18 @@ function usageBarClass(percentOfLimit) {
         :identity-name="identityName"
         :context-label="contextLabel"
     >
+        <section
+            class="overflow-hidden rounded-[1.75rem] border border-emerald-950/10 bg-emerald-950 px-6 py-7 text-white shadow-sm sm:px-8"
+        >
+            <p class="text-xs font-bold uppercase tracking-[0.22em] text-lime-300">
+                Kawalan kos AI
+            </p>
+            <h2 class="mt-3 text-2xl font-black sm:text-3xl">Penggunaan bulan semasa</h2>
+            <p class="mt-2 max-w-2xl leading-7 text-emerald-50/80">
+                Pantau penggunaan token mengikut capability, model dan tenant sebelum mencapai had.
+            </p>
+        </section>
+
         <section
             class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
             aria-label="SYIFA AI usage summary"
@@ -50,9 +66,11 @@ function usageBarClass(percentOfLimit) {
         <div class="grid gap-6 xl:grid-cols-2">
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
-                    This month
+                    Bulan ini
                 </p>
-                <h2 class="mt-2 text-lg font-bold text-slate-950">Usage by capability</h2>
+                <h2 class="mt-2 text-lg font-bold text-slate-950">
+                    Penggunaan mengikut capability
+                </h2>
                 <div v-if="syifaAiUsage.byCapability.length" class="mt-4 space-y-3">
                     <div
                         v-for="row in syifaAiUsage.byCapability"
@@ -61,25 +79,25 @@ function usageBarClass(percentOfLimit) {
                     >
                         <div>
                             <p class="font-semibold text-slate-900">{{ row.label }}</p>
-                            <p class="text-xs text-slate-500">{{ row.requests }} request(s)</p>
+                            <p class="text-xs text-slate-500">{{ row.requests }} permintaan</p>
                         </div>
                         <p class="font-mono text-sm font-bold text-slate-900">
-                            {{ row.tokensLabel }} tokens
+                            {{ row.tokensLabel }} token
                         </p>
                     </div>
                 </div>
                 <DashboardEmptyState
                     v-else
-                    title="No usage yet"
-                    description="Usage by capability will appear here once requests are made this month."
+                    title="Belum ada penggunaan"
+                    description="Penggunaan capability akan dipaparkan selepas permintaan AI dibuat bulan ini."
                 />
             </section>
 
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
-                    This month
+                    Bulan ini
                 </p>
-                <h2 class="mt-2 text-lg font-bold text-slate-950">Usage by model</h2>
+                <h2 class="mt-2 text-lg font-bold text-slate-950">Penggunaan mengikut model</h2>
                 <div v-if="syifaAiUsage.byEngine.length" class="mt-4 space-y-3">
                     <div
                         v-for="row in syifaAiUsage.byEngine"
@@ -88,17 +106,17 @@ function usageBarClass(percentOfLimit) {
                     >
                         <div>
                             <p class="font-mono font-semibold text-slate-900">{{ row.model }}</p>
-                            <p class="text-xs text-slate-500">{{ row.requests }} request(s)</p>
+                            <p class="text-xs text-slate-500">{{ row.requests }} permintaan</p>
                         </div>
                         <p class="font-mono text-sm font-bold text-slate-900">
-                            {{ row.tokensLabel }} tokens
+                            {{ row.tokensLabel }} token
                         </p>
                     </div>
                 </div>
                 <DashboardEmptyState
                     v-else
-                    title="No usage yet"
-                    description="Usage by model will appear here once requests are made this month."
+                    title="Belum ada penggunaan"
+                    description="Penggunaan model akan dipaparkan selepas permintaan AI dibuat bulan ini."
                 />
             </section>
         </div>
@@ -107,25 +125,25 @@ function usageBarClass(percentOfLimit) {
             <div class="flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
-                        Cost exposure
+                        Pendedahan kos
                     </p>
                     <h2 class="mt-2 text-lg font-bold text-slate-950">
-                        Top tenants by token usage
+                        Tenant dengan penggunaan token tertinggi
                     </h2>
                 </div>
                 <p class="max-w-xl text-sm text-slate-600">
-                    Each tenant's monthly cap is
-                    {{ syifaAiUsage.monthlyTenantLimit.toLocaleString() }} tokens.
+                    Had bulanan setiap tenant ialah
+                    {{ syifaAiUsage.monthlyTenantLimit.toLocaleString() }} token.
                 </p>
             </div>
             <div v-if="syifaAiUsage.topTenants.length" class="mt-4 overflow-x-auto">
                 <table class="min-w-full text-left text-sm">
                     <thead class="text-slate-500">
                         <tr>
-                            <th class="pb-3">Clinic</th>
-                            <th class="pb-3">Requests</th>
-                            <th class="pb-3">Tokens</th>
-                            <th class="pb-3">% of monthly cap</th>
+                            <th class="pb-3">Klinik</th>
+                            <th class="pb-3">Permintaan</th>
+                            <th class="pb-3">Token</th>
+                            <th class="pb-3">% had bulanan</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -142,7 +160,7 @@ function usageBarClass(percentOfLimit) {
                                         <div
                                             class="h-full rounded-full"
                                             :class="usageBarClass(tenant.percentOfLimit)"
-                                            :style="{ width: tenant.percentOfLimit + '%' }"
+                                            :style="{ width: usageBarWidth(tenant.percentOfLimit) }"
                                         />
                                     </div>
                                     <span class="text-xs font-bold text-slate-700"
@@ -156,8 +174,8 @@ function usageBarClass(percentOfLimit) {
             </div>
             <DashboardEmptyState
                 v-else
-                title="No tenant usage yet"
-                description="Tenants that use SYIFA AI this month will appear here, ranked by token consumption."
+                title="Belum ada penggunaan tenant"
+                description="Tenant yang menggunakan SYIFA AI bulan ini akan disenaraikan mengikut penggunaan token."
             />
         </section>
     </DashboardShell>

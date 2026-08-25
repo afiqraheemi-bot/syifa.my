@@ -411,9 +411,9 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('quickActions.0.available', true)
                     ->where('quickActions.0.href', route('dashboard.onboarding'))
                     ->where('quickActions.1.available', true)
-                    ->where('quickActions.1.href', route('dashboard.onboarding', ['status' => 'in_progress']))
+                    ->where('quickActions.1.href', route('dashboard.onboarding', ['status' => 'website_setup']))
                     ->where('quickActions.2.available', true)
-                    ->where('quickActions.2.href', route('dashboard.onboarding', ['status' => 'in_review']))
+                    ->where('quickActions.2.href', route('dashboard.onboarding', ['status' => 'review_attention']))
                     ->has('recentAssignments', 1)
                     ->where('recentAssignments.0.description', 'Website setup')
                     ->has('navigation', 3),
@@ -1347,7 +1347,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             ->assertInertia(
                 static fn (AssertableInertia $page): AssertableInertia => $page
                     ->component('PlatformAdministration/Onboarding/WebsiteDesignerOnboardingQueue', false)
-                    ->where('pageTitle', 'Onboarding queue')
+                    ->where('pageTitle', 'Onboarding klinik')
                     ->where('navigation.1.key', 'onboarding')
                     ->where('navigation.1.current', true)
                     ->where('navigation.2.key', 'reports')

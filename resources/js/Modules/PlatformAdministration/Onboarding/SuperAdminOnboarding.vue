@@ -1,6 +1,6 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { browserHttpRequest } from '../../../Shared/Authentication/session.js';
 import { createOnboardingCheckpoints } from '../../../Shared/Onboarding/checkpoints.js';
 import {
@@ -31,6 +31,12 @@ const ownerForms = reactive({});
 const busyJob = ref(null);
 const error = ref('');
 const success = ref('');
+const hasFilters = computed(() => Boolean(props.filters.search || props.filters.status));
+const activeJobs = computed(
+    () =>
+        props.onboarding.jobs.filter((job) => !['completed', 'cancelled'].includes(job.status))
+            .length,
+);
 
 async function assign(job) {
     const designerId = selections[job.id];
@@ -219,9 +225,39 @@ async function waiveTask(job, task) {
         :identity-name="identityName"
         :context-label="contextLabel"
     >
+        <section
+            class="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 px-5 py-6 text-white shadow-lg sm:px-7 sm:py-7"
+            aria-label="Ringkasan onboarding"
+        >
+            <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-[0.2em] text-lime-300">
+                        Operasi onboarding
+                    </p>
+                    <h2 class="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
+                        Setiap klinik, satu tindakan seterusnya yang jelas
+                    </h2>
+                    <p class="mt-2 max-w-3xl text-sm leading-6 text-emerald-50/80">
+                        Pantau pemilik, tugasan designer dan bukti pelancaran tanpa mengaburkan
+                        status sebenar workflow.
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-center">
+                    <div class="rounded-2xl border border-white/15 bg-white/10 px-5 py-3">
+                        <p class="text-2xl font-black">{{ onboarding.jobs.length }}</p>
+                        <p class="text-xs font-bold text-emerald-50/75">Dipaparkan</p>
+                    </div>
+                    <div class="rounded-2xl border border-lime-300/25 bg-lime-300/10 px-5 py-3">
+                        <p class="text-2xl font-black text-lime-300">{{ activeJobs }}</p>
+                        <p class="text-xs font-bold text-emerald-50/75">Masih aktif</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <form
             method="get"
-            class="mb-6 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[1fr_14rem_auto]"
+            class="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_14rem_auto_auto]"
         >
             <input
                 name="search"
@@ -250,6 +286,13 @@ async function waiveTask(job, task) {
             <button class="min-h-11 rounded-xl bg-slate-900 px-5 font-semibold text-white">
                 Filter
             </button>
+            <a
+                v-if="hasFilters"
+                href="?"
+                class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 font-semibold text-slate-700"
+            >
+                Reset
+            </a>
         </form>
 
         <p v-if="error" role="alert" class="mb-4 rounded-xl bg-red-50 p-4 text-red-800">

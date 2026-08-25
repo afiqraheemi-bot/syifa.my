@@ -74,11 +74,20 @@ function humanStatus(status) {
 }
 
 function formatDate(value) {
-    if (!value) return 'Not recorded';
-    return new Intl.DateTimeFormat('en-MY', {
+    if (!value) return 'Tidak direkodkan';
+    return new Intl.DateTimeFormat('ms-MY', {
         dateStyle: 'medium',
         timeStyle: 'short',
+        timeZone: 'Asia/Kuala_Lumpur',
     }).format(new Date(value));
+}
+
+function decisionReady(registration) {
+    const form = decisionForm(registration);
+    return (
+        form.reasonCategory.trim().length > 0 &&
+        (form.outcome !== 'correction_requested' || form.correctionInstructions.trim().length > 0)
+    );
 }
 
 async function mutate(registration, action, url, method, body, confirmation = null) {
@@ -220,6 +229,27 @@ async function archiveRegistration(registration) {
         :identity-name="identityName"
         :context-label="contextLabel"
     >
+        <section
+            class="overflow-hidden rounded-[1.75rem] border border-emerald-950/10 bg-emerald-950 px-6 py-7 text-white shadow-sm sm:px-8"
+        >
+            <p class="text-xs font-bold uppercase tracking-[0.22em] text-lime-300">
+                Kemasukan klinik
+            </p>
+            <div class="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h2 class="text-2xl font-black sm:text-3xl">Semak sebelum provisioning</h2>
+                    <p class="mt-2 max-w-2xl leading-7 text-emerald-50/80">
+                        Pastikan identiti klinik tepat sebelum keputusan atau aktivasi trial
+                        direkodkan.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-white/15 bg-white/10 px-5 py-4">
+                    <p class="text-xs text-emerald-50/65">Rekod dipaparkan</p>
+                    <p class="mt-1 text-3xl font-black text-lime-300">{{ registrations.length }}</p>
+                </div>
+            </div>
+        </section>
+
         <form
             method="get"
             :action="indexUrl"
@@ -437,7 +467,8 @@ async function archiveRegistration(registration) {
                     </select>
                     <div class="grid gap-2">
                         <input
-                            v-model="decisionForm(registration).reasonCategory"
+                            v-model.trim="decisionForm(registration).reasonCategory"
+                            required
                             maxlength="100"
                             placeholder="Governed reason category"
                             class="min-h-11 rounded-xl border border-slate-300 px-3"
@@ -445,6 +476,7 @@ async function archiveRegistration(registration) {
                         <textarea
                             v-if="decisionForm(registration).outcome === 'correction_requested'"
                             v-model="decisionForm(registration).correctionInstructions"
+                            required
                             maxlength="2000"
                             placeholder="Required correction instructions"
                             class="min-h-24 rounded-xl border border-slate-300 p-3"
@@ -452,7 +484,7 @@ async function archiveRegistration(registration) {
                     </div>
                     <button
                         type="button"
-                        :disabled="busy !== null"
+                        :disabled="busy !== null || !decisionReady(registration)"
                         class="min-h-11 rounded-xl bg-emerald-700 px-5 font-semibold text-white disabled:opacity-50"
                         @click="decide(registration)"
                     >

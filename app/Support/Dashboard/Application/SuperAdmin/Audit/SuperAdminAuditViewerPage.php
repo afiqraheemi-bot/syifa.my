@@ -51,8 +51,8 @@ final readonly class SuperAdminAuditViewerPage
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
                 ['key' => 'audit', 'label' => 'Audit activity'],
             ],
-            'pageTitle' => 'Audit activity',
-            'pageDescription' => 'Review immutable platform and tenant security evidence.',
+            'pageTitle' => 'Aktiviti audit',
+            'pageDescription' => 'Semak bukti keselamatan kekal untuk platform dan tenant.',
             'identityName' => $context->name,
             'contextLabel' => 'Super Admin workspace',
             'audit' => $this->audit->search(
@@ -63,6 +63,7 @@ final readonly class SuperAdminAuditViewerPage
                 $filters['correlationId'],
             ),
             'filters' => $filters,
+            'indexUrl' => route('dashboard.audit'),
         ]);
     }
 

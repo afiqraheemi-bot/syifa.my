@@ -39,13 +39,13 @@ final readonly class WebsiteDesignerCustomDomainPage
                 ['key' => 'onboarding', 'label' => 'Onboarding', 'href' => route('dashboard.onboarding')],
                 [
                     'key' => 'job',
-                    'label' => 'Assigned job',
+                    'label' => 'Tugasan klinik',
                     'href' => route('dashboard.onboarding.show', ['jobId' => $jobId]),
                 ],
-                ['key' => 'custom-domain', 'label' => 'Custom domain add-on'],
+                ['key' => 'custom-domain', 'label' => 'Custom domain'],
             ],
-            'pageTitle' => 'Custom domain add-on',
-            'pageDescription' => 'Connect, verify and activate a clinic domain as a managed Website service.',
+            'pageTitle' => 'Custom domain',
+            'pageDescription' => 'Sambung, sahkan dan aktifkan domain klinik sebagai perkhidmatan website terurus.',
             'identityName' => $context->name,
             'contextLabel' => 'Website Designer workspace',
             'job' => [
@@ -57,6 +57,7 @@ final readonly class WebsiteDesignerCustomDomainPage
                 ...get_object_vars($domain),
                 'verificationValue' => 'syifa-verification='.$this->token($domain->id),
             ],
+            'routingRecords' => $domain === null ? [] : $this->routingRecords($domain->hostname),
             'operationsUrl' => route('dashboard.onboarding.custom-domain', ['jobId' => $jobId]),
             'backUrl' => route('dashboard.onboarding.show', ['jobId' => $jobId]),
         ]);
@@ -65,5 +66,25 @@ final readonly class WebsiteDesignerCustomDomainPage
     private function token(string $domainId): string
     {
         return hash_hmac('sha256', 'custom-domain|'.$domainId, (string) config('app.key'));
+    }
+
+    /** @return list<array{type: string, name: string, value: string}> */
+    private function routingRecords(string $hostname): array
+    {
+        $records = [];
+
+        foreach ((array) config('public_website_delivery.custom_domain_targets', []) as $target) {
+            $target = strtolower(rtrim(trim((string) $target), '.'));
+            if ($target === '') {
+                continue;
+            }
+
+            $type = filter_var($target, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false
+                ? 'A'
+                : (filter_var($target, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false ? 'AAAA' : 'CNAME');
+            $records[] = ['type' => $type, 'name' => $hostname, 'value' => $target];
+        }
+
+        return $records;
     }
 }

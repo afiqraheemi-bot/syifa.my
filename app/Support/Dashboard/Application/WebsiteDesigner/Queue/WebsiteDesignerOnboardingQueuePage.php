@@ -28,8 +28,8 @@ final readonly class WebsiteDesignerOnboardingQueuePage
                     ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
                     ['key' => 'onboarding', 'label' => 'Onboarding'],
                 ],
-                'pageTitle' => 'Onboarding queue',
-                'pageDescription' => 'Review the progress of onboarding jobs assigned to you.',
+                'pageTitle' => 'Onboarding klinik',
+                'pageDescription' => 'Semak kemajuan dan teruskan tugasan klinik yang diberikan kepada anda.',
                 'identityName' => $context->name,
                 'contextLabel' => 'Website Designer workspace',
                 'onboardingQueue' => $this->queue

@@ -7,6 +7,7 @@ namespace App\Support\Dashboard\Application\WebsiteDesigner\Queue;
 final readonly class WebsiteDesignerQueueCriteria
 {
     private const array STATUSES = [
+        'website_setup', 'review_attention', 'needs_attention',
         'awaiting_inputs', 'assigned', 'in_progress', 'blocked', 'in_review',
         'correction_required', 'ready_for_launch', 'reopened',
     ];
@@ -38,10 +39,16 @@ final readonly class WebsiteDesignerQueueCriteria
     /** @return list<array{value: string, label: string}> */
     public static function statusOptions(): array
     {
+        $labels = [
+            'website_setup' => 'Website Setup (All)',
+            'review_attention' => 'Review & Revision (All)',
+            'needs_attention' => 'Needs Attention (All)',
+        ];
+
         return array_map(
             static fn (string $status): array => [
                 'value' => $status,
-                'label' => ucwords(str_replace('_', ' ', $status)),
+                'label' => $labels[$status] ?? ucwords(str_replace('_', ' ', $status)),
             ],
             self::STATUSES,
         );
