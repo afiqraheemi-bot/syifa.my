@@ -10,6 +10,7 @@ use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderData;
 use App\Modules\Booking\Contracts\Queries\PublicBookingFormReaderInterface;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryData;
 use App\Modules\SubscriptionBilling\Contracts\Subscription\SubscriptionSummaryReadInterface;
+use App\Modules\TenantManagement\Contracts\Authentication\CentralClinicOwnerLoginSelectorInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticatedPrincipal;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticationCommand;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticationInterface;
@@ -208,6 +209,30 @@ final class ClinicOwnerSessionEndpointsTest extends TestCase
             );
 
         $this->deleteJson('http://localhost/api/v1/sessions/current')->assertNoContent();
+    }
+
+    public function test_central_login_resolves_the_tenant_without_exposing_it_to_the_browser(): void
+    {
+        $this->acceptAuthentication();
+        $this->app->instance(
+            CentralClinicOwnerLoginSelectorInterface::class,
+            new class implements CentralClinicOwnerLoginSelectorInterface
+            {
+                public function selectorFor(string $email): ?string
+                {
+                    return $email === 'owner@example.test' ? 'clinic.app.syifa.my' : null;
+                }
+            },
+        );
+
+        $response = $this->postJson('https://syifa.my/api/v1/sessions', [
+            'email' => 'owner@example.test',
+            'password' => 'a private passphrase',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.authenticated', true)
+            ->assertJsonPath('data.tenant.id', self::TENANT_ID);
     }
 
     public function test_clinic_owner_login_accepts_and_applies_the_optional_remember_flag(): void
