@@ -1897,14 +1897,22 @@ function completionEvidence(task) {
                                 v-for="template in websiteSetup.templateOptions"
                                 :key="template.value"
                                 :value="template.value"
+                                :disabled="template.locked"
                             >
-                                {{ template.label }}
+                                {{ template.label
+                                }}<template v-if="template.locked"> (Pro plan only)</template>
                             </option>
                         </select>
                     </label>
                     <p class="mt-2 text-sm text-slate-600">
                         Choose any approved SYIFA.my template. For a live Website, the public
                         template changes only after the Website is published again.
+                    </p>
+                    <p
+                        v-if="websiteSetup.templateOptions.some((template) => template.locked)"
+                        class="mt-2 text-sm text-slate-500"
+                    >
+                        Locked templates are only available on this clinic's Syifa Pro plan.
                     </p>
                 </fieldset>
 

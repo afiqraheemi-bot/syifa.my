@@ -107,6 +107,12 @@ final class SyifaSubscriptionPackageSeeder extends Seeder
             'description' => 'Membolehkan pengurusan dan penerbitan artikel kesihatan klinik.',
             'commercialMeaning' => 'Blog klinik, halaman artikel dan SEO artikel.',
         ],
+        [
+            'key' => 'website.template.premium',
+            'name' => 'Premium Website Templates',
+            'description' => 'Access to every approved SYIFA.my website template, not only the default one.',
+            'commercialMeaning' => 'Unlocks all 5 governed website templates.',
+        ],
     ];
 
     /** @var list<array{code: string, name: string, intervalUnit: string, intervalCount: int, displayOrder: int}> */

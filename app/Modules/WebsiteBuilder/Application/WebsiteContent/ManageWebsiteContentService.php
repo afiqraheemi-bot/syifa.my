@@ -7,6 +7,7 @@ namespace App\Modules\WebsiteBuilder\Application\WebsiteContent;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorization;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
+use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\AssetId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\LogoDisplaySize;
@@ -23,6 +24,7 @@ final readonly class ManageWebsiteContentService
     public function __construct(
         private WebsiteRepositoryInterface $websites,
         private WebsiteAuthorization $authorization,
+        private WebsiteTemplateAvailabilityPolicy $templateAvailability,
     ) {}
 
     public function read(string $tenantId, WebsiteAuthorizationContext $authorization): EditableWebsiteContent
@@ -58,6 +60,11 @@ final readonly class ManageWebsiteContentService
                     $website->publishedVersion(),
                     true,
                 );
+                if (! $this->templateAvailability->isAvailable($tenant->value, $templateId, $at)) {
+                    throw new InvalidWebsiteValueException(
+                        'This template is not included in the current Subscription plan.',
+                    );
+                }
                 $website->selectTemplate($templateId, $at);
             }
         }

@@ -171,6 +171,7 @@ use DateTimeImmutable;
 use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\AlwaysEntitledSubscriptionLookup;
 use Tests\TestCase;
 
 final class AuthenticatedDashboardIntegrationTest extends TestCase
@@ -188,6 +189,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->app->instance(SubscriptionEntitlementLookupInterface::class, new AlwaysEntitledSubscriptionLookup);
         $this->app->instance(ClinicSummaryReadInterface::class, new DashboardFixedClinicSummary);
         $this->app->instance(SubscriptionSummaryReadInterface::class, new DashboardFixedSubscriptionSummary);
         $this->app->instance(WebsiteReadInterface::class, new DashboardFixedWebsiteRead);
@@ -3110,6 +3112,173 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
             );
     }
 
+    /**
+     * Only the Syifa Pro plan includes the full template catalogue - Basic
+     * (and the Trial, which mirrors it) is limited to the default template.
+     * Downgrading a clinic that already picked a Pro-only template must not
+     * break their live configuration: they keep what they have, they just
+     * can't switch to a *different* Pro-only template while downgraded.
+     */
+    public function test_clinic_owner_cannot_switch_to_a_template_outside_the_current_plan_but_keeps_an_existing_one(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(ActorType::ClinicOwner, 'clinic_owner', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000010'),
+        );
+        $payload = static fn (int $version, string $templateId, string $tagline): array => [
+            'version' => $version,
+            'template_id' => $templateId,
+            'branding' => [
+                'clinic_name' => 'Klinik Baharu',
+                'tagline' => $tagline,
+                'primary_color' => '#aabbcc',
+                'secondary_color' => '#ddeeff',
+                'logo_reference' => null,
+                'logo_display_size' => 'large',
+                'whatsapp_button_style' => 'circle',
+                'contact_email' => 'hello@example.test',
+                'contact_phone' => '+60123456789',
+                'address' => 'Kuala Lumpur',
+                'social_links' => ['facebook' => 'https://facebook.com/klinik'],
+            ],
+            'seo' => [
+                'meta_title' => 'Klinik Baharu',
+                'meta_description' => 'Trusted family healthcare.',
+                'meta_keywords' => null,
+                'canonical_url' => 'https://clinic.example.test',
+                'robots_directive' => 'index,follow',
+                'open_graph_title' => 'Klinik Baharu',
+                'open_graph_description' => 'Trusted family healthcare.',
+                'open_graph_image' => null,
+                'indexing_enabled' => true,
+            ],
+            'sections' => [
+                'hero' => true, 'about' => true, 'services' => true, 'doctors' => true,
+                'testimonials' => true, 'gallery' => true, 'faq' => true, 'contact' => true, 'booking_cta' => true,
+            ],
+        ];
+
+        $this->patch('/dashboard/website/content', $payload(1, 'SYIFA_CARE', 'Trusted care'))
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $this->app->instance(SubscriptionEntitlementLookupInterface::class, new class implements SubscriptionEntitlementLookupInterface
+        {
+            public function hasCapability(string $tenantId, string $capabilityKey, string $effectiveDateTime): bool
+            {
+                return false;
+            }
+
+            /** @return list<string> */
+            public function getActiveCapabilityKeys(string $tenantId, string $effectiveDateTime): array
+            {
+                return [];
+            }
+        });
+
+        $this->patch('/dashboard/website/content', $payload(2, 'SYIFA_CARE', 'Still trusted care'))
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $this->get('/dashboard/website/content')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('editableContent.template_id', 'SYIFA_CARE')
+                    ->where('editableContent.branding.tagline', 'Still trusted care'),
+            );
+
+        $this->from('/dashboard/website/content')
+            ->patch('/dashboard/website/content', $payload(3, 'SYIFA_AESTHETIC', 'Still trusted care'))
+            ->assertRedirect('/dashboard/website/content')
+            ->assertSessionHasErrors(['template_id']);
+
+        $this->get('/dashboard/website/content')
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('editableContent.template_id', 'SYIFA_CARE')
+                    ->where('editableContent.version', 3),
+            );
+    }
+
+    public function test_website_designer_cannot_switch_the_website_template_outside_the_current_plan(): void
+    {
+        $this->app->instance(
+            AuthorizationService::class,
+            $this->authorization(
+                ActorType::PlatformIdentity,
+                'website_designer',
+                identityId: '00000000-0000-4000-8000-000000000010',
+            ),
+        );
+        $this->app->instance(SubscriptionEntitlementLookupInterface::class, new class implements SubscriptionEntitlementLookupInterface
+        {
+            public function hasCapability(string $tenantId, string $capabilityKey, string $effectiveDateTime): bool
+            {
+                return false;
+            }
+
+            /** @return list<string> */
+            public function getActiveCapabilityKeys(string $tenantId, string $effectiveDateTime): array
+            {
+                return [];
+            }
+        });
+        $jobId = '00000000-0000-4000-8000-000000000101';
+
+        $this->from('/dashboard/onboarding/'.$jobId)
+            ->patch('/dashboard/onboarding/'.$jobId, [
+                'workspace' => 'website_setup',
+                'version' => 1,
+                'template_id' => 'SYIFA_CARE',
+                'branding' => [
+                    'clinic_name' => 'Klinik Designer',
+                    'tagline' => 'Configured with care',
+                    'primary_color' => '#aabbcc',
+                    'secondary_color' => '#ddeeff',
+                    'logo_reference' => null,
+                    'logo_display_size' => 'large',
+                    'whatsapp_button_style' => 'pill',
+                    'contact_email' => 'designer@example.test',
+                    'contact_phone' => '+60123456789',
+                    'address' => 'Kuala Lumpur',
+                    'social_links' => [
+                        'facebook' => 'https://facebook.com/klinik',
+                        'instagram' => null,
+                        'youtube' => null,
+                        'tiktok' => null,
+                        'linkedin' => null,
+                    ],
+                ],
+                'seo' => [
+                    'meta_title' => 'Klinik Designer SEO',
+                    'meta_description' => 'Trusted healthcare configured by the assigned designer.',
+                    'meta_keywords' => 'clinic, healthcare',
+                    'canonical_url' => 'https://clinic.example.test',
+                    'robots_directive' => 'index,nofollow',
+                    'open_graph_title' => 'Klinik Designer',
+                    'open_graph_description' => 'Trusted clinic information for social sharing.',
+                    'indexing_enabled' => false,
+                ],
+                'sections' => [
+                    'hero' => true, 'about' => true, 'services' => true, 'doctors' => true,
+                    'testimonials' => true, 'gallery' => true, 'faq' => true, 'contact' => true, 'booking_cta' => true,
+                ],
+            ])
+            ->assertRedirect('/dashboard/onboarding/'.$jobId)
+            ->assertSessionHasErrors(['template_id']);
+
+        $this->get('/dashboard/onboarding/'.$jobId)
+            ->assertOk()
+            ->assertInertia(
+                static fn (AssertableInertia $page): AssertableInertia => $page
+                    ->where('websiteSetup.configuration.template_id', 'SYIFA_ESSENTIAL')
+                    ->where('websiteSetup.configuration.version', 1)
+                    ->where('websiteSetup.templateOptions.1.locked', true),
+            );
+    }
+
     public function test_clinic_owner_json_save_returns_authoritative_content_after_a_stale_write(): void
     {
         $this->app->instance(
@@ -3214,6 +3383,11 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
     public function test_only_the_assigned_website_designer_can_open_the_custom_domain_add_on_workspace(): void
     {
         $jobId = '00000000-0000-4000-8000-000000000101';
+        config()->set('public_website_delivery.custom_domain_targets', [
+            'domains.syifa.my',
+            '203.0.113.10',
+            '2001:db8::10',
+        ]);
         $this->app->instance(
             AuthorizationService::class,
             $this->authorization(
@@ -3289,7 +3463,14 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('domain.status', 'verification_pending')
                     ->where('domain.version', 1)
                     ->where('domain.verificationValue', static fn (mixed $value): bool => is_string($value)
-                        && str_starts_with($value, 'syifa-verification=')),
+                        && str_starts_with($value, 'syifa-verification='))
+                    ->where('routingRecords.0.type', 'CNAME')
+                    ->where('routingRecords.0.name', 'www.klinik-aisyah.my')
+                    ->where('routingRecords.0.value', 'domains.syifa.my')
+                    ->where('routingRecords.1.type', 'A')
+                    ->where('routingRecords.1.value', '203.0.113.10')
+                    ->where('routingRecords.2.type', 'AAAA')
+                    ->where('routingRecords.2.value', '2001:db8::10'),
             );
 
         $domain = $this->customDomains->currentForWebsite(

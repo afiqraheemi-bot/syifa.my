@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\WebsiteBuilder\Application;
 
+use App\Modules\SubscriptionBilling\Contracts\Entitlements\SubscriptionEntitlementLookupInterface;
 use App\Modules\WebsiteBuilder\Application\Exceptions\WebsiteOperationForbiddenException;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorization;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\UpdateWebsiteContentCommand;
+use App\Modules\WebsiteBuilder\Application\WebsiteContent\WebsiteTemplateAvailabilityPolicy;
 use App\Modules\WebsiteBuilder\Contracts\Repositories\WebsiteRepositoryInterface;
+use App\Modules\WebsiteBuilder\Domain\Exceptions\InvalidWebsiteValueException;
 use App\Modules\WebsiteBuilder\Domain\Exceptions\StaleWebsiteWriteException;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\SectionId;
 use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
@@ -70,7 +73,7 @@ final class ManageWebsiteContentServiceTest extends TestCase
 
     public function test_approved_template_selection_is_persisted_with_the_existing_configuration(): void
     {
-        $result = $this->service()->update(
+        $result = $this->service(premiumTemplatesEntitled: true)->update(
             $this->command(templateId: TemplateId::SyifaCare->value),
         )->toArray();
 
@@ -79,7 +82,25 @@ final class ManageWebsiteContentServiceTest extends TestCase
         self::assertSame(1, $this->saves);
     }
 
-    private function service(): ManageWebsiteContentService
+    /**
+     * Syifa Basic (and the Trial, which mirrors it) is limited to the
+     * default template - a Basic tenant switching to a Pro-only template
+     * must be rejected, not silently allowed.
+     */
+    public function test_template_selection_outside_the_current_plan_is_rejected(): void
+    {
+        $this->expectException(InvalidWebsiteValueException::class);
+
+        try {
+            $this->service(premiumTemplatesEntitled: false)->update(
+                $this->command(templateId: TemplateId::SyifaCare->value),
+            );
+        } finally {
+            self::assertSame(0, $this->saves);
+        }
+    }
+
+    private function service(bool $premiumTemplatesEntitled = true): ManageWebsiteContentService
     {
         $test = $this;
         $repository = new class($test) implements WebsiteRepositoryInterface
@@ -103,8 +124,27 @@ final class ManageWebsiteContentServiceTest extends TestCase
                 $website->synchronizeVersion($website->version() + 1);
             }
         };
+        $entitlements = new class($premiumTemplatesEntitled) implements SubscriptionEntitlementLookupInterface
+        {
+            public function __construct(private bool $entitled) {}
 
-        return new ManageWebsiteContentService($repository, new WebsiteAuthorization);
+            public function hasCapability(string $tenantId, string $capabilityKey, string $effectiveDateTime): bool
+            {
+                return $this->entitled;
+            }
+
+            /** @return list<string> */
+            public function getActiveCapabilityKeys(string $tenantId, string $effectiveDateTime): array
+            {
+                return $this->entitled ? [WebsiteTemplateAvailabilityPolicy::PREMIUM_TEMPLATE_CAPABILITY] : [];
+            }
+        };
+
+        return new ManageWebsiteContentService(
+            $repository,
+            new WebsiteAuthorization,
+            new WebsiteTemplateAvailabilityPolicy($entitlements),
+        );
     }
 
     private function command(

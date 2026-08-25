@@ -7,6 +7,7 @@ namespace App\Support\Dashboard\Application\Website\Content;
 use App\Modules\WebsiteBuilder\Application\ClinicContact\UpdateClinicContactProfileService;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
+use App\Modules\WebsiteBuilder\Application\WebsiteContent\WebsiteTemplateAvailabilityPolicy;
 use App\Modules\WebsiteBuilder\Contracts\PublicAddress\WebsitePublicAddressReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ActiveServiceReferenceReadInterface;
 use App\Modules\WebsiteBuilder\Contracts\SyifaAi\SyifaAiProviderInterface;
@@ -14,6 +15,7 @@ use App\Modules\WebsiteBuilder\Domain\ValueObjects\TemplateId;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\ClinicOwnerDashboardNavigation;
 use App\Support\Dashboard\Application\DashboardPageView;
+use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\Schema;
 use LogicException;
@@ -28,6 +30,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
         private UpdateClinicContactProfileService $contactProfile,
         private SyifaAiProviderInterface $syifaAi,
         private ConnectionInterface $connection,
+        private WebsiteTemplateAvailabilityPolicy $templateAvailability,
     ) {}
 
     public function fromTrustedContext(mixed $context): DashboardPageView
@@ -45,6 +48,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
             new WebsiteAuthorizationContext($context->identityId, $context->role, actorTenantId: $context->tenantId),
         )->toArray();
         $publicAddress = $this->publicAddresses->forTenant($context->tenantId);
+        $availableTemplates = $this->templateAvailability->availableTemplates($context->tenantId, new DateTimeImmutable);
         $contactProfile = $this->contactProfile->read(
             $context->tenantId,
             new WebsiteAuthorizationContext($context->identityId, $context->role, actorTenantId: $context->tenantId),
@@ -67,6 +71,7 @@ final readonly class ClinicOwnerWebsiteContentOverviewPage
             'templateOptions' => array_map(static fn (TemplateId $template): array => [
                 'value' => $template->value,
                 'label' => ucwords(strtolower(str_replace('_', ' ', $template->value))),
+                'locked' => ! in_array($template, $availableTemplates, true),
             ], TemplateId::cases()),
             'canChangeTemplate' => (int) $editable['published_version'] === 0,
             'updateUrl' => route('dashboard.website.content.update'),

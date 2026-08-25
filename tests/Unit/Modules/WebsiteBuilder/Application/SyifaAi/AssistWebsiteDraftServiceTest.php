@@ -18,6 +18,7 @@ use App\Modules\WebsiteBuilder\Application\SyifaAi\SyifaAiUsageRecord;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorization;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorizationContext;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
+use App\Modules\WebsiteBuilder\Application\WebsiteContent\WebsiteTemplateAvailabilityPolicy;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\ManageWebsiteDraftContentService;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\WebsiteDraftSectionCodec;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ActiveServiceReferenceReadInterface;
@@ -43,6 +44,7 @@ use App\Modules\WebsiteBuilder\Domain\Website;
 use App\Modules\WebsiteBuilder\Domain\WebsiteDraftContent;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\AlwaysEntitledSubscriptionLookup;
 use Tests\TestCase;
 
 final class AssistWebsiteDraftServiceTest extends TestCase
@@ -149,7 +151,11 @@ final class AssistWebsiteDraftServiceTest extends TestCase
                     }
                 },
             ),
-            new ManageWebsiteContentService($websiteRepository, new WebsiteAuthorization),
+            new ManageWebsiteContentService(
+                $websiteRepository,
+                new WebsiteAuthorization,
+                new WebsiteTemplateAvailabilityPolicy(new AlwaysEntitledSubscriptionLookup),
+            ),
             new class implements ActiveServiceCatalogueReaderInterface
             {
                 public function forTenant(string $tenantId): array

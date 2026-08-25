@@ -339,8 +339,10 @@ const editorThemeStyle = computed(() => websiteTemplateThemeStyle(form.template_
                                         v-for="template in templateOptions"
                                         :key="template.value"
                                         :value="template.value"
+                                        :disabled="template.locked"
                                     >
-                                        {{ template.label }}
+                                        {{ template.label
+                                        }}<template v-if="template.locked"> (Pakej Pro)</template>
                                     </option>
                                 </select>
                             </label>
@@ -354,6 +356,12 @@ const editorThemeStyle = computed(() => websiteTemplateThemeStyle(form.template_
                                 {{ configurationSaving ? 'Saving…' : 'Save template' }}
                             </button>
                         </div>
+                        <p
+                            v-if="templateOptions.some((template) => template.locked)"
+                            class="mt-2 text-xs text-slate-500"
+                        >
+                            Templat berkunci hanya tersedia dalam pakej Syifa Pro.
+                        </p>
                         <span
                             v-if="form.errors.template_id"
                             class="mt-2 block text-sm text-red-700"
