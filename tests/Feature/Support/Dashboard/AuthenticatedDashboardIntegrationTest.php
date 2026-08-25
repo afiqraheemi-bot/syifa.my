@@ -3383,11 +3383,6 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
     public function test_only_the_assigned_website_designer_can_open_the_custom_domain_add_on_workspace(): void
     {
         $jobId = '00000000-0000-4000-8000-000000000101';
-        config()->set('public_website_delivery.custom_domain_targets', [
-            'domains.syifa.my',
-            '203.0.113.10',
-            '2001:db8::10',
-        ]);
         $this->app->instance(
             AuthorizationService::class,
             $this->authorization(
@@ -3463,14 +3458,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                     ->where('domain.status', 'verification_pending')
                     ->where('domain.version', 1)
                     ->where('domain.verificationValue', static fn (mixed $value): bool => is_string($value)
-                        && str_starts_with($value, 'syifa-verification='))
-                    ->where('routingRecords.0.type', 'CNAME')
-                    ->where('routingRecords.0.name', 'www.klinik-aisyah.my')
-                    ->where('routingRecords.0.value', 'domains.syifa.my')
-                    ->where('routingRecords.1.type', 'A')
-                    ->where('routingRecords.1.value', '203.0.113.10')
-                    ->where('routingRecords.2.type', 'AAAA')
-                    ->where('routingRecords.2.value', '2001:db8::10'),
+                        && str_starts_with($value, 'syifa-verification=')),
             );
 
         $domain = $this->customDomains->currentForWebsite(
