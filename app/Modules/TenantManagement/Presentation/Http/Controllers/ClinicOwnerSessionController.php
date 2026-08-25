@@ -6,6 +6,7 @@ namespace App\Modules\TenantManagement\Presentation\Http\Controllers;
 
 use App\Modules\TenantManagement\Application\Session\CreateClinicOwnerSessionService;
 use App\Modules\TenantManagement\Application\Session\DeleteClinicOwnerSessionService;
+use App\Modules\TenantManagement\Contracts\Authentication\CentralClinicOwnerLoginSelectorInterface;
 use App\Modules\TenantManagement\Contracts\Session\AuthenticatedClinicOwnerSessionData;
 use App\Modules\TenantManagement\Presentation\Http\Requests\CreateClinicOwnerSessionRequest;
 use App\Modules\TenantManagement\Presentation\Http\Resources\ClinicOwnerSessionResource;
@@ -20,11 +21,18 @@ final readonly class ClinicOwnerSessionController
     public function store(
         CreateClinicOwnerSessionRequest $request,
         CreateClinicOwnerSessionService $sessions,
+        CentralClinicOwnerLoginSelectorInterface $centralLoginSelector,
     ): JsonResponse {
         /** @var array{email: string, password: string} $credentials */
         $credentials = $request->safe()->only(['email', 'password']);
+        $trustedSelector = $request->getHost();
+        if (in_array($trustedSelector, config('tenant_management.central_login_hosts', []), true)) {
+            $trustedSelector = $centralLoginSelector->selectorFor($credentials['email'])
+                ?? $trustedSelector;
+        }
+
         $session = $sessions->execute(
-            $request->getHost(),
+            $trustedSelector,
             $credentials['email'],
             $credentials['password'],
             new DateTimeImmutable,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
     'admin_base_domains' => explode(',', (string) env('TENANT_ADMIN_BASE_DOMAINS', 'app.syifa.my')),
+    'central_login_hosts' => explode(',', (string) env('CENTRAL_LOGIN_HOSTS', 'syifa.my,www.syifa.my')),
     'local_demo_tenant' => [
         'enabled' => env('LOCAL_DEMO_TENANT_ENABLED', true),
         'host' => env('LOCAL_DEMO_TENANT_HOST', 'localhost'),

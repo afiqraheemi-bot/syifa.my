@@ -12,6 +12,7 @@ use App\Modules\TenantManagement\Application\Session\GetCurrentClinicOwnerSessio
 use App\Modules\TenantManagement\Contracts\Administration\ClinicOwnerSetupLinkIssuerInterface;
 use App\Modules\TenantManagement\Contracts\Administration\ClinicOwnerSetupTokenVerifierInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\AuthenticationSignalDispatcherInterface;
+use App\Modules\TenantManagement\Contracts\Authentication\CentralClinicOwnerLoginSelectorInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticationInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerCredentialVerificationInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerPasswordResetLinkIssuerInterface;
@@ -32,6 +33,7 @@ use App\Modules\TenantManagement\Infrastructure\Persistence\Repositories\Postgre
 use App\Modules\TenantManagement\Infrastructure\Session\LaravelClinicOwnerSessionStore;
 use App\Modules\TenantManagement\Infrastructure\TenantContext\ClinicOwnerTenantContextResolver;
 use App\Modules\TenantManagement\Infrastructure\TenantRouting\AdminHostParser;
+use App\Modules\TenantManagement\Infrastructure\TenantRouting\PostgresCentralClinicOwnerLoginSelector;
 use App\Modules\TenantManagement\Infrastructure\TenantRouting\TenantAdminHostTrustedTenantSelector;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Foundation\Application as ApplicationContract;
@@ -82,6 +84,13 @@ final class TenantManagementServiceProvider extends ServiceProvider
 
         $this->app->bind(ClinicOwnerAuthenticationInterface::class, AuthenticateClinicOwnerService::class);
         $this->app->bind(AuthenticationSignalDispatcherInterface::class, LaravelAuthenticationSignalDispatcher::class);
+        $this->app->singleton(
+            CentralClinicOwnerLoginSelectorInterface::class,
+            static fn (Application $application): PostgresCentralClinicOwnerLoginSelector => new PostgresCentralClinicOwnerLoginSelector(
+                $application->make('db')->connection(),
+                self::adminBaseDomains($application),
+            ),
+        );
         $this->app->bind(
             ClinicOwnerSessionStoreInterface::class,
             static fn (Application $application): LaravelClinicOwnerSessionStore => new LaravelClinicOwnerSessionStore(
