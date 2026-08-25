@@ -48,6 +48,7 @@ return [
             'syifa_ai.assist',
             'custom_domain',
             'website.blog.manage',
+            'website.template.premium',
         ],
     ],
 ];

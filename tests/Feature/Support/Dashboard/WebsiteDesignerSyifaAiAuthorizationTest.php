@@ -14,6 +14,7 @@ use App\Modules\WebsiteBuilder\Application\SyifaAi\SyifaAiGenerationResult;
 use App\Modules\WebsiteBuilder\Application\SyifaAi\SyifaAiUsageRecord;
 use App\Modules\WebsiteBuilder\Application\WebsiteAuthorization;
 use App\Modules\WebsiteBuilder\Application\WebsiteContent\ManageWebsiteContentService;
+use App\Modules\WebsiteBuilder\Application\WebsiteContent\WebsiteTemplateAvailabilityPolicy;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\ManageWebsiteDraftContentService;
 use App\Modules\WebsiteBuilder\Application\WebsiteDraft\WebsiteDraftSectionCodec;
 use App\Modules\WebsiteBuilder\Contracts\Queries\ActiveServiceReferenceReadInterface;
@@ -32,6 +33,7 @@ use Illuminate\Http\Request;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Tests\Support\AlwaysEntitledSubscriptionLookup;
 use Tests\TestCase;
 
 final class WebsiteDesignerSyifaAiAuthorizationTest extends TestCase
@@ -145,6 +147,7 @@ final class WebsiteDesignerSyifaAiAuthorizationTest extends TestCase
                     }
                 },
                 new WebsiteAuthorization,
+                new WebsiteTemplateAvailabilityPolicy(new AlwaysEntitledSubscriptionLookup),
             ),
             new class($throwing) implements ActiveServiceCatalogueReaderInterface
             {
