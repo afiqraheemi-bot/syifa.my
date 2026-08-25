@@ -561,6 +561,8 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
         self::assertStringContainsString('<details v-else', $table);
         self::assertStringContainsString('New appointment date', $table);
         self::assertStringContainsString('New appointment time', $table);
+        self::assertStringContainsString('min-w-0 max-w-full overflow-hidden', $table);
+        self::assertStringContainsString('max-w-full overflow-x-auto overscroll-x-contain', $table);
         self::assertStringNotContainsString('booking.status ===', $table);
         self::assertStringNotContainsString('clinic_owner', $table);
 

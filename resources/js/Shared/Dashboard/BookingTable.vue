@@ -98,7 +98,7 @@ const submitAction = (event, booking, action) => {
     </p>
     <div
         v-if="items.length > 0"
-        class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+        class="min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
     >
         <div v-if="!returnToDetail" class="divide-y divide-slate-100 md:hidden">
             <article v-for="booking in items" :key="booking.id" class="p-4">
@@ -146,7 +146,7 @@ const submitAction = (event, booking, action) => {
         </div>
         <div
             :class="[
-                'overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600',
+                'max-w-full overflow-x-auto overscroll-x-contain focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600',
                 !returnToDetail ? 'hidden md:block' : 'block',
             ]"
             role="region"

@@ -96,7 +96,7 @@ function statusLabel(status) {
 
         <div
             :class="[
-                'min-h-screen transition-[padding] duration-200',
+                'min-h-screen min-w-0 overflow-x-hidden transition-[padding] duration-200',
                 collapsed ? 'lg:pl-20' : 'lg:pl-72',
             ]"
         >
@@ -230,9 +230,9 @@ function statusLabel(status) {
             <main
                 id="dashboard-content"
                 tabindex="-1"
-                class="px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-10"
+                class="min-w-0 max-w-full overflow-x-hidden px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-10"
             >
-                <div class="mx-auto max-w-screen-2xl space-y-6 sm:space-y-8">
+                <div class="mx-auto min-w-0 max-w-screen-2xl space-y-6 sm:space-y-8">
                     <DashboardBreadcrumb v-if="showBreadcrumbs" :items="breadcrumbs" />
                     <DashboardPageHeader
                         :title="pageTitle"
