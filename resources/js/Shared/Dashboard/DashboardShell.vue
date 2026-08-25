@@ -58,6 +58,16 @@ const pendingJobsLabel = computed(() =>
         ? `1 ${operations.value?.singular_label ?? 'task is waiting'}`
         : `${pendingJobs.value} ${operations.value?.plural_label ?? 'tasks are waiting'}`,
 );
+const showBreadcrumbs = computed(() => {
+    if (props.breadcrumbs.length === 0) return false;
+    if (props.breadcrumbs.length > 1) return true;
+
+    return (
+        String(props.breadcrumbs[0]?.label ?? '')
+            .trim()
+            .toLocaleLowerCase() !== props.pageTitle.trim().toLocaleLowerCase()
+    );
+});
 
 function statusLabel(status) {
     return String(status ?? 'pending')
@@ -67,7 +77,7 @@ function statusLabel(status) {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 text-slate-950">
+    <div class="min-h-screen bg-[#f5f7f3] text-slate-950">
         <a
             href="#dashboard-content"
             class="sr-only z-[60] rounded-md bg-white px-4 py-3 font-semibold text-slate-950 focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:outline-2 focus:outline-offset-2 focus:outline-emerald-600"
@@ -220,10 +230,10 @@ function statusLabel(status) {
             <main
                 id="dashboard-content"
                 tabindex="-1"
-                class="px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-8"
+                class="px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-10"
             >
                 <div class="mx-auto max-w-screen-2xl space-y-6 sm:space-y-8">
-                    <DashboardBreadcrumb :items="breadcrumbs" />
+                    <DashboardBreadcrumb v-if="showBreadcrumbs" :items="breadcrumbs" />
                     <DashboardPageHeader
                         :title="pageTitle"
                         :description="pageDescription"

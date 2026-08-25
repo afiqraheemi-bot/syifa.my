@@ -39,16 +39,32 @@ defineEmits(['close-mobile', 'toggle-collapse']);
         :aria-label="`${productName} dashboard navigation`"
         @keydown.esc="$emit('close-mobile')"
     >
-        <div class="flex min-h-16 items-center gap-3 border-b border-white/10 px-4">
-            <span
-                aria-hidden="true"
-                class="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-lg font-black text-slate-950"
+        <div
+            :class="[
+                'flex min-h-18 items-center border-b border-white/10',
+                collapsed ? 'px-4 lg:justify-center' : 'px-6',
+            ]"
+        >
+            <a
+                v-show="!collapsed"
+                href="/dashboard"
+                class="inline-flex rounded-lg py-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime-300"
+                :aria-label="`${productName} dashboard`"
             >
-                S
-            </span>
-            <span v-show="!collapsed" class="truncate text-lg font-bold tracking-tight">{{
-                productName
-            }}</span>
+                <img
+                    :src="'/images/marketing/syifa-logo.webp'"
+                    :alt="productName"
+                    class="h-7 w-auto brightness-0 invert"
+                    width="1836"
+                    height="857"
+                />
+            </a>
+            <span
+                v-show="collapsed"
+                class="hidden size-10 shrink-0 items-center justify-center rounded-xl bg-lime-300 text-lg font-black text-emerald-950 lg:inline-flex"
+                aria-hidden="true"
+                >S</span
+            >
             <button
                 type="button"
                 class="ml-auto inline-flex size-10 items-center justify-center rounded-lg text-slate-300 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 lg:hidden"
@@ -85,7 +101,7 @@ defineEmits(['close-mobile', 'toggle-collapse']);
                         :class="[
                             'mb-1 flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400',
                             item.current
-                                ? 'bg-emerald-500 text-slate-950'
+                                ? 'bg-lime-300 font-bold text-emerald-950 shadow-sm shadow-lime-950/20'
                                 : 'text-slate-300 hover:bg-white/10 hover:text-white',
                             collapsed ? 'lg:justify-center' : '',
                         ]"
@@ -104,7 +120,7 @@ defineEmits(['close-mobile', 'toggle-collapse']);
                     :class="[
                         'mb-1 flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400',
                         entry.current
-                            ? 'bg-emerald-500 text-slate-950'
+                            ? 'bg-lime-300 font-bold text-emerald-950 shadow-sm shadow-lime-950/20'
                             : 'text-slate-300 hover:bg-white/10 hover:text-white',
                         collapsed ? 'lg:justify-center' : '',
                     ]"

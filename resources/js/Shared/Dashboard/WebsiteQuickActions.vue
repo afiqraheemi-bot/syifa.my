@@ -7,5 +7,5 @@ defineProps({
 </script>
 
 <template>
-    <DashboardQuickActions :actions="actions" />
+    <DashboardQuickActions :actions="actions" title="Tindakan website" eyebrow="Akses segera" />
 </template>

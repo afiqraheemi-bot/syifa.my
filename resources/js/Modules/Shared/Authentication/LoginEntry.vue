@@ -144,54 +144,129 @@ async function requestPasswordReset() {
 
 <template>
     <main
-        class="flex min-h-screen items-center bg-slate-950 px-4 py-6 text-slate-950 sm:px-6 sm:py-10"
+        class="relative flex min-h-screen items-center overflow-hidden bg-[#f4f6f0] px-4 py-5 text-slate-950 sm:px-6 sm:py-8"
     >
         <div
-            class="mx-auto grid min-w-0 w-full max-w-5xl overflow-hidden rounded-[2rem] bg-white shadow-2xl ring-1 ring-white/10 lg:grid-cols-[0.9fr_1.1fr]"
+            class="pointer-events-none absolute -top-48 -left-48 size-[36rem] rounded-full bg-lime-200/30 blur-3xl"
+        />
+        <div
+            class="pointer-events-none absolute -right-40 -bottom-52 size-[40rem] rounded-full bg-emerald-200/30 blur-3xl"
+        />
+        <div
+            class="relative mx-auto grid min-w-0 w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_32px_90px_-42px_rgba(6,78,59,.45)] lg:grid-cols-[1.05fr_0.95fr]"
         >
             <section
-                class="hidden flex-col justify-between bg-emerald-950 px-12 py-14 text-white lg:flex lg:min-h-[42rem]"
+                class="relative hidden min-h-[46rem] flex-col justify-between overflow-hidden bg-emerald-950 px-12 py-12 text-white lg:flex"
             >
-                <div>
-                    <p class="text-sm font-bold tracking-[0.18em] text-emerald-300">SYIFA.MY</p>
-                    <h1 class="mt-7 max-w-md text-4xl font-bold tracking-[-0.035em]">
-                        Masa depan klinik bermula di sini.
+                <div
+                    class="pointer-events-none absolute -right-32 -bottom-24 size-[30rem] rounded-full border-[70px] border-emerald-800/40"
+                />
+                <div class="relative z-10">
+                    <a
+                        href="/"
+                        aria-label="Kembali ke halaman utama SYIFA.my"
+                        class="inline-flex rounded-lg bg-white px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime-300"
+                    >
+                        <img
+                            :src="'/images/marketing/syifa-logo.webp'"
+                            alt="SYIFA.my"
+                            class="h-7 w-auto"
+                            width="1836"
+                            height="857"
+                        />
+                    </a>
+                    <p class="mt-14 text-xs font-black tracking-[0.2em] text-lime-300 uppercase">
+                        Ruang kerja klinik anda
+                    </p>
+                    <h1
+                        class="mt-5 max-w-md text-[2.75rem] leading-[1.08] font-black tracking-[-0.04em]"
+                    >
+                        Semua urusan digital klinik, di satu tempat.
                     </h1>
                     <p class="mt-5 max-w-md text-base leading-7 text-emerald-100/90">
-                        SYIFA.my membantu klinik membina kehadiran digital yang dipercayai,
-                        memudahkan tempahan pesakit dan berkembang dengan lebih teratur—supaya
-                        pasukan klinik boleh memberi lebih tumpuan kepada penjagaan.
+                        Urus website, tempahan pesakit dan kandungan klinik dengan pengalaman yang
+                        ringkas, tersusun dan selamat.
                     </p>
+
+                    <div class="mt-9 grid max-w-md grid-cols-3 gap-3">
+                        <div
+                            v-for="item in ['Website', 'Tempahan', 'Kandungan']"
+                            :key="item"
+                            class="rounded-2xl border border-emerald-800 bg-emerald-900/70 px-3 py-4"
+                        >
+                            <span
+                                class="mb-3 flex size-7 items-center justify-center rounded-lg bg-lime-300 text-emerald-950"
+                            >
+                                <svg
+                                    viewBox="0 0 20 20"
+                                    class="size-3.5 fill-none stroke-current stroke-[2.4]"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M4 10.5l3.5 3.5L16 6"
+                                    />
+                                </svg>
+                            </span>
+                            <p class="text-xs font-bold text-white">{{ item }}</p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="mt-10 border-t border-emerald-800 pt-6">
-                    <p class="text-sm font-semibold text-white">Akses anda dilindungi</p>
-                    <p class="mt-2 text-sm leading-6 text-emerald-100/80">
-                        Jangan kongsi kata laluan. SYIFA.my tidak akan meminta kata laluan melalui
-                        e-mel atau mesej.
-                    </p>
+                <div
+                    class="relative z-10 mt-10 flex items-start gap-3 border-t border-emerald-800 pt-6"
+                >
+                    <span
+                        class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-800 text-lime-300"
+                    >
+                        <svg viewBox="0 0 24 24" class="size-5 fill-none stroke-current stroke-2">
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M12 3l7 3v5c0 4.8-2.9 8.2-7 10-4.1-1.8-7-5.2-7-10V6l7-3zM9 12l2 2 4-4"
+                            />
+                        </svg>
+                    </span>
+                    <div>
+                        <p class="text-sm font-bold text-white">Akses yang dilindungi</p>
+                        <p class="mt-1 text-xs leading-5 text-emerald-100/75">
+                            SYIFA.my tidak akan meminta kata laluan anda melalui e-mel atau
+                            WhatsApp.
+                        </p>
+                    </div>
                 </div>
             </section>
 
-            <section class="flex min-w-0 items-center px-6 py-9 sm:px-10 sm:py-12 lg:px-14">
+            <section class="flex min-w-0 items-center px-6 py-9 sm:px-12 sm:py-14 lg:px-16">
                 <div class="mx-auto min-w-0 w-full max-w-md">
-                    <p
-                        class="text-sm font-bold tracking-[0.16em] text-emerald-700 uppercase lg:hidden"
+                    <a
+                        href="/"
+                        class="inline-flex rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 lg:hidden"
                     >
-                        SYIFA.MY
-                    </p>
-                    <p class="mt-7 text-sm font-semibold text-emerald-700 lg:mt-0">
+                        <img
+                            :src="'/images/marketing/syifa-logo.webp'"
+                            alt="SYIFA.my"
+                            class="h-8 w-auto"
+                            width="1836"
+                            height="857"
+                        />
+                    </a>
+                    <p
+                        class="mt-9 text-xs font-black tracking-[0.16em] text-emerald-700 uppercase lg:mt-0"
+                    >
                         Selamat kembali
                     </p>
-                    <h2 class="mt-2 text-3xl font-bold tracking-[-0.03em] text-slate-950">
+                    <h2
+                        class="mt-3 text-3xl font-black tracking-[-0.04em] text-slate-950 sm:text-4xl"
+                    >
                         Log masuk ke akaun anda
                     </h2>
                     <p class="mt-3 text-sm leading-6 text-slate-600">
-                        Masukkan maklumat akaun anda. Ruang kerja yang betul akan dibuka secara
-                        automatik.
+                        Gunakan e-mel yang didaftarkan. Kami akan membawa anda ke ruang kerja yang
+                        betul secara automatik.
                     </p>
 
-                    <form v-if="!mfaState" class="mt-9 min-w-0 space-y-5" @submit.prevent="submit">
+                    <form v-if="!mfaState" class="mt-8 min-w-0 space-y-5" @submit.prevent="submit">
                         <div>
                             <label for="email" class="block text-sm font-semibold text-slate-800">
                                 Alamat e-mel
@@ -203,7 +278,8 @@ async function requestPasswordReset() {
                                 type="email"
                                 autocomplete="username"
                                 required
-                                class="mt-2 min-h-12 min-w-0 w-full max-w-full rounded-xl border border-slate-300 px-4 text-base focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                                placeholder="nama@klinik.com"
+                                class="mt-2 min-h-13 min-w-0 w-full max-w-full rounded-xl border border-slate-300 bg-slate-50/70 px-4 text-base transition placeholder:text-slate-400 hover:border-slate-400 focus:border-emerald-700 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-100"
                             />
                         </div>
 
@@ -222,7 +298,8 @@ async function requestPasswordReset() {
                                     :type="passwordVisible ? 'text' : 'password'"
                                     autocomplete="current-password"
                                     required
-                                    class="min-h-12 min-w-0 w-full max-w-full rounded-xl border border-slate-300 py-2 pr-12 pl-4 text-base focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                                    placeholder="Masukkan kata laluan"
+                                    class="min-h-13 min-w-0 w-full max-w-full rounded-xl border border-slate-300 bg-slate-50/70 py-2 pr-12 pl-4 text-base transition placeholder:text-slate-400 hover:border-slate-400 focus:border-emerald-700 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-100"
                                 />
                                 <button
                                     type="button"
@@ -333,9 +410,20 @@ async function requestPasswordReset() {
                         <button
                             type="submit"
                             :disabled="loading"
-                            class="flex min-h-12 w-full items-center justify-center rounded-xl bg-emerald-700 px-5 font-bold text-white transition hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-wait disabled:opacity-70"
+                            class="flex min-h-13 w-full items-center justify-center gap-2 rounded-xl bg-emerald-800 px-5 font-bold text-white shadow-lg shadow-emerald-900/15 transition hover:-translate-y-0.5 hover:bg-emerald-950 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-wait disabled:opacity-70"
                         >
                             {{ loading ? 'Sedang log masuk…' : 'Log masuk' }}
+                            <svg
+                                v-if="!loading"
+                                viewBox="0 0 24 24"
+                                class="size-4 fill-none stroke-current stroke-[2.5]"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M5 12h14M13 6l6 6-6 6"
+                                />
+                            </svg>
                         </button>
                     </form>
 
@@ -343,7 +431,7 @@ async function requestPasswordReset() {
                         <p class="text-sm text-slate-600">Belum menggunakan SYIFA.my?</p>
                         <a
                             :href="clinicRegistrationUrl"
-                            class="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-800 transition hover:border-emerald-600 hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                            class="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-800 transition hover:border-emerald-700 hover:bg-emerald-50 hover:text-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
                         >
                             Daftar klinik baharu
                         </a>

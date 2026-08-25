@@ -30,14 +30,14 @@ final readonly class WebsiteDesignerQuickActionsProvider implements DashboardSec
                 'key' => 'continue-setup',
                 'label' => 'Continue website setup',
                 'description' => 'Choose an assigned clinic and continue its website setup.',
-                'href' => $this->setupUrl ?? route('dashboard.onboarding', ['status' => 'in_progress']),
+                'href' => $this->setupUrl ?? route('dashboard.onboarding', ['status' => 'website_setup']),
                 'available' => true,
             ],
             [
                 'key' => 'review-projects',
-                'label' => 'Review projects',
-                'description' => 'Review assigned websites that need revision.',
-                'href' => $this->reviewUrl ?? route('dashboard.onboarding', ['status' => 'in_review']),
+                'label' => 'Projects in review',
+                'description' => 'Open assigned websites currently in the review stage.',
+                'href' => $this->reviewUrl ?? route('dashboard.onboarding', ['status' => 'review_attention']),
                 'available' => true,
             ],
         ]);

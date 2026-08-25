@@ -42,8 +42,8 @@ final readonly class NotificationHistoryPage
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
                 ['key' => 'notifications', 'label' => 'Notifications'],
             ],
-            'pageTitle' => 'Notifications',
-            'pageDescription' => 'Review transactional communication and delivery outcomes.',
+            'pageTitle' => 'Notifikasi',
+            'pageDescription' => 'Semak komunikasi transaksi dan keputusan setiap penghantaran.',
             'identityName' => $context->name,
             'contextLabel' => $superAdmin ? 'Super Admin workspace' : 'Clinic Owner workspace',
             'notificationHistory' => $superAdmin
@@ -55,6 +55,7 @@ final readonly class NotificationHistoryPage
                 'tenantId' => $superAdmin ? $tenantFilter : null,
             ],
             'canFilterTenant' => $superAdmin,
+            'indexUrl' => route('dashboard.notifications'),
         ]);
     }
 

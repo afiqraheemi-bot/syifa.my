@@ -1,6 +1,6 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import {
     BookingFilters,
     BookingPagination,
@@ -126,6 +126,15 @@ const minimumOverrideDate = [
     String(today.getMonth() + 1).padStart(2, '0'),
     String(today.getDate()).padStart(2, '0'),
 ].join('-');
+
+const openManualBooking = async () => {
+    showManualBooking.value = true;
+    await nextTick();
+    document.getElementById('manual-booking-form')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+    });
+};
 
 const addBusinessPeriod = (day) => {
     if (day.periods.length < 5) {
@@ -308,7 +317,71 @@ const deleteDateOverride = (override) => {
         :identity-name="identityName"
         :context-label="contextLabel"
     >
-        <div class="space-y-6">
+        <div class="space-y-7">
+            <section
+                class="relative overflow-hidden rounded-[1.75rem] bg-emerald-950 px-5 py-6 text-white sm:px-8"
+                aria-labelledby="booking-workspace-title"
+            >
+                <div
+                    class="absolute -right-14 -top-20 size-56 rounded-full border-[45px] border-emerald-800/40"
+                />
+                <div
+                    class="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"
+                >
+                    <div>
+                        <p class="text-xs font-black tracking-[0.16em] text-lime-300 uppercase">
+                            Operasi pesakit
+                        </p>
+                        <h2
+                            id="booking-workspace-title"
+                            class="mt-2 text-2xl font-black tracking-[-0.03em]"
+                        >
+                            Urus tempahan klinik
+                        </h2>
+                        <p class="mt-2 max-w-2xl text-sm leading-6 text-emerald-100/80">
+                            Semak permintaan baharu, cari pesakit dan urus semua temu janji dari
+                            satu tempat.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-lime-300 px-5 text-sm font-black text-emerald-950 transition hover:-translate-y-0.5 hover:bg-lime-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                        @click="openManualBooking"
+                    >
+                        <span class="text-lg leading-none">+</span> Tempahan baharu
+                    </button>
+                </div>
+            </section>
+
+            <BookingSummaryGrid :status-summary="statusSummary" :source-summary="sourceSummary" />
+            <section aria-labelledby="booking-list-title" class="space-y-4">
+                <div>
+                    <p class="text-xs font-black tracking-[0.14em] text-emerald-700 uppercase">
+                        Senarai pesakit
+                    </p>
+                    <h2
+                        id="booking-list-title"
+                        class="mt-1 text-xl font-black tracking-tight text-slate-950"
+                    >
+                        Semua tempahan
+                    </h2>
+                </div>
+                <BookingFilters
+                    :search="bookingList.search"
+                    :filters="bookingList.filters"
+                    :per-page="bookingList.pagination.perPage"
+                />
+                <BookingTable :items="bookingList.items" :csrf-token="csrfToken" />
+                <BookingPagination :pagination="bookingList.pagination" />
+            </section>
+
+            <div class="flex items-center gap-3 pt-2">
+                <span class="h-px flex-1 bg-slate-200" />
+                <p class="text-xs font-black tracking-[0.14em] text-slate-500 uppercase">
+                    Tetapan operasi
+                </p>
+                <span class="h-px flex-1 bg-slate-200" />
+            </div>
             <section
                 class="grid gap-4 lg:grid-cols-2"
                 aria-labelledby="hours-and-availability-title"
@@ -879,194 +952,237 @@ const deleteDateOverride = (override) => {
                 {{ successMessage }}
             </p>
 
-            <form
-                v-if="showManualBooking"
-                id="manual-booking-form"
-                class="grid gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2 sm:p-6"
-                @submit.prevent="submitManualBooking"
-            >
+            <Teleport to="body">
                 <div
-                    v-if="form.errors.manual_booking"
-                    class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900 sm:col-span-2"
-                    role="alert"
+                    v-if="showManualBooking"
+                    class="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm sm:p-8"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="manual-booking-title"
+                    @click.self="showManualBooking = false"
                 >
-                    {{ form.errors.manual_booking }}
-                </div>
-
-                <label class="grid gap-2 text-sm font-semibold text-slate-800">
-                    Booking source
-                    <select
-                        v-model="form.source"
-                        required
-                        class="min-h-11 rounded-xl border border-slate-300 bg-white px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                    <form
+                        id="manual-booking-form"
+                        class="my-auto grid w-full max-w-3xl gap-5 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-2xl sm:grid-cols-2 sm:p-7"
+                        @submit.prevent="submitManualBooking"
                     >
-                        <option
-                            v-for="source in manualBooking.sources"
-                            :key="source.value"
-                            :value="source.value"
+                        <div class="flex items-start justify-between gap-4 sm:col-span-2">
+                            <div>
+                                <p
+                                    class="text-xs font-black tracking-[0.14em] text-emerald-700 uppercase"
+                                >
+                                    Tempahan manual
+                                </p>
+                                <h2
+                                    id="manual-booking-title"
+                                    class="mt-1 text-2xl font-black tracking-tight text-slate-950"
+                                >
+                                    Tambah tempahan baharu
+                                </h2>
+                                <p class="mt-1 text-sm text-slate-600">
+                                    Untuk tempahan melalui telefon, WhatsApp, walk-in atau staf
+                                    klinik.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xl text-slate-600 hover:bg-slate-200"
+                                aria-label="Tutup borang tempahan"
+                                @click="showManualBooking = false"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div
+                            v-if="form.errors.manual_booking"
+                            class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900 sm:col-span-2"
+                            role="alert"
                         >
-                            {{ source.label }}
-                        </option>
-                    </select>
-                    <span v-if="form.errors.source" class="text-sm text-red-700" role="alert">{{
-                        form.errors.source
-                    }}</span>
-                </label>
+                            {{ form.errors.manual_booking }}
+                        </div>
 
-                <label class="grid gap-2 text-sm font-semibold text-slate-800">
-                    Patient name
-                    <input
-                        v-model="form.patient_name"
-                        type="text"
-                        maxlength="200"
-                        required
-                        autocomplete="name"
-                        class="min-h-11 rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                    />
-                    <span
-                        v-if="form.errors.patient_name"
-                        class="text-sm text-red-700"
-                        role="alert"
-                        >{{ form.errors.patient_name }}</span
-                    >
-                </label>
+                        <label class="grid gap-2 text-sm font-semibold text-slate-800">
+                            Booking source
+                            <select
+                                v-model="form.source"
+                                required
+                                class="min-h-11 rounded-xl border border-slate-300 bg-white px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                            >
+                                <option
+                                    v-for="source in manualBooking.sources"
+                                    :key="source.value"
+                                    :value="source.value"
+                                >
+                                    {{ source.label }}
+                                </option>
+                            </select>
+                            <span
+                                v-if="form.errors.source"
+                                class="text-sm text-red-700"
+                                role="alert"
+                                >{{ form.errors.source }}</span
+                            >
+                        </label>
 
-                <label class="grid gap-2 text-sm font-semibold text-slate-800">
-                    Phone
-                    <input
-                        v-model="form.phone"
-                        type="tel"
-                        maxlength="40"
-                        required
-                        autocomplete="tel"
-                        class="min-h-11 rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                    />
-                    <span v-if="form.errors.phone" class="text-sm text-red-700" role="alert">{{
-                        form.errors.phone
-                    }}</span>
-                </label>
+                        <label class="grid gap-2 text-sm font-semibold text-slate-800">
+                            Patient name
+                            <input
+                                v-model="form.patient_name"
+                                type="text"
+                                maxlength="200"
+                                required
+                                autocomplete="name"
+                                class="min-h-11 rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                            />
+                            <span
+                                v-if="form.errors.patient_name"
+                                class="text-sm text-red-700"
+                                role="alert"
+                                >{{ form.errors.patient_name }}</span
+                            >
+                        </label>
 
-                <label
-                    v-if="manualBooking.serviceSelectionEnabled"
-                    class="grid gap-2 text-sm font-semibold text-slate-800"
-                >
-                    Service
-                    <select
-                        v-model="form.service_id"
-                        :required="manualBooking.serviceSelectionRequired"
-                        class="min-h-11 rounded-xl border border-slate-300 bg-white px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                    >
-                        <option value="">
-                            {{
-                                manualBooking.serviceSelectionRequired
-                                    ? 'Select a service'
-                                    : 'No service selected'
-                            }}
-                        </option>
-                        <option
-                            v-for="service in manualBooking.services"
-                            :key="service.id"
-                            :value="service.id"
+                        <label class="grid gap-2 text-sm font-semibold text-slate-800">
+                            Phone
+                            <input
+                                v-model="form.phone"
+                                type="tel"
+                                maxlength="40"
+                                required
+                                autocomplete="tel"
+                                class="min-h-11 rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                            />
+                            <span
+                                v-if="form.errors.phone"
+                                class="text-sm text-red-700"
+                                role="alert"
+                                >{{ form.errors.phone }}</span
+                            >
+                        </label>
+
+                        <label
+                            v-if="manualBooking.serviceSelectionEnabled"
+                            class="grid gap-2 text-sm font-semibold text-slate-800"
                         >
-                            {{ service.name }}
-                        </option>
-                    </select>
-                    <span v-if="form.errors.service_id" class="text-sm text-red-700" role="alert">{{
-                        form.errors.service_id
-                    }}</span>
-                </label>
+                            Service
+                            <select
+                                v-model="form.service_id"
+                                :required="manualBooking.serviceSelectionRequired"
+                                class="min-h-11 rounded-xl border border-slate-300 bg-white px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                            >
+                                <option value="">
+                                    {{
+                                        manualBooking.serviceSelectionRequired
+                                            ? 'Select a service'
+                                            : 'No service selected'
+                                    }}
+                                </option>
+                                <option
+                                    v-for="service in manualBooking.services"
+                                    :key="service.id"
+                                    :value="service.id"
+                                >
+                                    {{ service.name }}
+                                </option>
+                            </select>
+                            <span
+                                v-if="form.errors.service_id"
+                                class="text-sm text-red-700"
+                                role="alert"
+                                >{{ form.errors.service_id }}</span
+                            >
+                        </label>
 
-                <label class="grid gap-2 text-sm font-semibold text-slate-800">
-                    Appointment date
-                    <input
-                        v-model="form.appointment_date"
-                        type="date"
-                        required
-                        class="min-h-11 rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                    />
-                    <span
-                        v-if="form.errors.appointment_date"
-                        class="text-sm text-red-700"
-                        role="alert"
-                        >{{ form.errors.appointment_date }}</span
-                    >
-                </label>
+                        <label class="grid gap-2 text-sm font-semibold text-slate-800">
+                            Appointment date
+                            <input
+                                v-model="form.appointment_date"
+                                type="date"
+                                required
+                                class="min-h-11 rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                            />
+                            <span
+                                v-if="form.errors.appointment_date"
+                                class="text-sm text-red-700"
+                                role="alert"
+                                >{{ form.errors.appointment_date }}</span
+                            >
+                        </label>
 
-                <label class="grid gap-2 text-sm font-semibold text-slate-800">
-                    Appointment time
-                    <input
-                        v-model="form.appointment_time"
-                        type="time"
-                        required
-                        class="min-h-11 rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                    />
-                    <span
-                        v-if="form.errors.appointment_time"
-                        class="text-sm text-red-700"
-                        role="alert"
-                        >{{ form.errors.appointment_time }}</span
-                    >
-                </label>
+                        <label class="grid gap-2 text-sm font-semibold text-slate-800">
+                            Appointment time
+                            <input
+                                v-model="form.appointment_time"
+                                type="time"
+                                required
+                                class="min-h-11 rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                            />
+                            <span
+                                v-if="form.errors.appointment_time"
+                                class="text-sm text-red-700"
+                                role="alert"
+                                >{{ form.errors.appointment_time }}</span
+                            >
+                        </label>
 
-                <label
-                    v-if="manualBooking.emailEnabled"
-                    class="grid gap-2 text-sm font-semibold text-slate-800"
-                >
-                    Email
-                    <input
-                        v-model="form.email"
-                        type="email"
-                        maxlength="254"
-                        autocomplete="email"
-                        class="min-h-11 rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                    />
-                    <span v-if="form.errors.email" class="text-sm text-red-700" role="alert">{{
-                        form.errors.email
-                    }}</span>
-                </label>
+                        <label
+                            v-if="manualBooking.emailEnabled"
+                            class="grid gap-2 text-sm font-semibold text-slate-800"
+                        >
+                            Email
+                            <input
+                                v-model="form.email"
+                                type="email"
+                                maxlength="254"
+                                autocomplete="email"
+                                class="min-h-11 rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                            />
+                            <span
+                                v-if="form.errors.email"
+                                class="text-sm text-red-700"
+                                role="alert"
+                                >{{ form.errors.email }}</span
+                            >
+                        </label>
 
-                <label
-                    v-if="manualBooking.notesEnabled"
-                    class="grid gap-2 text-sm font-semibold text-slate-800 sm:col-span-2"
-                >
-                    Notes
-                    <textarea
-                        v-model="form.notes"
-                        rows="3"
-                        class="rounded-xl border border-slate-300 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                    />
-                    <span v-if="form.errors.notes" class="text-sm text-red-700" role="alert">{{
-                        form.errors.notes
-                    }}</span>
-                </label>
+                        <label
+                            v-if="manualBooking.notesEnabled"
+                            class="grid gap-2 text-sm font-semibold text-slate-800 sm:col-span-2"
+                        >
+                            Notes
+                            <textarea
+                                v-model="form.notes"
+                                rows="3"
+                                class="rounded-xl border border-slate-300 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                            />
+                            <span
+                                v-if="form.errors.notes"
+                                class="text-sm text-red-700"
+                                role="alert"
+                                >{{ form.errors.notes }}</span
+                            >
+                        </label>
 
-                <div class="flex flex-wrap justify-end gap-3 sm:col-span-2">
-                    <button
-                        type="button"
-                        class="min-h-11 rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                        :disabled="form.processing"
-                        @click="showManualBooking = false"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        class="min-h-11 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300"
-                        :disabled="form.processing"
-                    >
-                        {{ form.processing ? 'Creating…' : 'Create Booking' }}
-                    </button>
+                        <div class="flex flex-wrap justify-end gap-3 sm:col-span-2">
+                            <button
+                                type="button"
+                                class="min-h-11 rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                                :disabled="form.processing"
+                                @click="showManualBooking = false"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                class="min-h-11 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                :disabled="form.processing"
+                            >
+                                {{ form.processing ? 'Creating…' : 'Create Booking' }}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </Teleport>
         </div>
-
-        <BookingSummaryGrid :status-summary="statusSummary" :source-summary="sourceSummary" />
-        <BookingFilters
-            :search="bookingList.search"
-            :filters="bookingList.filters"
-            :per-page="bookingList.pagination.perPage"
-        />
-        <BookingTable :items="bookingList.items" :csrf-token="csrfToken" />
-        <BookingPagination :pagination="bookingList.pagination" />
     </DashboardShell>
 </template>

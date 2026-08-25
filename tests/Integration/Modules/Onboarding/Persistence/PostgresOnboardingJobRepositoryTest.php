@@ -345,6 +345,18 @@ final class PostgresOnboardingJobRepositoryTest extends TestCase
         self::assertSame($this->uuid(132), $filtered[0]->onboardingJobId);
         self::assertSame('in_progress', $filtered[0]->status);
 
+        $websiteSetup = $adapter->queue($designerId, 'website_setup', null, 10, null);
+        self::assertSame(['in_progress'], array_column($websiteSetup, 'status'));
+
+        $reviewAttention = $adapter->queue($designerId, 'review_attention', null, 10, null);
+        self::assertSame(['correction_required'], array_column($reviewAttention, 'status'));
+
+        $needsAttention = $adapter->queue($designerId, 'needs_attention', null, 10, null);
+        self::assertEqualsCanonicalizing(
+            ['correction_required', 'ready_for_launch'],
+            array_column($needsAttention, 'status'),
+        );
+
         $firstPage = $adapter->queue($designerId, null, null, 3, null);
         self::assertSame([$this->uuid(34), $this->uuid(33), $this->uuid(32)], array_column($firstPage, 'assignmentId'));
         $nextPage = $adapter->queue($designerId, null, $this->uuid(33), 3, null);

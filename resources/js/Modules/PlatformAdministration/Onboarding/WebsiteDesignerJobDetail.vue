@@ -217,6 +217,9 @@ const websiteAddress = ref(props.websiteSetup.address);
 const taskBusy = ref(null);
 const taskError = ref('');
 const taskSuccess = ref('');
+const hasUnsavedWorkspaceChanges = computed(
+    () => form.isDirty || bookingForm.isDirty || contactForm.isDirty,
+);
 
 function synchronizeWebsiteVersion(asset) {
     if (Number.isInteger(asset?.website_version)) {
@@ -1002,6 +1005,12 @@ async function saveBookingCta() {
 async function submitForReview() {
     if (reviewSubmitting.value || reviewCompleted.value || !props.websiteSetup.canSubmitForReview)
         return;
+    if (hasUnsavedWorkspaceChanges.value) {
+        reviewError.value =
+            'Simpan perubahan Website setup, maklumat klinik dan Booking sebelum menghantar untuk semakan.';
+        document.querySelector('#website-review')?.scrollIntoView({ behavior: 'smooth' });
+        return;
+    }
     if (
         !window.confirm(
             props.websiteSetup.configuration.lifecycle === 'ready_for_review'
@@ -1087,6 +1096,11 @@ async function openDraftPreview() {
 
 async function publishWebsite() {
     if (publishSubmitting.value || !props.websiteSetup.canPublish) return;
+    if (hasUnsavedWorkspaceChanges.value) {
+        publishError.value =
+            'Simpan semua perubahan Website setup, maklumat klinik dan Booking sebelum menerbitkan.';
+        return;
+    }
     if (
         !window.confirm(
             'Publish this Website now? A new immutable public version will be created from the current Draft.',
@@ -1171,6 +1185,7 @@ function saveWebsiteSetup() {
             const current = page.props.websiteSetup?.configuration;
             if (current) {
                 form.version = current.version;
+                form.defaults();
             }
             saved.value = true;
         },
@@ -1210,6 +1225,7 @@ function saveBookingConfiguration() {
             if (current) {
                 bookingForm.version = current.version;
                 bookingForm.field_order = [...current.field_order];
+                bookingForm.defaults();
             }
             bookingSaved.value = true;
         },
@@ -1728,6 +1744,17 @@ function completionEvidence(task) {
                 class="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"
             >
                 {{ publishSuccess }}
+            </div>
+            <div
+                v-if="hasUnsavedWorkspaceChanges"
+                role="status"
+                class="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+            >
+                <p class="font-bold">Perubahan belum disimpan</p>
+                <p class="mt-1">
+                    Simpan panel yang telah diubah sebelum menghantar semakan atau menerbitkan
+                    website.
+                </p>
             </div>
             <div class="mt-5 grid gap-3 text-sm lg:grid-cols-2">
                 <div

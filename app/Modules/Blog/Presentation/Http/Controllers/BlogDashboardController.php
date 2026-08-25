@@ -48,6 +48,18 @@ final readonly class BlogDashboardController
             $query->where('post.tenant_id', (string) $job->tenant_id)
                 ->where('post.website_id', (string) $job->website_id);
         }
+        $summary = (clone $query)
+            ->selectRaw('post.status, COUNT(*) AS aggregate')
+            ->groupBy('post.status')
+            ->pluck('aggregate', 'post.status');
+        $categories = (clone $query)
+            ->whereNotNull('post.category')
+            ->where('post.category', '<>', '')
+            ->distinct()
+            ->orderBy('post.category')
+            ->pluck('post.category')
+            ->values();
+
         if ($search = trim((string) $request->query('search'))) {
             $query->where(fn ($q) => $q->where('post.title', 'ilike', "%{$search}%")->orWhere('post.excerpt', 'ilike', "%{$search}%"));
         }
@@ -67,7 +79,8 @@ final readonly class BlogDashboardController
             'posts' => $posts,
             'entitled' => $entitled,
             'filters' => $request->only(['search', 'status', 'category']),
-            'summary' => collect($posts->items())->countBy('status'),
+            'summary' => $summary,
+            'categories' => $categories,
             'role' => $actor->role,
             'clinicName' => $job?->clinic_name,
             'indexUrl' => $urls['index'],

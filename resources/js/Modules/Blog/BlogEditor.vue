@@ -25,6 +25,7 @@ const props = defineProps({
 const navigation = createDashboardNavigation(props.navigation);
 const bodyEditor = ref(null);
 const bodyError = ref('');
+const actionError = ref('');
 const form = useForm({
     version: props.post?.version ?? 1,
     website_id: props.post?.website_id ?? props.websites[0]?.id ?? null,
@@ -136,7 +137,16 @@ function save() {
     }
 
     slugify();
-    editing.value ? form.patch(props.updateUrl) : form.post(props.storeUrl);
+    const options = {
+        preserveScroll: true,
+        onSuccess: () => {
+            nextTick(() => {
+                if (props.post?.version) form.version = props.post.version;
+                form.defaults();
+            });
+        },
+    };
+    editing.value ? form.patch(props.updateUrl, options) : form.post(props.storeUrl, options);
 }
 function syncBody() {
     form.body = bodyEditor.value?.innerHTML ?? '';
@@ -157,6 +167,20 @@ onMounted(() => {
     });
 });
 function transition(action) {
+    actionError.value = '';
+    if (form.isDirty) {
+        actionError.value = 'Simpan perubahan artikel sebelum mengubah status.';
+        return;
+    }
+    if (action === 'schedule' && !transitionForm.scheduled_at) {
+        actionError.value = 'Pilih tarikh dan masa sebelum menjadualkan penerbitan.';
+        return;
+    }
+    if (
+        action === 'archive' &&
+        !window.confirm('Arkibkan artikel ini? Artikel tidak lagi dipaparkan kepada pembaca.')
+    )
+        return;
     transitionForm.action = action;
     transitionForm.version = props.post.version;
     transitionForm.post(props.transitionUrl, {
@@ -184,9 +208,9 @@ function transition(action) {
                             <a :href="indexUrl" class="text-sm font-bold text-emerald-800"
                                 >← Kembali ke Blog</a
                             >
-                            <h1 class="mt-3 text-2xl font-black sm:text-3xl">
+                            <h2 class="mt-3 text-2xl font-black sm:text-3xl">
                                 {{ editing ? 'Edit artikel' : 'Tulis artikel baharu' }}
-                            </h1>
+                            </h2>
                             <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                                 {{
                                     clinicName
@@ -540,7 +564,7 @@ function transition(action) {
                                 ? 'border-red-200 text-red-700'
                                 : 'border-slate-300 text-slate-800'
                         "
-                        :disabled="transitionForm.processing"
+                        :disabled="transitionForm.processing || form.isDirty"
                         @click="transition(option.action)"
                     >
                         {{ option.label }}
@@ -550,11 +574,25 @@ function transition(action) {
                     Tiada tindakan status tersedia untuk artikel ini.
                 </p>
                 <p
-                    v-if="transitionForm.errors.action || transitionForm.errors.scheduled_at"
+                    v-if="
+                        actionError ||
+                        transitionForm.errors.action ||
+                        transitionForm.errors.scheduled_at
+                    "
                     role="alert"
                     class="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-800"
                 >
-                    {{ transitionForm.errors.action || transitionForm.errors.scheduled_at }}
+                    {{
+                        actionError ||
+                        transitionForm.errors.action ||
+                        transitionForm.errors.scheduled_at
+                    }}
+                </p>
+                <p
+                    v-else-if="editing && form.isDirty && transitionOptions.length"
+                    class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900"
+                >
+                    Simpan perubahan dahulu untuk membuka tindakan penerbitan.
                 </p>
                 <p
                     v-if="Object.keys(form.errors).length"

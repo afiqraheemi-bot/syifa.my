@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
     createDashboardNavigation,
     DashboardEmptyState,
@@ -97,6 +97,10 @@ function cancel() {
     }
 }
 
+function handleEscape(event) {
+    if (event.key === 'Escape') cancel();
+}
+
 async function confirmAction() {
     if (!confirmation.value) {
         return;
@@ -132,7 +136,11 @@ async function confirmAction() {
     }
 }
 
-onMounted(loadProviders);
+onMounted(() => {
+    window.addEventListener('keydown', handleEscape);
+    loadProviders();
+});
+onBeforeUnmount(() => window.removeEventListener('keydown', handleEscape));
 </script>
 
 <template>
@@ -144,6 +152,16 @@ onMounted(loadProviders);
         :identity-name="identityName"
         :context-label="contextLabel"
     >
+        <section
+            class="overflow-hidden rounded-[1.75rem] border border-emerald-950/10 bg-emerald-950 px-6 py-7 text-white shadow-sm sm:px-8"
+        >
+            <p class="text-xs font-bold uppercase tracking-[0.22em] text-lime-300">Payment rails</p>
+            <h2 class="mt-3 text-2xl font-black sm:text-3xl">Kesediaan penyedia pembayaran</h2>
+            <p class="mt-2 max-w-2xl leading-7 text-emerald-50/80">
+                Aktifkan penyedia hanya selepas verification, webhook dan health check disahkan.
+            </p>
+        </section>
+
         <p
             v-if="success"
             role="status"
@@ -279,49 +297,69 @@ onMounted(loadProviders);
             description="No provider configurations are available."
         />
 
-        <section
-            v-if="confirmation"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="provider-confirmation-title"
-            class="rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-lg"
-        >
-            <h2 id="provider-confirmation-title" class="text-lg font-bold text-slate-950">
-                Confirm {{ confirmation.action }}
-            </h2>
-            <p class="mt-2 text-sm text-slate-600">
-                Apply this action to
-                <strong class="capitalize">{{ confirmation.providerKey }}</strong
-                >?
-            </p>
-            <div v-if="confirmation.action === 'assess'" class="mt-4 grid gap-3 sm:grid-cols-2">
-                <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
-                    <input v-model="confirmation.webhookConfigured" type="checkbox" />
-                    <span class="text-sm font-semibold">Webhook configured</span>
-                </label>
-                <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
-                    <input v-model="confirmation.providerReady" type="checkbox" />
-                    <span class="text-sm font-semibold">Provider ready</span>
-                </label>
-            </div>
-            <div class="mt-5 flex flex-wrap gap-2">
-                <button
-                    type="button"
-                    class="min-h-11 rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
-                    :disabled="busy"
-                    @click="confirmAction"
+        <Teleport to="body">
+            <div
+                v-if="confirmation"
+                class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+                @click.self="cancel"
+            >
+                <section
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-labelledby="provider-confirmation-title"
+                    class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-7"
                 >
-                    {{ busy ? 'Applying…' : 'Confirm' }}
-                </button>
-                <button
-                    type="button"
-                    class="min-h-11 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold"
-                    :disabled="busy"
-                    @click="cancel"
-                >
-                    Cancel
-                </button>
+                    <p class="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
+                        Tindakan penyedia
+                    </p>
+                    <h2
+                        id="provider-confirmation-title"
+                        class="mt-2 text-xl font-black text-slate-950"
+                    >
+                        Sahkan {{ confirmation.action }}
+                    </h2>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">
+                        Tindakan ini akan digunakan pada
+                        <strong class="capitalize">{{ confirmation.providerKey }}</strong
+                        >.
+                    </p>
+                    <div
+                        v-if="confirmation.action === 'assess'"
+                        class="mt-5 grid gap-3 sm:grid-cols-2"
+                    >
+                        <label
+                            class="flex items-center gap-3 rounded-xl border border-slate-200 p-3"
+                        >
+                            <input v-model="confirmation.webhookConfigured" type="checkbox" />
+                            <span class="text-sm font-semibold">Webhook dikonfigurasi</span>
+                        </label>
+                        <label
+                            class="flex items-center gap-3 rounded-xl border border-slate-200 p-3"
+                        >
+                            <input v-model="confirmation.providerReady" type="checkbox" />
+                            <span class="text-sm font-semibold">Penyedia bersedia</span>
+                        </label>
+                    </div>
+                    <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button
+                            type="button"
+                            class="min-h-11 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold"
+                            :disabled="busy"
+                            @click="cancel"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="button"
+                            class="min-h-11 rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                            :disabled="busy"
+                            @click="confirmAction"
+                        >
+                            {{ busy ? 'Melaksanakan…' : 'Sahkan tindakan' }}
+                        </button>
+                    </div>
+                </section>
             </div>
-        </section>
+        </Teleport>
     </DashboardShell>
 </template>

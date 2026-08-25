@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import {
     createDashboardNavigation,
     DashboardEmptyState,
@@ -18,6 +18,10 @@ const props = defineProps({
 
 const navigation = createDashboardNavigation(props.navigation);
 const filtersSubmitting = ref(false);
+const billingOverview = computed(() => props.billingOverview);
+const hasFilters = computed(() =>
+    Boolean(billingOverview.value.search.value || billingOverview.value.statusFilter.value),
+);
 
 function statusClass(status) {
     const normalized = String(status).toLowerCase();
@@ -186,13 +190,21 @@ function statusClass(status) {
                     </option>
                 </select>
             </label>
-            <button
-                type="submit"
-                class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:cursor-wait disabled:opacity-60"
-                :disabled="filtersSubmitting"
-            >
-                {{ filtersSubmitting ? 'Loading…' : 'Apply' }}
-            </button>
+            <div class="flex gap-2">
+                <button
+                    type="submit"
+                    class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:cursor-wait disabled:opacity-60"
+                    :disabled="filtersSubmitting"
+                >
+                    {{ filtersSubmitting ? 'Loading…' : 'Apply' }}
+                </button>
+                <a
+                    v-if="hasFilters"
+                    :href="billingOverview.search.action"
+                    class="inline-flex min-h-11 items-center rounded-xl px-4 font-bold text-slate-600 hover:bg-slate-100"
+                    >Reset</a
+                >
+            </div>
         </form>
 
         <section
