@@ -20,8 +20,11 @@ final readonly class ClinicOwnerSetupController
         return Inertia::render('TenantManagement/Authentication/ClinicOwnerSetup', [
             'token' => $token,
             'email' => (string) $request->query('email', ''),
-            'submitUrl' => route('clinic-owner.setup.complete'),
-            'loginUrl' => route('login'),
+            // Keep password recovery on the tenant host that opened the link.
+            // Absolute route URLs fall back to APP_URL and lose the trusted
+            // tenant selector required by Clinic Owner authentication.
+            'submitUrl' => route('clinic-owner.setup.complete', absolute: false),
+            'loginUrl' => route('login', absolute: false),
         ]);
     }
 
@@ -54,6 +57,6 @@ final readonly class ClinicOwnerSetupController
             ]);
         }
 
-        return redirect()->route('login', ['clinic_owner_setup' => 'complete']);
+        return redirect('/login?clinic_owner_setup=complete');
     }
 }

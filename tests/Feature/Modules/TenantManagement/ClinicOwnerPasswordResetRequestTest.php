@@ -18,8 +18,8 @@ final class ClinicOwnerPasswordResetRequestTest extends TestCase
                 ->component('TenantManagement/Authentication/ClinicOwnerSetup', false)
                 ->where('token', 'opaque-token')
                 ->where('email', 'owner@example.test')
-                ->where('submitUrl', route('clinic-owner.setup.complete'))
-                ->where('loginUrl', route('login')));
+                ->where('submitUrl', route('clinic-owner.setup.complete', absolute: false))
+                ->where('loginUrl', route('login', absolute: false)));
     }
 
     public function test_forgot_password_request_delegates_without_disclosing_account_ownership(): void
