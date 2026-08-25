@@ -63,6 +63,8 @@ final class AuthenticationUiArchitectureTest extends TestCase
     public function test_dashboard_logout_url_is_resolved_server_side_from_shared_identity(): void
     {
         $middleware = $this->source('app/Http/Middleware/HandleInertiaRequests.php');
+        self::assertStringContainsString("'heading' => 'New booking alerts'", $middleware);
+        self::assertStringContainsString("'status' => 'new_booking'", $middleware);
         $shell = $this->source('resources/js/Shared/Dashboard/DashboardLogoutAction.vue');
 
         self::assertStringContainsString('CurrentUserInterface', $middleware);
