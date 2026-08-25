@@ -49,8 +49,8 @@ final readonly class ReportsPage
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
                 ['key' => 'reports', 'label' => 'Reports'],
             ],
-            'pageTitle' => 'Reports',
-            'pageDescription' => 'Review governed, live operational outcomes for your authorized scope.',
+            'pageTitle' => 'Laporan',
+            'pageDescription' => 'Semak metrik operasi semasa berdasarkan skop akses anda.',
             'identityName' => $context->name,
             'contextLabel' => match ($context->role) {
                 'super_admin' => 'Super Admin workspace',

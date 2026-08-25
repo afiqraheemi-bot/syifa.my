@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import {
     createDashboardNavigation,
     DashboardEmptyState,
@@ -27,6 +27,17 @@ const submitting = ref(false);
 function submitRenewal() {
     submitting.value = true;
 }
+
+function closeConfirmation() {
+    if (!submitting.value) confirmationOpen.value = false;
+}
+
+function handleEscape(event) {
+    if (event.key === 'Escape') closeConfirmation();
+}
+
+onMounted(() => window.addEventListener('keydown', handleEscape));
+onBeforeUnmount(() => window.removeEventListener('keydown', handleEscape));
 
 function statusClass(status) {
     const normalized = String(status).toLowerCase();
@@ -67,8 +78,8 @@ function statusClass(status) {
 
             <DashboardEmptyState
                 v-if="!subscription"
-                title="No subscription available"
-                description="No authoritative subscription is currently available for this clinic."
+                title="Tiada langganan tersedia"
+                description="Rekod langganan yang sah belum tersedia untuk klinik ini."
             />
 
             <template v-else>
@@ -109,20 +120,20 @@ function statusClass(status) {
                             <p
                                 class="text-xs font-black uppercase tracking-[0.18em] text-emerald-700"
                             >
-                                Current subscription
+                                Langganan semasa
                             </p>
                             <h2 class="mt-3 text-3xl font-black text-slate-950">
                                 {{ subscription.plan }}
                             </h2>
                             <p class="mt-3 max-w-xl text-slate-600">
-                                Your {{ subscription.billingCycle.toLowerCase() }} plan is valid
-                                from {{ subscription.startsOn }} until {{ subscription.endsOn }}.
+                                Pelan {{ subscription.billingCycle.toLowerCase() }} anda sah dari
+                                {{ subscription.startsOn }} hingga {{ subscription.endsOn }}.
                             </p>
                         </div>
                         <div
                             class="border-t border-emerald-200 bg-emerald-50 p-6 lg:border-l lg:border-t-0"
                         >
-                            <p class="text-sm font-semibold text-slate-600">Plan status</p>
+                            <p class="text-sm font-semibold text-slate-600">Status pelan</p>
                             <span
                                 class="mt-2 inline-flex rounded-full px-3 py-1.5 text-sm font-black"
                                 :class="statusClass(subscription.status)"
@@ -130,7 +141,7 @@ function statusClass(status) {
                                 {{ subscription.status }}
                             </span>
                             <p class="mt-5 text-sm font-semibold text-slate-600">
-                                {{ subscription.isTrial ? 'Trial charge' : 'Latest payment' }}
+                                {{ subscription.isTrial ? 'Caj percubaan' : 'Bayaran terkini' }}
                             </p>
                             <span
                                 class="mt-2 inline-flex rounded-full px-3 py-1.5 text-sm font-black"
@@ -138,7 +149,7 @@ function statusClass(status) {
                             >
                                 {{
                                     subscription.isTrial
-                                        ? 'No payment required'
+                                        ? 'Tiada bayaran diperlukan'
                                         : subscription.latestPaymentStatus
                                 }}
                             </span>
@@ -187,26 +198,26 @@ function statusClass(status) {
                                 rel="noopener noreferrer"
                                 class="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-700 px-4 py-2 text-center text-sm font-black text-white transition hover:bg-emerald-800"
                             >
-                                Pilih {{ plan.name }} & teruskan pembayaran
+                                Tanya tentang {{ plan.name }}
                             </a>
                         </article>
                     </div>
                     <p class="mt-4 text-xs text-slate-500">
-                        Anda tidak akan dicaj hanya dengan membuka WhatsApp. Bayaran dibuat selepas
-                        pakej disahkan.
+                        WhatsApp hanya membuka perbualan dengan pasukan SYIFA.my. Tiada bayaran
+                        dibuat sehingga pakej dan kaedah pembayaran disahkan.
                     </p>
                 </section>
 
                 <section
                     class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-                    aria-label="Subscription details"
+                    aria-label="Butiran langganan"
                 >
                     <article
                         v-for="item in [
-                            ['Billing cycle', subscription.billingCycle],
-                            ['Start date', subscription.startsOn],
-                            ['Term end date', subscription.endsOn],
-                            ['Renewal eligibility', subscription.renewalStatus],
+                            ['Kitaran bil', subscription.billingCycle],
+                            ['Tarikh mula', subscription.startsOn],
+                            ['Tarikh tamat', subscription.endsOn],
+                            ['Kelayakan pembaharuan', subscription.renewalStatus],
                         ]"
                         :key="item[0]"
                         class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
@@ -220,10 +231,10 @@ function statusClass(status) {
                     v-if="renewal"
                     class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"
                 >
-                    <h2 class="text-lg font-bold text-slate-950">Renewal available</h2>
+                    <h2 class="text-lg font-bold text-slate-950">Pembaharuan tersedia</h2>
                     <p class="mt-2 text-sm text-slate-700">
-                        Continue to the configured payment provider's secure checkout. No payment is
-                        recorded until the provider confirms it successfully.
+                        Teruskan ke halaman pembayaran selamat penyedia yang dikonfigurasi. Bayaran
+                        hanya direkodkan selepas penyedia mengesahkannya.
                     </p>
                     <form
                         id="clinic-owner-renewal-form"
@@ -250,14 +261,12 @@ function statusClass(status) {
                             <p
                                 class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700"
                             >
-                                Billing documents
+                                Dokumen pembayaran
                             </p>
-                            <h2 class="mt-2 text-xl font-black text-slate-950">
-                                Invoices and receipts
-                            </h2>
+                            <h2 class="mt-2 text-xl font-black text-slate-950">Invois dan resit</h2>
                             <p class="mt-2 text-sm text-slate-600">
-                                An invoice is available for every recorded charge. A receipt appears
-                                only after its payment succeeds.
+                                Invois tersedia untuk setiap caj yang direkodkan. Resit hanya
+                                tersedia selepas bayaran berjaya.
                             </p>
                         </div>
                     </div>
@@ -283,7 +292,7 @@ function statusClass(status) {
                                     class="inline-flex min-h-11 items-center rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-slate-900"
                                     :title="document.invoiceNumber"
                                 >
-                                    View invoice
+                                    Lihat invois
                                 </a>
                                 <a
                                     v-if="document.receiptHref"
@@ -291,51 +300,72 @@ function statusClass(status) {
                                     class="inline-flex min-h-11 items-center rounded-xl bg-emerald-700 px-4 py-2 font-bold text-white"
                                     :title="document.receiptNumber"
                                 >
-                                    View receipt
+                                    Lihat resit
                                 </a>
                             </div>
                         </article>
                     </div>
                     <DashboardEmptyState
                         v-else
-                        title="No billing documents"
-                        description="Invoices will appear when a subscription payment is recorded."
+                        title="Belum ada dokumen pembayaran"
+                        description="Invois akan dipaparkan selepas bayaran langganan direkodkan."
                     />
                 </section>
+            </template>
+        </div>
 
+        <Teleport to="body">
+            <div
+                v-if="confirmationOpen"
+                class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+                @click.self="closeConfirmation"
+            >
                 <section
-                    v-if="confirmationOpen"
                     role="alertdialog"
                     aria-modal="true"
                     aria-labelledby="renewal-confirmation-title"
-                    class="rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-lg"
+                    aria-describedby="renewal-confirmation-description"
+                    class="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-7"
                 >
-                    <h2 id="renewal-confirmation-title" class="text-lg font-bold text-slate-950">
-                        Renew Subscription?
+                    <div
+                        class="flex size-12 items-center justify-center rounded-2xl bg-emerald-100 text-xl text-emerald-800"
+                        aria-hidden="true"
+                    >
+                        ✓
+                    </div>
+                    <h2
+                        id="renewal-confirmation-title"
+                        class="mt-5 text-xl font-black text-slate-950"
+                    >
+                        Teruskan pembaharuan?
                     </h2>
-                    <p class="mt-2 text-sm text-slate-600">
-                        You will be redirected to a secure hosted payment page.
+                    <p
+                        id="renewal-confirmation-description"
+                        class="mt-2 text-sm leading-6 text-slate-600"
+                    >
+                        Anda akan dibawa ke halaman pembayaran selamat. Langganan hanya diperbaharui
+                        selepas bayaran disahkan.
                     </p>
-                    <div class="mt-5 flex flex-wrap gap-2">
-                        <button
-                            type="submit"
-                            form="clinic-owner-renewal-form"
-                            class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:cursor-wait disabled:opacity-60"
-                            :disabled="submitting"
-                        >
-                            {{ submitting ? 'Starting checkout…' : 'Continue' }}
-                        </button>
+                    <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                         <button
                             type="button"
                             class="min-h-11 rounded-xl border border-slate-300 bg-white px-5 py-2 font-bold text-slate-900"
                             :disabled="submitting"
-                            @click="confirmationOpen = false"
+                            @click="closeConfirmation"
                         >
-                            Cancel
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            form="clinic-owner-renewal-form"
+                            class="min-h-11 rounded-xl bg-emerald-700 px-5 py-2 font-bold text-white disabled:cursor-wait disabled:opacity-60"
+                            :disabled="submitting"
+                        >
+                            {{ submitting ? 'Membuka checkout…' : 'Teruskan ke pembayaran' }}
                         </button>
                     </div>
                 </section>
-            </template>
-        </div>
+            </div>
+        </Teleport>
     </DashboardShell>
 </template>

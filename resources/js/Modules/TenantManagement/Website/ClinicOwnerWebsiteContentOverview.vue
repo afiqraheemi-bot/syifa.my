@@ -296,8 +296,51 @@ const editorThemeStyle = computed(() => websiteTemplateThemeStyle(form.template_
         :context-label="contextLabel"
     >
         <div :data-website-template="form.template_id" :style="editorThemeStyle" class="space-y-8">
+            <ContentHealthSummary :health="contentHealth" :sections="contentSections" />
+
+            <div
+                class="sticky top-20 z-10 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg shadow-slate-950/5 backdrop-blur sm:p-4"
+            >
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-3">
+                        <span
+                            :class="[
+                                'size-2.5 rounded-full ring-4',
+                                savingAnything
+                                    ? 'bg-amber-400 ring-amber-50'
+                                    : hasAnyChanges
+                                      ? 'bg-rose-500 ring-rose-50'
+                                      : 'bg-emerald-500 ring-emerald-50',
+                            ]"
+                        />
+                        <div>
+                            <p class="text-sm font-black text-slate-950">
+                                {{
+                                    savingAnything
+                                        ? 'Sedang menyimpan perubahan…'
+                                        : hasAnyChanges
+                                          ? 'Perubahan belum disimpan'
+                                          : 'Semua perubahan telah disimpan'
+                                }}
+                            </p>
+                            <p class="text-xs text-slate-500">Draft website peribadi klinik anda</p>
+                        </div>
+                    </div>
+                    <div v-if="hasAnyChanges || savingAnything">
+                        <button
+                            type="button"
+                            :disabled="savingAnything"
+                            class="website-theme-primary min-h-11 w-full rounded-xl px-5 text-sm font-bold disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+                            @click="saveAll"
+                        >
+                            {{ savingAnything ? 'Menyimpan…' : 'Simpan semua perubahan' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <section
-                class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                class="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm"
                 aria-labelledby="website-design-heading"
             >
                 <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.72fr)]">
@@ -307,7 +350,7 @@ const editorThemeStyle = computed(() => websiteTemplateThemeStyle(form.template_
                                 id="website-design-heading"
                                 class="text-xl font-bold text-slate-950"
                             >
-                                Website design
+                                Reka bentuk website
                             </h2>
                             <span
                                 v-if="!canChangeTemplate"
@@ -374,10 +417,10 @@ const editorThemeStyle = computed(() => websiteTemplateThemeStyle(form.template_
                         class="website-theme-surface flex flex-col justify-center border-t p-5 sm:p-6 lg:border-l lg:border-t-0"
                     >
                         <p class="website-theme-text text-xs font-bold uppercase tracking-[0.16em]">
-                            Latest draft · Private
+                            Draft terkini · Peribadi
                         </p>
                         <h3 class="mt-2 text-lg font-bold text-slate-950">
-                            Preview changes before publication
+                            Preview sebelum diterbitkan
                         </h3>
                         <p class="mt-1 text-sm leading-6 text-slate-700">
                             This protected preview uses your latest saved draft. It is intentionally
@@ -390,7 +433,7 @@ const editorThemeStyle = computed(() => websiteTemplateThemeStyle(form.template_
                             rel="noopener noreferrer"
                             class="website-theme-primary mt-5 inline-flex min-h-11 items-center justify-center rounded-xl px-5 font-bold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2"
                         >
-                            Preview latest draft
+                            Preview draft terkini
                             <span aria-hidden="true" class="ml-2">↗</span>
                             <span class="sr-only"> (opens in a new tab)</span>
                         </a>
@@ -869,8 +912,6 @@ const editorThemeStyle = computed(() => websiteTemplateThemeStyle(form.template_
                 }}
             </button>
         </div>
-
-        <ContentHealthSummary :health="contentHealth" :sections="contentSections" />
     </DashboardShell>
 </template>
 

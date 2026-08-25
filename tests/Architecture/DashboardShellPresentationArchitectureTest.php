@@ -259,13 +259,13 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
 
         foreach ([
             'DashboardShell',
-            'DashboardWelcome',
-            'DashboardSummaryCard',
             'DashboardQuickActions',
             'DashboardRecentActivity',
             'createDashboardSummaries(props.summaries)',
             'createDashboardQuickActions(props.quickActions)',
             'createDashboardActivity(props.recentAssignments)',
+            'Designer workspace',
+            'summaryMeta',
             'Recent assignments',
         ] as $contract) {
             self::assertStringContainsString($contract, $page);
@@ -295,10 +295,11 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
         );
         foreach ([
             'DashboardShell',
-            'DashboardSummaryCard',
             'DashboardQuickActions',
             'DashboardRecentActivity',
             'createDashboardSummaries(props.summaries)',
+            'Platform command centre',
+            'platformHealth',
             'Recent platform activity',
         ] as $contract) {
             self::assertStringContainsString($contract, $page);
@@ -431,7 +432,7 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
             'onboardingQueue.search',
             'onboardingQueue.statusFilter',
             'onboardingQueue.pagination',
-            'Publish readiness',
+            'Sedia terbit',
         ] as $contract) {
             self::assertStringContainsString($contract, $page);
         }
@@ -554,7 +555,7 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
         $table = $this->source('BookingTable.vue');
         self::assertStringContainsString('booking.actions', $table);
         self::assertStringContainsString('role="region"', $table);
-        self::assertStringContainsString('aria-label="Bookings table"', $table);
+        self::assertStringContainsString('aria-label="Jadual tempahan"', $table);
         self::assertStringContainsString('tabindex="0"', $table);
         self::assertStringContainsString('window.confirm(action.confirmation)', $table);
         self::assertStringContainsString('<details v-else', $table);

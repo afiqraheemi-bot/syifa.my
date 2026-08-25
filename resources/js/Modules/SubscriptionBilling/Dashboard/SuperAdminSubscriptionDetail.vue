@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
     createDashboardNavigation,
     DashboardEmptyState,
@@ -68,6 +68,36 @@ function confirmAutoRenew() {
 function confirmPlanChange() {
     planChangeSubmitting.value = true;
 }
+
+const confirmationOpen = computed(
+    () =>
+        checkoutConfirmation.value ||
+        renewalConfirmation.value ||
+        autoRenewConfirmation.value ||
+        planChangeConfirmation.value,
+);
+const confirmationBusy = computed(
+    () =>
+        checkoutSubmitting.value ||
+        renewalSubmitting.value ||
+        autoRenewSubmitting.value ||
+        planChangeSubmitting.value,
+);
+
+function closeConfirmation() {
+    if (confirmationBusy.value) return;
+    checkoutConfirmation.value = false;
+    renewalConfirmation.value = false;
+    autoRenewConfirmation.value = false;
+    planChangeConfirmation.value = false;
+}
+
+function handleEscape(event) {
+    if (event.key === 'Escape') closeConfirmation();
+}
+
+onMounted(() => window.addEventListener('keydown', handleEscape));
+onBeforeUnmount(() => window.removeEventListener('keydown', handleEscape));
 </script>
 
 <template>
@@ -237,136 +267,152 @@ function confirmPlanChange() {
                 </form>
             </div>
         </section>
-        <section
-            v-if="planChangeConfirmation"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="plan-change-title"
-            class="rounded-2xl border-2 border-emerald-300 bg-white p-5 shadow-lg"
-        >
-            <h2 id="plan-change-title" class="text-lg font-bold text-slate-950">
-                Change subscriber package?
-            </h2>
-            <p class="mt-2 text-sm text-slate-600">
-                The new price and feature entitlement take effect immediately. The current term
-                dates remain unchanged.
-            </p>
-            <div class="mt-5 flex flex-wrap gap-2">
-                <button
-                    type="submit"
-                    form="change-plan-form"
-                    class="min-h-11 rounded-xl bg-emerald-700 px-5 py-2 font-bold text-white disabled:opacity-60"
-                    :disabled="planChangeSubmitting"
+        <Teleport to="body">
+            <div
+                v-if="confirmationOpen"
+                class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+                @click.self="closeConfirmation"
+            >
+                <section
+                    v-if="planChangeConfirmation"
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-labelledby="plan-change-title"
+                    class="w-full max-w-lg rounded-3xl border border-emerald-300 bg-white p-6 shadow-2xl"
                 >
-                    {{ planChangeSubmitting ? 'Changing…' : 'Confirm package change' }}
-                </button>
-                <button
-                    type="button"
-                    class="min-h-11 rounded-xl border border-slate-300 bg-white px-5 py-2 font-bold text-slate-900"
-                    :disabled="planChangeSubmitting"
-                    @click="planChangeConfirmation = false"
+                    <h2 id="plan-change-title" class="text-lg font-bold text-slate-950">
+                        Change subscriber package?
+                    </h2>
+                    <p class="mt-2 text-sm text-slate-600">
+                        The new price and feature entitlement take effect immediately. The current
+                        term dates remain unchanged.
+                    </p>
+                    <div class="mt-5 flex flex-wrap gap-2">
+                        <button
+                            type="submit"
+                            form="change-plan-form"
+                            class="min-h-11 rounded-xl bg-emerald-700 px-5 py-2 font-bold text-white disabled:opacity-60"
+                            :disabled="planChangeSubmitting"
+                        >
+                            {{ planChangeSubmitting ? 'Changing…' : 'Confirm package change' }}
+                        </button>
+                        <button
+                            type="button"
+                            class="min-h-11 rounded-xl border border-slate-300 bg-white px-5 py-2 font-bold text-slate-900"
+                            :disabled="planChangeSubmitting"
+                            @click="planChangeConfirmation = false"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </section>
+                <section
+                    v-if="renewalConfirmation"
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-labelledby="manual-renewal-confirmation-title"
+                    class="w-full max-w-lg rounded-3xl border border-slate-300 bg-white p-6 shadow-2xl"
                 >
-                    Cancel
-                </button>
+                    <h2
+                        id="manual-renewal-confirmation-title"
+                        class="text-lg font-bold text-slate-950"
+                    >
+                        Request manual renewal?
+                    </h2>
+                    <p class="mt-2 text-sm text-slate-600">
+                        This records one governed renewal request for the current subscription term.
+                        It does not record a successful payment.
+                    </p>
+                    <div class="mt-5 flex flex-wrap gap-2">
+                        <button
+                            type="submit"
+                            form="manual-renewal-form"
+                            class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:cursor-wait disabled:opacity-60"
+                            :disabled="renewalSubmitting"
+                        >
+                            {{ renewalSubmitting ? 'Requesting…' : 'Confirm renewal request' }}
+                        </button>
+                        <button
+                            type="button"
+                            class="min-h-11 rounded-xl border border-slate-300 bg-white px-5 py-2 font-bold text-slate-900"
+                            :disabled="renewalSubmitting"
+                            @click="renewalConfirmation = false"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </section>
+                <section
+                    v-if="autoRenewConfirmation"
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-labelledby="auto-renew-confirmation-title"
+                    class="w-full max-w-lg rounded-3xl border border-slate-300 bg-white p-6 shadow-2xl"
+                >
+                    <h2 id="auto-renew-confirmation-title" class="text-lg font-bold text-slate-950">
+                        {{
+                            actions.autoRenew.enabled ? 'Disable auto-renew?' : 'Enable auto-renew?'
+                        }}
+                    </h2>
+                    <p class="mt-2 text-sm text-slate-600">
+                        Confirm this change to the subscription renewal preference.
+                    </p>
+                    <div class="mt-5 flex flex-wrap gap-2">
+                        <button
+                            type="submit"
+                            form="auto-renew-form"
+                            class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:cursor-wait disabled:opacity-60"
+                            :disabled="autoRenewSubmitting"
+                        >
+                            {{ autoRenewSubmitting ? 'Saving…' : 'Confirm' }}
+                        </button>
+                        <button
+                            type="button"
+                            class="min-h-11 rounded-xl border border-slate-300 bg-white px-5 py-2 font-bold text-slate-900"
+                            :disabled="autoRenewSubmitting"
+                            @click="autoRenewConfirmation = false"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </section>
+                <section
+                    v-if="checkoutConfirmation"
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-labelledby="renewal-checkout-confirmation-title"
+                    class="w-full max-w-lg rounded-3xl border border-slate-300 bg-white p-6 shadow-2xl"
+                >
+                    <h2
+                        id="renewal-checkout-confirmation-title"
+                        class="text-lg font-bold text-slate-950"
+                    >
+                        Start Renewal Checkout?
+                    </h2>
+                    <p class="mt-2 text-sm text-slate-600">
+                        You will be redirected to the hosted payment page for this renewal.
+                    </p>
+                    <div class="mt-5 flex flex-wrap gap-2">
+                        <button
+                            type="submit"
+                            form="renewal-checkout-form"
+                            class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:opacity-60"
+                            :disabled="checkoutSubmitting"
+                        >
+                            {{ checkoutSubmitting ? 'Starting checkout…' : 'Continue' }}
+                        </button>
+                        <button
+                            type="button"
+                            class="min-h-11 rounded-xl border border-slate-300 bg-white px-5 py-2 font-bold text-slate-900"
+                            :disabled="checkoutSubmitting"
+                            @click="checkoutConfirmation = false"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </section>
             </div>
-        </section>
-        <section
-            v-if="renewalConfirmation"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="manual-renewal-confirmation-title"
-            class="rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-lg"
-        >
-            <h2 id="manual-renewal-confirmation-title" class="text-lg font-bold text-slate-950">
-                Request manual renewal?
-            </h2>
-            <p class="mt-2 text-sm text-slate-600">
-                This records one governed renewal request for the current subscription term. It does
-                not record a successful payment.
-            </p>
-            <div class="mt-5 flex flex-wrap gap-2">
-                <button
-                    type="submit"
-                    form="manual-renewal-form"
-                    class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:cursor-wait disabled:opacity-60"
-                    :disabled="renewalSubmitting"
-                >
-                    {{ renewalSubmitting ? 'Requesting…' : 'Confirm renewal request' }}
-                </button>
-                <button
-                    type="button"
-                    class="min-h-11 rounded-xl border border-slate-300 bg-white px-5 py-2 font-bold text-slate-900"
-                    :disabled="renewalSubmitting"
-                    @click="renewalConfirmation = false"
-                >
-                    Cancel
-                </button>
-            </div>
-        </section>
-        <section
-            v-if="autoRenewConfirmation"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="auto-renew-confirmation-title"
-            class="rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-lg"
-        >
-            <h2 id="auto-renew-confirmation-title" class="text-lg font-bold text-slate-950">
-                {{ actions.autoRenew.enabled ? 'Disable auto-renew?' : 'Enable auto-renew?' }}
-            </h2>
-            <p class="mt-2 text-sm text-slate-600">
-                Confirm this change to the subscription renewal preference.
-            </p>
-            <div class="mt-5 flex flex-wrap gap-2">
-                <button
-                    type="submit"
-                    form="auto-renew-form"
-                    class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:cursor-wait disabled:opacity-60"
-                    :disabled="autoRenewSubmitting"
-                >
-                    {{ autoRenewSubmitting ? 'Saving…' : 'Confirm' }}
-                </button>
-                <button
-                    type="button"
-                    class="min-h-11 rounded-xl border border-slate-300 bg-white px-5 py-2 font-bold text-slate-900"
-                    :disabled="autoRenewSubmitting"
-                    @click="autoRenewConfirmation = false"
-                >
-                    Cancel
-                </button>
-            </div>
-        </section>
-        <section
-            v-if="checkoutConfirmation"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="renewal-checkout-confirmation-title"
-            class="rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-lg"
-        >
-            <h2 id="renewal-checkout-confirmation-title" class="text-lg font-bold text-slate-950">
-                Start Renewal Checkout?
-            </h2>
-            <p class="mt-2 text-sm text-slate-600">
-                You will be redirected to the hosted payment page for this renewal.
-            </p>
-            <div class="mt-5 flex flex-wrap gap-2">
-                <button
-                    type="submit"
-                    form="renewal-checkout-form"
-                    class="min-h-11 rounded-xl bg-slate-950 px-5 py-2 font-bold text-white disabled:opacity-60"
-                    :disabled="checkoutSubmitting"
-                >
-                    {{ checkoutSubmitting ? 'Starting checkout…' : 'Continue' }}
-                </button>
-                <button
-                    type="button"
-                    class="min-h-11 rounded-xl border border-slate-300 bg-white px-5 py-2 font-bold text-slate-900"
-                    :disabled="checkoutSubmitting"
-                    @click="checkoutConfirmation = false"
-                >
-                    Cancel
-                </button>
-            </div>
-        </section>
+        </Teleport>
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>

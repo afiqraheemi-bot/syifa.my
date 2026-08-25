@@ -38,8 +38,8 @@ final readonly class ClinicOwnerSubscriptionPage
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
                 ['key' => 'subscription', 'label' => 'Subscription'],
             ],
-            'pageTitle' => 'Subscription',
-            'pageDescription' => 'View your clinic plan, current term, and renewal availability.',
+            'pageTitle' => 'Langganan',
+            'pageDescription' => 'Semak pelan klinik, tempoh semasa, pembayaran dan kelayakan pembaharuan.',
             'identityName' => $context->name,
             'contextLabel' => 'Clinic Owner workspace',
             'subscription' => $detail === null ? null : [
@@ -48,9 +48,9 @@ final readonly class ClinicOwnerSubscriptionPage
                 'startsOn' => $detail->startsOn,
                 'endsOn' => $detail->endsOn,
                 'billingCycle' => $detail->billingCycleName,
-                'renewalStatus' => $detail->renewalEligible ? 'Renewal available' : 'Not available',
+                'renewalStatus' => $detail->renewalEligible ? 'Pembaharuan tersedia' : 'Belum tersedia',
                 'latestPaymentStatus' => $detail->latestPaymentStatus === null
-                    ? 'Not available'
+                    ? 'Belum tersedia'
                     : $this->label($detail->latestPaymentStatus),
                 'isTrial' => $isTrial,
                 'trialDaysRemaining' => $trialDaysRemaining,
@@ -72,7 +72,7 @@ final readonly class ClinicOwnerSubscriptionPage
                 ],
             ] : [],
             'renewal' => $detail?->renewalEligible === true ? [
-                'label' => 'Renew Subscription',
+                'label' => 'Perbaharui langganan',
                 'action' => route('dashboard.subscription.renewal-checkout'),
                 'csrfToken' => csrf_token(),
             ] : null,

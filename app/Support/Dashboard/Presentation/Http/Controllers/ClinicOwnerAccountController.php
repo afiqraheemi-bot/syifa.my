@@ -29,10 +29,10 @@ final readonly class ClinicOwnerAccountController
             'navigation' => ClinicOwnerDashboardNavigation::items('account'),
             'breadcrumbs' => [
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
-                ['key' => 'account', 'label' => 'Account & Security'],
+                ['key' => 'account', 'label' => 'Akaun & Keselamatan'],
             ],
-            'pageTitle' => 'Account & Security',
-            'pageDescription' => 'Manage your Clinic Owner profile, password, and account access.',
+            'pageTitle' => 'Akaun & Keselamatan',
+            'pageDescription' => 'Urus profil, kata laluan dan akses akaun Clinic Owner anda.',
             'identityName' => $owner->name,
             'contextLabel' => 'Clinic Owner workspace',
             'profile' => [
@@ -60,12 +60,12 @@ final readonly class ClinicOwnerAccountController
         ]);
 
         if (trim((string) $validated['name']) === '') {
-            throw ValidationException::withMessages(['name' => 'The owner name is required.']);
+            throw ValidationException::withMessages(['name' => 'Nama pemilik diperlukan.']);
         }
 
         $owner->forceFill(['name' => trim((string) $validated['name'])])->save();
 
-        return back()->with('account_status', 'Profile updated successfully.');
+        return back()->with('account_status', 'Profil berjaya dikemas kini.');
     }
 
     public function updatePassword(
@@ -82,7 +82,7 @@ final readonly class ClinicOwnerAccountController
 
         if (! $hasher->check((string) $validated['current_password'], (string) $owner->password_hash)) {
             throw ValidationException::withMessages([
-                'current_password' => 'The current password is incorrect.',
+                'current_password' => 'Kata laluan semasa tidak tepat.',
             ]);
         }
 

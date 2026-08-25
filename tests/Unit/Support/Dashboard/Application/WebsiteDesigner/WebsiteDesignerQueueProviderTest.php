@@ -21,6 +21,18 @@ use Tests\TestCase;
 
 final class WebsiteDesignerQueueProviderTest extends TestCase
 {
+    public function test_it_accepts_operational_status_groups(): void
+    {
+        foreach (['website_setup', 'review_attention', 'needs_attention'] as $status) {
+            self::assertSame(
+                $status,
+                WebsiteDesignerQueueCriteria::fromInput(['status' => $status])->status,
+            );
+        }
+
+        self::assertNull(WebsiteDesignerQueueCriteria::fromInput(['status' => 'unknown'])->status);
+    }
+
     public function test_it_sanitizes_criteria_and_projects_a_cursor_page(): void
     {
         $read = new QueueRecordedRead;

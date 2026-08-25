@@ -8,13 +8,13 @@ defineProps({
 });
 
 const base =
-    'inline-flex items-center justify-center gap-2 rounded-2xl font-bold transition duration-200 ' +
+    'inline-flex items-center justify-center gap-2 rounded-xl font-bold transition duration-200 ' +
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ' +
     'active:scale-[0.98]';
 
 const variants = {
     primary:
-        'bg-emerald-700 text-white shadow-lg shadow-emerald-700/20 hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-xl hover:shadow-emerald-700/25',
+        'bg-emerald-800 text-white shadow-lg shadow-emerald-900/20 hover:-translate-y-0.5 hover:bg-emerald-950 hover:shadow-xl hover:shadow-emerald-900/25',
     secondary:
         'border-2 border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50',
     ghost: 'text-emerald-800 hover:text-emerald-950',
