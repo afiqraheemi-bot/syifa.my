@@ -107,7 +107,7 @@ const copy = {
             ],
         },
         hero: {
-            eyebrow: 'PLATFORM WEBSITE TERURUS UNTUK KLINIK',
+            eyebrow: 'WEBSITE · BOOKING · GROWTH',
             title: 'Website klinik yang meyakinkan.',
             titleAccent: 'Tempahan yang memudahkan.',
             body: 'SYIFA.my menyediakan website profesional dan sistem tempahan online dalam satu platform. Dari setup hingga pengurusan teknikal, pasukan kami membantu klinik anda tampil lebih diyakini secara digital.',
@@ -434,7 +434,7 @@ const copy = {
             ],
         },
         hero: {
-            eyebrow: 'A MANAGED WEBSITE PLATFORM FOR CLINICS',
+            eyebrow: 'WEBSITE · BOOKING · GROWTH',
             title: 'A clinic website that inspires trust.',
             titleAccent: 'Booking made effortless.',
             body: 'SYIFA.my brings a professional website and online booking into one managed platform. From setup to technical upkeep, our team helps your clinic present a more credible digital experience.',
