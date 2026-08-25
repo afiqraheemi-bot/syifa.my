@@ -14,6 +14,7 @@ use App\Support\Identity\ActorType;
 use App\Support\Identity\CurrentUserInterface;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Throwable;
 
 final class HandleInertiaRequests extends Middleware
 {
@@ -59,14 +60,20 @@ final class HandleInertiaRequests extends Middleware
         }
 
         if ($context->role === 'clinic_owner' && $context->tenantId !== null) {
-            $counts = $this->bookings->countByStatus($context->tenantId);
-            $items = array_map(static fn ($booking): array => [
-                'id' => $booking->id,
-                'clinic_name' => $booking->patientName,
-                'status' => 'new_booking',
-                'updated_at' => $booking->createdAt,
-                'url' => route('dashboard.bookings.show', ['bookingId' => $booking->id]),
-            ], $this->bookings->list($context->tenantId, 'submitted', null, 5));
+            try {
+                $counts = $this->bookings->countByStatus($context->tenantId);
+                $items = array_map(static fn ($booking): array => [
+                    'id' => $booking->id,
+                    'clinic_name' => $booking->patientName,
+                    'status' => 'new_booking',
+                    'updated_at' => $booking->createdAt,
+                    'url' => route('dashboard.bookings.show', ['bookingId' => $booking->id]),
+                ], $this->bookings->list($context->tenantId, 'submitted', null, 5));
+            } catch (Throwable $exception) {
+                report($exception);
+
+                return null;
+            }
 
             return [
                 'pending_count' => $counts['submitted'] ?? 0,
