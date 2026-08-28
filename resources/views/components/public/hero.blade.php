@@ -32,6 +32,13 @@
     $todayHours = $document->todayHoursLabel;
     $templateId = $document->website->website->templateId;
     $showTemplateVisual = $imageSrc !== null || $templateId !== 'SYIFA_ESSENTIAL';
+    $ms = $document->language === 'ms';
+    $primaryLabel = $section->primaryCtaLabel ?? 'Book Appointment';
+    $secondaryLabel = $section->secondaryCtaLabel;
+    if ($ms) {
+        $primaryLabel = str_ireplace(['Book Appointment', 'Book now'], ['Tempah Appointment', 'Tempah sekarang'], $primaryLabel);
+        $secondaryLabel = $secondaryLabel === null ? null : str_ireplace(['Explore services', 'Learn more'], ['Terokai servis', 'Ketahui lanjut'], $secondaryLabel);
+    }
 @endphp
 <section class="hero" id="home" aria-labelledby="hero-title">
     <div class="public-container hero__layout {{ $showTemplateVisual ? '' : 'hero__layout--text' }}">
@@ -40,13 +47,13 @@
             <h1 id="hero-title">{{ $section->headline }}</h1>
             @if ($section->subheadline !== null)<p class="hero__lead">{{ $section->subheadline }}</p>@endif
             <div class="hero__actions">
-                <a class="button button--primary" href="{{ $primaryTarget }}" @if(str_starts_with($primaryTarget, 'https://') && !str_starts_with($primaryTarget, $document->context->origin())) target="_blank" rel="noopener noreferrer" @endif>{{ $section->primaryCtaLabel ?? 'Book Appointment' }}</a>
+                <a class="button button--primary" href="{{ $primaryTarget }}" @if(str_starts_with($primaryTarget, 'https://') && !str_starts_with($primaryTarget, $document->context->origin())) target="_blank" rel="noopener noreferrer" @endif>{{ $primaryLabel }}</a>
                 @if ($section->secondaryCtaLabel !== null && $secondaryTarget !== null)
-                    <a class="button button--secondary" href="{{ $secondaryTarget }}" @if(str_starts_with($secondaryTarget, 'https://') && !str_starts_with($secondaryTarget, $document->context->origin())) target="_blank" rel="noopener noreferrer" @endif>{{ $section->secondaryCtaLabel }}</a>
+                    <a class="button button--secondary" href="{{ $secondaryTarget }}" @if(str_starts_with($secondaryTarget, 'https://') && !str_starts_with($secondaryTarget, $document->context->origin())) target="_blank" rel="noopener noreferrer" @endif>{{ $secondaryLabel }}</a>
                 @endif
             </div>
             @if ($phone !== null || $todayHours !== null || $address !== null)
-                <ul class="hero__trust" aria-label="Clinic information">
+                <ul class="hero__trust" aria-label="{{ $ms ? 'Maklumat klinik' : 'Clinic information' }}">
                     @if ($phone !== null)<li><x-public.icon name="phone" /><span>{{ $phone }}</span></li>@endif
                     @if ($todayHours !== null)<li><x-public.icon name="clock" /><span>{{ $todayHours }}</span></li>@endif
                     @if ($address !== null)<li><x-public.icon name="location" /><span>{{ $address }}</span></li>@endif

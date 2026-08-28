@@ -8,12 +8,12 @@ use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\FooterRenderModel
 
 final readonly class ContactActionFactory
 {
-    public function make(FooterRenderModel $contact, WhatsAppDeliveryIntent $whatsAppIntent = WhatsAppDeliveryIntent::GeneralEnquiry): ContactActionSet
+    public function make(FooterRenderModel $contact, WhatsAppDeliveryIntent $whatsAppIntent = WhatsAppDeliveryIntent::GeneralEnquiry, string $language = PublicContentLanguage::ENGLISH): ContactActionSet
     {
         $phone = $contact->contactPhone === null ? null : 'tel:'.rawurlencode($contact->contactPhone);
         $email = $contact->contactEmail === null ? null : 'mailto:'.rawurlencode($contact->contactEmail);
         $whatsApp = $contact->whatsAppNumber === null ? null : new PublicUrl(
-            'https://wa.me/'.rawurlencode(ltrim($contact->whatsAppNumber, '+')).'?text='.rawurlencode($whatsAppIntent->localizedMessage())
+            'https://wa.me/'.rawurlencode(ltrim($contact->whatsAppNumber, '+')).'?text='.rawurlencode($whatsAppIntent->localizedMessage($language))
         );
         $directions = null;
         if ($contact->latitude !== null && $contact->longitude !== null) {

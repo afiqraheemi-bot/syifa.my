@@ -15,6 +15,7 @@ final readonly class PublicWebsiteDocumentFactory
 
     public function make(PublicWebsiteRenderModel $model, PublicSiteContext $context): PublicWebsiteDocument
     {
+        $language = PublicContentLanguage::detect($model);
         if ($context->websiteId !== null && $context->websiteId !== $model->website->websiteId) {
             throw new InvalidPublicDeliveryValueException('Public site context does not match the publication.');
         }
@@ -37,8 +38,7 @@ final readonly class PublicWebsiteDocumentFactory
         }
         $sitemap = array_values(array_filter(
             $routes,
-            static fn (PublicUrl $url, string $name): bool => $name !== PublicRoute::Booking->value
-                && (! in_array($name, [PublicRoute::Privacy->value, PublicRoute::Terms->value], true) || isset($legalUrls[$name]))
+            static fn (PublicUrl $url, string $name): bool => (! in_array($name, [PublicRoute::Privacy->value, PublicRoute::Terms->value], true) || isset($legalUrls[$name]))
                 && ! str_contains($url->value, '#'),
             ARRAY_FILTER_USE_BOTH,
         ));
@@ -46,21 +46,22 @@ final readonly class PublicWebsiteDocumentFactory
         return new PublicWebsiteDocument(
             $model,
             $context,
-            (new SeoDocumentHeadFactory)->make($model, $context, $context->url()),
-            (new NavigationFactory)->make($model, $context),
+            (new SeoDocumentHeadFactory)->make($model, $context, $context->url(), $language),
+            (new NavigationFactory)->make($model, $context, language: $language),
             $assetUrls,
             $assetDimensions,
             $legalUrls,
-            (new ContactActionFactory)->make($model->footer),
+            (new ContactActionFactory)->make($model->footer, language: $language),
             $booking,
             $sitemap,
-            $this->todayHoursLabel($model->footer->businessHours),
+            $this->todayHoursLabel($model->footer->businessHours, $language),
             (new BrandTokenResolver)->resolve($model->branding->primaryColor, $model->branding->secondaryColor),
+            $language,
         );
     }
 
     /** @param list<BusinessHourRenderModel> $businessHours */
-    private function todayHoursLabel(array $businessHours): ?string
+    private function todayHoursLabel(array $businessHours, string $language): ?string
     {
         if ($businessHours === []) {
             return null;
@@ -68,10 +69,10 @@ final readonly class PublicWebsiteDocumentFactory
         $today = (int) (new DateTimeImmutable)->format('N');
         foreach ($businessHours as $hour) {
             if ($hour->dayOfWeek === $today) {
-                return sprintf('Open today · %s–%s', $hour->opensAt, $hour->closesAt);
+                return sprintf($language === 'ms' ? 'Buka hari ini · %s–%s' : 'Open today · %s–%s', $hour->opensAt, $hour->closesAt);
             }
         }
 
-        return 'Closed today';
+        return $language === 'ms' ? 'Tutup hari ini' : 'Closed today';
     }
 }

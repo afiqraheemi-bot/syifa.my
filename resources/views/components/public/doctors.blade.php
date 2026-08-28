@@ -6,6 +6,14 @@
         'SYIFA_SPECIALIST' => ['Consultant team', 'Specialists dedicated to your care', 'Experienced professionals providing focused clinical insight, assessment and treatment.'],
         default => ['Your care team', 'Meet our doctors', 'Get to know the professionals dedicated to your care and wellbeing.'],
     };
+    if (($language ?? 'en') === 'ms') {
+        $presentation = match ($templateId ?? 'SYIFA_ESSENTIAL') {
+            'SYIFA_DENTAL' => ['Pasukan klinikal', 'Profesional pergigian anda', 'Kenali profesional yang mengutamakan penilaian teliti dan pengalaman rawatan yang selesa.'],
+            'SYIFA_AESTHETIC' => ['Pengamal kami', 'Kepakaran dengan sentuhan peribadi', 'Kenali profesional yang memahami matlamat anda dan membimbing setiap langkah penjagaan.'],
+            'SYIFA_SPECIALIST' => ['Pasukan konsultan', 'Pakar yang komited terhadap penjagaan anda', 'Profesional berpengalaman yang menyediakan pandangan klinikal dan penilaian berfokus.'],
+            default => ['Pasukan penjagaan anda', 'Kenali doktor kami', 'Kenali profesional yang berdedikasi terhadap penjagaan dan kesejahteraan anda.'],
+        };
+    }
 @endphp
 <section class="public-section public-section--subtle anchor-section" id="doctors" aria-labelledby="doctors-title">
     <div class="public-container">

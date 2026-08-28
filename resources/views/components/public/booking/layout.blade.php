@@ -1,11 +1,11 @@
-@props(['theme'])
+@props(['theme', 'robots' => 'index,follow'])
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ?? 'Book an Appointment' }}</title>
-    <meta name="robots" content="noindex">
+    <meta name="robots" content="{{ $robots }}">
     <style>:root{--brand-primary:{{ $theme->brandTokens->primary }};--brand-primary-hover:{{ $theme->brandTokens->primaryHover }};--brand-primary-active:{{ $theme->brandTokens->primaryActive }};--brand-on-primary:{{ $theme->brandTokens->onPrimary }};--brand-secondary:{{ $theme->brandTokens->secondary }};--brand-on-secondary:{{ $theme->brandTokens->onSecondary }};}</style>
     @unless (app()->environment('testing')) @vite(['resources/css/public-website.css', 'resources/css/public-booking.css', 'resources/js/public-website.js']) @endunless
 </head>

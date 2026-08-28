@@ -1,6 +1,7 @@
 @props([
     'articles',
     'articleUrlPrefix' => '/blog',
+    'language' => 'en',
 ])
 
 @if($articles->isNotEmpty())
@@ -17,17 +18,17 @@
         <div class="public-container">
             <div class="blog-slider__header">
                 <div class="blog-slider__heading">
-                    <span class="blog-slider__eyebrow">Clinic insights</span>
-                    <h2 id="blog-slider-title">Latest health articles</h2>
-                    <p>Practical health guidance from our clinical team for you and your family.</p>
+                    <span class="blog-slider__eyebrow">{{ $language === 'ms' ? 'Info klinik' : 'Clinic insights' }}</span>
+                    <h2 id="blog-slider-title">{{ $language === 'ms' ? 'Artikel kesihatan terkini' : 'Latest health articles' }}</h2>
+                    <p>{{ $language === 'ms' ? 'Panduan kesihatan praktikal daripada pasukan klinikal kami untuk anda dan keluarga.' : 'Practical health guidance from our clinical team for you and your family.' }}</p>
                 </div>
                 @if($articleCount > 1)
-                <div class="blog-slider__controls" aria-label="Article slider controls">
+                <div class="blog-slider__controls" aria-label="{{ $language === 'ms' ? 'Kawalan artikel' : 'Article slider controls' }}">
                     <span class="blog-slider__status" aria-live="polite" data-blog-slider-status></span>
-                    <button type="button" aria-label="Previous article" data-blog-slider-previous>
+                    <button type="button" aria-label="{{ $language === 'ms' ? 'Artikel sebelumnya' : 'Previous article' }}" data-blog-slider-previous>
                         <span aria-hidden="true">←</span>
                     </button>
-                    <button type="button" aria-label="Next article" data-blog-slider-next>
+                    <button type="button" aria-label="{{ $language === 'ms' ? 'Artikel seterusnya' : 'Next article' }}" data-blog-slider-next>
                         <span aria-hidden="true">→</span>
                     </button>
                 </div>
@@ -56,7 +57,7 @@
                                 </div>
                                 <h3><a href="{{ $articleUrl }}">{{ $article->title }}</a></h3>
                                 <p class="blog-card-excerpt">{{ $article->excerpt }}</p>
-                                <a class="blog-card-read-more" href="{{ $articleUrl }}">Read article <span aria-hidden="true">→</span></a>
+                                <a class="blog-card-read-more" href="{{ $articleUrl }}">{{ $language === 'ms' ? 'Baca artikel' : 'Read article' }} <span aria-hidden="true">→</span></a>
                             </div>
                         </article>
                     @endforeach

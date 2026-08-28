@@ -32,7 +32,6 @@ final readonly class PublicWebsiteSeoController
             ? [
                 'User-agent: *',
                 'Allow: /',
-                'Disallow: /booking',
                 'Sitemap: '.$request->getSchemeAndHttpHost().'/sitemap.xml',
             ]
             : [

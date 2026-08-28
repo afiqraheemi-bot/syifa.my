@@ -1,4 +1,4 @@
-<x-public.booking.layout title="Book an Appointment" :theme="$theme">
+<x-public.booking.layout title="Book an Appointment" :theme="$theme" robots="noindex">
     @php($bookingSuccess = session('booking_preview_success'))
 
     <div class="booking-step-header">

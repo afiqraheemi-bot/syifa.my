@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ $document->language }}">
 <head>
     @php
         // og:image has no dashboard field to set explicitly today, so fall
@@ -29,7 +29,7 @@
     <link rel="canonical" href="{{ $document->head->canonicalUrl->value }}">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="{{ $document->website->branding->clinicName }}">
-    <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}">
+    <meta property="og:locale" content="{{ $document->language === 'ms' ? 'ms_MY' : 'en_MY' }}">
     <meta property="og:title" content="{{ $document->head->openGraphTitle }}">
     <meta property="og:description" content="{{ $document->head->openGraphDescription }}">
     <meta property="og:url" content="{{ $document->head->openGraphUrl->value }}">
@@ -70,34 +70,34 @@
                     <x-public.hero :section="$section" :document="$document" />
                     @break
                 @case('ABOUT')
-                    <x-public.about :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" />
+                    <x-public.about :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" :language="$document->language" />
                     @break
                 @case('SERVICES')
-                    <x-public.services :section="$section" :booking-url="$document->bookingDestination" :template-id="$document->website->website->templateId" />
+                    <x-public.services :section="$section" :booking-url="$document->bookingDestination" :template-id="$document->website->website->templateId" :language="$document->language" :address="$document->website->footer->address" />
                     @break
                 @case('DOCTORS')
-                    <x-public.doctors :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" :template-id="$document->website->website->templateId" />
+                    <x-public.doctors :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" :template-id="$document->website->website->templateId" :language="$document->language" />
                     @break
                 @case('TESTIMONIALS')
-                    <x-public.testimonials :section="$section" :template-id="$document->website->website->templateId" />
+                    <x-public.testimonials :section="$section" :template-id="$document->website->website->templateId" :language="$document->language" />
                     @break
                 @case('GALLERY')
-                    <x-public.gallery :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" :template-id="$document->website->website->templateId" />
+                    <x-public.gallery :section="$section" :asset-urls="$document->assetUrls" :asset-dimensions="$document->assetDimensions" :template-id="$document->website->website->templateId" :language="$document->language" />
                     @break
                 @case('FAQ')
-                    <x-public.faq :section="$section" :template-id="$document->website->website->templateId" />
+                    <x-public.faq :section="$section" :template-id="$document->website->website->templateId" :language="$document->language" />
                     @break
                 @case('CONTACT')
                     @break
                 @case('BOOKING_CTA')
-                    <x-public.booking-cta :section="$section" :booking-url="$document->bookingDestination" :phone-url="$document->contactActions->telephone" />
+                    <x-public.booking-cta :section="$section" :booking-url="$document->bookingDestination" :phone-url="$document->contactActions->telephone" :language="$document->language" />
                     @break
             @endswitch
         @endforeach
-        <x-public.blog-slider :articles="$latestBlogPosts ?? collect()" />
+        <x-public.blog-slider :articles="$latestBlogPosts ?? collect()" :language="$document->language" />
     </main>
 
     <x-public.footer :document="$document" :contact-section="$contactSection" />
-    <x-public.whatsapp-button :action="$document->contactActions->whatsApp" :button-style="$document->website->branding->whatsAppButtonStyle" />
+    <x-public.whatsapp-button :action="$document->contactActions->whatsApp" :button-style="$document->website->branding->whatsAppButtonStyle" :language="$document->language" />
 </body>
 </html>

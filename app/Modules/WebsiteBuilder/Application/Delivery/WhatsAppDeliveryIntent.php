@@ -41,8 +41,17 @@ enum WhatsAppDeliveryIntent
      * (Malay, English, Arabic, or others) without changing this method's
      * signature, this enum's cases, or anything outside Delivery.
      */
-    public function localizedMessage(): string
+    public function localizedMessage(string $language = PublicContentLanguage::ENGLISH): string
     {
+        if ($language === PublicContentLanguage::MALAY) {
+            return match ($this) {
+                self::GeneralEnquiry => 'Hai, saya ada pertanyaan dan memerlukan bantuan anda.',
+                self::Service => 'Hai, saya ingin mengetahui lebih lanjut tentang salah satu servis anda.',
+                self::Doctor => 'Hai, saya ingin mengetahui lebih lanjut tentang salah seorang doktor anda.',
+                self::Booking => 'Hai, saya memerlukan bantuan untuk menempah appointment.',
+            };
+        }
+
         return match ($this) {
             self::GeneralEnquiry => 'Hi, I have a question and would love your help.',
             self::Service => "Hi, I'd like to find out more about one of your services.",

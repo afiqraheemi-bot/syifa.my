@@ -6,6 +6,8 @@
         'SYIFA_SPECIALIST' => ['Clinical environment', 'A setting designed for focused care', 'Professional spaces supporting precise assessment, treatment and patient comfort.'],
         default => ['Our environment', 'A space designed for care', 'Explore a clean, comfortable environment created to help every visit feel calm and welcoming.'],
     };
+    $ms = ($language ?? 'en') === 'ms';
+    if ($ms) $presentation = ['Persekitaran klinik', 'Ruang yang direka untuk penjagaan', 'Terokai persekitaran bersih dan selesa yang membantu setiap kunjungan terasa tenang.'];
 @endphp
 <section class="public-section public-section--subtle anchor-section" id="gallery" aria-labelledby="gallery-title">
     <div class="public-container public-container--wide">
@@ -20,20 +22,20 @@
                 @php
                     $imageUrl = $assetUrls[$image->assetId];
                     $imageDimensions = $assetDimensions[$image->assetId] ?? [null, null];
-                    $displayAlt = $image->decorative ? ($image->caption ?? 'Clinic environment') : ($image->altText ?? 'Clinic environment');
+                    $displayAlt = $image->decorative ? ($image->caption ?? ($ms ? 'Persekitaran klinik' : 'Clinic environment')) : ($image->altText ?? ($ms ? 'Persekitaran klinik' : 'Clinic environment'));
                 @endphp
                 <figure class="gallery-item">
                     <button
                         type="button"
                         class="gallery-item__button"
-                        aria-label="View image: {{ $displayAlt }}"
+                        aria-label="{{ $ms ? 'Lihat imej' : 'View image' }}: {{ $displayAlt }}"
                         data-gallery-open
                         data-gallery-src="{{ $imageUrl->value }}"
                         data-gallery-alt="{{ $displayAlt }}"
                         data-gallery-caption="{{ $image->caption ?? '' }}"
                     >
                         <x-public.responsive-image :url="$imageUrl->value" :alt="$image->decorative ? '' : ($image->altText ?? '')" :width="$imageDimensions[0]" :height="$imageDimensions[1]" :priority="$loop->index < 4" class="gallery-item__image" />
-                        <span class="gallery-item__view" aria-hidden="true">View</span>
+                        <span class="gallery-item__view" aria-hidden="true">{{ $ms ? 'Lihat' : 'View' }}</span>
                     </button>
                     @if ($image->caption !== null)<figcaption>{{ $image->caption }}</figcaption>@endif
                 </figure>
@@ -41,8 +43,8 @@
         </div>
     </div>
 
-    <dialog class="gallery-lightbox" aria-label="Clinic environment image" data-gallery-dialog>
-        <button type="button" class="gallery-lightbox__close" aria-label="Close image" data-gallery-close>×</button>
+    <dialog class="gallery-lightbox" aria-label="{{ $ms ? 'Imej persekitaran klinik' : 'Clinic environment image' }}" data-gallery-dialog>
+        <button type="button" class="gallery-lightbox__close" aria-label="{{ $ms ? 'Tutup imej' : 'Close image' }}" data-gallery-close>×</button>
         <figure>
             <img src="" alt="" data-gallery-dialog-image>
             <figcaption data-gallery-dialog-caption></figcaption>

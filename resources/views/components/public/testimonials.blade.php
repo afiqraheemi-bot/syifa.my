@@ -6,6 +6,9 @@
         'SYIFA_SPECIALIST' => ['Patient outcomes', 'Trusted through every stage', 'Experiences from patients supported by our specialist team and structured care pathways.'],
         default => ['Patient perspectives', 'What patients share', 'Real experiences shared by patients who trusted our team with their care.'],
     };
+    if (($language ?? 'en') === 'ms') {
+        $presentation = ['Perspektif pesakit', 'Perkongsian pesakit', 'Pengalaman pesakit yang telah memberikan kepercayaan kepada pasukan kami untuk penjagaan mereka.'];
+    }
 @endphp
 <section class="public-section anchor-section" id="testimonials" aria-labelledby="testimonials-title">
     <div class="public-container">

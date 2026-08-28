@@ -6,6 +6,9 @@
         'SYIFA_SPECIALIST' => ['Patient information', 'Preparing for specialist care', 'Clear information to support referrals, appointments and the next stage of care.'],
         default => ['Helpful answers', 'Frequently asked questions', 'Clear answers to help you feel informed before your visit.'],
     };
+    if (($language ?? 'en') === 'ms') {
+        $presentation = ['Maklumat berguna', 'Soalan lazim', 'Jawapan jelas untuk membantu anda membuat persediaan sebelum kunjungan.'];
+    }
 @endphp
 <section class="public-section anchor-section" id="faq" aria-labelledby="faq-title">
     <div class="public-container public-container--reading">
