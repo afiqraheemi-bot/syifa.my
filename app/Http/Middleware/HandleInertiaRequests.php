@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Modules\Booking\Contracts\Queries\ClinicOwnerBookingReadInterface;
 use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewReadInterface;
 use App\Modules\Onboarding\Contracts\Administration\PendingOnboardingJobsReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\PendingWebsiteDesignerTasksReadInterface;
@@ -13,6 +14,7 @@ use App\Support\Identity\ActorType;
 use App\Support\Identity\CurrentUserInterface;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Throwable;
 
 final class HandleInertiaRequests extends Middleware
 {
@@ -22,6 +24,7 @@ final class HandleInertiaRequests extends Middleware
         private readonly PendingOnboardingJobsReadInterface $onboarding,
         private readonly PendingWebsiteDesignerTasksReadInterface $designerTasks,
         private readonly ClinicRegistrationReviewReadInterface $registrations,
+        private readonly ClinicOwnerBookingReadInterface $bookings,
     ) {}
 
     /**
@@ -54,6 +57,35 @@ final class HandleInertiaRequests extends Middleware
         $context = $request->attributes->get(AuthorizationContext::class);
         if (! $context instanceof AuthorizationContext) {
             return null;
+        }
+
+        if ($context->role === 'clinic_owner' && $context->tenantId !== null) {
+            try {
+                $counts = $this->bookings->countByStatus($context->tenantId);
+                $items = array_map(static fn ($booking): array => [
+                    'id' => $booking->id,
+                    'clinic_name' => $booking->patientName,
+                    'status' => 'new_booking',
+                    'updated_at' => $booking->createdAt,
+                    'url' => route('dashboard.bookings.show', ['bookingId' => $booking->id]),
+                ], $this->bookings->list($context->tenantId, 'submitted', null, 5));
+            } catch (Throwable $exception) {
+                report($exception);
+
+                return null;
+            }
+
+            return [
+                'pending_count' => $counts['submitted'] ?? 0,
+                'items' => $items,
+                'heading' => 'New booking alerts',
+                'description' => 'Review bookings waiting for confirmation.',
+                'singular_label' => 'new booking is waiting',
+                'plural_label' => 'new bookings are waiting',
+                'empty_label' => 'New bookings are being refreshed.',
+                'all_label' => 'View all bookings',
+                'all_url' => route('dashboard.bookings', ['status' => 'submitted']),
+            ];
         }
 
         if ($context->role === 'website_designer') {
