@@ -33,12 +33,12 @@ final readonly class ClinicOwnerBookingDetailPage
         return new DashboardPageView('TenantManagement/Booking/ClinicOwnerBookingDetail', [
             'navigation' => ClinicOwnerDashboardNavigation::items('bookings'),
             'breadcrumbs' => [
-                ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
-                ['key' => 'bookings', 'label' => 'Bookings', 'href' => route('dashboard.bookings')],
+                ['key' => 'dashboard', 'label' => __('booking.breadcrumb_dashboard'), 'href' => route('dashboard')],
+                ['key' => 'bookings', 'label' => __('booking.breadcrumb_bookings'), 'href' => route('dashboard.bookings')],
                 ['key' => 'booking', 'label' => $booking->reference],
             ],
-            'pageTitle' => "Booking {$booking->reference}",
-            'pageDescription' => 'Review the authoritative booking details and lifecycle history.',
+            'pageTitle' => __('booking.detail_page_title', ['reference' => $booking->reference]),
+            'pageDescription' => __('booking.detail_page_description'),
             'backHref' => route('dashboard.bookings'),
             'identityName' => $context->name,
             'contextLabel' => 'Clinic Owner workspace',
@@ -94,8 +94,8 @@ final readonly class ClinicOwnerBookingDetailPage
     private function sourceLabel(string $source): string
     {
         return match ($source) {
-            'WHATSAPP' => 'WhatsApp',
-            'WALK_IN' => 'Walk-in',
+            'WHATSAPP' => __('booking.source_whatsapp'),
+            'WALK_IN' => __('booking.source_walk_in'),
             default => ucfirst(strtolower($source)),
         };
     }
@@ -103,10 +103,10 @@ final readonly class ClinicOwnerBookingDetailPage
     private function statusLabel(string $status): string
     {
         return match ($status) {
-            'submitted' => 'Awaiting confirmation',
-            'confirmed' => 'Confirmed',
-            'cancelled' => 'Cancelled',
-            'completed' => 'Completed',
+            'submitted' => __('booking.status_awaiting_confirmation'),
+            'confirmed' => __('booking.status_confirmed'),
+            'cancelled' => __('booking.status_cancelled'),
+            'completed' => __('booking.status_completed'),
             default => ucfirst($status),
         };
     }

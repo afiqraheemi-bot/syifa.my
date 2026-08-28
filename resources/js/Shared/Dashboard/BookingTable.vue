@@ -1,7 +1,12 @@
 <script setup>
-import { router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import DashboardEmptyState from './DashboardEmptyState.vue';
+
+const { t } = useI18n();
+const page = usePage();
+const currentLocale = computed(() => page.props.locale);
 
 const props = defineProps({
     items: { type: Array, required: true },
@@ -17,7 +22,7 @@ const formatAppointmentDate = (value) => {
     if (!value) return '';
 
     const date = new Date(`${value}T00:00:00`);
-    return new Intl.DateTimeFormat('ms-MY', {
+    return new Intl.DateTimeFormat(currentLocale.value === 'ms' ? 'ms-MY' : 'en-MY', {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
@@ -68,11 +73,12 @@ const submitAction = (event, booking, action) => {
             processingAction.value = actionKey;
         },
         onSuccess: () => {
-            successMessage.value = `${action.label} completed successfully.`;
+            successMessage.value = t('bookingTable.actionCompleted', { action: action.label });
         },
         onError: (errors) => {
             errorMessage.value =
-                Object.values(errors)[0] ?? `${action.label} could not be completed.`;
+                Object.values(errors)[0] ??
+                t('bookingTable.actionFailed', { action: action.label });
         },
         onFinish: () => {
             processingAction.value = null;
@@ -105,10 +111,10 @@ const submitAction = (event, booking, action) => {
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <p class="truncate font-black text-slate-950">
-                            {{ booking.patientName || 'Nama pesakit tidak tersedia' }}
+                            {{ booking.patientName || t('bookingTable.patientNameUnavailable') }}
                         </p>
                         <p class="mt-1 text-xs font-medium text-slate-500">
-                            Ref #{{ shortReference(booking.reference) }}
+                            {{ t('bookingTable.reference') }}{{ shortReference(booking.reference) }}
                         </p>
                     </div>
                     <span
@@ -121,7 +127,7 @@ const submitAction = (event, booking, action) => {
                 </div>
                 <div class="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm">
                     <div>
-                        <p class="text-xs text-slate-500">Tarikh</p>
+                        <p class="text-xs text-slate-500">{{ t('bookingTable.date') }}</p>
                         <p class="mt-1 font-bold text-slate-900">
                             {{ formatAppointmentDate(booking.appointmentDate) }}
                         </p>
@@ -130,9 +136,9 @@ const submitAction = (event, booking, action) => {
                         </p>
                     </div>
                     <div>
-                        <p class="text-xs text-slate-500">Servis</p>
+                        <p class="text-xs text-slate-500">{{ t('bookingTable.service') }}</p>
                         <p class="mt-1 font-bold text-slate-900">
-                            {{ booking.serviceName || 'Temu janji umum' }}
+                            {{ booking.serviceName || t('bookingTable.generalAppointment') }}
                         </p>
                     </div>
                 </div>
@@ -140,7 +146,7 @@ const submitAction = (event, booking, action) => {
                     v-if="booking.detailHref"
                     :href="booking.detailHref"
                     class="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-800 px-4 text-sm font-bold text-white hover:bg-emerald-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-                    >Lihat butiran tempahan</a
+                    >{{ t('bookingTable.viewBookingDetails') }}</a
                 >
             </article>
         </div>
@@ -150,10 +156,10 @@ const submitAction = (event, booking, action) => {
                 !returnToDetail ? 'hidden md:block' : 'block',
             ]"
             role="region"
-            aria-label="Jadual tempahan"
+            :aria-label="t('bookingTable.bookingTableRegion')"
             tabindex="0"
         >
-            <p class="sr-only">Scroll horizontally to review all bookings.</p>
+            <p class="sr-only">{{ t('bookingTable.scrollHint') }}</p>
             <table class="w-full min-w-[64rem] table-fixed divide-y divide-slate-200">
                 <colgroup>
                     <col class="w-[17%]" />
@@ -166,11 +172,11 @@ const submitAction = (event, booking, action) => {
                     <tr>
                         <th
                             v-for="label in [
-                                'Pesakit',
-                                'Temu janji',
-                                'Servis',
-                                'Status',
-                                'Butiran',
+                                t('bookingTable.columnPatient'),
+                                t('bookingTable.columnAppointment'),
+                                t('bookingTable.columnService'),
+                                t('bookingTable.columnStatus'),
+                                t('bookingTable.columnDetails'),
                             ]"
                             :key="label"
                             scope="col"
@@ -184,13 +190,16 @@ const submitAction = (event, booking, action) => {
                     <tr v-for="booking in items" :key="booking.id">
                         <td class="px-5 py-4">
                             <p class="font-bold text-slate-950">
-                                {{ booking.patientName || 'Patient name unavailable' }}
+                                {{
+                                    booking.patientName || t('bookingTable.patientNameUnavailable')
+                                }}
                             </p>
                             <p
                                 class="mt-1 text-xs font-medium text-slate-500"
                                 :title="booking.reference"
                             >
-                                Ref #{{ shortReference(booking.reference) }}
+                                {{ t('bookingTable.reference')
+                                }}{{ shortReference(booking.reference) }}
                             </p>
                         </td>
                         <td class="whitespace-nowrap px-5 py-4">
@@ -202,7 +211,7 @@ const submitAction = (event, booking, action) => {
                             </p>
                         </td>
                         <td class="px-5 py-4 text-sm text-slate-700">
-                            {{ booking.serviceName || 'General appointment' }}
+                            {{ booking.serviceName || t('bookingTable.generalAppointment') }}
                         </td>
                         <td class="whitespace-nowrap px-5 py-4">
                             <span
@@ -221,7 +230,7 @@ const submitAction = (event, booking, action) => {
                                     :href="booking.detailHref"
                                     class="ml-auto inline-flex min-h-11 items-center whitespace-nowrap rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-800 transition hover:border-emerald-700 hover:bg-emerald-50 hover:text-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
                                 >
-                                    Butiran tempahan
+                                    {{ t('bookingTable.viewBookingDetails') }}
                                 </a>
                                 <template
                                     v-for="action in returnToDetail ? booking.actions : []"
@@ -272,7 +281,7 @@ const submitAction = (event, booking, action) => {
                                                 :value="props.csrfToken"
                                             />
                                             <label class="text-xs font-semibold text-slate-700">
-                                                New appointment date
+                                                {{ t('bookingTable.newAppointmentDate') }}
                                                 <input
                                                     name="appointment_date"
                                                     type="date"
@@ -281,7 +290,7 @@ const submitAction = (event, booking, action) => {
                                                 />
                                             </label>
                                             <label class="text-xs font-semibold text-slate-700">
-                                                New appointment time
+                                                {{ t('bookingTable.newAppointmentTime') }}
                                                 <input
                                                     name="appointment_time"
                                                     type="time"
@@ -297,8 +306,8 @@ const submitAction = (event, booking, action) => {
                                                 {{
                                                     processingAction ===
                                                     `${booking.id}:${action.key}`
-                                                        ? 'Saving…'
-                                                        : 'Save new time'
+                                                        ? t('bookingTable.savingTime')
+                                                        : t('bookingTable.saveNewTime')
                                                 }}
                                             </button>
                                         </form>
@@ -308,7 +317,7 @@ const submitAction = (event, booking, action) => {
                                     v-if="returnToDetail && booking.actions.length === 0"
                                     class="text-xs text-slate-500"
                                 >
-                                    No actions available
+                                    {{ t('bookingTable.noActionsAvailable') }}
                                 </span>
                             </div>
                         </td>
@@ -319,7 +328,7 @@ const submitAction = (event, booking, action) => {
     </div>
     <DashboardEmptyState
         v-else
-        title="Tiada tempahan ditemui"
-        description="Tempahan yang sepadan dengan carian dan filter semasa akan dipaparkan di sini."
+        :title="t('bookingTable.noBookingsFound')"
+        :description="t('bookingTable.noBookingsFoundDescription')"
     />
 </template>

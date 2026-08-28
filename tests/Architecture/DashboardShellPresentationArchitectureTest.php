@@ -555,12 +555,12 @@ final class DashboardShellPresentationArchitectureTest extends TestCase
         $table = $this->source('BookingTable.vue');
         self::assertStringContainsString('booking.actions', $table);
         self::assertStringContainsString('role="region"', $table);
-        self::assertStringContainsString('aria-label="Jadual tempahan"', $table);
+        self::assertStringContainsString(':aria-label="t(\'bookingTable.bookingTableRegion\')"', $table);
         self::assertStringContainsString('tabindex="0"', $table);
         self::assertStringContainsString('window.confirm(action.confirmation)', $table);
         self::assertStringContainsString('<details v-else', $table);
-        self::assertStringContainsString('New appointment date', $table);
-        self::assertStringContainsString('New appointment time', $table);
+        self::assertStringContainsString("t('bookingTable.newAppointmentDate')", $table);
+        self::assertStringContainsString("t('bookingTable.newAppointmentTime')", $table);
         self::assertStringContainsString('min-w-0 max-w-full overflow-hidden', $table);
         self::assertStringContainsString('max-w-full overflow-x-auto overscroll-x-contain', $table);
         self::assertStringNotContainsString('booking.status ===', $table);

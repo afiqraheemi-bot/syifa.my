@@ -15,42 +15,42 @@ final readonly class BookingActionProvider
         if ($booking->status === 'submitted') {
             $actions[] = [
                 'key' => 'confirm',
-                'label' => 'Confirm',
+                'label' => __('booking.action_confirm'),
                 'href' => route('dashboard.bookings.confirm', ['bookingId' => $booking->id]),
                 'method' => 'post',
                 'requiresSchedule' => false,
-                'confirmation' => 'Confirm this booking?',
+                'confirmation' => __('booking.action_confirm_confirmation'),
                 'tone' => 'primary',
             ];
         }
         if ($booking->status === 'confirmed') {
             $actions[] = [
                 'key' => 'complete',
-                'label' => 'Mark completed',
+                'label' => __('booking.action_complete'),
                 'href' => route('dashboard.bookings.complete', ['bookingId' => $booking->id]),
                 'method' => 'post',
                 'requiresSchedule' => false,
-                'confirmation' => 'Mark this appointment as completed? This action cannot be undone.',
+                'confirmation' => __('booking.action_complete_confirmation'),
                 'tone' => 'primary',
             ];
         }
         if (in_array($booking->status, ['submitted', 'confirmed'], true)) {
             $actions[] = [
                 'key' => 'reschedule',
-                'label' => 'Reschedule',
+                'label' => __('booking.action_reschedule'),
                 'href' => route('dashboard.bookings.reschedule', ['bookingId' => $booking->id]),
                 'method' => 'patch',
                 'requiresSchedule' => true,
-                'confirmation' => 'Save this new appointment date and time?',
+                'confirmation' => __('booking.action_reschedule_confirmation'),
                 'tone' => 'neutral',
             ];
             $actions[] = [
                 'key' => 'cancel',
-                'label' => 'Cancel',
+                'label' => __('booking.action_cancel'),
                 'href' => route('dashboard.bookings.cancel', ['bookingId' => $booking->id]),
                 'method' => 'post',
                 'requiresSchedule' => false,
-                'confirmation' => 'Cancel this booking? This action cannot be undone.',
+                'confirmation' => __('booking.action_cancel_confirmation'),
                 'tone' => 'danger',
             ];
         }
