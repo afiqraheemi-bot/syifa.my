@@ -32,6 +32,7 @@ use App\Modules\SubscriptionBilling\Application\Subscription\ManageSubscriptionR
 use App\Modules\SubscriptionBilling\Application\Subscription\RenewalCheckoutApplication;
 use App\Modules\SubscriptionBilling\Application\Subscription\RenewalOutcomeApplication;
 use App\Modules\SubscriptionBilling\Application\Subscription\SubscriptionActivationRetryPolicy;
+use App\Modules\SubscriptionBilling\Application\Subscription\SubscriptionTermCalculator;
 use App\Modules\SubscriptionBilling\Contracts\Authorization\CommercialCatalogueAuthorizationInterface;
 use App\Modules\SubscriptionBilling\Contracts\Authorization\PaymentProviderAdministrationAuthorizationInterface;
 use App\Modules\SubscriptionBilling\Contracts\BillingDocument\BillingDocumentReadInterface;
@@ -263,6 +264,7 @@ final class SubscriptionBillingServiceProvider extends ServiceProvider
         $this->app->singleton(SubscriptionIntegrationOutboxPersistenceMapper::class);
         $this->app->singleton(SubscriptionActivationApplicationPersistenceMapper::class);
         $this->app->singleton(AnnualTermCalculator::class);
+        $this->app->singleton(SubscriptionTermCalculator::class);
         $this->app->singleton(SubscriptionActivationRetryPolicy::class);
         $this->app->singleton(SubscriptionActivationAuditInterface::class, SubscriptionActivationAuditAdapter::class);
         $this->app->singleton(SubscriptionActivationTransactionInterface::class, PostgresSubscriptionActivationTransaction::class);
