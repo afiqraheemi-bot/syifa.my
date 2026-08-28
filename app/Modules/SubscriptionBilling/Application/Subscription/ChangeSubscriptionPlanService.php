@@ -18,6 +18,7 @@ final readonly class ChangeSubscriptionPlanService implements ChangeSubscription
         private ConnectionInterface $connection,
         private CommercialCatalogueQueryInterface $catalogue,
         private CapabilityDefinitionCatalogueQueryInterface $capabilities,
+        private SubscriptionTermCalculator $terms,
     ) {}
 
     public function change(ChangeSubscriptionPlanCommand $command): string
@@ -43,7 +44,7 @@ final readonly class ChangeSubscriptionPlanService implements ChangeSubscription
         }
         sort($keys, SORT_STRING);
 
-        return $this->connection->transaction(function () use ($command, $offering, $keys): string {
+        return $this->connection->transaction(function () use ($command, $offering, $billingOption, $keys): string {
             $subscription = $this->connection->table('subscriptions')->where('id', $command->subscriptionId)->lockForUpdate()->first();
             if ($subscription === null) {
                 return 'not_found';
@@ -60,11 +61,23 @@ final readonly class ChangeSubscriptionPlanService implements ChangeSubscription
             }
 
             $now = $command->occurredAt->format('Y-m-d H:i:s.uP');
+            // A plan change that keeps the same billing cycle (e.g. Basic to
+            // Pro, both annual) preserves the existing renewal date. Only a
+            // change of billing cycle (e.g. trial to annual) starts a fresh
+            // term - otherwise the new term silently inherits whatever
+            // period the old, now-replaced billing cycle happened to have
+            // left, which can expire a brand-new paid plan within days.
+            $billingCycleChanged = (string) $subscription->billing_cycle_id !== $offering->billingOptionId;
+            $term = $billingCycleChanged
+                ? $this->terms->calculate($command->occurredAt, $billingOption->intervalUnit, $billingOption->intervalCount)
+                : ['starts_on' => $subscription->starts_on, 'ends_on' => $subscription->ends_on];
             $this->connection->table('subscriptions')->where('id', $command->subscriptionId)->update([
                 'plan_id' => $offering->planId,
                 'billing_cycle_id' => $offering->billingOptionId,
                 'amount_minor' => $offering->amountMinor,
                 'currency' => $offering->currencyCode,
+                'starts_on' => $term['starts_on'],
+                'ends_on' => $term['ends_on'],
                 'entitlement_configuration_version' => $offering->capabilityConfigurationReference,
                 'entitlement_capabilities' => json_encode(array_values(array_unique($keys)), JSON_THROW_ON_ERROR),
                 'last_changed_at' => $now,
