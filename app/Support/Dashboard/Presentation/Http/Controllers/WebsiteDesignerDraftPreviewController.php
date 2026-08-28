@@ -48,6 +48,7 @@ final readonly class WebsiteDesignerDraftPreviewController
             $request->getHttpHost(),
             $request->getPathInfo(),
             $website->website->websiteId,
+            $tenantId,
         );
         $blogVisible = ! Schema::hasTable('website_blog_settings') || (bool) ($connection
             ->table('website_blog_settings')

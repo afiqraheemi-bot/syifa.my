@@ -48,6 +48,45 @@ final class PublicContentLanguageTest extends TestCase
         self::assertSame(PublicContentLanguage::ENGLISH, $language);
     }
 
+    public function test_an_owners_explicit_choice_overrides_auto_detected_content(): void
+    {
+        $malayContentModel = $this->model(
+            'Klinik Anda',
+            'Klinik keluarga yang dipercayai untuk anda dan keluarga',
+            'Klinik Anda | Rawatan Kesihatan',
+            'Kami menyediakan rawatan untuk keluarga anda dengan penjagaan yang terbaik.',
+        );
+
+        self::assertSame(
+            PublicContentLanguage::ENGLISH,
+            PublicContentLanguage::resolve($malayContentModel, PublicContentLanguage::ENGLISH),
+        );
+    }
+
+    public function test_no_stored_preference_falls_back_to_detection(): void
+    {
+        $malayContentModel = $this->model(
+            'Klinik Anda',
+            'Klinik keluarga yang dipercayai untuk anda dan keluarga',
+            'Klinik Anda | Rawatan Kesihatan',
+            'Kami menyediakan rawatan untuk keluarga anda dengan penjagaan yang terbaik.',
+        );
+
+        self::assertSame(PublicContentLanguage::MALAY, PublicContentLanguage::resolve($malayContentModel, null));
+    }
+
+    public function test_an_unrecognized_stored_value_falls_back_to_detection(): void
+    {
+        $englishContentModel = $this->model(
+            'Klinik Syifa',
+            'Trusted family healthcare',
+            'Klinik Syifa | Family Healthcare',
+            'We provide trusted care for your family with experienced doctors.',
+        );
+
+        self::assertSame(PublicContentLanguage::ENGLISH, PublicContentLanguage::resolve($englishContentModel, 'fr'));
+    }
+
     private function model(string $clinicName, ?string $tagline, string $metaTitle, string $metaDescription): PublicWebsiteRenderModel
     {
         return new PublicWebsiteRenderModel(
