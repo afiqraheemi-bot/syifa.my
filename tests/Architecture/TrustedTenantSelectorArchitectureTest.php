@@ -59,7 +59,7 @@ final class TrustedTenantSelectorArchitectureTest extends TestCase
     {
         $root = $this->root();
 
-        self::assertCount(6, glob($root.'/database/migrations/tenant_management/*.php') ?: []);
+        self::assertCount(7, glob($root.'/database/migrations/tenant_management/*.php') ?: []);
         $provider = file_get_contents(
             $root.'/app/Modules/TenantManagement/Infrastructure/TenantManagementServiceProvider.php',
         );

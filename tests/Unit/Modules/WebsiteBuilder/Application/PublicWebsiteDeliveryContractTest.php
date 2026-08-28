@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\WebsiteBuilder\Application;
 
+use App\Modules\TenantManagement\Contracts\ClinicOwner\ClinicOwnerLocalePreferenceReadInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\ContactActionFactory;
 use App\Modules\WebsiteBuilder\Application\Delivery\Exceptions\InvalidPublicDeliveryValueException;
 use App\Modules\WebsiteBuilder\Application\Delivery\Exceptions\PublicAssetResolutionException;
@@ -93,7 +94,7 @@ final class PublicWebsiteDeliveryContractTest extends TestCase
         $model = $this->renderModel();
         $context = new PublicSiteContext('https', 'clinic.example', websiteId: $this->uuid(1));
         $resolver = new OriginPublicAssetUrlResolver('https://cdn.example');
-        $document = (new PublicWebsiteDocumentFactory($resolver, new ConfiguredPlatformLegalContentProvider([])))->make($model, $context);
+        $document = (new PublicWebsiteDocumentFactory($resolver, new ConfiguredPlatformLegalContentProvider([]), $this->noLocalePreference()))->make($model, $context);
 
         self::assertSame('https://cdn.example/assets/'.$this->uuid(9990).'?purpose=content', $document->assetUrls[$this->uuid(9990)]->value);
         self::assertSame('tel:%2B6012', $document->contactActions->telephone);
@@ -110,7 +111,7 @@ final class PublicWebsiteDeliveryContractTest extends TestCase
     public function test_context_cannot_cross_publication_website_identity(): void
     {
         $this->expectException(InvalidPublicDeliveryValueException::class);
-        (new PublicWebsiteDocumentFactory(new OriginPublicAssetUrlResolver('https://cdn.example'), new ConfiguredPlatformLegalContentProvider([])))->make($this->renderModel(), new PublicSiteContext('https', 'clinic.example', websiteId: $this->uuid(2)));
+        (new PublicWebsiteDocumentFactory(new OriginPublicAssetUrlResolver('https://cdn.example'), new ConfiguredPlatformLegalContentProvider([]), $this->noLocalePreference()))->make($this->renderModel(), new PublicSiteContext('https', 'clinic.example', websiteId: $this->uuid(2)));
     }
 
     public function test_required_asset_resolution_failure_is_explicit_without_placeholder(): void
@@ -124,7 +125,7 @@ final class PublicWebsiteDeliveryContractTest extends TestCase
         };
 
         $this->expectException(PublicAssetResolutionException::class);
-        (new PublicWebsiteDocumentFactory($resolver, new ConfiguredPlatformLegalContentProvider([])))->make($this->renderModel(), new PublicSiteContext('https', 'clinic.example', websiteId: $this->uuid(1)));
+        (new PublicWebsiteDocumentFactory($resolver, new ConfiguredPlatformLegalContentProvider([]), $this->noLocalePreference()))->make($this->renderModel(), new PublicSiteContext('https', 'clinic.example', websiteId: $this->uuid(1)));
     }
 
     public function test_contact_actions_omit_missing_values(): void
@@ -178,6 +179,17 @@ final class PublicWebsiteDeliveryContractTest extends TestCase
         $website->publish(new WebsitePublicationEvidence(true, true), new WebsitePublicationReadiness(true, true, true, true, true, true, str_repeat('a', 64)), WebsitePublicationContentFactory::complete($website), new PublicationId($this->uuid(80)), $this->uuid(90), new DateTimeImmutable('2026-08-19T02:00:00Z'));
 
         return (new PublicWebsiteRenderProjector)->project($website->publishedSnapshot());
+    }
+
+    private function noLocalePreference(): ClinicOwnerLocalePreferenceReadInterface
+    {
+        return new readonly class implements ClinicOwnerLocalePreferenceReadInterface
+        {
+            public function forTenant(string $tenantId): ?string
+            {
+                return null;
+            }
+        };
     }
 
     private function uuid(int $suffix): string

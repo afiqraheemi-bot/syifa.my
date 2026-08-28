@@ -100,6 +100,7 @@ use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionDet
 use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionPaymentData;
 use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTimelineData;
 use App\Modules\SubscriptionBilling\Contracts\SubscriptionDetail\SubscriptionTimelineReadInterface;
+use App\Modules\TenantManagement\Contracts\ClinicOwner\ClinicOwnerLocalePreferenceReadInterface;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewData;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewReadInterface;
 use App\Modules\TenantManagement\Contracts\TenantOverview\TenantOverviewSummaryData;
@@ -197,6 +198,13 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
         $this->app->instance(CustomDomainRepositoryInterface::class, $this->customDomains);
         $this->app->instance(WebsitePublishedSnapshotReadInterface::class, new DashboardFixedWebsiteSnapshot);
         $this->app->instance(WebsiteSeoSummaryReadInterface::class, new DashboardFixedSeoSummary);
+        $this->app->instance(ClinicOwnerLocalePreferenceReadInterface::class, new readonly class implements ClinicOwnerLocalePreferenceReadInterface
+        {
+            public function forTenant(string $tenantId): ?string
+            {
+                return null;
+            }
+        });
         $this->websiteRepository = new DashboardFixedWebsiteRepository;
         $this->app->instance(WebsiteRepositoryInterface::class, $this->websiteRepository);
         $this->websiteDraftRepository = new DashboardFixedWebsiteDraftRepository;

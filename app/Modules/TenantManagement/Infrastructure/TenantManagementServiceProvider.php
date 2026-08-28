@@ -17,6 +17,7 @@ use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerAuthenticat
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerCredentialVerificationInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\ClinicOwnerPasswordResetLinkIssuerInterface;
 use App\Modules\TenantManagement\Contracts\Authentication\TrustedTenantSelectorInterface;
+use App\Modules\TenantManagement\Contracts\ClinicOwner\ClinicOwnerLocalePreferenceReadInterface;
 use App\Modules\TenantManagement\Contracts\Provisioning\ProvisionTenantInterface;
 use App\Modules\TenantManagement\Contracts\Session\ClinicOwnerSessionStoreInterface;
 use App\Modules\TenantManagement\Contracts\TenantContext\TenantContextResolverInterface;
@@ -28,6 +29,7 @@ use App\Modules\TenantManagement\Infrastructure\Authentication\LaravelAuthentica
 use App\Modules\TenantManagement\Infrastructure\Notifications\LaravelClinicOwnerSetupLinkIssuer;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Lookups\PostgresTenantAdminRoutingLookup;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Mappers\TenantPersistenceMapper;
+use App\Modules\TenantManagement\Infrastructure\Persistence\Queries\PostgresClinicOwnerLocalePreferenceReadAdapter;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Queries\PostgresTenantOverviewReadAdapter;
 use App\Modules\TenantManagement\Infrastructure\Persistence\Repositories\PostgresTenantRepository;
 use App\Modules\TenantManagement\Infrastructure\Session\LaravelClinicOwnerSessionStore;
@@ -47,6 +49,12 @@ final class TenantManagementServiceProvider extends ServiceProvider
         $this->app->singleton(
             TenantOverviewReadInterface::class,
             static fn (Application $application): PostgresTenantOverviewReadAdapter => new PostgresTenantOverviewReadAdapter(
+                $application->make('db')->connection(),
+            ),
+        );
+        $this->app->singleton(
+            ClinicOwnerLocalePreferenceReadInterface::class,
+            static fn (Application $application): PostgresClinicOwnerLocalePreferenceReadAdapter => new PostgresClinicOwnerLocalePreferenceReadAdapter(
                 $application->make('db')->connection(),
             ),
         );

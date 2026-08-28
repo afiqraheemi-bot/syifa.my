@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\WebsiteBuilder\Application\WebsitePreview;
 
+use App\Modules\TenantManagement\Contracts\ClinicOwner\ClinicOwnerLocalePreferenceReadInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\BrandTokenResolver;
 use App\Modules\WebsiteBuilder\Application\Delivery\ContactActionFactory;
 use App\Modules\WebsiteBuilder\Application\Delivery\NavigationFactory;
@@ -18,6 +19,8 @@ use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRend
 
 final readonly class DraftPreviewDocumentFactory
 {
+    public function __construct(private ClinicOwnerLocalePreferenceReadInterface $localePreferences) {}
+
     public function make(
         PublicWebsiteRenderModel $model,
         PublicSiteContext $context,
@@ -36,10 +39,11 @@ final readonly class DraftPreviewDocumentFactory
         }
         $routes = (new PublicRoutePolicy)->available($model, $context, false);
         $booking = $bookingDestination ?? $routes[PublicRoute::Booking->value] ?? $context->url();
-        // Detected the same way as the live document, so a designer/owner
+        // Resolved the same way as the live document, so a designer/owner
         // previewing a draft sees the same language their real public site
         // would use once published.
-        $language = PublicContentLanguage::detect($model);
+        $ownerPreference = $context->tenantId === null ? null : $this->localePreferences->forTenant($context->tenantId);
+        $language = PublicContentLanguage::resolve($model, $ownerPreference);
 
         return new PublicWebsiteDocument(
             $model,

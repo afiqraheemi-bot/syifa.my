@@ -47,6 +47,7 @@ final readonly class ClinicOwnerDraftPreviewController
             $request->getHttpHost(),
             $request->getPathInfo(),
             $website->website->websiteId,
+            $context->tenantId,
         );
         $blogVisible = ! Schema::hasTable('website_blog_settings') || (bool) ($connection
             ->table('website_blog_settings')

@@ -24,4 +24,18 @@ final class PublicContentLanguage
 
         return count(array_unique($matches[0])) >= 3 ? self::MALAY : self::ENGLISH;
     }
+
+    /**
+     * The single language setting: an owner's explicit choice (made once, in
+     * their dashboard, and shared by every surface) always wins. Only a
+     * tenant who has never made that choice falls back to auto-detection, so
+     * every already-correct Website keeps working unchanged until its owner
+     * opts in.
+     */
+    public static function resolve(PublicWebsiteRenderModel $model, ?string $ownerPreference): string
+    {
+        return in_array($ownerPreference, [self::ENGLISH, self::MALAY], true)
+            ? $ownerPreference
+            : self::detect($model);
+    }
 }

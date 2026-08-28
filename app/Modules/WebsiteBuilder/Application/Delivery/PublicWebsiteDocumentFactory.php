@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\WebsiteBuilder\Application\Delivery;
 
+use App\Modules\TenantManagement\Contracts\ClinicOwner\ClinicOwnerLocalePreferenceReadInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\Exceptions\InvalidPublicDeliveryValueException;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\BusinessHourRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRenderModel;
@@ -11,11 +12,16 @@ use DateTimeImmutable;
 
 final readonly class PublicWebsiteDocumentFactory
 {
-    public function __construct(private PublicAssetUrlResolverInterface $assets, private PlatformLegalContentProviderInterface $legal) {}
+    public function __construct(
+        private PublicAssetUrlResolverInterface $assets,
+        private PlatformLegalContentProviderInterface $legal,
+        private ClinicOwnerLocalePreferenceReadInterface $localePreferences,
+    ) {}
 
     public function make(PublicWebsiteRenderModel $model, PublicSiteContext $context): PublicWebsiteDocument
     {
-        $language = PublicContentLanguage::detect($model);
+        $ownerPreference = $context->tenantId === null ? null : $this->localePreferences->forTenant($context->tenantId);
+        $language = PublicContentLanguage::resolve($model, $ownerPreference);
         if ($context->websiteId !== null && $context->websiteId !== $model->website->websiteId) {
             throw new InvalidPublicDeliveryValueException('Public site context does not match the publication.');
         }
