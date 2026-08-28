@@ -54,6 +54,7 @@ final class PlatformAdministrationRuntimeWiringArchitectureTest extends TestCase
                 $root.'/database/migrations/platform_administration/2026_07_20_000001_create_audit_entries_table.php',
                 $root.'/database/migrations/platform_administration/2026_08_21_000001_add_remember_token_to_platform_workforce_credentials.php',
                 $root.'/database/migrations/platform_administration/2026_08_21_000002_create_platform_identity_password_reset_tokens_table.php',
+                $root.'/database/migrations/platform_administration/2026_08_28_000001_add_preferred_locale_to_platform_workforce_credentials.php',
                 $root.'/database/migrations/platform_administration/2026_09_09_000001_create_platform_workforce_mfa_enrollments.php',
             ],
             glob($root.'/database/migrations/platform_administration/*.php') ?: [],

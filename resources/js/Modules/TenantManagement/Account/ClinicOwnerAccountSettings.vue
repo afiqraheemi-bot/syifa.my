@@ -1,7 +1,10 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { createDashboardNavigation, DashboardShell } from '../../../Shared/Dashboard/index.js';
+
+const { t } = useI18n();
 
 const props = defineProps({
     navigation: { type: Array, required: true },
@@ -79,7 +82,7 @@ function updatePassword() {
                 <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <p class="text-xs font-bold uppercase tracking-[0.22em] text-lime-300">
-                            Identiti akaun
+                            {{ t('account.identityEyebrow') }}
                         </p>
                         <h2 class="mt-3 text-2xl font-black sm:text-3xl">{{ profile.name }}</h2>
                         <p class="mt-2 text-emerald-50/75">{{ profile.email }}</p>
@@ -93,7 +96,11 @@ function updatePassword() {
                         "
                     >
                         <span class="size-2 rounded-full bg-current" aria-hidden="true" />
-                        {{ profile.emailVerified ? 'E-mel disahkan' : 'E-mel belum disahkan' }}
+                        {{
+                            profile.emailVerified
+                                ? t('account.emailVerified')
+                                : t('account.emailNotVerified')
+                        }}
                     </span>
                 </div>
             </section>
@@ -101,16 +108,18 @@ function updatePassword() {
             <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
                 <div class="border-b border-slate-100 px-6 py-5 sm:px-8">
                     <p class="text-xs font-black tracking-[0.16em] text-emerald-700 uppercase">
-                        Profil
+                        {{ t('account.profileEyebrow') }}
                     </p>
-                    <h2 class="mt-2 text-2xl font-black text-slate-950">Maklumat pemilik klinik</h2>
+                    <h2 class="mt-2 text-2xl font-black text-slate-950">
+                        {{ t('account.profileTitle') }}
+                    </h2>
                     <p class="mt-2 text-sm leading-6 text-slate-600">
-                        Nama ini digunakan di seluruh ruang kerja Clinic Owner anda.
+                        {{ t('account.profileDescription') }}
                     </p>
                 </div>
                 <form class="space-y-5 p-6 sm:p-8" @submit.prevent="updateProfile">
                     <label class="block text-sm font-bold text-slate-800">
-                        Nama penuh
+                        {{ t('account.fullName') }}
                         <input
                             v-model="profileForm.name"
                             type="text"
@@ -125,7 +134,9 @@ function updatePassword() {
                         >
                     </label>
                     <div>
-                        <p class="text-sm font-bold text-slate-800">Alamat e-mel</p>
+                        <p class="text-sm font-bold text-slate-800">
+                            {{ t('account.emailAddress') }}
+                        </p>
                         <div
                             class="mt-2 flex min-h-12 items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4"
                         >
@@ -133,11 +144,15 @@ function updatePassword() {
                             <span
                                 class="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800"
                             >
-                                {{ profile.emailVerified ? 'Disahkan' : 'Belum disahkan' }}
+                                {{
+                                    profile.emailVerified
+                                        ? t('account.verified')
+                                        : t('account.notVerified')
+                                }}
                             </span>
                         </div>
                         <p class="mt-2 text-xs leading-5 text-slate-500">
-                            Hubungi sokongan SYIFA.my untuk menukar e-mel pemilik dengan selamat.
+                            {{ t('account.emailChangeHelp') }}
                         </p>
                     </div>
                     <button
@@ -145,7 +160,9 @@ function updatePassword() {
                         :disabled="profileForm.processing || !profileForm.isDirty"
                         class="min-h-12 rounded-xl bg-emerald-700 px-6 font-black text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {{ profileForm.processing ? 'Menyimpan…' : 'Simpan profil' }}
+                        {{
+                            profileForm.processing ? t('account.saving') : t('account.saveProfile')
+                        }}
                     </button>
                 </form>
             </section>
@@ -153,17 +170,18 @@ function updatePassword() {
             <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
                 <div class="border-b border-slate-100 px-6 py-5 sm:px-8">
                     <p class="text-xs font-black tracking-[0.16em] text-sky-700 uppercase">
-                        Keselamatan
+                        {{ t('account.securityEyebrow') }}
                     </p>
-                    <h2 class="mt-2 text-2xl font-black text-slate-950">Tukar kata laluan</h2>
+                    <h2 class="mt-2 text-2xl font-black text-slate-950">
+                        {{ t('account.passwordTitle') }}
+                    </h2>
                     <p class="mt-2 text-sm leading-6 text-slate-600">
-                        Gunakan sekurang-kurangnya 15 aksara. Semua sesi akan ditamatkan selepas
-                        perubahan berjaya.
+                        {{ t('account.passwordDescription') }}
                     </p>
                 </div>
                 <form class="grid gap-5 p-6 sm:p-8" @submit.prevent="updatePassword">
                     <label class="block text-sm font-bold text-slate-800">
-                        Kata laluan semasa
+                        {{ t('account.currentPassword') }}
                         <div class="relative mt-2">
                             <input
                                 v-model="passwordForm.current_password"
@@ -178,7 +196,7 @@ function updatePassword() {
                                 :aria-pressed="showPasswords"
                                 @click="showPasswords = !showPasswords"
                             >
-                                {{ showPasswords ? 'Sorok' : 'Lihat' }}
+                                {{ showPasswords ? t('account.hide') : t('account.show') }}
                             </button>
                         </div>
                         <span
@@ -189,7 +207,7 @@ function updatePassword() {
                     </label>
                     <div class="grid gap-5 md:grid-cols-2">
                         <label class="block text-sm font-bold text-slate-800">
-                            Kata laluan baharu
+                            {{ t('account.newPassword') }}
                             <input
                                 v-model="passwordForm.password"
                                 :type="showPasswords ? 'text' : 'password'"
@@ -205,7 +223,7 @@ function updatePassword() {
                             >
                         </label>
                         <label class="block text-sm font-bold text-slate-800">
-                            Sahkan kata laluan baharu
+                            {{ t('account.confirmNewPassword') }}
                             <input
                                 v-model="passwordForm.password_confirmation"
                                 :type="showPasswords ? 'text' : 'password'"
@@ -222,14 +240,14 @@ function updatePassword() {
                             :class="passwordLongEnough ? 'text-emerald-700' : 'text-slate-500'"
                         >
                             <span aria-hidden="true">{{ passwordLongEnough ? '✓' : '○' }}</span>
-                            Sekurang-kurangnya 15 aksara
+                            {{ t('account.passwordLongEnough') }}
                         </p>
                         <p
                             class="flex items-center gap-2"
                             :class="passwordsMatch ? 'text-emerald-700' : 'text-slate-500'"
                         >
                             <span aria-hidden="true">{{ passwordsMatch ? '✓' : '○' }}</span>
-                            Kedua-dua kata laluan sepadan
+                            {{ t('account.passwordsMatch') }}
                         </p>
                     </div>
                     <button
@@ -237,16 +255,21 @@ function updatePassword() {
                         :disabled="passwordForm.processing || !passwordReady"
                         class="min-h-12 w-fit rounded-xl bg-slate-950 px-6 font-black text-white transition hover:bg-slate-800 disabled:opacity-50"
                     >
-                        {{ passwordForm.processing ? 'Mengemas kini…' : 'Tukar kata laluan' }}
+                        {{
+                            passwordForm.processing
+                                ? t('account.updating')
+                                : t('account.changePassword')
+                        }}
                     </button>
                 </form>
             </section>
 
             <section class="rounded-3xl border border-sky-200 bg-sky-50 p-6 sm:p-8">
-                <h2 class="text-lg font-black text-sky-950">Terlupa kata laluan?</h2>
+                <h2 class="text-lg font-black text-sky-950">
+                    {{ t('account.forgotPasswordTitle') }}
+                </h2>
                 <p class="mt-2 max-w-2xl text-sm leading-6 text-sky-900">
-                    Log keluar dan pilih “Lupa kata laluan” pada halaman log masuk. Pautan selamat
-                    yang sah selama 60 minit akan dihantar ke e-mel anda.
+                    {{ t('account.forgotPasswordDescription') }}
                 </p>
             </section>
         </div>

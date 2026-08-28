@@ -1,0 +1,42 @@
+{
+    "common": {
+        "openNavigation": "Open navigation",
+        "language": "Language",
+        "languageEnglish": "English",
+        "languageMalay": "Bahasa Melayu"
+    },
+    "logout": {
+        "action": "Log out",
+        "inProgress": "Logging out…",
+        "failed": "Logout failed. Please try again."
+    },
+    "account": {
+        "identityEyebrow": "Account identity",
+        "emailVerified": "Email verified",
+        "emailNotVerified": "Email not verified",
+        "profileEyebrow": "Profile",
+        "profileTitle": "Clinic owner details",
+        "profileDescription": "This name is used across your Clinic Owner workspace.",
+        "fullName": "Full name",
+        "emailAddress": "Email address",
+        "verified": "Verified",
+        "notVerified": "Not verified",
+        "emailChangeHelp": "Contact SYIFA.my support to change the owner's email securely.",
+        "saving": "Saving…",
+        "saveProfile": "Save profile",
+        "securityEyebrow": "Security",
+        "passwordTitle": "Change password",
+        "passwordDescription": "Use at least 15 characters. All sessions will be ended after a successful change.",
+        "currentPassword": "Current password",
+        "hide": "Hide",
+        "show": "Show",
+        "newPassword": "New password",
+        "confirmNewPassword": "Confirm new password",
+        "passwordLongEnough": "At least 15 characters",
+        "passwordsMatch": "Both passwords match",
+        "updating": "Updating…",
+        "changePassword": "Change password",
+        "forgotPasswordTitle": "Forgot your password?",
+        "forgotPasswordDescription": "Log out and choose “Forgot password” on the login page. A secure link valid for 60 minutes will be sent to your email."
+    }
+}

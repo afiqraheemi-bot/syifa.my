@@ -1,0 +1,42 @@
+{
+    "common": {
+        "openNavigation": "Buka navigasi",
+        "language": "Bahasa",
+        "languageEnglish": "English",
+        "languageMalay": "Bahasa Melayu"
+    },
+    "logout": {
+        "action": "Log keluar",
+        "inProgress": "Sedang keluar…",
+        "failed": "Log keluar gagal. Cuba lagi."
+    },
+    "account": {
+        "identityEyebrow": "Identiti akaun",
+        "emailVerified": "E-mel disahkan",
+        "emailNotVerified": "E-mel belum disahkan",
+        "profileEyebrow": "Profil",
+        "profileTitle": "Maklumat pemilik klinik",
+        "profileDescription": "Nama ini digunakan di seluruh ruang kerja Clinic Owner anda.",
+        "fullName": "Nama penuh",
+        "emailAddress": "Alamat e-mel",
+        "verified": "Disahkan",
+        "notVerified": "Belum disahkan",
+        "emailChangeHelp": "Hubungi sokongan SYIFA.my untuk menukar e-mel pemilik dengan selamat.",
+        "saving": "Menyimpan…",
+        "saveProfile": "Simpan profil",
+        "securityEyebrow": "Keselamatan",
+        "passwordTitle": "Tukar kata laluan",
+        "passwordDescription": "Gunakan sekurang-kurangnya 15 aksara. Semua sesi akan ditamatkan selepas perubahan berjaya.",
+        "currentPassword": "Kata laluan semasa",
+        "hide": "Sorok",
+        "show": "Lihat",
+        "newPassword": "Kata laluan baharu",
+        "confirmNewPassword": "Sahkan kata laluan baharu",
+        "passwordLongEnough": "Sekurang-kurangnya 15 aksara",
+        "passwordsMatch": "Kedua-dua kata laluan sepadan",
+        "updating": "Mengemas kini…",
+        "changePassword": "Tukar kata laluan",
+        "forgotPasswordTitle": "Terlupa kata laluan?",
+        "forgotPasswordDescription": "Log keluar dan pilih “Lupa kata laluan” pada halaman log masuk. Pautan selamat yang sah selama 60 minit akan dihantar ke e-mel anda."
+    }
+}

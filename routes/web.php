@@ -50,6 +50,7 @@ use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteApprov
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteAssetController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteContentOverviewController;
 use App\Support\Dashboard\Presentation\Http\Controllers\ClinicOwnerWebsiteOverviewController;
+use App\Support\Dashboard\Presentation\Http\Controllers\DashboardLocalePreferenceController;
 use App\Support\Dashboard\Presentation\Http\Controllers\LaunchReadinessController;
 use App\Support\Dashboard\Presentation\Http\Controllers\NotificationHistoryController;
 use App\Support\Dashboard\Presentation\Http\Controllers\OnboardingTaskController;
@@ -147,6 +148,9 @@ Route::get('/assets/{assetId}', PublicWebsiteAssetController::class)
 Route::get('/dashboard', AuthenticatedDashboardController::class)
     ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
     ->name('dashboard');
+Route::patch('/dashboard/preferences/locale', [DashboardLocalePreferenceController::class, 'update'])
+    ->middleware('authorize.context:authenticated,clinic_owner,website_designer,super_admin')
+    ->name('dashboard.preferences.locale.update');
 Route::get('/dashboard/account', [ClinicOwnerAccountController::class, 'show'])
     ->middleware('authorize.context:clinic_owner,clinic_owner')
     ->name('dashboard.account');
