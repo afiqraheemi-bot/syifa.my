@@ -101,7 +101,7 @@ final class PublicWebsiteDeliveryContractTest extends TestCase
         self::assertSame('https://wa.me/60123456789?text=Hi%2C%20I%20have%20a%20question%20and%20would%20love%20your%20help.', $document->contactActions->whatsApp?->value);
         self::assertStringContainsString('3.139%2C101.6869', $document->contactActions->directions?->value ?? '');
         self::assertSame('https://clinic.example/', $document->head->canonicalUrl->value);
-        self::assertSame(['https://clinic.example/'], array_map(static fn ($url): string => $url->value, $document->sitemapUrls));
+        self::assertSame(['https://clinic.example/', 'https://clinic.example/booking'], array_map(static fn ($url): string => $url->value, $document->sitemapUrls));
         self::assertStringContainsString('MedicalClinic', $document->head->jsonLd());
         self::assertStringNotContainsString('<script', $document->head->jsonLd());
         self::assertSame('https://cdn.example/assets/'.$this->uuid(9990).'?purpose=logo', $resolver->resolve($this->uuid(9990), PublicAssetPurpose::Logo)->value);

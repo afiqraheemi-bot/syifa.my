@@ -7,6 +7,7 @@ namespace App\Modules\WebsiteBuilder\Application\WebsitePreview;
 use App\Modules\WebsiteBuilder\Application\Delivery\BrandTokenResolver;
 use App\Modules\WebsiteBuilder\Application\Delivery\ContactActionFactory;
 use App\Modules\WebsiteBuilder\Application\Delivery\NavigationFactory;
+use App\Modules\WebsiteBuilder\Application\Delivery\PublicContentLanguage;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicRoute;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicRoutePolicy;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContext;
@@ -35,16 +36,20 @@ final readonly class DraftPreviewDocumentFactory
         }
         $routes = (new PublicRoutePolicy)->available($model, $context, false);
         $booking = $bookingDestination ?? $routes[PublicRoute::Booking->value] ?? $context->url();
+        // Detected the same way as the live document, so a designer/owner
+        // previewing a draft sees the same language their real public site
+        // would use once published.
+        $language = PublicContentLanguage::detect($model);
 
         return new PublicWebsiteDocument(
             $model,
             $context,
-            (new SeoDocumentHeadFactory)->make($model, $context, $context->url()),
-            (new NavigationFactory)->make($model, $context, false),
+            (new SeoDocumentHeadFactory)->make($model, $context, $context->url(), $language),
+            (new NavigationFactory)->make($model, $context, false, $language),
             $assetUrls,
             $assetDimensions,
             [],
-            (new ContactActionFactory)->make($model->footer),
+            (new ContactActionFactory)->make($model->footer, language: $language),
             $booking,
             [],
             null,
@@ -52,6 +57,7 @@ final readonly class DraftPreviewDocumentFactory
                 $model->branding->primaryColor,
                 $model->branding->secondaryColor,
             ),
+            $language,
         );
     }
 }

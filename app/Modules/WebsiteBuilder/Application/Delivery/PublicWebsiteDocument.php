@@ -28,5 +28,6 @@ final readonly class PublicWebsiteDocument
         public array $sitemapUrls,
         public ?string $todayHoursLabel,
         public BrandTokens $brandTokens,
+        public string $language,
     ) {}
 }

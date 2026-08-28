@@ -9,6 +9,7 @@ use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContext;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicSiteContextFactoryInterface;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteDocumentFactory;
 use App\Modules\WebsiteBuilder\Application\Delivery\PublicWebsiteRenderModelProviderInterface;
+use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\FooterRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\HeaderRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\HeroSectionRenderModel;
 use App\Modules\WebsiteBuilder\Application\Rendering\Contracts\PublicWebsiteRenderModel;
@@ -72,14 +73,14 @@ final class PublicWebsiteDeliveryTest extends TestCase
         $this->get('https://clinic.example/robots.txt')
             ->assertOk()
             ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
-            ->assertSee('Disallow: /booking', false)
+            ->assertDontSee('Disallow: /booking', false)
             ->assertSee('Sitemap: https://clinic.example/sitemap.xml', false);
 
         $this->get('https://clinic.example/sitemap.xml')
             ->assertOk()
             ->assertHeader('Content-Type', 'application/xml; charset=UTF-8')
             ->assertSee('<loc>https://clinic.example/</loc>', false)
-            ->assertDontSee('/booking', false);
+            ->assertSee('<loc>https://clinic.example/booking</loc>', false);
     }
 
     public function test_complete_reference_document_preserves_sections_semantics_and_truthful_booking(): void
@@ -460,6 +461,97 @@ final class PublicWebsiteDeliveryTest extends TestCase
             ->assertOk()
             ->assertSee('<meta property="og:image" content="', false)
             ->assertSee('<meta name="twitter:card" content="summary_large_image">', false);
+    }
+
+    /**
+     * The default test fixture's contact details ("hello@clinic.test") are
+     * exactly the kind of placeholder/demo data a clinic leaves behind
+     * before publishing real content - structured data must never assert
+     * fake contact details to search engines.
+     */
+    public function test_structured_data_omits_contact_details_for_placeholder_demo_data(): void
+    {
+        $this->bindWebsite($this->renderModel('Klinik Syifa'));
+
+        $jsonLd = $this->get('https://clinic.example/')->assertOk()->getContent();
+
+        self::assertStringNotContainsString('"telephone"', $jsonLd);
+        self::assertStringNotContainsString('"PostalAddress"', $jsonLd);
+    }
+
+    /**
+     * Once real contact details and a full address are configured, and the
+     * meta title is still the unedited default, the public page gets richer
+     * localised structured data and search-result copy - a real, parseable
+     * city/region and services list unlock this; a clinic that hasn't set
+     * either yet keeps the plain fallback.
+     */
+    public function test_structured_data_and_search_copy_are_enriched_once_real_contact_details_and_location_are_configured(): void
+    {
+        $model = $this->renderModel('Klinik Syifa');
+        $footer = new FooterRenderModel(
+            $model->footer->clinicName,
+            'hello@kliniksyifa.my',
+            '+60123456789',
+            'No 88, Jalan Kesihatan, 08000 Sungai Petani, Kedah, Malaysia',
+            $model->footer->socialLinks,
+            $model->footer->businessHours,
+            $model->footer->whatsAppNumber,
+            $model->footer->latitude,
+            $model->footer->longitude,
+        );
+        $this->bindWebsite(new PublicWebsiteRenderModel($model->website, $model->branding, $model->seo, $model->header, $footer, $model->sections, $model->assets, $model->publication));
+
+        $html = $this->get('https://clinic.example/')->assertOk()->getContent();
+
+        self::assertStringContainsString('"telephone":"+60123456789"', $html);
+        self::assertStringContainsString('"addressLocality":"Sungai Petani"', $html);
+        self::assertStringContainsString('"addressRegion":"Kedah"', $html);
+        self::assertStringContainsString('"postalCode":"08000"', $html);
+        self::assertStringContainsString('"medicalSpecialty":"PrimaryCare"', $html);
+        self::assertStringContainsString('"@type":"ReserveAction"', $html);
+        self::assertStringContainsString('<title>Klinik Syifa | Klinik di Sungai Petani</title>', $html);
+    }
+
+    /**
+     * Regression: an owner-written meta title is visible and editable in the
+     * SEO dashboard - it must never be silently replaced by auto-generated
+     * copy, even once the clinic has a full address and services configured,
+     * or the public page would show something different from what the
+     * dashboard displays back to the owner.
+     */
+    public function test_a_customized_meta_title_is_never_replaced_by_auto_generated_seo_copy(): void
+    {
+        $model = $this->renderModel('Klinik Syifa');
+        $footer = new FooterRenderModel(
+            $model->footer->clinicName,
+            'hello@kliniksyifa.my',
+            '+60123456789',
+            'No 88, Jalan Kesihatan, 08000 Sungai Petani, Kedah, Malaysia',
+            $model->footer->socialLinks,
+            $model->footer->businessHours,
+            $model->footer->whatsAppNumber,
+            $model->footer->latitude,
+            $model->footer->longitude,
+        );
+        $seo = new SeoRenderModel(
+            'Klinik Syifa - Trusted Family Clinic in Kedah',
+            'Our own carefully written description of the clinic.',
+            $model->seo->metaKeywords,
+            $model->seo->canonicalUrl,
+            $model->seo->robotsDirective,
+            $model->seo->openGraphTitle,
+            $model->seo->openGraphDescription,
+            $model->seo->openGraphImageAssetId,
+            $model->seo->indexingEnabled,
+        );
+        $this->bindWebsite(new PublicWebsiteRenderModel($model->website, $model->branding, $seo, $model->header, $footer, $model->sections, $model->assets, $model->publication));
+
+        $html = $this->get('https://clinic.example/')->assertOk()->getContent();
+
+        self::assertStringContainsString('<title>Klinik Syifa - Trusted Family Clinic in Kedah</title>', $html);
+        self::assertStringContainsString('Our own carefully written description of the clinic.', $html);
+        self::assertStringNotContainsString('Klinik di Sungai Petani', $html);
     }
 
     private static function assertDontSeeBookingDuplicatedInside(string $navigationHtml): void
