@@ -1,4 +1,8 @@
 <script setup>
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
+
 defineProps({
     identityName: {
         type: String,
@@ -23,7 +27,7 @@ defineEmits(['open-navigation']);
             <button
                 type="button"
                 class="inline-flex size-11 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 lg:hidden"
-                aria-label="Open navigation"
+                :aria-label="t('common.openNavigation')"
                 aria-controls="dashboard-navigation"
                 :aria-expanded="navigationOpen"
                 @click="$emit('open-navigation')"

@@ -1,8 +1,10 @@
 <script setup>
 import { usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { deleteBrowserSession } from '../Authentication/session.js';
 
+const { t } = useI18n();
 const page = usePage();
 const loading = ref(false);
 const failed = ref(false);
@@ -39,7 +41,7 @@ async function logout() {
             role="alert"
             class="hidden text-xs font-semibold text-red-700 md:inline"
         >
-            Log keluar gagal. Cuba lagi.
+            {{ t('logout.failed') }}
         </span>
         <button
             type="button"
@@ -47,7 +49,7 @@ async function logout() {
             class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-wait disabled:opacity-60"
             @click="logout"
         >
-            {{ loading ? 'Sedang keluar…' : 'Log keluar' }}
+            {{ loading ? t('logout.inProgress') : t('logout.action') }}
         </button>
     </div>
 </template>

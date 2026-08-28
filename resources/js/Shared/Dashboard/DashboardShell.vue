@@ -6,6 +6,7 @@ import DashboardPageHeader from './DashboardPageHeader.vue';
 import DashboardLogoutAction from './DashboardLogoutAction.vue';
 import DashboardSidebar from './DashboardSidebar.vue';
 import DashboardTopNavigation from './DashboardTopNavigation.vue';
+import LanguageSwitcher from './LanguageSwitcher.vue';
 
 const props = defineProps({
     navigation: {
@@ -223,6 +224,7 @@ function statusLabel(status) {
                         </div>
                     </details>
                     <slot name="top-actions" />
+                    <LanguageSwitcher />
                     <DashboardLogoutAction />
                 </template>
             </DashboardTopNavigation>

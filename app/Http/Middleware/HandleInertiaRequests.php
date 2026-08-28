@@ -8,6 +8,8 @@ use App\Modules\Booking\Contracts\Queries\ClinicOwnerBookingReadInterface;
 use App\Modules\ClinicRegistration\Contracts\Review\ClinicRegistrationReviewReadInterface;
 use App\Modules\Onboarding\Contracts\Administration\PendingOnboardingJobsReadInterface;
 use App\Modules\Onboarding\Contracts\Dashboard\PendingWebsiteDesignerTasksReadInterface;
+use App\Modules\PlatformAdministration\Infrastructure\Authentication\PlatformIdentityAuthenticatable;
+use App\Modules\TenantManagement\Infrastructure\Authentication\ClinicOwnerAuthenticatable;
 use App\Support\Authorization\Application\AuthorizationContext;
 use App\Support\Dashboard\Application\SuperAdminDashboardNavigation;
 use App\Support\Identity\ActorType;
@@ -32,12 +34,36 @@ final class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $locale = $this->resolveLocale($request);
+        app()->setLocale($locale);
+
         return [
             ...parent::share($request),
             'authentication' => fn (): array => $this->authenticationPresentation(),
             'dashboardOperations' => fn (): ?array => $this->dashboardOperations($request),
             'globalDashboardNavigation' => fn (): ?array => $this->globalDashboardNavigation($request),
+            'locale' => $locale,
         ];
+    }
+
+    private function resolveLocale(Request $request): string
+    {
+        $context = $request->attributes->get(AuthorizationContext::class);
+        if (! $context instanceof AuthorizationContext) {
+            return (string) config('app.locale', 'en');
+        }
+
+        $stored = match ($context->actorType) {
+            ActorType::ClinicOwner->value => ClinicOwnerAuthenticatable::query()
+                ->where('id', $context->identityId)
+                ->value('preferred_locale'),
+            ActorType::PlatformIdentity->value => PlatformIdentityAuthenticatable::query()
+                ->where('platform_identity_id', $context->identityId)
+                ->value('preferred_locale'),
+            default => null,
+        };
+
+        return in_array($stored, ['en', 'ms'], true) ? $stored : 'en';
     }
 
     /** @return list<array{kind: string, key: string, label: string, href: string, icon: null, current: bool}>|null */
