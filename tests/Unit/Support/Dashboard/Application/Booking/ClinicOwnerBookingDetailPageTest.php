@@ -30,6 +30,31 @@ final class ClinicOwnerBookingDetailPageTest extends TestCase
         self::assertSame(['confirm', 'reschedule', 'cancel'], array_column($page->props['booking']['actions'], 'key'));
     }
 
+    public function test_page_copy_follows_the_owners_chosen_language(): void
+    {
+        $originalLocale = app()->getLocale();
+        app()->setLocale('ms');
+
+        try {
+            $page = (new ClinicOwnerBookingDetailPage(
+                $this->reader($this->booking()),
+                new BookingActionProvider,
+            ))->fromTrustedContext($this->context(), $this->booking()->id);
+
+            self::assertNotNull($page);
+            self::assertSame('Tempahan BOOK-001', $page->props['pageTitle']);
+            self::assertSame('Semak butiran tempahan sebenar dan sejarah aktivitinya.', $page->props['pageDescription']);
+            self::assertSame('Dashboard', $page->props['breadcrumbs'][0]['label']);
+            self::assertSame('Tempahan', $page->props['breadcrumbs'][1]['label']);
+            self::assertSame('WhatsApp', $page->props['booking']['sourceLabel']);
+            self::assertSame('Menunggu pengesahan', $page->props['booking']['statusLabel']);
+            self::assertSame('Sahkan', $page->props['booking']['actions'][0]['label']);
+            self::assertSame('Sahkan tempahan ini?', $page->props['booking']['actions'][0]['confirmation']);
+        } finally {
+            app()->setLocale($originalLocale);
+        }
+    }
+
     public function test_it_returns_no_page_when_tenant_scoped_reader_cannot_find_booking(): void
     {
         $page = (new ClinicOwnerBookingDetailPage(

@@ -24,11 +24,11 @@ final readonly class ClinicOwnerServiceSetupPage
         return new DashboardPageView('TenantManagement/Booking/ClinicOwnerServiceSetup', [
             'navigation' => ClinicOwnerDashboardNavigation::items('services'),
             'breadcrumbs' => [
-                ['key' => 'dashboard', 'label' => 'Dashboard', 'href' => route('dashboard')],
-                ['key' => 'services', 'label' => 'Services'],
+                ['key' => 'dashboard', 'label' => __('booking.breadcrumb_dashboard'), 'href' => route('dashboard')],
+                ['key' => 'services', 'label' => __('booking.breadcrumb_services')],
             ],
-            'pageTitle' => 'Service Setup',
-            'pageDescription' => 'Manage the clinic services shown on your Website and offered during Booking.',
+            'pageTitle' => __('booking.services_page_title'),
+            'pageDescription' => __('booking.services_page_description'),
             'identityName' => $context->name,
             'contextLabel' => 'Clinic Owner workspace',
             'services' => array_map(static fn (ServiceSetupData $service): array => get_object_vars($service), $this->services->list($context->tenantId)),
