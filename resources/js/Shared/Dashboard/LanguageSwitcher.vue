@@ -1,13 +1,15 @@
 <script setup>
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const page = usePage();
+const currentLocale = computed(() => page.props.locale);
 const submitting = ref(false);
 
 function select(nextLocale) {
-    if (submitting.value || nextLocale === locale.value) return;
+    if (submitting.value || nextLocale === currentLocale.value) return;
 
     submitting.value = true;
     router.patch(
@@ -15,7 +17,12 @@ function select(nextLocale) {
         { locale: nextLocale },
         {
             preserveScroll: true,
-            preserveState: true,
+            onSuccess: () => {
+                // A full reload guarantees every translated string on the
+                // page (not just this switcher) reflects the new language,
+                // without depending on client-side i18n scope reactivity.
+                window.location.reload();
+            },
             onFinish: () => {
                 submitting.value = false;
             },
@@ -34,10 +41,10 @@ function select(nextLocale) {
             :key="option"
             type="button"
             :disabled="submitting"
-            :aria-pressed="locale === option"
+            :aria-pressed="currentLocale === option"
             class="min-h-9 rounded-md px-2.5 text-xs font-semibold transition disabled:cursor-wait disabled:opacity-60"
             :class="
-                locale === option
+                currentLocale === option
                     ? 'bg-emerald-100 text-emerald-800'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
             "

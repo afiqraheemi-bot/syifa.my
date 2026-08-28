@@ -1,5 +1,5 @@
 import '../css/app.css';
-import { createInertiaApp, router } from '@inertiajs/vue3';
+import { createInertiaApp } from '@inertiajs/vue3';
 import { createApp, h } from 'vue';
 import { createDashboardI18n } from './i18n';
 
@@ -17,13 +17,6 @@ createInertiaApp({
     },
     setup({ el, App, props, plugin }) {
         const i18n = createDashboardI18n(props.initialPage.props.locale);
-
-        router.on('success', (event) => {
-            const locale = event.detail.page.props.locale;
-            if (locale && locale !== i18n.global.locale.value) {
-                i18n.global.locale.value = locale;
-            }
-        });
 
         createApp({ render: () => h(App, props) })
             .use(plugin)
