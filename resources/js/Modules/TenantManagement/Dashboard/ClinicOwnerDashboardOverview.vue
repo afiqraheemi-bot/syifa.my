@@ -10,6 +10,9 @@ import {
     DashboardSummaryCard,
 } from '../../../Shared/Dashboard/index.js';
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t, locale } = useI18n();
 
 const props = defineProps({
     navigation: { type: Array, required: true },
@@ -27,50 +30,62 @@ const props = defineProps({
 });
 
 const navigation = createDashboardNavigation(props.navigation);
-const summaryCopy = {
-    clinic: { label: 'Profil klinik', unavailable: 'Belum tersedia' },
-    subscription: { label: 'Langganan', unavailable: 'Belum tersedia' },
-    bookings: { label: 'Jumlah tempahan' },
-    website: { label: 'Website klinik' },
-};
-const actionCopy = {
-    website: {
-        label: 'Urus website',
-        description: 'Kemas kini maklumat, servis dan kandungan klinik.',
-    },
-    bookings: {
-        label: 'Semak tempahan',
-        description: 'Lihat dan urus permintaan tempahan pesakit.',
+const summaryCopy = computed(() => ({
+    clinic: {
+        label: t('overview.summaryClinicLabel'),
+        unavailable: t('overview.summaryClinicUnavailable'),
     },
     subscription: {
-        label: 'Lihat langganan',
-        description: 'Semak pelan semasa dan status pembaharuan.',
+        label: t('overview.summarySubscriptionLabel'),
+        unavailable: t('overview.summarySubscriptionUnavailable'),
     },
-};
-const summaries = createDashboardSummaries(props.summaries).map((summary) => ({
-    ...summary,
-    label: summaryCopy[summary.key]?.label ?? summary.label,
-    value:
-        summary.value === 'Not available'
-            ? (summaryCopy[summary.key]?.unavailable ?? summary.value)
-            : summary.value,
+    bookings: { label: t('overview.summaryBookingsLabel') },
+    website: { label: t('overview.summaryWebsiteLabel') },
 }));
-const quickActions = createDashboardQuickActions(props.quickActions).map((action) => ({
-    ...action,
-    label: actionCopy[action.key]?.label ?? action.label,
-    description: actionCopy[action.key]?.description ?? action.description,
+const actionCopy = computed(() => ({
+    website: {
+        label: t('overview.actionWebsiteLabel'),
+        description: t('overview.actionWebsiteDescription'),
+    },
+    bookings: {
+        label: t('overview.actionBookingsLabel'),
+        description: t('overview.actionBookingsDescription'),
+    },
+    subscription: {
+        label: t('overview.actionSubscriptionLabel'),
+        description: t('overview.actionSubscriptionDescription'),
+    },
 }));
-const recentActivity = createDashboardActivity(props.recentActivity);
-const todayLabel = new Intl.DateTimeFormat('ms-MY', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-}).format(new Date());
-const clinicIsReady = computed(
-    () => summaries.find((item) => item.key === 'clinic')?.tone === 'positive',
+const summaries = computed(() =>
+    createDashboardSummaries(props.summaries).map((summary) => ({
+        ...summary,
+        label: summaryCopy.value[summary.key]?.label ?? summary.label,
+        value:
+            summary.value === 'Not available'
+                ? (summaryCopy.value[summary.key]?.unavailable ?? summary.value)
+                : summary.value,
+    })),
 );
-const bookingSummary = computed(() => summaries.find((item) => item.key === 'bookings'));
+const quickActions = computed(() =>
+    createDashboardQuickActions(props.quickActions).map((action) => ({
+        ...action,
+        label: actionCopy.value[action.key]?.label ?? action.label,
+        description: actionCopy.value[action.key]?.description ?? action.description,
+    })),
+);
+const recentActivity = createDashboardActivity(props.recentActivity);
+const todayLabel = computed(() =>
+    new Intl.DateTimeFormat(locale.value === 'ms' ? 'ms-MY' : 'en-MY', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    }).format(new Date()),
+);
+const clinicIsReady = computed(
+    () => summaries.value.find((item) => item.key === 'clinic')?.tone === 'positive',
+);
+const bookingSummary = computed(() => summaries.value.find((item) => item.key === 'bookings'));
 </script>
 
 <template>
@@ -111,8 +126,8 @@ const bookingSummary = computed(() => summaries.find((item) => item.key === 'boo
                                 />
                                 {{
                                     clinicIsReady
-                                        ? 'Klinik sedia beroperasi'
-                                        : 'Setup perlu perhatian'
+                                        ? t('overview.statusReady')
+                                        : t('overview.statusNeedsAttention')
                                 }}
                             </span>
                             <span class="text-xs font-semibold text-emerald-100 capitalize">{{
@@ -140,40 +155,45 @@ const bookingSummary = computed(() => summaries.find((item) => item.key === 'boo
                             href="/dashboard/bookings"
                             class="group rounded-2xl bg-lime-300 p-4 text-emerald-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-lime-200 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                         >
-                            <span class="block text-xs font-bold text-emerald-900/70"
-                                >Tempahan pesakit</span
-                            >
+                            <span class="block text-xs font-bold text-emerald-900/70">{{
+                                t('overview.bookingsCardLabel')
+                            }}</span>
                             <span class="mt-1 block text-2xl font-black">{{
                                 bookingSummary?.value ?? '0'
                             }}</span>
-                            <span class="mt-2 block text-xs font-bold text-emerald-950/70"
-                                >Semak sekarang →</span
-                            >
+                            <span class="mt-2 block text-xs font-bold text-emerald-950/70">{{
+                                t('overview.bookingsCardCta')
+                            }}</span>
                         </a>
                         <a
                             href="/dashboard/blog"
                             class="group rounded-2xl border border-white/20 bg-white/10 p-4 text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                         >
-                            <span class="block text-xs font-bold text-emerald-100"
-                                >Blog klinik</span
-                            >
-                            <span class="mt-1 block text-lg font-black">Kongsi info</span>
-                            <span class="mt-3 block text-xs font-semibold text-emerald-100"
-                                >Urus artikel →</span
-                            >
+                            <span class="block text-xs font-bold text-emerald-100">{{
+                                t('overview.blogCardLabel')
+                            }}</span>
+                            <span class="mt-1 block text-lg font-black">{{
+                                t('overview.blogCardTitle')
+                            }}</span>
+                            <span class="mt-3 block text-xs font-semibold text-emerald-100">{{
+                                t('overview.blogCardCta')
+                            }}</span>
                         </a>
                     </div>
                 </div>
             </section>
 
-            <section aria-label="Ringkasan klinik" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <section
+                :aria-label="t('overview.summaryAriaLabel')"
+                class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+            >
                 <DashboardSummaryCard
                     v-for="summary in summaries"
                     :key="summary.key"
                     :label="summary.label"
                     :summary-key="summary.key"
-                    positive-label="Aktif"
-                    neutral-label="Semak"
+                    :positive-label="t('overview.statusActive')"
+                    :neutral-label="t('overview.statusReview')"
                     :value="summary.value"
                     :detail="summary.detail"
                     :tone="summary.tone"
@@ -185,15 +205,15 @@ const bookingSummary = computed(() => summaries.find((item) => item.key === 'boo
             <div class="grid items-start gap-7 xl:grid-cols-[1.15fr_0.85fr]">
                 <DashboardQuickActions
                     :actions="quickActions"
-                    title="Tindakan pantas"
-                    eyebrow="Akses segera"
+                    :title="t('overview.quickActionsTitle')"
+                    :eyebrow="t('overview.quickActionsEyebrow')"
                 />
                 <DashboardRecentActivity
                     :activity="recentActivity"
-                    title="Aktiviti terkini"
-                    eyebrow="Rekod ruang kerja"
-                    empty-title="Belum ada aktiviti terkini"
-                    empty-description="Perubahan dan aktiviti penting klinik anda akan dipaparkan di sini."
+                    :title="t('overview.recentActivityTitle')"
+                    :eyebrow="t('overview.recentActivityEyebrow')"
+                    :empty-title="t('overview.recentActivityEmptyTitle')"
+                    :empty-description="t('overview.recentActivityEmptyDescription')"
                 />
             </div>
         </div>

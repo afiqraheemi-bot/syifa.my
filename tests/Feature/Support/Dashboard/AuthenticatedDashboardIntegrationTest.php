@@ -357,7 +357,7 @@ final class AuthenticatedDashboardIntegrationTest extends TestCase
                 static fn (AssertableInertia $page): AssertableInertia => $page
                     ->has('navigation', 10)
                     ->where('navigation.3.key', 'services')
-                    ->where('welcomeTitle', 'Selamat kembali, Authenticated User')
+                    ->where('welcomeTitle', 'Welcome back, Authenticated User')
                     ->has('summaries', 4)
                     ->where('summaries.0.key', 'clinic')
                     ->where('summaries.0.value', 'Klinik Syifa')

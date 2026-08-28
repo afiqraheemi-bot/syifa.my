@@ -1,4 +1,8 @@
 <script setup>
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
+
 defineProps({
     title: {
         type: String,
@@ -69,7 +73,7 @@ defineProps({
                         <span
                             class="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600"
                         >
-                            Coming later
+                            {{ t('quickActions.comingLater') }}
                         </span>
                     </div>
                     <span class="mt-1 block text-sm leading-6 text-slate-600">{{

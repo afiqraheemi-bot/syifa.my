@@ -38,5 +38,50 @@
         "changePassword": "Tukar kata laluan",
         "forgotPasswordTitle": "Terlupa kata laluan?",
         "forgotPasswordDescription": "Log keluar dan pilih “Lupa kata laluan” pada halaman log masuk. Pautan selamat yang sah selama 60 minit akan dihantar ke e-mel anda."
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "website": "Website",
+        "content": "Kandungan",
+        "services": "Servis",
+        "bookings": "Tempahan",
+        "blog": "Blog",
+        "subscription": "Langganan",
+        "notifications": "Notifikasi",
+        "reports": "Laporan",
+        "account": "Akaun & Keselamatan"
+    },
+    "overview": {
+        "statusReady": "Klinik sedia beroperasi",
+        "statusNeedsAttention": "Setup perlu perhatian",
+        "bookingsCardLabel": "Tempahan pesakit",
+        "bookingsCardCta": "Semak sekarang →",
+        "blogCardLabel": "Blog klinik",
+        "blogCardTitle": "Kongsi info",
+        "blogCardCta": "Urus artikel →",
+        "summaryAriaLabel": "Ringkasan klinik",
+        "statusActive": "Aktif",
+        "statusReview": "Semak",
+        "summaryClinicLabel": "Profil klinik",
+        "summaryClinicUnavailable": "Belum tersedia",
+        "summarySubscriptionLabel": "Langganan",
+        "summarySubscriptionUnavailable": "Belum tersedia",
+        "summaryBookingsLabel": "Jumlah tempahan",
+        "summaryWebsiteLabel": "Website klinik",
+        "quickActionsEyebrow": "Akses segera",
+        "quickActionsTitle": "Tindakan pantas",
+        "actionWebsiteLabel": "Urus website",
+        "actionWebsiteDescription": "Kemas kini maklumat, servis dan kandungan klinik.",
+        "actionBookingsLabel": "Semak tempahan",
+        "actionBookingsDescription": "Lihat dan urus permintaan tempahan pesakit.",
+        "actionSubscriptionLabel": "Lihat langganan",
+        "actionSubscriptionDescription": "Semak pelan semasa dan status pembaharuan.",
+        "recentActivityEyebrow": "Rekod ruang kerja",
+        "recentActivityTitle": "Aktiviti terkini",
+        "recentActivityEmptyTitle": "Belum ada aktiviti terkini",
+        "recentActivityEmptyDescription": "Perubahan dan aktiviti penting klinik anda akan dipaparkan di sini."
+    },
+    "quickActions": {
+        "comingLater": "Akan datang"
     }
 }

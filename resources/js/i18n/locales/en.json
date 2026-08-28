@@ -38,5 +38,50 @@
         "changePassword": "Change password",
         "forgotPasswordTitle": "Forgot your password?",
         "forgotPasswordDescription": "Log out and choose “Forgot password” on the login page. A secure link valid for 60 minutes will be sent to your email."
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "website": "Website",
+        "content": "Content",
+        "services": "Services",
+        "bookings": "Bookings",
+        "blog": "Blog",
+        "subscription": "Subscription",
+        "notifications": "Notifications",
+        "reports": "Reports",
+        "account": "Account & Security"
+    },
+    "overview": {
+        "statusReady": "Your clinic is ready to operate",
+        "statusNeedsAttention": "Setup needs attention",
+        "bookingsCardLabel": "Patient bookings",
+        "bookingsCardCta": "Review now →",
+        "blogCardLabel": "Clinic blog",
+        "blogCardTitle": "Share updates",
+        "blogCardCta": "Manage articles →",
+        "summaryAriaLabel": "Clinic summary",
+        "statusActive": "Active",
+        "statusReview": "Review",
+        "summaryClinicLabel": "Clinic profile",
+        "summaryClinicUnavailable": "Not available",
+        "summarySubscriptionLabel": "Subscription",
+        "summarySubscriptionUnavailable": "Not available",
+        "summaryBookingsLabel": "Total bookings",
+        "summaryWebsiteLabel": "Clinic website",
+        "quickActionsEyebrow": "Quick access",
+        "quickActionsTitle": "Quick actions",
+        "actionWebsiteLabel": "Manage website",
+        "actionWebsiteDescription": "Update your clinic's details, services and content.",
+        "actionBookingsLabel": "Review bookings",
+        "actionBookingsDescription": "View and manage patient booking requests.",
+        "actionSubscriptionLabel": "View subscription",
+        "actionSubscriptionDescription": "Check your current plan and renewal status.",
+        "recentActivityEyebrow": "Workspace record",
+        "recentActivityTitle": "Recent activity",
+        "recentActivityEmptyTitle": "No recent activity yet",
+        "recentActivityEmptyDescription": "Important changes and activity for your clinic will appear here."
+    },
+    "quickActions": {
+        "comingLater": "Coming later"
     }
 }
