@@ -87,7 +87,7 @@ final class ClinicOwnerDashboardOverviewProviderTest extends TestCase
             new SubscriptionSummaryData('restricted', '2027-08-20'),
         )->for($this->context());
 
-        self::assertSame('Selamat kembali, Aisyah', $overview['welcomeTitle']);
+        self::assertSame('Welcome back, Aisyah', $overview['welcomeTitle']);
         self::assertSame('Klinik Syifa', $overview['clinicName']);
         self::assertSame(['clinic', 'subscription', 'bookings', 'website'], array_column($overview['summaries'], 'key'));
         self::assertSame('Klinik Syifa', $overview['summaries'][0]['value']);
@@ -97,6 +97,27 @@ final class ClinicOwnerDashboardOverviewProviderTest extends TestCase
         self::assertSame('klinik-aisyah.syifa.my', $overview['summaries'][3]['detail']);
         self::assertSame('https://klinik-aisyah.syifa.my', $overview['summaries'][3]['url']);
         self::assertSame([], $overview['recentActivity']);
+    }
+
+    public function test_overview_welcome_copy_follows_the_owners_chosen_language(): void
+    {
+        $originalLocale = app()->getLocale();
+        app()->setLocale('ms');
+
+        try {
+            $overview = $this->overview(
+                new ClinicSummaryData('clinic-1', 'Klinik Syifa', 'Asia/Kuala_Lumpur', false),
+                new SubscriptionSummaryData('restricted', '2027-08-20'),
+            )->for($this->context());
+
+            self::assertSame('Selamat kembali, Aisyah', $overview['welcomeTitle']);
+            self::assertSame(
+                'Semak keadaan klinik, tempahan pesakit dan website anda dalam satu paparan.',
+                $overview['welcomeMessage'],
+            );
+        } finally {
+            app()->setLocale($originalLocale);
+        }
     }
 
     private function overview(

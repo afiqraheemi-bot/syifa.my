@@ -40,10 +40,14 @@ final readonly class ClinicOwnerDashboardOverviewProvider
         $quickActions = $this->quickActions->provide($context);
         $recentActivity = $this->recentActivity->provide($context);
 
+        $isMalay = app()->getLocale() === 'ms';
+
         return [
-            'welcomeTitle' => "Selamat kembali, {$name}",
-            'welcomeMessage' => 'Semak keadaan klinik, tempahan pesakit dan website anda dalam satu paparan.',
-            'clinicName' => (string) ($clinic->data['value'] ?? 'Klinik anda'),
+            'welcomeTitle' => $isMalay ? "Selamat kembali, {$name}" : "Welcome back, {$name}",
+            'welcomeMessage' => $isMalay
+                ? 'Semak keadaan klinik, tempahan pesakit dan website anda dalam satu paparan.'
+                : "Check your clinic's status, patient bookings and website in one place.",
+            'clinicName' => (string) ($clinic->data['value'] ?? ($isMalay ? 'Klinik anda' : 'Your clinic')),
             'summaries' => [
                 $clinic->data,
                 $subscription->data,
